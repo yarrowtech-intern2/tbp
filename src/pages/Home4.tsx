@@ -1,7 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight,
   Compass,
   Headphones,
   Hotel,
@@ -11,11 +10,8 @@ import {
   Mail,
   MapPinned,
   Mountain,
-  PlaneTakeoff,
   ShieldCheck,
   Smartphone,
-  Sparkles,
-  Star,
   Trees,
   Twitter,
   type LucideIcon,
@@ -167,117 +163,174 @@ const EXPERIENCE_CATEGORIES: Array<{
   },
 ];
 
-const TRUST_FEATURES: Array<{ title: string; description: string; icon: LucideIcon }> = [
+const WHY_CHOOSE_US: Array<{
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  className?: string;
+}> = [
   {
-    title: 'Curated Experiences',
-    description: 'Every itinerary is edited for rhythm, quality, and a consistent premium standard.',
-    icon: Sparkles,
+    title: 'Best Pricing',
+    description: 'Transparent rates and optimized package design so you get premium experiences without hidden costs.',
+    icon: Landmark,
+    className: 'is-hero',
   },
   {
-    title: 'Best Value Planning',
-    description: 'Transparent pricing and high-value stays chosen for quality, not noise.',
+    title: 'Verified Guides',
+    description: 'Trusted local experts selected for professionalism, safety standards, and destination depth.',
     icon: ShieldCheck,
   },
   {
-    title: '24/7 Travel Support',
-    description: 'Real assistance before departure, in transit, and during every stay.',
+    title: '24/7 Support',
+    description: 'Real-time travel assistance before departure, in transit, and at every stay touchpoint.',
     icon: Headphones,
   },
   {
-    title: 'Personalized Trips',
-    description: 'Flexible route design shaped around pace, purpose, and traveler preferences.',
-    icon: PlaneTakeoff,
+    title: 'Handpicked Tours',
+    description: 'Routes curated for pace, comfort, and memorable moments with less noise and better flow.',
+    icon: Compass,
+    className: 'is-wide',
+  },
+  {
+    title: 'Secure Payments',
+    description: 'Protected transactions with clear billing, verified vendors, and reliable booking confidence.',
+    icon: Smartphone,
   },
 ];
 
-const PACKAGES = [
+const WORLD_MAP_POINTS: Array<{
+  id: string;
+  region: string;
+  city: string;
+  country: string;
+  markerX: number;
+  markerY: number;
+  cardX?: number;
+  cardY?: number;
+  preview?: {
+    title: string;
+    description: string;
+    image: string;
+    rating: string;
+    travelers: string;
+  };
+}> = [
   {
-    title: 'Himalayan Quiet Escape',
-    image: '/images/sikkim1.jpg',
-    duration: '5 Days / 4 Nights',
-    price: 'From INR 68,000',
-    rating: '4.9',
+    id: 'north-america',
+    region: 'North America',
+    city: 'Vancouver',
+    country: 'Canada',
+    markerX: 17.4,
+    markerY: 32.8,
+    cardX: 25.2,
+    cardY: 24.4,
+    preview: {
+      title: 'Nature Escape',
+      description: 'Coastline forests, alpine viewpoints, and private-lodge routes.',
+      image: '/images/nature1.jpg',
+      rating: '4.8',
+      travelers: '2.1k',
+    },
   },
   {
-    title: 'Coastal Leisure Week',
-    image: '/images/mandarmoni2.jpg',
-    duration: '6 Days / 5 Nights',
-    price: 'From INR 74,000',
-    rating: '4.8',
+    id: 'south-america',
+    region: 'South America',
+    city: 'Patagonia',
+    country: 'Chile',
+    markerX: 31.3,
+    markerY: 76.5,
+    cardX: 38.3,
+    cardY: 67.4,
+    preview: {
+      title: 'Mountain Road',
+      description: 'Editorial drives, glacier valleys, and premium ridge lodges.',
+      image: '/images/sikkim2.jpg',
+      rating: '4.9',
+      travelers: '1.7k',
+    },
   },
   {
-    title: 'Temple & Heritage Route',
-    image: '/images/temple1.jpg',
-    duration: '4 Days / 3 Nights',
-    price: 'From INR 49,000',
-    rating: '4.7',
+    id: 'europe',
+    region: 'Europe',
+    city: 'Paris',
+    country: 'France',
+    markerX: 49.8,
+    markerY: 33.4,
   },
   {
-    title: 'Kerala Wellness Passage',
-    image: '/images/kerala1.jpg',
-    duration: '7 Days / 6 Nights',
-    price: 'From INR 92,000',
-    rating: '5.0',
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: 'Sarah Mitchell',
-    role: 'Adventure Traveler',
-    text: 'The pacing felt intentional from the first transfer to the final checkout. It was luxury travel without unnecessary friction.',
-    rating: 5,
-  },
-  {
-    name: 'Raj Patel',
-    role: 'Private Group Traveler',
-    text: 'Every hotel, route, and reservation felt considered. The result was calm, polished, and far more personal than a standard package.',
-    rating: 5,
+    id: 'middle-east',
+    region: 'Middle East',
+    city: 'Dubai',
+    country: 'UAE',
+    markerX: 57.9,
+    markerY: 45.1,
+    cardX: 49.5,
+    cardY: 52.1,
+    preview: {
+      title: 'Desert Oasis',
+      description: 'Golden horizons, private camps, and sunset culinary rituals.',
+      image: '/images/rajsthan1.jpg',
+      rating: '4.8',
+      travelers: '2.8k',
+    },
   },
   {
-    name: 'Emma Thompson',
-    role: 'Solo Explorer',
-    text: 'I wanted independence without logistics fatigue. They delivered a beautifully structured itinerary that still felt effortless.',
-    rating: 5,
-  },
-];
-
-const GALLERY_IMAGES = [
-  {
-    image: '/images/kolkata1.jpg',
-    label: 'City evenings',
-    title: 'Rose-hour architecture',
-    description: 'Reflections, symmetry, and warm city light captured with a calm editorial frame.',
-  },
-  {
-    image: '/images/nature1.jpg',
-    label: 'Forest air',
-    title: 'Quiet canopy passage',
-    description: 'Dense greens and bridge lines that make movement feel immersive rather than rushed.',
+    id: 'india',
+    region: 'India',
+    city: 'Kerala',
+    country: 'India',
+    markerX: 66.6,
+    markerY: 54.7,
+    cardX: 68.6,
+    cardY: 63.5,
+    preview: {
+      title: 'Tropical Beach',
+      description: 'Palm-shaded waters, lagoon villas, and calm wellness itineraries.',
+      image: '/images/kerala1.jpg',
+      rating: '5.0',
+      travelers: '4.4k',
+    },
   },
   {
-    image: '/images/rajsthan1.jpg',
-    label: 'Desert light',
-    title: 'Carved sandstone rhythm',
-    description: 'Repeating geometry, soft neutrals, and shadow play that give the frame depth.',
+    id: 'southeast-asia',
+    region: 'Southeast Asia',
+    city: 'Bali',
+    country: 'Indonesia',
+    markerX: 72.5,
+    markerY: 58.9,
+    cardX: 79.1,
+    cardY: 54.8,
+    preview: {
+      title: 'Luxury Resort',
+      description: 'Cliffside suites, spa sanctuaries, and curated ocean dining.',
+      image: '/images/mandarmoni2.jpg',
+      rating: '4.9',
+      travelers: '3.2k',
+    },
   },
   {
-    image: '/images/sikkim2.jpg',
-    label: 'Ridgeline mornings',
-    title: 'Elevation with breathing room',
-    description: 'Layered hills and winding roads styled to feel expansive, clean, and premium.',
+    id: 'japan',
+    region: 'Japan',
+    city: 'Kyoto',
+    country: 'Japan',
+    markerX: 83.1,
+    markerY: 41.4,
   },
   {
-    image: '/images/mandarmoni.jpg',
-    label: 'Sea horizon',
-    title: 'Low-tide stillness',
-    description: 'Open shoreline scenes with restrained color and cinematic negative space.',
+    id: 'australia',
+    region: 'Australia',
+    city: 'Sydney',
+    country: 'Australia',
+    markerX: 80.4,
+    markerY: 76.2,
   },
   {
-    image: '/images/temple2.jpg',
-    label: 'Timeless detail',
-    title: 'Sculptural heritage texture',
-    description: 'Stone, craft, and sacred forms arranged into tactile close-range compositions.',
+    id: 'africa',
+    region: 'Africa',
+    city: 'Marrakesh',
+    country: 'Morocco',
+    markerX: 53.9,
+    markerY: 50.6,
   },
 ];
 
@@ -636,7 +689,7 @@ export const Home4: React.FC = () => {
 
       <section className="h4-story-section h4-story-section-tight h4-experience-section">
         <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-accent-head">
+          <div className="h4-editorial-head h4-editorial-head-center h4-accent-head h4-experience-head-outside">
             <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
               <span className="h4-featured-glyph h4-featured-glyph-sun" />
               <span className="h4-featured-glyph h4-featured-glyph-orbit" />
@@ -646,7 +699,7 @@ export const Home4: React.FC = () => {
             <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
               From calm beach stays to high-altitude journeys, each category is built as a clean, premium experience with its own visual and emotional rhythm.
             </p>
-          </RevealBlock>
+          </div>
           <div className="h4-experience-marquee" aria-label="Experience categories">
             <div className="h4-experience-rail h4-experience-rail-forward">
               <div className="h4-experience-track">
@@ -688,67 +741,26 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section className="h4-story-section h4-story-section-tight h4-why-section">
+      <section id="h4-choose-us" className="h4-story-section h4-story-section-tight h4-choose-section">
         <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-accent-head">
+          <div className="h4-editorial-head h4-editorial-head-center h4-accent-head h4-choose-head">
             <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
               <span className="h4-featured-glyph h4-featured-glyph-sun" />
               <span className="h4-featured-glyph h4-featured-glyph-orbit" />
               <span className="h4-featured-glyph h4-featured-glyph-dot" />
             </div>
-            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Luxury travel built with clarity, care, and quiet precision.</h2>
-            <p className="h4-editorial-copy h4-accent-subtitle">
-              Trusted planning, transparent coordination, and on-trip support designed around calmer journeys.
+            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Why Choose Us</h2>
+            <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
+              Trust-first travel planning with verified teams, clear value, and seamless execution across every journey stage.
             </p>
-          </RevealBlock>
-          <div className="h4-trust-grid">
-            {TRUST_FEATURES.map((item, index) => (
-              <RevealBlock key={item.title} delay={index * 80}>
-                <article className="h4-trust-card h4-reveal-copy">
-                  <div className="h4-trust-icon"><item.icon size={20} /></div>
-                  <h3 className="h4-trust-title">{item.title}</h3>
-                  <p className="h4-trust-text">{item.description}</p>
-                </article>
-              </RevealBlock>
-            ))}
           </div>
-        </div>
-      </section>
-
-      <section className="h4-story-section h4-story-section-tight h4-package-section">
-        <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-split h4-reveal-copy">
-            <div className="h4-reveal-copy h4-accent-head">
-              <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
-                <span className="h4-featured-glyph h4-featured-glyph-sun" />
-                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-                <span className="h4-featured-glyph h4-featured-glyph-dot" />
-              </div>
-              <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Ready-to-book journeys with a polished luxury baseline.</h2>
-              <p className="h4-editorial-copy h4-accent-subtitle">
-                Curated plans with clear pricing, premium stays, and smoother movement from arrival to checkout.
-              </p>
-            </div>
-            <Link to="/auth" className="h4-inline-action">
-              View all journeys <ArrowRight size={16} />
-            </Link>
-          </RevealBlock>
-          <div className="h4-package-rail">
-            {PACKAGES.map((item, index) => (
+          <div className="h4-choose-grid">
+            {WHY_CHOOSE_US.map((item, index) => (
               <RevealBlock key={item.title} delay={index * 70}>
-                <article className="h4-package-card">
-                  <div className="h4-package-media" style={{ backgroundImage: `url(${item.image})` }} />
-                  <div className="h4-package-body h4-reveal-copy">
-                    <div className="h4-package-meta">
-                      <span>{item.duration}</span>
-                      <span className="h4-package-rating"><Star size={14} /> {item.rating}</span>
-                    </div>
-                    <h3 className="h4-package-title">{item.title}</h3>
-                    <div className="h4-package-footer">
-                      <span className="h4-package-price">{item.price}</span>
-                      <button className="h4-package-cta">Reserve</button>
-                    </div>
-                  </div>
+                <article className={`h4-choose-card${item.className ? ` ${item.className}` : ''}`}>
+                  <div className="h4-choose-icon"><item.icon size={18} /></div>
+                  <h3 className="h4-choose-title">{item.title}</h3>
+                  <p className="h4-choose-text">{item.description}</p>
                 </article>
               </RevealBlock>
             ))}
@@ -756,72 +768,57 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section id="h4-testimonials" className="h4-story-section h4-story-section-tight h4-voices-section">
+      <section className="h4-story-section h4-story-section-tight h4-world-section">
+        <div className="h4-world-atmosphere" aria-hidden="true">
+          <span className="h4-world-particle h4-world-particle-a" />
+          <span className="h4-world-particle h4-world-particle-b" />
+          <span className="h4-world-particle h4-world-particle-c" />
+          <span className="h4-world-particle h4-world-particle-d" />
+        </div>
         <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-accent-head">
-            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
-              <span className="h4-featured-glyph h4-featured-glyph-sun" />
-              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-              <span className="h4-featured-glyph h4-featured-glyph-dot" />
-            </div>
-            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">What refined travel feels like to the people taking it.</h2>
-            <p className="h4-editorial-copy h4-accent-subtitle">
-              Real traveler notes on pacing, comfort, and the quality of planning across every leg.
+          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-world-head">
+            <h2 className="h4-section-title h4-world-title">The TBP Map</h2>
+            <p className="h4-editorial-copy h4-editorial-copy-narrow h4-world-subtitle">
+              Explore the World Without Limits
             </p>
           </RevealBlock>
-          <div className="h4-voices-grid">
-            {TESTIMONIALS.map((t, index) => (
-              <RevealBlock key={t.name} delay={index * 90}>
-                <article className="h4-voice-card h4-reveal-copy">
-                  <div className="h4-voice-stars">{'\u2605'.repeat(t.rating)}</div>
-                  <p className="h4-voice-text">"{t.text}"</p>
-                  <div className="h4-voice-author">
-                    <div className="h4-voice-avatar">{t.name[0]}</div>
-                    <div>
-                      <strong className="h4-voice-name">{t.name}</strong>
-                      <span className="h4-voice-role">{t.role}</span>
-                    </div>
-                  </div>
-                </article>
-              </RevealBlock>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      <section className="h4-story-section h4-story-section-tight h4-gallery-section">
-        <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-split h4-reveal-copy">
-            <div className="h4-reveal-copy h4-accent-head">
-              <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
-                <span className="h4-featured-glyph h4-featured-glyph-sun" />
-                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-                <span className="h4-featured-glyph h4-featured-glyph-dot" />
+          <RevealBlock className="h4-world-stage-wrap">
+            <div className="h4-world-stage">
+              <div className="h4-world-grid" aria-hidden="true" />
+              <div className="h4-world-paper-grain" aria-hidden="true" />
+              <div className="h4-world-map-art" aria-hidden="true">
+                <img src="/images/home4/tbp-map.png" alt="" />
               </div>
-              <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Campaign-style photography with room to breathe.</h2>
-              <p className="h4-editorial-copy h4-accent-subtitle">
-                Visual stories with texture, color, and atmosphere captured across curated routes.
-              </p>
-            </div>
-            <p className="h4-editorial-copy">
-              A visual library of destinations, textures, and atmosphere designed to feel calm, premium, and quietly cinematic.
-            </p>
-          </RevealBlock>
-          <div className="h4-gallery-grid">
-            {GALLERY_IMAGES.map((item, index) => (
-              <RevealBlock key={item.label} delay={index * 60}>
-                <figure className="h4-gallery-card">
-                  <div className="h4-gallery-media" style={{ backgroundImage: `url(${item.image})` }}>
-                    <span className="h4-gallery-eyebrow">{item.label}</span>
+
+              <svg className="h4-world-routes" viewBox="0 0 1200 560" role="img" aria-label="Interactive destination map">
+                <path className="h4-world-route h4-world-route-a" d="M206 184C335 108 507 105 600 186" />
+                <path className="h4-world-route h4-world-route-b" d="M600 186C666 214 742 246 798 307" />
+                <path className="h4-world-route h4-world-route-c" d="M534 255C580 250 635 249 699 271" />
+                <path className="h4-world-route h4-world-route-d" d="M818 232C762 213 702 198 639 188" />
+                <path className="h4-world-route h4-world-route-e" d="M214 184C257 293 286 385 322 428" />
+              </svg>
+
+              <div className="h4-world-hotspots">
+                {WORLD_MAP_POINTS.map((item) => (
+                  <div
+                    key={item.id}
+                    className="h4-world-hotspot"
+                    style={
+                      {
+                        '--h4-hotspot-x': `${item.markerX}%`,
+                        '--h4-hotspot-y': `${item.markerY}%`,
+                      } as React.CSSProperties
+                    }
+                  >
+                    <button type="button" className="h4-world-pin" aria-label={`View ${item.region}: ${item.city}, ${item.country}`}>
+                      <span className="h4-world-pin-core" />
+                    </button>
                   </div>
-                  <figcaption className="h4-gallery-body h4-reveal-copy">
-                    <h3 className="h4-gallery-title">{item.title}</h3>
-                    <p className="h4-gallery-caption">{item.description}</p>
-                  </figcaption>
-                </figure>
-              </RevealBlock>
-            ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          </RevealBlock>
         </div>
       </section>
 
@@ -849,56 +846,18 @@ export const Home4: React.FC = () => {
               </div>
             </div>
             <div className="h4-app-device-wrap" aria-hidden="true">
-              <div className="h4-app-glow" />
-              <div className="h4-phone-mockup">
-                <div className="h4-phone-notch" />
-                <div className="h4-phone-screen">
-                  <div className="h4-phone-map-card">
-                    <strong>Kerala Wellness Passage</strong>
-                    <span>Check-in 4:30 PM</span>
-                  </div>
-                  <div className="h4-phone-route">
-                    <div className="h4-phone-route-item">
-                      <span>Day 01</span>
-                      <strong>Arrival + Lagoon Suite</strong>
-                    </div>
-                    <div className="h4-phone-route-item">
-                      <span>Day 02</span>
-                      <strong>Private Houseboat Cruise</strong>
-                    </div>
-                    <div className="h4-phone-route-item">
-                      <span>Day 03</span>
-                      <strong>Ayurveda & Sunset Dinner</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <img
+                src="/UI/image.png"
+                alt="TBP app interface"
+                className="h4-app-ui-image"
+                loading="lazy"
+              />
             </div>
           </RevealBlock>
         </div>
       </section>
 
-      <section id="h4-contact" className="h4-story-section h4-story-section-tight h4-newsletter-section">
-        <div className="h4-container">
-          <RevealBlock className="h4-newsletter-shell h4-reveal-copy">
-            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
-              <span className="h4-featured-glyph h4-featured-glyph-sun" />
-              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-              <span className="h4-featured-glyph h4-featured-glyph-dot" />
-            </div>
-            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Receive destination edits, launch drops, and seasonal journeys.</h2>
-            <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
-              Join a curated mailing list built for travelers who prefer fewer emails and better ideas.
-            </p>
-            <form className="h4-newsletter-form" onSubmit={(e) => e.preventDefault()}>
-              <input className="h4-newsletter-input" type="email" placeholder="Email address" />
-              <button type="submit" className="h4-newsletter-button">Subscribe</button>
-            </form>
-          </RevealBlock>
-        </div>
-      </section>
-
-      <footer className="h4-lux-footer">
+      <footer id="h4-contact" className="h4-lux-footer">
         <div className="h4-container">
           <div className="h4-lux-footer-top">
             <div className="h4-lux-footer-brand">
@@ -911,7 +870,6 @@ export const Home4: React.FC = () => {
               <h4>Explore</h4>
               <a href="#h4-hero">Home</a>
               <a href="#h4-about">Destinations</a>
-              <a href="#h4-testimonials">Testimonials</a>
               <a href="#h4-contact">Newsletter</a>
             </div>
             <div className="h4-lux-footer-col">
