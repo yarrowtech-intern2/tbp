@@ -691,7 +691,7 @@ export const Home4: React.FC = () => {
           </div>
 
           <div className="h4-hero-sphere" ref={sphereRef} aria-hidden="true">
-            <img src="/images/home4/orb.png" alt="" className="h4-hero-sphere-image" />
+            <img src="/images/home4/orb2.png" alt="" className="h4-hero-sphere-image" />
             <div className="h4-hero-sphere-gloss" />
           </div>
 
