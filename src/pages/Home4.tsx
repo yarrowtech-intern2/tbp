@@ -367,19 +367,17 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
 
 /* â”€â”€â”€ Slide Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) => {
-  const [visible, setVisible] = useState(true);
-  if (!visible) return null;
   return (
     <div className="h4-slide-card">
       <svg
         className="h4-slide-card-shape"
-        viewBox="0 0 430 250"
+        viewBox="0 0 430 280"
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        <path
+<path
           className="h4-slide-card-shape-fill"
-          d="M30 1H396C414 1 429 16 429 34V122C429 143 412 160 391 160H297C281 160 268 173 268 189V218C268 234 255 247 239 247H30C13 247 1 235 1 218V30C1 13 13 1 30 1Z"
+          d="M34 1H396C414 1 429 16 429 34V171C429 190 414 205 396 205H304C283 205 266 222 266 243V246C266 264 251 279 233 279H34C16 279 1 264 1 246V34C1 16 16 1 34 1Z"
         />
       </svg>
       <div className="h4-slide-card-copy">
@@ -388,16 +386,6 @@ const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) =
         <p className="h4-slide-card-text">{text}</p>
       </div>
       <div className="h4-slide-card-actions">
-        <button
-          className="h4-slide-card-close"
-          onClick={() => setVisible(false)}
-          aria-label="Close"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </button>
         <button className="h4-slide-card-explore">Explore</button>
       </div>
     </div>
@@ -546,6 +534,8 @@ export const Home4: React.FC = () => {
 
   const activeSlide = SLIDES[activeSlideIndex];
   const navTheme = showcaseVisible ? 'dark' : 'light';
+  const experienceRailA = EXPERIENCE_CATEGORIES;
+  const experienceRailB = [...EXPERIENCE_CATEGORIES].reverse();
 
   return (
     <div className="h4-page">
@@ -602,15 +592,31 @@ export const Home4: React.FC = () => {
 
       <section id="h4-about" className="h4-story-section h4-featured-section">
         <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-split h4-reveal-copy">
-            <div className="h4-reveal-copy">
+          <div className="h4-editorial-head h4-editorial-head-split h4-featured-head">
+            <div className="h4-featured-intro">
+              <div className="h4-featured-glyphs" aria-hidden="true">
+                <span className="h4-featured-glyph h4-featured-glyph-sun" />
+                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+                <span className="h4-featured-glyph h4-featured-glyph-dot" />
+              </div>
               <span className="h4-section-label">Featured Destinations</span>
-              <h2 className="h4-section-title">Travel stories shaped through place, design, and pace.</h2>
+              <h2 className="h4-section-title h4-featured-gradient-title">Stories in Motion, Places in Color.</h2>
+              <p className="h4-featured-subtitle">
+                A bright collection of coasts, highlands, temple routes, and slow-luxury stays curated for calm and character.
+              </p>
             </div>
-            <p className="h4-editorial-copy">
+            <p className="h4-editorial-copy h4-featured-support">
               Explore a refined edit of coastlines, mountain retreats, heritage routes, and slow escapes selected for visual beauty and seamless experience.
             </p>
-          </RevealBlock>
+          </div>
+          <div className="h4-featured-rail-head">
+            <div className="h4-featured-rail-copy">
+              <h3 className="h4-featured-rail-title">Top Picks This Season</h3>
+              <p className="h4-featured-rail-subtitle">
+                Handpicked routes with a balance of nature, heritage, and luxury pacing.
+              </p>
+            </div>
+          </div>
           <div className="h4-featured-grid">
             {FEATURED_DESTINATIONS.map((item, index) => (
               <RevealBlock key={item.title} delay={index * 80}>
@@ -628,37 +634,72 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section className="h4-story-section h4-experience-section">
+      <section className="h4-story-section h4-story-section-tight h4-experience-section">
         <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-reveal-copy">
-            <span className="h4-section-label">Experience Categories</span>
-            <h2 className="h4-section-title">A modern travel collection with distinct atmospheres.</h2>
-            <p className="h4-editorial-copy h4-editorial-copy-narrow">
+          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-accent-head">
+            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
+              <span className="h4-featured-glyph h4-featured-glyph-sun" />
+              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+              <span className="h4-featured-glyph h4-featured-glyph-dot" />
+            </div>
+            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">A modern travel collection with distinct atmospheres.</h2>
+            <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
               From calm beach stays to high-altitude journeys, each category is built as a clean, premium experience with its own visual and emotional rhythm.
             </p>
           </RevealBlock>
-          <div className="h4-experience-grid">
-            {EXPERIENCE_CATEGORIES.map((item, index) => (
-              <RevealBlock key={item.title} delay={index * 70}>
-                <article className={`h4-experience-tile${item.className ? ` ${item.className}` : ''}`}>
-                  <div className="h4-experience-image" style={{ backgroundImage: `url(${item.image})` }} />
-                  <div className="h4-experience-content h4-reveal-copy">
-                    <div className="h4-experience-icon"><item.icon size={18} /></div>
-                    <h3 className="h4-experience-title">{item.title}</h3>
-                    <p className="h4-experience-text">{item.description}</p>
-                  </div>
-                </article>
-              </RevealBlock>
-            ))}
+          <div className="h4-experience-marquee" aria-label="Experience categories">
+            <div className="h4-experience-rail h4-experience-rail-forward">
+              <div className="h4-experience-track">
+                {[...experienceRailA, ...experienceRailA].map((item, index) => (
+                  <article
+                    key={`exp-a-${item.title}-${index}`}
+                    className={`h4-experience-tile${item.className ? ` ${item.className}` : ''}`}
+                    aria-hidden={index >= experienceRailA.length}
+                  >
+                    <div className="h4-experience-image" style={{ backgroundImage: `url(${item.image})` }} />
+                    <div className="h4-experience-content">
+                      <div className="h4-experience-icon"><item.icon size={18} /></div>
+                      <h3 className="h4-experience-title">{item.title}</h3>
+                      <p className="h4-experience-text">{item.description}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+            <div className="h4-experience-rail h4-experience-rail-reverse">
+              <div className="h4-experience-track">
+                {[...experienceRailB, ...experienceRailB].map((item, index) => (
+                  <article
+                    key={`exp-b-${item.title}-${index}`}
+                    className={`h4-experience-tile${item.className ? ` ${item.className}` : ''}`}
+                    aria-hidden={index >= experienceRailB.length}
+                  >
+                    <div className="h4-experience-image" style={{ backgroundImage: `url(${item.image})` }} />
+                    <div className="h4-experience-content">
+                      <div className="h4-experience-icon"><item.icon size={18} /></div>
+                      <h3 className="h4-experience-title">{item.title}</h3>
+                      <p className="h4-experience-text">{item.description}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="h4-story-section h4-why-section">
+      <section className="h4-story-section h4-story-section-tight h4-why-section">
         <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy">
-            <span className="h4-section-label">Why Travel With Us</span>
-            <h2 className="h4-section-title">Luxury travel built with clarity, care, and quiet precision.</h2>
+          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-accent-head">
+            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
+              <span className="h4-featured-glyph h4-featured-glyph-sun" />
+              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+              <span className="h4-featured-glyph h4-featured-glyph-dot" />
+            </div>
+            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Luxury travel built with clarity, care, and quiet precision.</h2>
+            <p className="h4-editorial-copy h4-accent-subtitle">
+              Trusted planning, transparent coordination, and on-trip support designed around calmer journeys.
+            </p>
           </RevealBlock>
           <div className="h4-trust-grid">
             {TRUST_FEATURES.map((item, index) => (
@@ -674,12 +715,19 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section className="h4-story-section h4-package-section">
+      <section className="h4-story-section h4-story-section-tight h4-package-section">
         <div className="h4-container">
           <RevealBlock className="h4-editorial-head h4-editorial-head-split h4-reveal-copy">
-            <div className="h4-reveal-copy">
-              <span className="h4-section-label">Popular Packages</span>
-              <h2 className="h4-section-title">Ready-to-book journeys with a polished luxury baseline.</h2>
+            <div className="h4-reveal-copy h4-accent-head">
+              <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
+                <span className="h4-featured-glyph h4-featured-glyph-sun" />
+                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+                <span className="h4-featured-glyph h4-featured-glyph-dot" />
+              </div>
+              <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Ready-to-book journeys with a polished luxury baseline.</h2>
+              <p className="h4-editorial-copy h4-accent-subtitle">
+                Curated plans with clear pricing, premium stays, and smoother movement from arrival to checkout.
+              </p>
             </div>
             <Link to="/auth" className="h4-inline-action">
               View all journeys <ArrowRight size={16} />
@@ -708,11 +756,18 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section id="h4-testimonials" className="h4-story-section h4-voices-section">
+      <section id="h4-testimonials" className="h4-story-section h4-story-section-tight h4-voices-section">
         <div className="h4-container">
-          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy">
-            <span className="h4-section-label">Testimonials</span>
-            <h2 className="h4-section-title">What refined travel feels like to the people taking it.</h2>
+          <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-accent-head">
+            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
+              <span className="h4-featured-glyph h4-featured-glyph-sun" />
+              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+              <span className="h4-featured-glyph h4-featured-glyph-dot" />
+            </div>
+            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">What refined travel feels like to the people taking it.</h2>
+            <p className="h4-editorial-copy h4-accent-subtitle">
+              Real traveler notes on pacing, comfort, and the quality of planning across every leg.
+            </p>
           </RevealBlock>
           <div className="h4-voices-grid">
             {TESTIMONIALS.map((t, index) => (
@@ -734,12 +789,19 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section className="h4-story-section h4-gallery-section">
+      <section className="h4-story-section h4-story-section-tight h4-gallery-section">
         <div className="h4-container">
           <RevealBlock className="h4-editorial-head h4-editorial-head-split h4-reveal-copy">
-            <div className="h4-reveal-copy">
-              <span className="h4-section-label">Travel Gallery</span>
-              <h2 className="h4-section-title">Campaign-style photography with room to breathe.</h2>
+            <div className="h4-reveal-copy h4-accent-head">
+              <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
+                <span className="h4-featured-glyph h4-featured-glyph-sun" />
+                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+                <span className="h4-featured-glyph h4-featured-glyph-dot" />
+              </div>
+              <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Campaign-style photography with room to breathe.</h2>
+              <p className="h4-editorial-copy h4-accent-subtitle">
+                Visual stories with texture, color, and atmosphere captured across curated routes.
+              </p>
             </div>
             <p className="h4-editorial-copy">
               A visual library of destinations, textures, and atmosphere designed to feel calm, premium, and quietly cinematic.
@@ -763,13 +825,17 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section className="h4-story-section h4-app-section">
+      <section className="h4-story-section h4-story-section-tight h4-app-section">
         <div className="h4-container">
           <RevealBlock className="h4-app-shell">
             <div className="h4-app-copy h4-reveal-copy">
-              <span className="h4-section-label">Mobile App</span>
-              <h2 className="h4-section-title">Plan your next journey effortlessly.</h2>
-              <p className="h4-editorial-copy h4-editorial-copy-narrow">
+              <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
+                <span className="h4-featured-glyph h4-featured-glyph-sun" />
+                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+                <span className="h4-featured-glyph h4-featured-glyph-dot" />
+              </div>
+              <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Plan your next journey effortlessly.</h2>
+              <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
                 A calm travel companion for itinerary reviews, concierge updates, location context, and on-the-go booking access.
               </p>
               <div className="h4-app-actions">
@@ -788,7 +854,6 @@ export const Home4: React.FC = () => {
                 <div className="h4-phone-notch" />
                 <div className="h4-phone-screen">
                   <div className="h4-phone-map-card">
-                    <span className="h4-phone-pill">Next Stop</span>
                     <strong>Kerala Wellness Passage</strong>
                     <span>Check-in 4:30 PM</span>
                   </div>
@@ -813,12 +878,16 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
-      <section id="h4-contact" className="h4-story-section h4-newsletter-section">
+      <section id="h4-contact" className="h4-story-section h4-story-section-tight h4-newsletter-section">
         <div className="h4-container">
           <RevealBlock className="h4-newsletter-shell h4-reveal-copy">
-            <span className="h4-section-label">Newsletter</span>
-            <h2 className="h4-section-title">Receive destination edits, launch drops, and seasonal journeys.</h2>
-            <p className="h4-editorial-copy h4-editorial-copy-narrow">
+            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
+              <span className="h4-featured-glyph h4-featured-glyph-sun" />
+              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
+              <span className="h4-featured-glyph h4-featured-glyph-dot" />
+            </div>
+            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Receive destination edits, launch drops, and seasonal journeys.</h2>
+            <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
               Join a curated mailing list built for travelers who prefer fewer emails and better ideas.
             </p>
             <form className="h4-newsletter-form" onSubmit={(e) => e.preventDefault()}>
