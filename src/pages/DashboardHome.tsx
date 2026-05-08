@@ -5,13 +5,17 @@ import {
     CalendarDays,
     ChevronLeft,
     ChevronRight,
+    ClipboardList,
     Compass,
     Heart,
+    Home,
+    LayoutDashboard,
     Loader2,
     MapPin,
     Search,
     Sparkles,
     Ticket,
+    UserCircle2,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -65,6 +69,7 @@ const Reveal: React.FC<RevealProps> = ({ children, className = '', delay = 0 }) 
 };
 
 type SectionTab = 'tours' | 'activities' | 'events';
+type TouristMobileNavKey = 'dashboard' | 'explore' | 'bookings' | 'favs' | 'profile';
 type GreetingPhase = 'morning' | 'afternoon' | 'night';
 type GreetingAudience = 'tourist' | 'provider';
 
@@ -79,6 +84,14 @@ const TAB_CONFIG: TabConfig[] = [
     { id: 'tours', label: 'Tours', icon: Compass, helper: 'Multi-day plans' },
     { id: 'activities', label: 'Activities', icon: Sparkles, helper: 'One-day moments' },
     { id: 'events', label: 'Events', icon: Ticket, helper: 'Live experiences' },
+];
+
+const TOURIST_MOBILE_NAV_ITEMS: Array<{ key: TouristMobileNavKey; label: string; icon: LucideIcon }> = [
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'explore', label: 'Explore', icon: Home },
+    { key: 'bookings', label: 'Bookings', icon: ClipboardList },
+    { key: 'favs', label: 'Favs', icon: Heart },
+    { key: 'profile', label: 'Profile', icon: UserCircle2 },
 ];
 
 const GREETING_COPY: Record<GreetingAudience, Record<GreetingPhase, string[]>> = {
@@ -548,6 +561,7 @@ const SuggestedSection: React.FC<{
 
 export const DashboardHome: React.FC = () => {
     const { user, profile, isProvider, isAdmin, roleLabel } = useAuth();
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
@@ -685,12 +699,36 @@ export const DashboardHome: React.FC = () => {
     const showEvents = showAll || activeTab === 'events';
 
     let sectionIndexOffset = 0;
+    const activeMobileNav: TouristMobileNavKey = 'explore';
 
     const handleTab = (tab: SectionTab) => {
         if (activeTab === tab) {
             setSearchParams({});
         } else {
             setSearchParams({ tab });
+        }
+    };
+
+    const handleMobileNav = (key: TouristMobileNavKey) => {
+        if (key === 'dashboard') {
+            navigate('/dashboard/tourist');
+            return;
+        }
+        if (key === 'profile') {
+            navigate('/profile');
+            return;
+        }
+        if (key === 'bookings') {
+            navigate('/dashboard/tourist?section=bookings');
+            return;
+        }
+        if (key === 'favs') {
+            navigate('/dashboard/tourist?section=favorites');
+            return;
+        }
+        if (key === 'explore') {
+            setSearchParams({});
+            return;
         }
     };
 
@@ -810,6 +848,29 @@ export const DashboardHome: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            <nav className="dh-bottom-nav" aria-label="Tourist mobile navigation">
+                <div className="dh-bottom-nav-track">
+                    {TOURIST_MOBILE_NAV_ITEMS.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = item.key === activeMobileNav;
+                        return (
+                            <button
+                                type="button"
+                                key={`dh-mob-${item.key}`}
+                                className={`dh-bottom-nav-btn${isActive ? ' is-active' : ''}`}
+                                onClick={() => handleMobileNav(item.key)}
+                                aria-current={isActive ? 'page' : undefined}
+                            >
+                                <span className="dh-bottom-nav-icon">
+                                    <Icon size={20} />
+                                </span>
+                                <span className="dh-bottom-nav-label">{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </nav>
         </main>
     );
 };

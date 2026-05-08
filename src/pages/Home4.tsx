@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import Lottie from 'lottie-react';
 import {
   Compass,
   Headphones,
@@ -23,6 +24,10 @@ type RevealBlockProps = {
   children: React.ReactNode;
   className?: string;
   delay?: number;
+};
+
+type OrbitGlyphProps = {
+  className?: string;
 };
 
 const SLIDES = [
@@ -113,6 +118,48 @@ const FEATURED_DESTINATIONS = [
     location: 'Odisha, India',
     description: 'Temple architecture, heritage stays, and cultural routes framed with calm premium planning.',
     image: '/images/jagannath-puri-temple.jpg',
+  },
+];
+
+const VISUAL_SHOWCASE = [
+  {
+    title: 'Immersive travel visuals.',
+    label: 'Cinematic Frame',
+    description: 'Expansive horizon shots crafted to set mood, pace, and destination character in one glance.',
+    image: '/images/home4/city.jpg',
+    className: 'h4-gallery-cinematic',
+  },
+  {
+    title: 'Coastal Light Stories',
+    label: 'Beach Edit',
+    description: 'Low-angle shoreline moments and sunset transitions from curated coast journeys.',
+    image: '/images/home4/beach.jpg',
+  },
+  {
+    title: 'Aerial Terrain Preview',
+    label: 'Drone Footage',
+    description: 'High-altitude route previews for terrain, access points, and scenic path planning.',
+    image: '/images/home4/mopunts.jpg',
+    mediaTag: 'Drone footage',
+  },
+  {
+    title: 'Desert Motion Reels',
+    label: 'Video Reel',
+    description: 'Dynamic movement captures across dunes, camp routes, and golden-hour transitions.',
+    image: '/images/home4/desert.jpg',
+    mediaTag: 'Video reel',
+  },
+  {
+    title: 'Forest Atmosphere',
+    label: 'Nature Sequence',
+    description: 'Textured canopy scenes and quiet trail visuals tuned for immersive storytelling.',
+    image: '/images/home4/forrest.jpg',
+  },
+  {
+    title: 'Heritage Perspective',
+    label: 'Temple Capture',
+    description: 'Architecture-focused visuals highlighting stone craft, scale, and cultural ambiance.',
+    image: '/images/home4/temple.jpg',
   },
 ];
 
@@ -366,7 +413,42 @@ const RevealBlock: React.FC<RevealBlockProps> = ({ children, className = '', del
   );
 };
 
-/* â”€â”€â”€ Slide Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Slide Nav Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+const OrbitGlyph: React.FC<OrbitGlyphProps> = ({ className = '' }) => {
+  const [animationData, setAnimationData] = useState<object | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    fetch('/animation/rotate-orbit.json')
+      .then((res) => res.json())
+      .then((data: object) => {
+        if (!mounted) return;
+        setAnimationData(data);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setAnimationData(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return (
+    <div className={`h4-featured-glyphs${className ? ` ${className}` : ''}`} aria-hidden="true">
+      {animationData ? (
+        <Lottie
+          animationData={animationData}
+          loop
+          autoplay
+          className="h4-featured-glyph-lottie"
+        />
+      ) : null}
+    </div>
+  );
+};
 const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ visible, theme }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -418,7 +500,7 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
   );
 };
 
-/* â”€â”€â”€ Slide Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Slide Card Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) => {
   return (
     <div className="h4-slide-card">
@@ -445,7 +527,7 @@ const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) =
   );
 };
 
-/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Main Component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 export const Home4: React.FC = () => {
   const heroRef       = useRef<HTMLElement>(null);
   const showcaseRef   = useRef<HTMLElement>(null);
@@ -592,7 +674,7 @@ export const Home4: React.FC = () => {
 
   return (
     <div className="h4-page">
-      {/* â”€â”€ Hero â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section id="h4-hero" className="h4-hero" ref={heroRef}>
         <div className="h4-hero-stage">
           <div className="h4-hero-ambient" />
@@ -617,7 +699,7 @@ export const Home4: React.FC = () => {
         </div>
       </section>
       <SlideNav visible={navVisible} theme={navTheme} />
-      {/* â”€â”€ Showcase Section (auto-changing background) â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Showcase Section (auto-changing background) Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <section id="h4-showcase" ref={showcaseRef} className="h4-showcase">
         <div className="h4-showcase-bg-layer-wrap" aria-hidden="true">
           {SLIDES.map((slide, index) => (
@@ -647,11 +729,7 @@ export const Home4: React.FC = () => {
         <div className="h4-container">
           <div className="h4-editorial-head h4-editorial-head-split h4-featured-head">
             <div className="h4-featured-intro">
-              <div className="h4-featured-glyphs" aria-hidden="true">
-                <span className="h4-featured-glyph h4-featured-glyph-sun" />
-                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-                <span className="h4-featured-glyph h4-featured-glyph-dot" />
-              </div>
+              <OrbitGlyph />
               <span className="h4-section-label">Featured Destinations</span>
               <h2 className="h4-section-title h4-featured-gradient-title">Stories in Motion, Places in Color.</h2>
               <p className="h4-featured-subtitle">
@@ -690,11 +768,7 @@ export const Home4: React.FC = () => {
       <section className="h4-story-section h4-story-section-tight h4-experience-section">
         <div className="h4-container">
           <div className="h4-editorial-head h4-editorial-head-center h4-accent-head h4-experience-head-outside">
-            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
-              <span className="h4-featured-glyph h4-featured-glyph-sun" />
-              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-              <span className="h4-featured-glyph h4-featured-glyph-dot" />
-            </div>
+            <OrbitGlyph className="h4-accent-glyphs" />
             <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">A modern travel collection with distinct atmospheres.</h2>
             <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
               From calm beach stays to high-altitude journeys, each category is built as a clean, premium experience with its own visual and emotional rhythm.
@@ -744,11 +818,7 @@ export const Home4: React.FC = () => {
       <section id="h4-choose-us" className="h4-story-section h4-story-section-tight h4-choose-section">
         <div className="h4-container">
           <div className="h4-editorial-head h4-editorial-head-center h4-accent-head h4-choose-head">
-            <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
-              <span className="h4-featured-glyph h4-featured-glyph-sun" />
-              <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-              <span className="h4-featured-glyph h4-featured-glyph-dot" />
-            </div>
+            <OrbitGlyph className="h4-accent-glyphs" />
             <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Why Choose Us</h2>
             <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
               Trust-first travel planning with verified teams, clear value, and seamless execution across every journey stage.
@@ -826,11 +896,7 @@ export const Home4: React.FC = () => {
         <div className="h4-container">
           <RevealBlock className="h4-app-shell">
             <div className="h4-app-copy h4-reveal-copy">
-              <div className="h4-featured-glyphs h4-accent-glyphs" aria-hidden="true">
-                <span className="h4-featured-glyph h4-featured-glyph-sun" />
-                <span className="h4-featured-glyph h4-featured-glyph-orbit" />
-                <span className="h4-featured-glyph h4-featured-glyph-dot" />
-              </div>
+              <OrbitGlyph className="h4-accent-glyphs" />
               <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Plan your next journey effortlessly.</h2>
               <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
                 A calm travel companion for itinerary reviews, concierge updates, location context, and on-the-go booking access.
@@ -854,6 +920,41 @@ export const Home4: React.FC = () => {
               />
             </div>
           </RevealBlock>
+        </div>
+      </section>
+
+      <section className="h4-story-section h4-story-section-tight h4-gallery-section">
+        <div className="h4-container">
+          <div className="h4-editorial-head h4-editorial-head-split">
+            <div className="h4-featured-intro">
+              <OrbitGlyph />
+              <span className="h4-section-label">Gallery / Visual Showcase</span>
+              <h2 className="h4-section-title h4-featured-gradient-title">Immersive travel visuals.</h2>
+            </div>
+            <p className="h4-editorial-copy">
+              Masonry compositions, cinematic frames, and motion-oriented captures designed to preview journeys before they begin.
+            </p>
+          </div>
+          <div className="h4-gallery-grid">
+            {VISUAL_SHOWCASE.map((item, index) => (
+              <RevealBlock
+                key={item.title}
+                delay={index * 70}
+                className={item.className ?? ''}
+              >
+                <article className="h4-gallery-card">
+                  <div className="h4-gallery-media" style={{ backgroundImage: `url(${item.image})` }}>
+                    <span className="h4-gallery-eyebrow">{item.label}</span>
+                    {item.mediaTag ? <span className="h4-gallery-media-tag">{item.mediaTag}</span> : null}
+                  </div>
+                  <div className="h4-gallery-body h4-reveal-copy">
+                    <h3 className="h4-gallery-title">{item.title}</h3>
+                    <p className="h4-gallery-caption">{item.description}</p>
+                  </div>
+                </article>
+              </RevealBlock>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -887,7 +988,7 @@ export const Home4: React.FC = () => {
             </div>
           </div>
           <div className="h4-lux-footer-bottom">
-            <span>© 2026 The Better Pass. All rights reserved.</span>
+            <span>(c) 2026 The Better Pass. All rights reserved.</span>
             <div className="h4-lux-footer-socials">
               <a href="#" aria-label="Instagram"><Instagram size={16} /></a>
               <a href="#" aria-label="Twitter"><Twitter size={16} /></a>
@@ -899,3 +1000,9 @@ export const Home4: React.FC = () => {
     </div>
   );
 };
+
+
+
+
+
+

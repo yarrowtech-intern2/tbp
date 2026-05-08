@@ -15,10 +15,11 @@ import {
     Search,
     Shield,
     TrendingUp,
+    UserCircle2,
     Users,
     XCircle,
 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import {
@@ -75,6 +76,15 @@ type NavItem = {
     icon: React.ElementType;
 };
 
+type MobileNavItem = {
+    id: string;
+    label: string;
+    icon: React.ElementType;
+    section?: SidebarKey;
+    countKey?: SidebarKey;
+    to?: string;
+};
+
 const LIVE_STATUSES = new Set(['live', 'published', 'approved']);
 
 const normalizeRoleParam = (value?: string): DashboardRole | null => {
@@ -126,6 +136,17 @@ const toListingPathType = (type: string | null | undefined): 'tour' | 'activity'
     return 'activity';
 };
 
+const parseTouristSection = (value: string | null): SidebarKey | null => {
+    if (!value) return null;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'overview') return 'overview';
+    if (normalized === 'explore') return 'explore';
+    if (normalized === 'bookings') return 'bookings';
+    if (normalized === 'messages') return 'messages';
+    if (normalized === 'favorites' || normalized === 'favs') return 'favorites';
+    return null;
+};
+
 const sectionMeta: Record<SidebarKey, { title: string; subtitle: string }> = {
     overview: { title: 'Dashboard', subtitle: 'Your role-based operational summary.' },
     explore: { title: 'Explore', subtitle: 'Suggested items and quick jump context.' },
@@ -149,6 +170,7 @@ const LazyAdminAccountMap = lazy(async () => {
 export const RoleDashboard: React.FC = () => {
     const { user, profile, profileLoading } = useAuth();
     const { role: roleParam } = useParams();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [activeSection, setActiveSection] = useState<SidebarKey>('overview');
@@ -157,6 +179,10 @@ export const RoleDashboard: React.FC = () => {
     );
 
     const routeRole = normalizeRoleParam(roleParam);
+    const requestedTouristSection = useMemo(
+        () => parseTouristSection(searchParams.get('section')),
+        [searchParams],
+    );
     const metadataRole = typeof user?.user_metadata?.role === 'string' ? user.user_metadata.role : null;
     const effectiveRole = useMemo(
         () => effectiveRoleFromProfile(profile?.role || metadataRole),
@@ -226,8 +252,8 @@ export const RoleDashboard: React.FC = () => {
             setActiveSection('overview');
             return;
         }
-        setActiveSection('bookings');
-    }, [effectiveRole]);
+        setActiveSection(requestedTouristSection || 'bookings');
+    }, [effectiveRole, requestedTouristSection]);
 
     const loadAdminAccountLocations = async (force = false) => {
         if (effectiveRole !== 'admin') return;
@@ -349,10 +375,24 @@ export const RoleDashboard: React.FC = () => {
         ];
     }, [effectiveRole]);
 
-    const mobileNavItems = useMemo(
-        () => (effectiveRole === 'admin' ? navItems.filter((item) => item.key !== 'map') : navItems),
-        [effectiveRole, navItems],
-    );
+    const mobileNavItems = useMemo<MobileNavItem[]>(() => {
+        if (effectiveRole === 'admin') {
+            return navItems
+                .filter((item) => item.key !== 'map')
+                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
+        }
+        if (effectiveRole === 'provider') {
+            return navItems
+                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
+        }
+        return [
+            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview' },
+            { id: 'explore', label: 'Explore', icon: Compass, section: 'explore' },
+            { id: 'bookings', label: 'Bookings', icon: ClipboardList, section: 'bookings', countKey: 'bookings' },
+            { id: 'favs', label: 'Favs', icon: Heart, section: 'favorites', countKey: 'favorites' },
+            { id: 'profile', label: 'Profile', icon: UserCircle2, to: '/profile' },
+        ];
+    }, [effectiveRole, navItems]);
 
     const query = search.trim().toLowerCase();
 
@@ -1637,14 +1677,21 @@ export const RoleDashboard: React.FC = () => {
                 <div className="rdb-bottom-nav-track">
                     {mobileNavItems.map((item) => {
                         const Icon = item.icon;
-                        const count = sectionCounts[item.key];
+                        const count = item.countKey ? sectionCounts[item.countKey] : undefined;
+                        const isActive = item.section === activeSection;
                         return (
                             <button
                                 type="button"
-                                key={`mob-${item.key}`}
-                                className={`rdb-bottom-nav-btn${item.key === activeSection ? ' is-active' : ''}`}
-                                onClick={() => setActiveSection(item.key)}
-                                aria-current={item.key === activeSection ? 'page' : undefined}
+                                key={`mob-${item.id}`}
+                                className={`rdb-bottom-nav-btn${isActive ? ' is-active' : ''}`}
+                                onClick={() => {
+                                    if (item.section) {
+                                        setActiveSection(item.section);
+                                        return;
+                                    }
+                                    if (item.to) navigate(item.to);
+                                }}
+                                aria-current={isActive ? 'page' : undefined}
                             >
                                 <span className="rdb-bottom-nav-icon">
                                     <Icon size={20} />

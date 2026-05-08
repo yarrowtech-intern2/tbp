@@ -290,7 +290,7 @@ export const Auth: React.FC = () => {
                                         onChange={(e) => setLoginAgree(e.target.checked)}
                                     />
                                     <span>
-                                        I agree to the <button type="button" className="auth-text-link">Terms &amp; Condition</button>
+                                        I agree to the <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>Terms &amp; Condition</button>
                                     </span>
                                 </label>
 
@@ -306,7 +306,7 @@ export const Auth: React.FC = () => {
                                         {googleLoading ? 'Redirecting to Google...' : 'Continue with Google'}
                                     </button>
                                 </div>
-                                <p className="auth-role-note">Google login is available for Tourist accounts only.</p>
+                                {/* <p className="auth-role-note">Google login is available for Tourist accounts only.</p> */}
                             </form>
                         </>
                     ) : (
@@ -433,6 +433,13 @@ export const Auth: React.FC = () => {
                                 )}
 
                                 <p className="auth-role-note">Selected role: {ROLE_LABELS[activeRole]}</p>
+
+                                <p className="auth-role-note">
+                                    By creating an account, you agree to the{' '}
+                                    <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>
+                                        Terms &amp; Condition
+                                    </button>
+                                </p>
 
                                 <button type="submit" className="auth-submit" disabled={loading}>
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}

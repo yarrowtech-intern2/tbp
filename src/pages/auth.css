@@ -199,7 +199,8 @@
     display: flex;
 }
 
-.auth-field input {
+.auth-password-wrap input,
+.auth-input-icon-wrap input {
     width: 100%;
     border: none;
     outline: none;
@@ -211,7 +212,42 @@
 }
 
 .auth-field input::placeholder {
-    color: #8f8f8f;
+    color: #9aa3af !important;
+    -webkit-text-fill-color: #9aa3af !important;
+    opacity: 1 !important;
+}
+
+.auth-field input::-webkit-input-placeholder {
+    color: #9aa3af !important;
+    -webkit-text-fill-color: #9aa3af !important;
+    opacity: 1 !important;
+}
+
+.auth-field input::-moz-placeholder {
+    color: #9aa3af !important;
+    opacity: 1 !important;
+}
+
+.auth-field input:-ms-input-placeholder {
+    color: #9aa3af !important;
+    opacity: 1 !important;
+}
+
+.auth-field input:placeholder-shown {
+    -webkit-text-fill-color: #9aa3af;
+}
+
+/* Ensure email field is visibly outlined in both login and signup */
+.auth-field > input[type='email'] {
+    border: 1.4px solid #8f8f8f;
+    background: #f8f8f8;
+}
+
+/* Email placeholder follows the same low-visibility grey tone */
+.auth-field > input[type='email']::placeholder {
+    color: #9aa3af !important;
+    -webkit-text-fill-color: #9aa3af !important;
+    opacity: 1 !important;
 }
 
 .auth-field > input:focus,

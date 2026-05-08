@@ -1148,6 +1148,13 @@
   margin-bottom: 4px;
 }
 
+.h4-featured-glyph-lottie {
+  width: clamp(296px, 32vw, 464px);
+  height: clamp(104px, 11.2vw, 152px);
+  display: block;
+  pointer-events: none;
+}
+
 .h4-featured-glyph {
   display: block;
   border-radius: 999px;
@@ -2254,6 +2261,10 @@
   grid-column: span 3;
 }
 
+.h4-gallery-grid>.h4-gallery-cinematic {
+  grid-column: 1 / -1;
+}
+
 .h4-gallery-card {
   position: relative;
   isolation: isolate;
@@ -2268,6 +2279,10 @@
   transition: transform 0.32s ease, box-shadow 0.32s ease, border-color 0.32s ease;
 }
 
+.h4-gallery-cinematic .h4-gallery-card {
+  grid-template-rows: minmax(360px, auto) auto;
+}
+
 .h4-gallery-media {
   position: relative;
   aspect-ratio: 0.94;
@@ -2277,6 +2292,11 @@
   align-items: flex-start;
   padding: 18px;
   transition: transform 0.45s ease;
+}
+
+.h4-gallery-cinematic .h4-gallery-media {
+  aspect-ratio: 2.35;
+  align-items: flex-end;
 }
 
 .h4-gallery-media::after {
@@ -2305,6 +2325,26 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+.h4-gallery-media-tag {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(12, 20, 32, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #f8fafc;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .h4-gallery-body {
@@ -2609,6 +2649,10 @@
   .h4-gallery-grid>.h4-reveal:nth-child(6) {
     grid-column: span 6;
   }
+
+  .h4-gallery-grid>.h4-gallery-cinematic {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 768px) {
@@ -2799,6 +2843,10 @@
   .h4-gallery-grid>.h4-reveal:nth-child(5),
   .h4-gallery-grid>.h4-reveal:nth-child(6) {
     grid-column: auto;
+  }
+
+  .h4-gallery-grid>.h4-gallery-cinematic .h4-gallery-media {
+    aspect-ratio: 1.45;
   }
 
   .h4-experience-grid .h4-experience-tile {
@@ -4187,9 +4235,6 @@
     font-size: clamp(0.84rem, 1.18vw, 1.22rem);
   }
 }
-
-
-
 
 
 

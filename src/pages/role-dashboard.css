@@ -1164,13 +1164,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    padding: 5px 8px;
+    gap: 0;
+    padding: 6px;
     border: none;
     background: transparent;
     cursor: pointer;
     color: color-mix(in srgb, var(--text-main) 78%, var(--accent) 22%);
-    font-size: 0.52rem;
+    font-size: 0;
     font-weight: 700;
     text-transform: capitalize;
     position: relative;
@@ -1198,9 +1198,7 @@
 }
 
 .rdb-bottom-nav-label {
-    color: inherit;
-    text-align: center;
-    white-space: nowrap;
+    display: none;
 }
 
 .rdb-bottom-nav-btn:hover {

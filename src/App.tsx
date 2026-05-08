@@ -10,6 +10,7 @@ import { AdminConsole } from './pages/AdminConsole';
 import { AdminListingReview } from './pages/AdminListingReview';
 import { ProviderStudio } from './pages/ProviderStudio';
 import { ProviderTerms } from './pages/ProviderTerms';
+import { TermsAndConditions } from './pages/TermsAndConditions';
 import { ListingDetail } from './pages/ListingDetail';
 import { UserProfile } from './pages/UserProfile';
 import { Messages } from './pages/Messages';
@@ -178,6 +179,7 @@ function App() {
           <Route path="/home3" element={<Navigate to="/" replace />} />
           <Route path="/home4" element={<Navigate to="/" replace />} />
           <Route path="/auth" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+          <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
           <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
           <Route path="/activities" element={<TouristOnlyRoute><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
@@ -204,7 +206,7 @@ function App() {
   );
 }
 
-const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4'];
+const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/terms'];
 
 const AppNavbar: React.FC = () => {
   const { user } = useAuth();
