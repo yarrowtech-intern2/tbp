@@ -1,0 +1,427 @@
+.upr-page {
+    min-height: 100vh;
+    padding: 120px 0 96px;
+    background:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 26%),
+        radial-gradient(circle at bottom right, color-mix(in srgb, var(--accent) 10%, transparent), transparent 30%),
+        var(--bg-main);
+}
+
+.upr-shell {
+    display: grid;
+    gap: 18px;
+    max-width: 1120px;
+}
+
+.upr-shell--loading {
+    min-height: 70vh;
+    place-items: center;
+}
+
+.upr-back {
+    align-items: center;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    gap: 6px;
+    padding: 0;
+}
+
+.upr-hero,
+.upr-card {
+    background: var(--surface-main);
+    border: 1px solid var(--border-light);
+    border-radius: 28px;
+    overflow: hidden;
+}
+
+.upr-cover {
+    height: 180px;
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent) 26%, transparent), color-mix(in srgb, var(--primary) 18%, transparent)),
+        var(--surface-muted);
+    background-position: center;
+    background-size: cover;
+}
+
+.upr-head {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 0 22px 24px;
+}
+
+.upr-avatar-ring {
+    width: 112px;
+    height: 112px;
+    margin-top: -56px;
+    border-radius: 50%;
+    border: 4px solid var(--surface-main);
+    overflow: hidden;
+    background: var(--surface-main);
+}
+
+.upr-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.upr-head-copy {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    padding-top: 18px;
+}
+
+.upr-head-copy h1 {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+.upr-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.upr-badge {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 6px 12px;
+    text-transform: uppercase;
+}
+
+.upr-badge--role {
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface-main));
+    color: var(--accent);
+}
+
+.upr-badge--verify {
+    background: var(--surface-muted);
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+}
+
+.upr-location,
+.upr-bio {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.upr-location {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+.upr-bio {
+    line-height: 1.7;
+    max-width: 64ch;
+}
+
+.upr-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    grid-column: 1 / -1;
+}
+
+.upr-action {
+    align-items: center;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 800;
+    gap: 7px;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 16px;
+    text-decoration: none;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.upr-action:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.upr-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.upr-action--solid {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #fff;
+}
+
+.upr-action--soft {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface-main));
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-light));
+    color: var(--text-main);
+}
+
+.upr-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--border-light);
+}
+
+.upr-stat {
+    display: grid;
+    gap: 4px;
+    padding: 18px 20px 22px;
+}
+
+.upr-stat:not(:last-child) {
+    border-right: 1px solid var(--border-light);
+}
+
+.upr-stat strong {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+}
+
+.upr-stat span {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.upr-message-note {
+    margin: 0;
+    padding: 0 22px 22px;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+}
+
+.upr-card {
+    padding: 22px;
+    display: grid;
+    gap: 16px;
+}
+
+.upr-card-head {
+    align-items: start;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.upr-card-head h2 {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+
+.upr-card-head p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 0.86rem;
+}
+
+.upr-count {
+    background: var(--surface-muted);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    text-transform: uppercase;
+}
+
+.upr-detail-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upr-detail-card {
+    align-items: flex-start;
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+    border-radius: 18px;
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+}
+
+.upr-detail-icon {
+    align-items: center;
+    background: color-mix(in srgb, var(--accent) 12%, var(--surface-main));
+    border-radius: 12px;
+    color: var(--accent);
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+}
+
+.upr-detail-card span {
+    color: var(--text-muted);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.upr-detail-card strong {
+    color: var(--text-main);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.upr-link-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.upr-link-pill {
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface-main));
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-light));
+    border-radius: 999px;
+    color: var(--text-main);
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 7px 12px;
+    text-decoration: none;
+}
+
+.upr-link-pill:hover {
+    color: var(--accent);
+}
+
+.upr-listing-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.upr-listing-card {
+    color: inherit;
+    text-decoration: none;
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--bg-main);
+}
+
+.upr-listing-image {
+    aspect-ratio: 4 / 3;
+    background: var(--surface-muted);
+    background-position: center;
+    background-size: cover;
+}
+
+.upr-listing-copy {
+    display: grid;
+    gap: 5px;
+    padding: 14px;
+}
+
+.upr-listing-copy strong {
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+.upr-listing-copy span,
+.upr-empty-copy {
+    color: var(--text-muted);
+    font-size: 0.84rem;
+}
+
+.upr-empty {
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .upr-listing-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .upr-page {
+        padding-top: 104px;
+        padding-bottom: 88px;
+    }
+
+    .upr-shell {
+        gap: 14px;
+    }
+
+    .upr-cover {
+        height: 148px;
+    }
+
+    .upr-head {
+        grid-template-columns: 1fr;
+        padding: 0 16px 18px;
+    }
+
+    .upr-avatar-ring {
+        width: 92px;
+        height: 92px;
+        margin-top: -46px;
+    }
+
+    .upr-head-copy {
+        padding-top: 0;
+    }
+
+    .upr-actions {
+        grid-column: auto;
+    }
+
+    .upr-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .upr-stat:not(:last-child) {
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .upr-card {
+        padding: 16px;
+    }
+
+    .upr-card-head {
+        flex-direction: column;
+    }
+
+    .upr-detail-grid,
+    .upr-listing-grid {
+        grid-template-columns: 1fr;
+    }
+}

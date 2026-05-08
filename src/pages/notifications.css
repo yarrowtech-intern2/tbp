@@ -1,0 +1,238 @@
+.ntf-page {
+    min-height: 100vh;
+    padding-top: 120px;
+    padding-bottom: 60px;
+    background: var(--bg-main);
+}
+
+.ntf-shell {
+    display: grid;
+    gap: 16px;
+}
+
+.ntf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ntf-header h1 {
+    margin: 0;
+    font-size: clamp(1.6rem, 4vw, 2.1rem);
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.03em;
+}
+
+.ntf-header p {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+}
+
+.ntf-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ntf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border-light);
+    padding: 9px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.ntf-btn--ghost {
+    background: var(--surface-main);
+    color: var(--text-main);
+}
+
+.ntf-btn--primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+}
+
+.ntf-btn:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+}
+
+.ntf-board {
+    background: var(--surface-main);
+    border: 1px solid var(--border-light);
+    border-radius: 22px;
+    box-shadow: var(--shadow-subtle);
+    padding: 12px;
+}
+
+.ntf-filter-row {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+}
+
+.ntf-filter {
+    border-radius: 999px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-main);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 7px 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.ntf-filter span {
+    border-radius: 999px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--accent) 20%, var(--surface-main));
+    color: var(--accent);
+    font-size: 0.72rem;
+}
+
+.ntf-filter--active {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border-light));
+    color: var(--accent);
+}
+
+.ntf-list {
+    display: grid;
+    gap: 8px;
+    padding: 6px 4px 4px;
+}
+
+.ntf-item {
+    border-radius: 14px;
+    border: 1px solid var(--border-light);
+    background: var(--bg-main);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    overflow: hidden;
+}
+
+.ntf-item--unread {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border-light));
+}
+
+.ntf-item-body {
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    cursor: pointer;
+    color: inherit;
+    width: 100%;
+}
+
+.ntf-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+    background: var(--accent);
+}
+
+.ntf-copy h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.ntf-copy p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.ntf-copy time {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.ntf-item-actions {
+    padding: 0 12px 0 0;
+}
+
+.ntf-item-actions button {
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    padding: 6px 11px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ntf-item-actions button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.ntf-loading,
+.ntf-empty {
+    min-height: 280px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    gap: 8px;
+    color: var(--text-muted);
+}
+
+.ntf-empty strong {
+    color: var(--text-main);
+    font-size: 0.96rem;
+}
+
+.ntf-empty p {
+    margin: 0;
+    max-width: 360px;
+    font-size: 0.84rem;
+}
+
+@media (max-width: 760px) {
+    .ntf-page {
+        padding-top: 106px;
+        padding-bottom: 24px;
+    }
+
+    .ntf-board {
+        border-radius: 18px;
+        padding: 10px;
+    }
+
+    .ntf-item {
+        grid-template-columns: 1fr;
+    }
+
+    .ntf-item-actions {
+        padding: 0 12px 12px;
+    }
+}

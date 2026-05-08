@@ -1,0 +1,292 @@
+.listing-detail-page {
+  background: var(--bg-main);
+  padding: 118px 0 72px;
+}
+
+.listing-payment-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(3px);
+  padding: 16px;
+}
+
+.listing-payment-overlay-card {
+  min-width: min(440px, 100%);
+  background: var(--surface-main);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 22px 20px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+}
+
+.listing-payment-overlay-card h3,
+.listing-payment-overlay-card p {
+  margin: 0;
+}
+
+.listing-payment-overlay-card p {
+  color: var(--text-muted);
+}
+
+.listing-detail-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.listing-detail-back {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.listing-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+.listing-detail-card,
+.listing-book-card {
+  background: var(--surface-main);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+}
+
+.listing-detail-card {
+  overflow: hidden;
+}
+
+.listing-detail-hero-image {
+  aspect-ratio: 16 / 9;
+  background-position: center;
+  background-size: cover;
+  width: 100%;
+}
+
+.listing-detail-content {
+  padding: 16px;
+}
+
+.listing-detail-meta-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.listing-detail-type-pill {
+  background: var(--surface-muted);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 5px 10px;
+  text-transform: uppercase;
+}
+
+.listing-detail-location-chip {
+  align-items: center;
+  color: var(--text-muted);
+  display: inline-flex;
+  font-size: 0.82rem;
+  gap: 6px;
+}
+
+.listing-detail-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.5rem, 6vw, 2.5rem);
+  line-height: 1.1;
+  margin: 0;
+}
+
+.listing-detail-description {
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+.listing-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.listing-book-card {
+  padding: 16px;
+}
+
+.listing-book-card--booked {
+  border-color: color-mix(in srgb, #22c55e 50%, var(--border-light));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #22c55e 26%, transparent) inset;
+}
+
+.listing-book-form {
+  display: grid;
+  gap: 12px;
+}
+
+.listing-book-head {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+}
+
+.listing-book-head h3 {
+  margin: 0;
+}
+
+.listing-book-head strong {
+  color: var(--accent);
+  font-size: 1.45rem;
+}
+
+.listing-book-field {
+  display: grid;
+  gap: 6px;
+}
+
+.listing-book-field > span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.listing-book-input-wrap {
+  align-items: center;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  display: flex;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+
+.listing-book-input-wrap input,
+.listing-book-input-wrap select {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+}
+
+.listing-book-total {
+  align-items: center;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+}
+
+.listing-book-total span {
+  color: var(--text-muted);
+}
+
+.listing-book-warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  border-radius: 12px;
+  color: #b45309;
+  font-size: 0.84rem;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.listing-detail-pill-btn {
+  border-radius: 999px;
+  min-height: 44px;
+}
+
+.listing-detail-fav-active {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-light));
+  color: var(--accent);
+}
+
+.listing-detail-center-btn {
+  justify-content: center;
+}
+
+.listing-book-security {
+  align-items: center;
+  color: var(--text-muted);
+  display: inline-flex;
+  font-size: 0.78rem;
+  gap: 6px;
+  justify-content: center;
+  margin: 0;
+}
+
+.listing-book-success {
+  display: grid;
+  gap: 10px;
+}
+
+.listing-book-success-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.listing-message-provider-btn {
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 48%, #34d399 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.34);
+}
+
+.listing-message-provider-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.listing-book-success h3,
+.listing-book-success p {
+  margin: 0;
+}
+
+.listing-book-success p {
+  color: var(--text-muted);
+}
+
+.listing-book-card--booked .listing-book-success h3 {
+  color: #16a34a;
+}
+
+@media (min-width: 900px) {
+  .listing-detail-page {
+    padding: 128px 0 90px;
+  }
+
+  .listing-detail-grid {
+    gap: 22px;
+    grid-template-columns: 1.4fr 1fr;
+  }
+
+  .listing-detail-content {
+    padding: 20px 22px 24px;
+  }
+
+  .listing-book-card {
+    padding: 20px;
+  }
+}

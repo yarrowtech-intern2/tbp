@@ -1,0 +1,102 @@
+.pt-page {
+    min-height: 100vh;
+    background: var(--bg-main);
+    padding: 118px 0 86px;
+}
+
+.pt-shell {
+    max-width: 860px;
+    display: grid;
+    gap: 26px;
+}
+
+.pt-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.94rem;
+    letter-spacing: 0.01em;
+}
+
+.pt-back:hover {
+    color: var(--text-main);
+}
+
+.pt-header {
+    padding: 4px 0 2px;
+}
+
+.pt-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 14px;
+}
+
+.pt-header h1 {
+    margin: 0 0 10px;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+}
+
+.pt-header p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 1.06rem;
+    line-height: 1.7;
+    max-width: 740px;
+}
+
+.pt-card {
+    background: color-mix(in srgb, var(--surface-main) 72%, transparent);
+    border-radius: 0;
+    padding: 0;
+}
+
+.pt-card h2 {
+    margin: 0 0 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.52rem;
+    letter-spacing: -0.01em;
+    padding-bottom: 6px;
+}
+
+.pt-card ol {
+    margin: 0;
+    padding-left: 24px;
+    color: var(--text-main);
+    line-height: 1.85;
+    font-size: 1.06rem;
+    font-weight: 470;
+    display: grid;
+    gap: 8px;
+}
+
+@media (max-width: 760px) {
+    .pt-page {
+        padding-top: 102px;
+    }
+
+    .pt-shell {
+        gap: 20px;
+    }
+
+    .pt-header h1 {
+        font-size: clamp(1.6rem, 8vw, 2.2rem);
+    }
+
+    .pt-header p,
+    .pt-card ol {
+        font-size: 0.98rem;
+    }
+}
