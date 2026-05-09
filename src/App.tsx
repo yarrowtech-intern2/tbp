@@ -1,24 +1,26 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
-import { Home4 } from './pages/Home4';
-import { DashboardHome } from './pages/DashboardHome';
-import { RoleDashboard } from './pages/RoleDashboard';
-import { Auth } from './pages/Auth';
-import { DestinationDetail } from './pages/DestinationDetail';
-import { Profile } from './pages/Profile';
-import { AdminConsole } from './pages/AdminConsole';
-import { AdminListingReview } from './pages/AdminListingReview';
-import { ProviderStudio } from './pages/ProviderStudio';
-import { ProviderTerms } from './pages/ProviderTerms';
-import { TermsAndConditions } from './pages/TermsAndConditions';
-import { ListingDetail } from './pages/ListingDetail';
-import { UserProfile } from './pages/UserProfile';
-import { Messages } from './pages/Messages';
-import { Notifications } from './pages/Notifications';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
 import { normalizeRoleValue } from './lib/platform';
+
+const Home4 = lazy(async () => ({ default: (await import('./pages/Home4')).Home4 }));
+const DashboardHome = lazy(async () => ({ default: (await import('./pages/DashboardHome')).DashboardHome }));
+const RoleDashboard = lazy(async () => ({ default: (await import('./pages/RoleDashboard')).RoleDashboard }));
+const Auth = lazy(async () => ({ default: (await import('./pages/Auth')).Auth }));
+const DestinationDetail = lazy(async () => ({ default: (await import('./pages/DestinationDetail')).DestinationDetail }));
+const Profile = lazy(async () => ({ default: (await import('./pages/Profile')).Profile }));
+const AdminConsole = lazy(async () => ({ default: (await import('./pages/AdminConsole')).AdminConsole }));
+const AdminListingReview = lazy(async () => ({ default: (await import('./pages/AdminListingReview')).AdminListingReview }));
+const ProviderStudio = lazy(async () => ({ default: (await import('./pages/ProviderStudio')).ProviderStudio }));
+const ProviderTerms = lazy(async () => ({ default: (await import('./pages/ProviderTerms')).ProviderTerms }));
+const TermsAndConditions = lazy(async () => ({ default: (await import('./pages/TermsAndConditions')).TermsAndConditions }));
+const ListingDetail = lazy(async () => ({ default: (await import('./pages/ListingDetail')).ListingDetail }));
+const UserProfile = lazy(async () => ({ default: (await import('./pages/UserProfile')).UserProfile }));
+const Messages = lazy(async () => ({ default: (await import('./pages/Messages')).Messages }));
+const Notifications = lazy(async () => ({ default: (await import('./pages/Notifications')).Notifications }));
 
 const APP_HOME_PATH = '/';
 const DASHBOARD_TOURS_PATH = '/?tab=tours';
@@ -173,31 +175,33 @@ function App() {
     <Router>
       <div className="app">
         <AppNavbar />
-        <Routes>
-          <Route path="/" element={<HomeRoute />} />
-          <Route path="/home2" element={<Navigate to="/" replace />} />
-          <Route path="/home3" element={<Navigate to="/" replace />} />
-          <Route path="/home4" element={<Navigate to="/" replace />} />
-          <Route path="/auth" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
-          <Route path="/terms" element={<TermsAndConditions />} />
-          <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
-          <Route path="/activities" element={<TouristOnlyRoute><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
-          <Route path="/tours" element={<TouristOnlyRoute><Navigate to={DASHBOARD_TOURS_PATH} replace /></TouristOnlyRoute>} />
-          <Route path="/guides" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
-          <Route path="/events" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
-          <Route path="/listings/:type/:id" element={<TouristOnlyRoute><ListingDetail /></TouristOnlyRoute>} />
-          <Route path="/destination/:id" element={<TouristOnlyRoute><DestinationDetail /></TouristOnlyRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-          <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-          <Route path="/notifications" element={<ProviderRestrictedRoute><Notifications /></ProviderRestrictedRoute>} />
-          <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
-          <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />
-          <Route path="/provider/studio" element={<ProviderRoute><ProviderStudio /></ProviderRoute>} />
-          <Route path="/provider/terms" element={<ProviderRoute><ProviderTerms /></ProviderRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<HomeRoute />} />
+            <Route path="/home2" element={<Navigate to="/" replace />} />
+            <Route path="/home3" element={<Navigate to="/" replace />} />
+            <Route path="/home4" element={<Navigate to="/" replace />} />
+            <Route path="/auth" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+            <Route path="/terms" element={<TermsAndConditions />} />
+            <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
+            <Route path="/activities" element={<TouristOnlyRoute><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
+            <Route path="/tours" element={<TouristOnlyRoute><Navigate to={DASHBOARD_TOURS_PATH} replace /></TouristOnlyRoute>} />
+            <Route path="/guides" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
+            <Route path="/events" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
+            <Route path="/listings/:type/:id" element={<TouristOnlyRoute><ListingDetail /></TouristOnlyRoute>} />
+            <Route path="/destination/:id" element={<TouristOnlyRoute><DestinationDetail /></TouristOnlyRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+            <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProviderRestrictedRoute><Notifications /></ProviderRestrictedRoute>} />
+            <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
+            <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />
+            <Route path="/provider/studio" element={<ProviderRoute><ProviderStudio /></ProviderRoute>} />
+            <Route path="/provider/terms" element={<ProviderRoute><ProviderTerms /></ProviderRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
 
         <AppFooter homePath={homePath} footerLogoSrc={footerLogoSrc} user={user} />
         {SHOW_SUPPORT_CHATBOT ? <SupportChatbot /> : null}

@@ -1,0 +1,315 @@
+Create the hero section  like this:
+a premium cinematic landing page hero section inspired by Apple-style immersive storytelling (TypeScript + GSAP).
+
+The implementation must be production-quality, fully responsive, smooth at 60fps, and structured cleanly with reusable components.
+
+Tech Stack
+
+TypeScript
+TailwindCSS
+GSAP
+GSAP ScrollTrigger
+Responsive mobile-first design
+Dark mode + Light mode support
+Overall Experience
+
+Build a fullscreen immersive hero section with:
+
+Massive cinematic typography
+Smooth parallax movement
+Scroll-driven transitions
+Text reveal animations
+A glowing gradient globe image
+Elegant Apple-like spacing and motion
+Seamless transition into the next section
+
+The experience should feel:
+
+futuristic
+minimal
+premium
+immersive
+smooth
+atmospheric
+
+Motion should resemble:
+
+Apple AirPods pages
+Apple Vision Pro website
+Linear.app smoothness
+Nothing.tech aesthetics
+Layout Structure
+
+
+
+The hero occupies:
+
+height: 100vh
+position: relative
+overflow: hidden
+Hero Section Design
+Background
+Pure black in dark mode
+Soft off-white in light mode
+Smooth ambient gradients
+Very subtle noise texture optional
+
+
+Position:
+
+top: 32px
+left: 32px
+
+Include:
+
+small circular logo
+brand text beside it
+
+Use subtle fade-in animation on page load.
+
+Main Typography
+Small Intro Text
+
+Text:
+
+Enter the immersive world of
+
+Style:
+
+thin
+elegant
+high letter spacing
+Apple-style typography
+
+Animation:
+
+mask reveal from bottom
+fade upward
+delayed slightly before title
+Main Heading
+
+Huge typography:
+
+THE BETTER PASS
+
+Requirements:
+
+responsive scaling
+extremely bold
+ultra clean
+white text
+subtle orange glow behind text
+tight line height
+
+Desktop:
+
+font-size: clamp(72px, 10vw, 180px)
+
+Mobile:
+
+font-size: clamp(42px, 13vw, 72px)
+
+Animation:
+
+masked reveal from bottom
+staggered word reveal
+smooth easing
+cinematic timing
+
+Use GSAP timeline.
+
+Globe Element
+
+Use image from:
+
+/public/images/home4/orb2.png
+
+The globe should:
+
+sit partially below viewport
+oversized
+centered horizontally
+have atmospheric glow
+blur edges slightly
+feel massive and immersive
+
+Position example:
+
+bottom: -45vh
+left: 50%
+transform: translateX(-50%)
+
+Desktop width:
+
+140vw
+
+Mobile width:
+
+190vw
+
+Add:
+
+subtle floating motion
+slow parallax on scroll
+depth effect
+Scroll Animation Behavior
+
+As user scrolls down:
+
+Text Movement
+
+The intro text and heading should:
+
+move upward
+fade out gradually
+slightly blur
+scale subtly
+
+Motion must feel smooth and tied to scroll progress.
+
+Globe Animation
+
+The globe should:
+
+move upward slowly
+scale up slightly
+maintain cinematic smoothness
+create depth illusion
+
+Use:
+
+scrub: true
+
+with GSAP ScrollTrigger.
+
+Transition to Next Section
+
+After scrolling beyond hero:
+
+Hero content smoothly vanishes
+Next section slides upward from bottom
+No hard cut
+Transition should feel continuous
+
+The next section should:
+
+fade in
+translateY from 80px to 0
+appear naturally as hero exits
+Mobile Responsiveness
+Mobile Layout
+
+Stack text vertically with improved spacing.
+
+Reduce:
+
+blur intensity
+animation complexity
+parallax strength
+
+Ensure:
+
+no lag
+smooth scrolling
+optimized transforms only
+
+Avoid expensive filters on mobile.
+
+Typography
+
+Use Apple-like font styling.
+
+Preferred:
+
+font-family:
+- SF Pro Display
+- Inter
+- Helvetica Neue
+- sans-serif
+
+Typography should feel:
+
+luxurious
+spacious
+highly readable
+Animation Requirements
+
+Use GSAP timelines.
+
+Required plugins:
+
+gsap
+ScrollTrigger
+
+Implement:
+
+reveal masks using overflow-hidden wrappers
+translateY animations
+opacity transitions
+stagger animations
+easing:
+power3.out
+expo.out
+Performance Requirements
+
+Must:
+
+use transform + opacity only
+avoid layout thrashing
+use will-change where needed
+clean up ScrollTriggers properly
+support reduced motion
+
+Optimize for:
+
+Safari
+Chrome
+mobile devices
+Dark / Light Mode
+
+Implement Tailwind dark mode.
+
+Dark:
+
+black background
+white text
+orange glow
+
+Light:
+
+soft white background
+dark text
+subtle warm gradients
+
+Transition between themes smoothly.
+
+Accessibility
+
+Include:
+
+semantic HTML
+aria labels where needed
+reduced motion fallback
+proper contrast
+Code Quality
+
+Generate:
+
+modular components
+reusable hooks if needed
+clean folder structure
+typed refs in TypeScript
+comments explaining animation logic
+Deliverables
+
+Generate:
+
+Full React component code
+Tailwind styling
+GSAP animation setup
+ScrollTrigger implementation
+Responsive behavior
+Dark/light theme support
+Clean production-ready structure
+
+The final result should feel like a premium cinematic product landing page with immersive scroll storytelling.

@@ -1,6 +1,5 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import Lottie from 'lottie-react';
 import {
   Compass,
   Headphones,
@@ -30,9 +29,41 @@ type OrbitGlyphProps = {
   className?: string;
 };
 
+const LottiePlayer = lazy(() => import('lottie-react'));
+
+let orbitAnimationDataCache: object | null = null;
+let orbitAnimationPromise: Promise<object | null> | null = null;
+
+const loadOrbitAnimationData = async (): Promise<object | null> => {
+  if (orbitAnimationDataCache) return orbitAnimationDataCache;
+
+  if (!orbitAnimationPromise) {
+    orbitAnimationPromise = fetch('/animation/rotate-orbit.json')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load orbit animation');
+        return res.json() as Promise<object>;
+      })
+      .then((data) => {
+        orbitAnimationDataCache = data;
+        return data;
+      })
+      .catch(() => null)
+      .finally(() => {
+        orbitAnimationPromise = null;
+      });
+  }
+
+  return orbitAnimationPromise;
+};
+
+const canRunDecorativeMotion = () => {
+  if (typeof window === 'undefined') return false;
+  return !window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 768px), (pointer: coarse)').matches;
+};
+
 const SLIDES = [
   {
-    image: '/images/home4/beach.jpg',
+    image: '/images/home4/beach-1600.jpg',
     name: 'BEACHES',
     description:
       'Private coastlines, salt-air mornings, and resort experiences curated for travelers who want calm, clarity, and cinematic luxury by the sea.',
@@ -41,7 +72,7 @@ const SLIDES = [
       'Discover secluded bays, signature dining, and glassy turquoise water with concierge-led stays designed around slow, elegant travel.',
   },
   {
-    image: '/images/home4/desert.jpg',
+    image: '/images/home4/desert-1920.jpg',
     name: 'DESERTS',
     description:
       'Golden horizons, sculpted dunes, and silence-led retreats for travelers drawn to warm light, open space, and refined remote stays.',
@@ -50,7 +81,7 @@ const SLIDES = [
       'Move between private desert camps, curated tasting dinners, and sunset drives with every detail managed end to end.',
   },
   {
-    image: '/images/home4/forrest.jpg',
+    image: '/images/home4/forrest-1920.jpg',
     name: 'FORESTS',
     description:
       'Mist, cedar air, and immersive eco-luxury escapes built around slower routes, hidden lodges, and restorative green landscapes.',
@@ -59,7 +90,7 @@ const SLIDES = [
       'Wake to quiet trails, private decks, and wellness itineraries shaped for modern travelers who value nature without compromise.',
   },
   {
-    image: '/images/home4/mopunts.jpg',
+    image: '/images/home4/mopunts-1920.jpg',
     name: 'MOUNTAINS',
     description:
       'Elevated hideaways, cold-air clarity, and iconic ridgelines curated into polished alpine journeys with seamless movement.',
@@ -68,7 +99,7 @@ const SLIDES = [
       'From panoramic suites to guided ascent days, each stay is designed for comfort, perspective, and quiet grandeur.',
   },
   {
-    image: '/images/home4/city.jpg',
+    image: '/images/home4/city-1600.jpg',
     name: 'CITIES',
     description:
       'Design hotels, private tables, and cultured city energy packaged into precise itineraries for travelers who move with intent.',
@@ -77,7 +108,7 @@ const SLIDES = [
       'Unlock skyline suites, chef-led reservations, and after-dark experiences curated with premium local access.',
   },
   {
-    image: '/images/home4/temple.jpg',
+    image: '/images/home4/temple-1600.jpg',
     name: 'TEMPLES',
     description:
       'Sacred architecture, slow cultural journeys, and timeless heritage stays arranged with a contemporary luxury lens.',
@@ -126,40 +157,40 @@ const VISUAL_SHOWCASE = [
     title: 'Immersive travel visuals.',
     label: 'Cinematic Frame',
     description: 'Expansive horizon shots crafted to set mood, pace, and destination character in one glance.',
-    image: '/images/home4/city.jpg',
+    image: '/images/home4/city-1600.jpg',
     className: 'h4-gallery-cinematic',
   },
   {
     title: 'Coastal Light Stories',
     label: 'Beach Edit',
     description: 'Low-angle shoreline moments and sunset transitions from curated coast journeys.',
-    image: '/images/home4/beach.jpg',
+    image: '/images/home4/beach-1600.jpg',
   },
   {
     title: 'Aerial Terrain Preview',
     label: 'Drone Footage',
     description: 'High-altitude route previews for terrain, access points, and scenic path planning.',
-    image: '/images/home4/mopunts.jpg',
+    image: '/images/home4/mopunts-1920.jpg',
     mediaTag: 'Drone footage',
   },
   {
     title: 'Desert Motion Reels',
     label: 'Video Reel',
     description: 'Dynamic movement captures across dunes, camp routes, and golden-hour transitions.',
-    image: '/images/home4/desert.jpg',
+    image: '/images/home4/desert-1920.jpg',
     mediaTag: 'Video reel',
   },
   {
     title: 'Forest Atmosphere',
     label: 'Nature Sequence',
     description: 'Textured canopy scenes and quiet trail visuals tuned for immersive storytelling.',
-    image: '/images/home4/forrest.jpg',
+    image: '/images/home4/forrest-1920.jpg',
   },
   {
     title: 'Heritage Perspective',
     label: 'Temple Capture',
     description: 'Architecture-focused visuals highlighting stone craft, scale, and cultural ambiance.',
-    image: '/images/home4/temple.jpg',
+    image: '/images/home4/temple-1600.jpg',
   },
 ];
 
@@ -173,14 +204,14 @@ const EXPERIENCE_CATEGORIES: Array<{
   {
     title: 'Beaches',
     description: 'Slow mornings, private shoreline stays, and warm-water itineraries designed for calm.',
-    image: '/images/home4/beach.jpg',
+    image: '/images/home4/beach-1600.jpg',
     icon: Waves,
     className: 'is-large',
   },
   {
     title: 'Mountains',
     description: 'Elevated escapes with panoramic suites, alpine dining, and quiet high-altitude routes.',
-    image: '/images/home4/mopunts.jpg',
+    image: '/images/home4/mopunts-1920.jpg',
     icon: Mountain,
   },
   {
@@ -413,38 +444,49 @@ const RevealBlock: React.FC<RevealBlockProps> = ({ children, className = '', del
   );
 };
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Slide Nav Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* â”€â”€â”€ Slide Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const OrbitGlyph: React.FC<OrbitGlyphProps> = ({ className = '' }) => {
+  const [motionEnabled, setMotionEnabled] = useState(canRunDecorativeMotion);
   const [animationData, setAnimationData] = useState<object | null>(null);
 
   useEffect(() => {
-    let mounted = true;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 768px), (pointer: coarse)');
+    const updateMotionPreference = () => setMotionEnabled(!media.matches);
 
-    fetch('/animation/rotate-orbit.json')
-      .then((res) => res.json())
-      .then((data: object) => {
-        if (!mounted) return;
-        setAnimationData(data);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setAnimationData(null);
-      });
+    updateMotionPreference();
+    media.addEventListener('change', updateMotionPreference);
+
+    return () => media.removeEventListener('change', updateMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    if (!motionEnabled) {
+      setAnimationData(null);
+      return;
+    }
+
+    let mounted = true;
+    loadOrbitAnimationData().then((data) => {
+      if (!mounted) return;
+      setAnimationData(data);
+    });
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [motionEnabled]);
 
   return (
     <div className={`h4-featured-glyphs${className ? ` ${className}` : ''}`} aria-hidden="true">
       {animationData ? (
-        <Lottie
-          animationData={animationData}
-          loop
-          autoplay
-          className="h4-featured-glyph-lottie"
-        />
+        <Suspense fallback={null}>
+          <LottiePlayer
+            animationData={animationData}
+            loop
+            autoplay
+            className="h4-featured-glyph-lottie"
+          />
+        </Suspense>
       ) : null}
     </div>
   );
@@ -472,6 +514,7 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
         src={theme === 'light' ? '/logo/logo.png' : '/logo/logo-white.png'}
         alt="The Better Pass"
         className="h4-slide-nav-logo"
+        decoding="async"
       />
       <div className="h4-slide-nav-links">
         <a href="#h4-hero" className="h4-slide-nav-link" onClick={closeMenu}>Home</a>
@@ -500,7 +543,7 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
   );
 };
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Slide Card Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* â”€â”€â”€ Slide Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) => {
   return (
     <div className="h4-slide-card">
@@ -527,7 +570,7 @@ const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) =
   );
 };
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Main Component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export const Home4: React.FC = () => {
   const heroRef       = useRef<HTMLElement>(null);
   const showcaseRef   = useRef<HTMLElement>(null);
@@ -634,12 +677,14 @@ export const Home4: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!showcaseVisible) return;
+
     const interval = window.setInterval(() => {
       setActiveSlideIndex((prev) => (prev + 1) % SLIDES.length);
     }, 3500);
 
     return () => window.clearInterval(interval);
-  }, []);
+  }, [showcaseVisible]);
 
   useEffect(() => {
     const node = showcaseRef.current;
@@ -674,7 +719,7 @@ export const Home4: React.FC = () => {
 
   return (
     <div className="h4-page">
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Hero Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* â”€â”€ Hero â”€â”€ */}
       <section id="h4-hero" className="h4-hero" ref={heroRef}>
         <div className="h4-hero-stage">
           <div className="h4-hero-ambient" />
@@ -699,15 +744,22 @@ export const Home4: React.FC = () => {
         </div>
       </section>
       <SlideNav visible={navVisible} theme={navTheme} />
-      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Showcase Section (auto-changing background) Ã¢â€â‚¬Ã¢â€â‚¬ */}
+      {/* â”€â”€ Showcase Section (auto-changing background) â”€â”€ */}
       <section id="h4-showcase" ref={showcaseRef} className="h4-showcase">
         <div className="h4-showcase-bg-layer-wrap" aria-hidden="true">
           {SLIDES.map((slide, index) => (
             <div
               key={slide.image}
               className={`h4-showcase-bg-layer${index === activeSlideIndex ? ' is-active' : ''}`}
-              style={{ backgroundImage: `url(${slide.image})` }}
-            />
+            >
+              <img
+                src={slide.image}
+                alt=""
+                className="h4-showcase-bg-image"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
           ))}
         </div>
         <div className={`h4-slide h4-showcase-slide${showcaseVisible ? ' is-visible' : ''}`}>
@@ -752,7 +804,15 @@ export const Home4: React.FC = () => {
             {FEATURED_DESTINATIONS.map((item, index) => (
               <RevealBlock key={item.title} delay={index * 80}>
                 <article className="h4-destination-card">
-                  <div className="h4-destination-media" style={{ backgroundImage: `url(${item.image})` }} />
+                  <div className="h4-destination-media">
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="h4-card-image"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
                   <div className="h4-destination-body h4-reveal-copy">
                     <h3 className="h4-destination-title">{item.title}</h3>
                     <span className="h4-destination-subtitle">{item.location}</span>
@@ -783,7 +843,15 @@ export const Home4: React.FC = () => {
                     className={`h4-experience-tile${item.className ? ` ${item.className}` : ''}`}
                     aria-hidden={index >= experienceRailA.length}
                   >
-                    <div className="h4-experience-image" style={{ backgroundImage: `url(${item.image})` }} />
+                    <div className="h4-experience-image">
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="h4-card-image"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
                     <div className="h4-experience-content">
                       <div className="h4-experience-icon"><item.icon size={18} /></div>
                       <h3 className="h4-experience-title">{item.title}</h3>
@@ -801,7 +869,15 @@ export const Home4: React.FC = () => {
                     className={`h4-experience-tile${item.className ? ` ${item.className}` : ''}`}
                     aria-hidden={index >= experienceRailB.length}
                   >
-                    <div className="h4-experience-image" style={{ backgroundImage: `url(${item.image})` }} />
+                    <div className="h4-experience-image">
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="h4-card-image"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
                     <div className="h4-experience-content">
                       <div className="h4-experience-icon"><item.icon size={18} /></div>
                       <h3 className="h4-experience-title">{item.title}</h3>
@@ -858,7 +934,7 @@ export const Home4: React.FC = () => {
               <div className="h4-world-grid" aria-hidden="true" />
               <div className="h4-world-paper-grain" aria-hidden="true" />
               <div className="h4-world-map-art" aria-hidden="true">
-                <img src="/images/home4/tbp-map.png" alt="" />
+                <img src="/images/home4/tbp-map-1920.png" alt="" loading="lazy" decoding="async" />
               </div>
 
               <svg className="h4-world-routes" viewBox="0 0 1200 560" role="img" aria-label="Interactive destination map">
@@ -917,6 +993,7 @@ export const Home4: React.FC = () => {
                 alt="TBP app interface"
                 className="h4-app-ui-image"
                 loading="lazy"
+                decoding="async"
               />
             </div>
           </RevealBlock>
@@ -943,7 +1020,14 @@ export const Home4: React.FC = () => {
                 className={item.className ?? ''}
               >
                 <article className="h4-gallery-card">
-                  <div className="h4-gallery-media" style={{ backgroundImage: `url(${item.image})` }}>
+                  <div className="h4-gallery-media">
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="h4-card-image"
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <span className="h4-gallery-eyebrow">{item.label}</span>
                     {item.mediaTag ? <span className="h4-gallery-media-tag">{item.mediaTag}</span> : null}
                   </div>
@@ -962,7 +1046,7 @@ export const Home4: React.FC = () => {
         <div className="h4-container">
           <div className="h4-lux-footer-top">
             <div className="h4-lux-footer-brand">
-              <img src="/logo/logo.png" alt="The Better Pass" className="h4-lux-footer-logo" />
+              <img src="/logo/logo.png" alt="The Better Pass" className="h4-lux-footer-logo" loading="lazy" decoding="async" />
               <p className="h4-lux-footer-text">
                 Modern luxury travel with editorial clarity, refined stays, and calm itinerary design.
               </p>
@@ -1000,9 +1084,3 @@ export const Home4: React.FC = () => {
     </div>
   );
 };
-
-
-
-
-
-

@@ -40,6 +40,16 @@
   isolation: isolate;
 }
 
+.h4-hero-logo {
+  position: absolute;
+  top: clamp(18px, 2.8svh, 36px);
+  left: clamp(20px, 2.4vw, 40px);
+  height: clamp(34px, 4.6svh, 52px);
+  width: auto;
+  z-index: 5;
+  animation: h4-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
 /* Orb */
 .h4-hero-sphere {
   position: absolute;
@@ -149,7 +159,7 @@
 .h4-hero-title-shell {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -184,7 +194,6 @@
   line-height: 0.9;
   text-align: center;
   text-wrap: balance;
-  white-space: nowrap;
   text-shadow:
     0 0 16px rgba(255, 214, 116, 0.34),
     0 0 42px rgba(226, 127, 33, 0.32),
@@ -194,9 +203,10 @@
 
 .h4-hero-title-line {
   display: block;
-  font-size: clamp(2.45rem, 12.4vw, 14rem);
+  font-size: clamp(1.6rem, 10.8vw, 14rem);
   font-weight: 800;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 .h4-hero-scroll {
@@ -251,13 +261,9 @@
     padding-top: 39svh;
   }
 
-  .h4-hero-title {
-    flex-direction: row;
-    gap: 0.16em;
-  }
-
   .h4-hero-title-line {
-    font-size: clamp(6rem, 14.2vw, 14rem);
+    font-size: clamp(5rem, 14.2vw, 20rem);
+    letter-spacing: -0.05em;
   }
 }
 
@@ -362,6 +368,7 @@
 
 /* ── HORIZONTAL SCROLL ─────────────────────────────────────────────────── */
 
+
 .h4-hscroll-outer {
   position: relative;
 }
@@ -429,11 +436,26 @@
   background-position: center;
   background-repeat: no-repeat;
   opacity: 0;
+  overflow: hidden;
   transform: scale(1.015) translate3d(0, 1.2%, 0);
   transition:
     opacity 1.45s cubic-bezier(0.22, 1, 0.36, 1),
     transform 4.8s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: opacity, transform;
+}
+
+.h4-showcase-bg-image,
+.h4-card-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.h4-showcase-bg-image {
+  position: absolute;
+  inset: 0;
 }
 
 .h4-showcase-bg-layer.is-active {
@@ -1190,7 +1212,7 @@
   line-height: 1.04;
   letter-spacing: -0.022em;
   color: #f5761f;
-  background: linear-gradient(118deg, #ff8a2a 0%, #ffbd5b 22%, #ff6d1a 48%, #ff9855 76%, #f45d0f 100%);
+  background: linear-gradient(118deg, #000000 0%, #ff5900 22%, #000000 48%, #e96913 76%, #000000 100%);
   background-size: 230% 230%;
   background-clip: text;
   -webkit-background-clip: text;
@@ -1321,6 +1343,8 @@
 }
 
 .h4-destination-media {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 0.88;
   background-size: cover;
   background-position: center;
@@ -1466,6 +1490,8 @@
 }
 
 .h4-experience-image {
+  position: relative;
+  overflow: hidden;
   min-height: 172px;
   background-size: cover;
   background-position: center;
@@ -2286,6 +2312,7 @@
 .h4-gallery-media {
   position: relative;
   aspect-ratio: 0.94;
+  overflow: hidden;
   background-size: cover;
   background-position: center;
   display: flex;
@@ -4236,16 +4263,104 @@
   }
 }
 
+@media (max-width: 768px), (pointer: coarse) {
+  .h4-hero-sphere {
+    will-change: transform, opacity;
+    transition: transform 0.12s ease-out, opacity 0.12s ease-out;
+  }
 
+  .h4-hero-sphere::before,
+  .h4-hero-sphere::after,
+  .h4-hero-sphere-gloss {
+    filter: none;
+    animation: none;
+  }
 
+  .h4-hero-sphere-image,
+  .h4-world-map-art,
+  .h4-world-route,
+  .h4-world-pin::before,
+  .h4-world-pin::after,
+  .h4-featured-glyph-dot {
+    animation: none;
+  }
 
+  .h4-hero-ambient {
+    filter: blur(18px);
+    animation: none;
+  }
 
+  .h4-showcase-bg-layer {
+    transform: none;
+    will-change: opacity;
+    transition: opacity 0.75s ease;
+  }
 
+  .h4-showcase-bg-layer.is-active {
+    transform: none;
+    animation: none;
+  }
 
+  .h4-showcase-slide.is-visible .h4-slide-desc,
+  .h4-showcase-slide.is-visible .h4-slide-card,
+  .h4-showcase-slide.is-visible .h4-slide-name,
+  .h4-showcase-slide.is-visible .h4-slide-stats {
+    animation: none;
+    filter: none;
+  }
 
+  .h4-reveal,
+  .h4-reveal-copy>* {
+    filter: none;
+  }
 
+  .h4-experience-rail {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
 
+  .h4-experience-rail::before,
+  .h4-experience-rail::after {
+    display: none;
+  }
 
+  .h4-experience-track {
+    animation: none;
+    transform: none;
+    will-change: auto;
+  }
+
+  .h4-experience-tile {
+    scroll-snap-align: start;
+  }
+
+  .h4-page :is(
+    .h4-slide-nav-links,
+    .h4-slide-nav-login,
+    .h4-slide-card,
+    .h4-choose-card,
+    .h4-world-preview,
+    .h4-gallery-eyebrow,
+    .h4-gallery-media-tag,
+    .h4-app-primary,
+    .h4-app-secondary,
+    .h4-showcase-nav-light .h4-slide-nav-links,
+    .h4-slide-nav-toggle,
+    .h4-slide-nav-mobile,
+    .h4-slide-nav-mobile-login
+  ) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .h4-showcase-nav-light .h4-slide-nav-logo,
+  .h4-slide-nav-logo,
+  .h4-app-ui-image {
+    filter: none;
+  }
+}
 
 
 
