@@ -2,7 +2,6 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Compass,
-  Headphones,
   Hotel,
   Instagram,
   Landmark,
@@ -10,7 +9,6 @@ import {
   Mail,
   MapPinned,
   Mountain,
-  ShieldCheck,
   Smartphone,
   Trees,
   Twitter,
@@ -27,6 +25,18 @@ type RevealBlockProps = {
 
 type OrbitGlyphProps = {
   className?: string;
+};
+
+type VisualShowcaseItem = {
+  title: string;
+  label: string;
+  description: string;
+  mediaType: 'image' | 'video';
+  mediaUrl: string;
+  poster?: string;
+  mediaTag?: string;
+  className?: string;
+  aspectRatio?: string;
 };
 
 const LottiePlayer = lazy(() => import('lottie-react'));
@@ -152,45 +162,67 @@ const FEATURED_DESTINATIONS = [
   },
 ];
 
-const VISUAL_SHOWCASE = [
+const VISUAL_SHOWCASE: VisualShowcaseItem[] = [
   {
     title: 'Immersive travel visuals.',
     label: 'Cinematic Frame',
     description: 'Expansive horizon shots crafted to set mood, pace, and destination character in one glance.',
-    image: '/images/home4/city-1600.jpg',
-    className: 'h4-gallery-cinematic',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1800&q=80',
+    aspectRatio: '16 / 10',
   },
   {
     title: 'Coastal Light Stories',
     label: 'Beach Edit',
     description: 'Low-angle shoreline moments and sunset transitions from curated coast journeys.',
-    image: '/images/home4/beach-1600.jpg',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1300&q=80',
+    aspectRatio: '4 / 5',
   },
   {
     title: 'Aerial Terrain Preview',
     label: 'Drone Footage',
     description: 'High-altitude route previews for terrain, access points, and scenic path planning.',
-    image: '/images/home4/mopunts-1920.jpg',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80',
+    aspectRatio: '3 / 4',
     mediaTag: 'Drone footage',
   },
   {
     title: 'Desert Motion Reels',
     label: 'Video Reel',
     description: 'Dynamic movement captures across dunes, camp routes, and golden-hour transitions.',
-    image: '/images/home4/desert-1920.jpg',
-    mediaTag: 'Video reel',
+    mediaType: 'video',
+    mediaUrl: 'https://www.pexels.com/download/video/855564/',
+    poster: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?auto=format&fit=crop&w=1400&q=80',
+    aspectRatio: '9 / 16',
+    mediaTag: 'Pexels video',
   },
   {
     title: 'Forest Atmosphere',
     label: 'Nature Sequence',
     description: 'Textured canopy scenes and quiet trail visuals tuned for immersive storytelling.',
-    image: '/images/home4/forrest-1920.jpg',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80',
+    aspectRatio: '4 / 5',
   },
   {
     title: 'Heritage Perspective',
     label: 'Temple Capture',
     description: 'Architecture-focused visuals highlighting stone craft, scale, and cultural ambiance.',
-    image: '/images/home4/temple-1600.jpg',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1521292270410-a8c4d716d518?auto=format&fit=crop&w=1200&q=80',
+    aspectRatio: '4 / 5',
+  },
+  {
+    title: 'Night Transit Story',
+    label: 'Motion Clip',
+    description: 'Urban night movement captured as a seamless flow for momentum-led travel stories.',
+    mediaType: 'video',
+    mediaUrl: 'https://www.pexels.com/download/video/3129957/',
+    poster: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1400&q=80',
+    aspectRatio: '3 / 4',
+    mediaTag: 'Pexels video',
   },
 ];
 
@@ -238,41 +270,6 @@ const EXPERIENCE_CATEGORIES: Array<{
     description: 'Soft expedition luxury with protected landscapes, local guides, and slow observation.',
     image: '/images/nature2.jpg',
     icon: Trees,
-  },
-];
-
-const WHY_CHOOSE_US: Array<{
-  title: string;
-  description: string;
-  icon: LucideIcon;
-  className?: string;
-}> = [
-  {
-    title: 'Best Pricing',
-    description: 'Transparent rates and optimized package design so you get premium experiences without hidden costs.',
-    icon: Landmark,
-    className: 'is-hero',
-  },
-  {
-    title: 'Verified Guides',
-    description: 'Trusted local experts selected for professionalism, safety standards, and destination depth.',
-    icon: ShieldCheck,
-  },
-  {
-    title: '24/7 Support',
-    description: 'Real-time travel assistance before departure, in transit, and at every stay touchpoint.',
-    icon: Headphones,
-  },
-  {
-    title: 'Handpicked Tours',
-    description: 'Routes curated for pace, comfort, and memorable moments with less noise and better flow.',
-    icon: Compass,
-    className: 'is-wide',
-  },
-  {
-    title: 'Secure Payments',
-    description: 'Protected transactions with clear billing, verified vendors, and reliable booking confidence.',
-    icon: Smartphone,
   },
 ];
 
@@ -893,23 +890,139 @@ export const Home4: React.FC = () => {
 
       <section id="h4-choose-us" className="h4-story-section h4-story-section-tight h4-choose-section">
         <div className="h4-container">
-          <div className="h4-editorial-head h4-editorial-head-center h4-accent-head h4-choose-head">
+          <div className="h4-editorial-head h4-editorial-head-center h4-accent-head h4-intent-head">
             <OrbitGlyph className="h4-accent-glyphs" />
-            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title">Why Choose Us</h2>
-            <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle">
-              Trust-first travel planning with verified teams, clear value, and seamless execution across every journey stage.
+            <h2 className="h4-section-title h4-featured-gradient-title h4-accent-gradient-title h4-intent-title">
+              Why Choose Us
+            </h2>
+            <p className="h4-editorial-copy h4-editorial-copy-narrow h4-accent-subtitle h4-intent-subtitle">
+              Built for travelers who want premium planning, clear pricing, and dependable execution from first call
+              to final return.
             </p>
           </div>
-          <div className="h4-choose-grid">
-            {WHY_CHOOSE_US.map((item, index) => (
-              <RevealBlock key={item.title} delay={index * 70}>
-                <article className={`h4-choose-card${item.className ? ` ${item.className}` : ''}`}>
-                  <div className="h4-choose-icon"><item.icon size={18} /></div>
-                  <h3 className="h4-choose-title">{item.title}</h3>
-                  <p className="h4-choose-text">{item.description}</p>
-                </article>
-              </RevealBlock>
-            ))}
+          <div className="h4-intent-grid h4-intent-grid-legacy">
+            <RevealBlock className="h4-intent-tile h4-intent-photo-a" delay={20}>
+              <img
+                src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1400&q=80"
+                alt="Team in strategy discussion"
+                className="h4-card-image"
+                loading="lazy"
+                decoding="async"
+              />
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-dedication h4-reveal-copy" delay={60}>
+              <strong className="h4-intent-metric">100</strong>
+              <h3 className="h4-intent-tile-title">Dedication</h3>
+              <p className="h4-intent-tile-text">
+                We are committed to excellence and continuous improvement in every project.
+              </p>
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-mission h4-reveal-copy" delay={100}>
+              <strong className="h4-intent-metric">01</strong>
+              <h3 className="h4-intent-tile-title">Mission</h3>
+              <p className="h4-intent-tile-text">
+                To deliver innovative solutions that enhance everyday life through user-centric design.
+              </p>
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-roi h4-reveal-copy" delay={140}>
+              <strong className="h4-intent-metric">500</strong>
+              <h3 className="h4-intent-tile-title">ROI</h3>
+              <p className="h4-intent-tile-text">
+                Achieve measurable returns with proven strategy and strong operational execution.
+              </p>
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-brand-a" delay={180}>
+              <span aria-hidden="true">Bē</span>
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-brand-b" delay={210}>
+              <span aria-hidden="true">∞</span>
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-team h4-reveal-copy" delay={240}>
+              <strong className="h4-intent-metric">35</strong>
+              <h3 className="h4-intent-tile-title">Team members</h3>
+              <p className="h4-intent-tile-text">
+                Our team is committed to delivering exceptional results with unwavering dedication.
+              </p>
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-branch h4-reveal-copy" delay={280}>
+              <strong className="h4-intent-metric">7</strong>
+              <h3 className="h4-intent-tile-title">Office Branch</h3>
+            </RevealBlock>
+            <RevealBlock className="h4-intent-tile h4-intent-photo-b" delay={320}>
+              <img
+                src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80"
+                alt="Collaborative office workspace"
+                className="h4-card-image"
+                loading="lazy"
+                decoding="async"
+              />
+            </RevealBlock>
+          </div>
+          <div className="h4-intent-grid h4-intent-grid-modern">
+            <RevealBlock className="h4-intent-tile h4-intent-media-card h4-intent-card-concierge h4-reveal-copy" delay={30}>
+              <img
+                src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80"
+                alt="Dedicated travel concierge team at work"
+                className="h4-card-image"
+                loading="lazy"
+                decoding="async"
+              />
+              <div className="h4-intent-tile-body">
+                <h3 className="h4-intent-tile-title">Dedicated concierge team</h3>
+                <p className="h4-intent-tile-text">Real people planning every leg, stay, and transfer around your pace.</p>
+              </div>
+            </RevealBlock>
+
+            <RevealBlock className="h4-intent-tile h4-intent-card-trust h4-reveal-copy" delay={70}>
+              <strong className="h4-intent-metric">4.9</strong>
+              <h3 className="h4-intent-tile-title">Verified traveler rating</h3>
+              <p className="h4-intent-tile-text">
+                Consistent delivery across route planning, stays, and on-ground support.
+              </p>
+            </RevealBlock>
+
+            <RevealBlock className="h4-intent-tile h4-intent-card-pricing h4-reveal-copy" delay={110}>
+              <strong className="h4-intent-metric">0</strong>
+              <h3 className="h4-intent-tile-title">Hidden charges</h3>
+              <p className="h4-intent-tile-text">Transparent pricing with clear inclusions before you confirm.</p>
+            </RevealBlock>
+
+            <RevealBlock className="h4-intent-tile h4-intent-media-card h4-intent-card-video h4-reveal-copy" delay={150}>
+              <video
+                src="https://www.pexels.com/download/video/3129957/"
+                className="h4-card-image h4-intent-video"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+              />
+              <div className="h4-intent-tile-body">
+                <h3 className="h4-intent-tile-title">Cinematic itineraries</h3>
+                <p className="h4-intent-tile-text">Journeys designed for smooth flow, not rushed checklists.</p>
+              </div>
+            </RevealBlock>
+
+            <RevealBlock className="h4-intent-tile h4-intent-card-support h4-reveal-copy" delay={190}>
+              <strong className="h4-intent-metric">24/7</strong>
+              <h3 className="h4-intent-tile-title">On-trip support</h3>
+              <p className="h4-intent-tile-text">Live updates, fast re-routing, and direct help while you travel.</p>
+            </RevealBlock>
+
+            <RevealBlock className="h4-intent-tile h4-intent-media-card h4-intent-card-destinations h4-reveal-copy" delay={230}>
+              <img
+                src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1500&q=80"
+                alt="Scenic destination landscape"
+                className="h4-card-image"
+                loading="lazy"
+                decoding="async"
+              />
+              <div className="h4-intent-tile-body">
+                <strong className="h4-intent-metric">120+</strong>
+                <h3 className="h4-intent-tile-title">Handpicked destinations</h3>
+                <p className="h4-intent-tile-text">Only tested stays, trusted partners, and quality-first routes.</p>
+              </div>
+            </RevealBlock>
           </div>
         </div>
       </section>
@@ -1002,15 +1115,15 @@ export const Home4: React.FC = () => {
 
       <section className="h4-story-section h4-story-section-tight h4-gallery-section">
         <div className="h4-container">
-          <div className="h4-editorial-head h4-editorial-head-split">
-            <div className="h4-featured-intro">
+          <div className="h4-editorial-head h4-editorial-head-center h4-gallery-head">
+            <div className="h4-featured-intro h4-gallery-intro">
               <OrbitGlyph />
               <span className="h4-section-label">Gallery / Visual Showcase</span>
               <h2 className="h4-section-title h4-featured-gradient-title">Immersive travel visuals.</h2>
+              <p className="h4-editorial-copy h4-gallery-copy">
+                Masonry compositions, cinematic frames, and motion-oriented captures designed to preview journeys before they begin.
+              </p>
             </div>
-            <p className="h4-editorial-copy">
-              Masonry compositions, cinematic frames, and motion-oriented captures designed to preview journeys before they begin.
-            </p>
           </div>
           <div className="h4-gallery-grid">
             {VISUAL_SHOWCASE.map((item, index) => (
@@ -1019,21 +1132,36 @@ export const Home4: React.FC = () => {
                 delay={index * 70}
                 className={item.className ?? ''}
               >
-                <article className="h4-gallery-card">
-                  <div className="h4-gallery-media">
-                    <img
-                      src={item.image}
-                      alt=""
-                      className="h4-card-image"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <span className="h4-gallery-eyebrow">{item.label}</span>
-                    {item.mediaTag ? <span className="h4-gallery-media-tag">{item.mediaTag}</span> : null}
-                  </div>
-                  <div className="h4-gallery-body h4-reveal-copy">
-                    <h3 className="h4-gallery-title">{item.title}</h3>
-                    <p className="h4-gallery-caption">{item.description}</p>
+                <article className="h4-gallery-card h4-gallery-card-media-only">
+                  <div
+                    className="h4-gallery-media"
+                    style={
+                      item.aspectRatio
+                        ? ({ aspectRatio: item.aspectRatio } as React.CSSProperties)
+                        : undefined
+                    }
+                  >
+                    {item.mediaType === 'video' ? (
+                      <video
+                        src={item.mediaUrl}
+                        poster={item.poster}
+                        className="h4-card-image h4-gallery-video"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        controls
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img
+                        src={item.mediaUrl}
+                        alt=""
+                        className="h4-card-image"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    )}
                   </div>
                 </article>
               </RevealBlock>
