@@ -8,6 +8,7 @@ import {
     FileText,
     Globe2,
     Heart,
+    Home,
     LayoutDashboard,
     Loader2,
     MessageSquare,
@@ -386,10 +387,10 @@ export const RoleDashboard: React.FC = () => {
                 .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
         }
         return [
+            { id: 'home', label: 'Home', icon: Home, to: '/' },
+            { id: 'explore', label: 'Explore', icon: Search, to: '/explore' },
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview' },
-            { id: 'explore', label: 'Explore', icon: Compass, section: 'explore' },
-            { id: 'bookings', label: 'Bookings', icon: ClipboardList, section: 'bookings', countKey: 'bookings' },
-            { id: 'favs', label: 'Favs', icon: Heart, section: 'favorites', countKey: 'favorites' },
+            { id: 'bookings', label: 'Bookings', icon: ClipboardList, section: 'bookings' },
             { id: 'profile', label: 'Profile', icon: UserCircle2, to: '/profile' },
         ];
     }, [effectiveRole, navItems]);

@@ -23,7 +23,7 @@ import {
 } from '../lib/platform';
 import './auth.css';
 
-const TOURIST_EXPLORE_PATH = '/?tab=tours';
+const TOURIST_EXPLORE_PATH = '/explore';
 
 const normalizeAppUrl = (rawUrl?: string) => {
     if (!rawUrl) return '';

@@ -1,7 +1,8 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+﻿import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Compass,
+  ArrowUpRight,
   Hotel,
   Instagram,
   Landmark,
@@ -109,7 +110,7 @@ const SLIDES = [
       'From panoramic suites to guided ascent days, each stay is designed for comfort, perspective, and quiet grandeur.',
   },
   {
-    image: '/images/home4/city-1600.jpg',
+    image: '/images/home4/city.jpg',
     name: 'CITIES',
     description:
       'Design hotels, private tables, and cultured city energy packaged into precise itineraries for travelers who move with intent.',
@@ -129,7 +130,7 @@ const SLIDES = [
 ];
 
 const STATS = [
-  { value: '20+', label: 'Restaurants' },
+  { value: '20+', label: 'Tours' },
   { value: '8+', label: 'Services' },
   { value: '12+', label: 'Brands' },
   { value: '22+', label: 'Countries' },
@@ -331,6 +332,15 @@ const WORLD_MAP_POINTS: Array<{
     country: 'France',
     markerX: 49.8,
     markerY: 33.4,
+    cardX: 42.2,
+    cardY: 23.4,
+    preview: {
+      title: 'City Icons',
+      description: 'Museum districts, heritage boulevards, and polished boutique stays.',
+      image: '/images/home4/city.jpg',
+      rating: '4.7',
+      travelers: '2.3k',
+    },
   },
   {
     id: 'middle-east',
@@ -390,6 +400,15 @@ const WORLD_MAP_POINTS: Array<{
     country: 'Japan',
     markerX: 83.1,
     markerY: 41.4,
+    cardX: 88.2,
+    cardY: 31.6,
+    preview: {
+      title: 'Temple Routes',
+      description: 'Lantern-lit lanes, heritage temples, and seasonal cultural journeys.',
+      image: '/images/temple2.jpg',
+      rating: '4.8',
+      travelers: '2.0k',
+    },
   },
   {
     id: 'australia',
@@ -398,6 +417,15 @@ const WORLD_MAP_POINTS: Array<{
     country: 'Australia',
     markerX: 80.4,
     markerY: 76.2,
+    cardX: 74.6,
+    cardY: 66.4,
+    preview: {
+      title: 'Coastal Drive',
+      description: 'Ocean roads, skyline bays, and private resort weekends by the sea.',
+      image: '/images/mandarmoni.jpg',
+      rating: '4.7',
+      travelers: '1.6k',
+    },
   },
   {
     id: 'africa',
@@ -406,8 +434,47 @@ const WORLD_MAP_POINTS: Array<{
     country: 'Morocco',
     markerX: 53.9,
     markerY: 50.6,
+    cardX: 45.1,
+    cardY: 60.2,
+    preview: {
+      title: 'Desert Heritage',
+      description: 'Courtyard riads, medina craft routes, and atlas-view stays.',
+      image: '/images/rajsthan1.jpg',
+      rating: '4.6',
+      travelers: '1.4k',
+    },
   },
 ];
+
+const WORLD_MAP_CONNECTIONS: Array<[string, string]> = [
+  ['north-america', 'south-america'],
+  ['north-america', 'europe'],
+  ['europe', 'middle-east'],
+  ['middle-east', 'africa'],
+  ['middle-east', 'india'],
+  ['india', 'southeast-asia'],
+  ['southeast-asia', 'japan'],
+  ['southeast-asia', 'australia'],
+  ['africa', 'south-america'],
+];
+
+const MAP_VIEWBOX_WIDTH = 1200;
+const MAP_VIEWBOX_HEIGHT = 560;
+
+const getMapRoutePath = (
+  from: { markerX: number; markerY: number },
+  to: { markerX: number; markerY: number }
+) => {
+  const startX = (from.markerX / 100) * MAP_VIEWBOX_WIDTH;
+  const startY = (from.markerY / 100) * MAP_VIEWBOX_HEIGHT;
+  const endX = (to.markerX / 100) * MAP_VIEWBOX_WIDTH;
+  const endY = (to.markerY / 100) * MAP_VIEWBOX_HEIGHT;
+  const midX = (startX + endX) / 2;
+  const arcLift = Math.max(22, Math.min(72, Math.abs(endX - startX) * 0.12));
+  const controlY = Math.min(startY, endY) - arcLift;
+
+  return `M${startX.toFixed(1)} ${startY.toFixed(1)} Q${midX.toFixed(1)} ${controlY.toFixed(1)} ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+};
 
 const RevealBlock: React.FC<RevealBlockProps> = ({ children, className = '', delay = 0 }) => {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -540,29 +607,16 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
   );
 };
 
-/* â”€â”€â”€ Slide Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) => {
   return (
     <div className="h4-slide-card">
-      <svg
-        className="h4-slide-card-shape"
-        viewBox="0 0 430 280"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-<path
-          className="h4-slide-card-shape-fill"
-          d="M34 1H396C414 1 429 16 429 34V171C429 190 414 205 396 205H304C283 205 266 222 266 243V246C266 264 251 279 233 279H34C16 279 1 264 1 246V34C1 16 16 1 34 1Z"
-        />
-      </svg>
       <div className="h4-slide-card-copy">
-        <span className="h4-slide-card-kicker">Curated stay</span>
         <h3 className="h4-slide-card-title">{title}</h3>
         <p className="h4-slide-card-text">{text}</p>
       </div>
-      <div className="h4-slide-card-actions">
-        <button className="h4-slide-card-explore">Explore</button>
-      </div>
+      <Link to="/auth" className="h4-slide-card-cta" aria-label="Explore and login">
+        <ArrowUpRight size={28} strokeWidth={2.2} />
+      </Link>
     </div>
   );
 };
@@ -760,8 +814,10 @@ export const Home4: React.FC = () => {
           ))}
         </div>
         <div className={`h4-slide h4-showcase-slide${showcaseVisible ? ' is-visible' : ''}`}>
-          <p key={`desc-${activeSlide.name}`} className="h4-slide-desc">{activeSlide.description}</p>
-          <SlideCard key={activeSlide.name} title={activeSlide.cardTitle} text={activeSlide.cardText} />
+          <div key={`feature-${activeSlide.name}`} className="h4-slide-feature-row">
+            <SlideCard title={activeSlide.cardTitle} text={activeSlide.cardText} />
+            <p className="h4-slide-desc">{activeSlide.description}</p>
+          </div>
           <h2 key={`title-${activeSlide.name}`} className="h4-slide-name">{activeSlide.name}</h2>
           <div key={`stats-${activeSlide.name}`} className="h4-slide-stats">
             {STATS.map((s) => (
@@ -1036,7 +1092,7 @@ export const Home4: React.FC = () => {
         </div>
         <div className="h4-container">
           <RevealBlock className="h4-editorial-head h4-editorial-head-center h4-reveal-copy h4-world-head">
-            <h2 className="h4-section-title h4-world-title">The TBP Map</h2>
+            <h2 className="h4-section-title h4-world-title h4-featured-gradient-title">The TBP Map</h2>
             <p className="h4-editorial-copy h4-editorial-copy-narrow h4-world-subtitle">
               Explore the World Without Limits
             </p>
@@ -1047,15 +1103,29 @@ export const Home4: React.FC = () => {
               <div className="h4-world-grid" aria-hidden="true" />
               <div className="h4-world-paper-grain" aria-hidden="true" />
               <div className="h4-world-map-art" aria-hidden="true">
-                <img src="/images/home4/tbp-map-1920.png" alt="" loading="lazy" decoding="async" />
+                <img src="/images/home4/tbp-map.png" alt="" loading="lazy" decoding="async" />
               </div>
 
-              <svg className="h4-world-routes" viewBox="0 0 1200 560" role="img" aria-label="Interactive destination map">
-                <path className="h4-world-route h4-world-route-a" d="M206 184C335 108 507 105 600 186" />
-                <path className="h4-world-route h4-world-route-b" d="M600 186C666 214 742 246 798 307" />
-                <path className="h4-world-route h4-world-route-c" d="M534 255C580 250 635 249 699 271" />
-                <path className="h4-world-route h4-world-route-d" d="M818 232C762 213 702 198 639 188" />
-                <path className="h4-world-route h4-world-route-e" d="M214 184C257 293 286 385 322 428" />
+              <svg
+                className="h4-world-routes"
+                viewBox={`0 0 ${MAP_VIEWBOX_WIDTH} ${MAP_VIEWBOX_HEIGHT}`}
+                role="img"
+                aria-label="Interactive destination map"
+              >
+                {WORLD_MAP_CONNECTIONS.map(([fromId, toId], index) => {
+                  const from = WORLD_MAP_POINTS.find((item) => item.id === fromId);
+                  const to = WORLD_MAP_POINTS.find((item) => item.id === toId);
+                  if (!from || !to) return null;
+
+                  return (
+                    <path
+                      key={`${fromId}-${toId}`}
+                      className="h4-world-route"
+                      d={getMapRoutePath(from, to)}
+                      style={{ '--h4-route-delay': `${index * 0.45}s` } as React.CSSProperties}
+                    />
+                  );
+                })}
               </svg>
 
               <div className="h4-world-hotspots">
@@ -1067,12 +1137,29 @@ export const Home4: React.FC = () => {
                       {
                         '--h4-hotspot-x': `${item.markerX}%`,
                         '--h4-hotspot-y': `${item.markerY}%`,
+                        '--h4-card-x': `${item.cardX ?? Math.min(90, item.markerX + 7)}%`,
+                        '--h4-card-y': `${item.cardY ?? Math.max(12, item.markerY - 8)}%`,
                       } as React.CSSProperties
                     }
                   >
                     <button type="button" className="h4-world-pin" aria-label={`View ${item.region}: ${item.city}, ${item.country}`}>
                       <span className="h4-world-pin-core" />
                     </button>
+                    {item.preview ? (
+                      <article className="h4-world-preview">
+                        <div className="h4-world-preview-media" style={{ backgroundImage: `url('${item.preview.image}')` }} />
+                        <div className="h4-world-preview-body">
+                          <strong className="h4-world-preview-place">
+                            {item.preview.title} · {item.city}
+                          </strong>
+                          <p className="h4-world-preview-text">{item.preview.description}</p>
+                          <div className="h4-world-preview-meta">
+                            <span>★ {item.preview.rating}</span>
+                            <span>{item.preview.travelers} travelers</span>
+                          </div>
+                        </div>
+                      </article>
+                    ) : null}
                   </div>
                 ))}
               </div>

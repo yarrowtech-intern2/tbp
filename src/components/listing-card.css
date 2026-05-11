@@ -2,30 +2,29 @@
   background: var(--surface-main);
   border: 1px solid color-mix(in srgb, var(--border-light) 90%, transparent);
   border-radius: 24px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   min-height: 100%;
   overflow: hidden;
   position: relative;
-  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.34s ease;
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.34s ease;
 }
 
 .listing-card:hover,
 .listing-card:focus-within {
-  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.14);
   transform: translateY(-3px);
 }
 
 :root[data-theme='dark'] .listing-card {
   background: #050505;
   border-color: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: none;
 }
 
 :root[data-theme='dark'] .listing-card:hover,
 :root[data-theme='dark'] .listing-card:focus-within {
-  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.62);
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
 .listing-card-media {
@@ -120,12 +119,11 @@
 }
 
 .listing-card-chip {
-  color: #ffffff;
+  color: #111111;
   font-family: 'Outfit', sans-serif;
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.46);
   text-transform: uppercase;
 }
 
@@ -374,12 +372,11 @@
 
 .listing-card.is-booked {
   border: 3px solid color-mix(in srgb, #22c55e 82%, #ffffff 18%);
-  box-shadow: 0 20px 48px color-mix(in srgb, #22c55e 26%, rgba(15, 23, 42, 0.2));
 }
 
 :root[data-theme='dark'] .listing-card.is-booked {
   border-color: color-mix(in srgb, #22c55e 86%, rgba(255, 255, 255, 0.14));
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.56), 0 0 0 2px rgba(34, 197, 94, 0.42) inset;
+  box-shadow: none;
 }
 
 .listing-card.is-booked .listing-card-media::after {
@@ -404,7 +401,7 @@
   }
 
   .listing-card-media {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 4 / 2.9;
   }
 
   .listing-card-title-static-wrap,
@@ -417,30 +414,32 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px;
+    gap: 6px;
+    padding: 8px 8px 10px;
   }
 
   .listing-card-body .listing-card-title,
   .listing-card-mobile-content .listing-card-title {
     color: var(--text-main);
-    font-size: 1.1rem;
+    font-size: 0.88rem;
     font-weight: 720;
+    line-height: 1.12;
   }
 
   .listing-card-body .listing-card-sub,
   .listing-card-mobile-content .listing-card-sub {
-    color: var(--text-muted);
+    display: none;
   }
 
-  .listing-card-body .listing-card-meta-item,
-  .listing-card-mobile-content .listing-card-meta-item {
-    color: var(--text-muted);
+  .listing-card-body .listing-card-meta,
+  .listing-card-mobile-content .listing-card-meta {
+    display: none;
   }
 
   .listing-card-body .listing-card-price,
   .listing-card-mobile-content .listing-card-price {
     color: var(--text-main);
+    font-size: 0.68rem;
   }
 
   .listing-card-body .listing-btn-book,
@@ -449,9 +448,13 @@
     color: var(--bg-main);
   }
 
+  .listing-card-body .listing-btn-book,
+  .listing-card-mobile-content .listing-btn-book,
   .listing-card-body .listing-btn-booked,
   .listing-card-mobile-content .listing-btn-booked {
-    min-height: 34px;
+    min-height: 28px;
+    padding: 6px 9px;
+    font-size: 0.62rem;
   }
 
   :root[data-theme='dark'] .listing-card-body .listing-btn-book,

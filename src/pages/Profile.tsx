@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Building2, Calendar, Camera, Check, ChevronLeft, ClipboardList, Compass, Globe, Heart, Languages,
+    Building2, Calendar, Camera, Check, ChevronLeft, ClipboardList, Globe, Home, Languages,
     LayoutDashboard, Loader2, LogOut, MapPin, MessageSquare, Moon, Package, Phone, RefreshCcw, Shield, ShieldAlert, Sparkles,
-    Sun, UserCircle2, Users, X,
+    Search, Sun, UserCircle2, Users, X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -478,10 +478,10 @@ export const Profile: React.FC = () => {
             ];
         }
         return [
+            { id: 'home', to: '/', icon: Home },
+            { id: 'explore', to: '/explore', icon: Search },
             { id: 'dashboard', to: '/dashboard/tourist', icon: LayoutDashboard },
-            { id: 'explore', to: '/', icon: Compass },
             { id: 'bookings', to: '/dashboard/tourist?section=bookings', icon: ClipboardList },
-            { id: 'favs', to: '/dashboard/tourist?section=favorites', icon: Heart },
             { id: 'profile', to: '/profile', icon: UserCircle2 },
         ];
     }, [effectiveRole]);

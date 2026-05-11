@@ -8,6 +8,7 @@ import { normalizeRoleValue } from './lib/platform';
 
 const Home4 = lazy(async () => ({ default: (await import('./pages/Home4')).Home4 }));
 const DashboardHome = lazy(async () => ({ default: (await import('./pages/DashboardHome')).DashboardHome }));
+const TouristExplorePage = lazy(async () => ({ default: (await import('./pages/TouristExplorePage')).TouristExplorePage }));
 const RoleDashboard = lazy(async () => ({ default: (await import('./pages/RoleDashboard')).RoleDashboard }));
 const Auth = lazy(async () => ({ default: (await import('./pages/Auth')).Auth }));
 const DestinationDetail = lazy(async () => ({ default: (await import('./pages/DestinationDetail')).DestinationDetail }));
@@ -23,9 +24,9 @@ const Messages = lazy(async () => ({ default: (await import('./pages/Messages'))
 const Notifications = lazy(async () => ({ default: (await import('./pages/Notifications')).Notifications }));
 
 const APP_HOME_PATH = '/';
-const DASHBOARD_TOURS_PATH = '/?tab=tours';
-const DASHBOARD_ACTIVITIES_PATH = '/?tab=activities';
-const DASHBOARD_EVENTS_PATH = '/?tab=events';
+const DASHBOARD_TOURS_PATH = '/explore?tab=tours';
+const DASHBOARD_ACTIVITIES_PATH = '/explore?tab=activities';
+const DASHBOARD_EVENTS_PATH = '/explore?tab=guides';
 const SHOW_SUPPORT_CHATBOT = false;
 
 const resolveUserRole = (user: { user_metadata?: Record<string, unknown> } | null, profileRole?: string | null) => {
@@ -185,6 +186,7 @@ function App() {
             <Route path="/terms" element={<TermsAndConditions />} />
             <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
+            <Route path="/explore" element={<TouristOnlyRoute><TouristExplorePage /></TouristOnlyRoute>} />
             <Route path="/activities" element={<TouristOnlyRoute><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
             <Route path="/tours" element={<TouristOnlyRoute><Navigate to={DASHBOARD_TOURS_PATH} replace /></TouristOnlyRoute>} />
             <Route path="/guides" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />

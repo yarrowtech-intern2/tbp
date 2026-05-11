@@ -40,6 +40,24 @@ export interface RazorpayCheckoutOptions {
     handler: (response: RazorpayPaymentSuccessResponse) => void;
 }
 
+export interface RazorpayNativeCheckoutOptions {
+    key: string;
+    amount: number;
+    currency: string;
+    name: string;
+    description?: string;
+    order_id: string;
+    prefill?: {
+        name?: string;
+        email?: string;
+        contact?: string;
+    };
+    notes?: Record<string, string>;
+    theme?: {
+        color?: string;
+    };
+}
+
 export interface RazorpayInstance {
     open(): void;
     on(
@@ -52,8 +70,22 @@ export interface RazorpayConstructor {
     new (options: RazorpayCheckoutOptions): RazorpayInstance;
 }
 
+export interface RazorpayNativeCheckout {
+    open(
+        options: RazorpayNativeCheckoutOptions,
+        successCallback: (response: RazorpayPaymentSuccessResponse) => void,
+        errorCallback: (response: RazorpayPaymentFailedResponse | { description?: string; reason?: string; code?: string }) => void
+    ): void;
+}
+
 declare global {
     interface Window {
         Razorpay?: RazorpayConstructor;
+        RazorpayCheckout?: RazorpayNativeCheckout;
+        cordova?: {
+            plugins?: {
+                RazorpayCheckout?: RazorpayNativeCheckout;
+            };
+        };
     }
 }
