@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { Checkout } from 'capacitor-razorpay';
 import { supabase } from './supabase';
 import {
     FunctionsFetchError,
@@ -7,8 +8,6 @@ import {
 } from '@supabase/supabase-js';
 import type {
     RazorpayCheckoutOptions,
-    RazorpayNativeCheckout,
-    RazorpayNativeCheckoutOptions,
     RazorpayPaymentSuccessResponse,
 } from '../types/razorpay';
 import type { ListingType } from './platform';
@@ -47,11 +46,6 @@ const isNativeRuntime = (): boolean => {
     } catch {
         return false;
     }
-};
-
-const getNativeRazorpayCheckout = (): RazorpayNativeCheckout | null => {
-    if (typeof window === 'undefined') return null;
-    return window.RazorpayCheckout || window.cordova?.plugins?.RazorpayCheckout || null;
 };
 
 export interface BookingPaymentDraft {
@@ -199,9 +193,13 @@ interface OpenCheckoutInput {
     prefill?: RazorpayCheckoutPrefill;
 }
 
-const buildNativeCheckoutOptions = (input: OpenCheckoutInput): RazorpayNativeCheckoutOptions => ({
+interface RazorpayNativePluginResult {
+    response?: RazorpayPaymentSuccessResponse | string | null;
+}
+
+const buildNativeCheckoutOptions = (input: OpenCheckoutInput) => ({
     key: input.order.key_id,
-    amount: input.order.amount,
+    amount: String(input.order.amount),
     currency: input.order.currency,
     name: 'The Better Pass',
     description: `Booking for ${input.booking.listing_title}`,
@@ -215,54 +213,69 @@ const buildNativeCheckoutOptions = (input: OpenCheckoutInput): RazorpayNativeChe
     theme: { color: '#1769ff' },
 });
 
+const normalizeNativePaymentSuccess = (value: unknown): RazorpayPaymentSuccessResponse | null => {
+    const candidate = typeof value === 'string'
+        ? (() => {
+            try {
+                return JSON.parse(value) as unknown;
+            } catch {
+                return null;
+            }
+        })()
+        : value;
+
+    if (!candidate || typeof candidate !== 'object') return null;
+
+    const payment = candidate as Partial<RazorpayPaymentSuccessResponse>;
+    if (
+        typeof payment.razorpay_order_id === 'string'
+        && typeof payment.razorpay_payment_id === 'string'
+        && typeof payment.razorpay_signature === 'string'
+    ) {
+        return {
+            razorpay_order_id: payment.razorpay_order_id,
+            razorpay_payment_id: payment.razorpay_payment_id,
+            razorpay_signature: payment.razorpay_signature,
+        };
+    }
+
+    return null;
+};
+
+const getNativeCheckoutErrorMessage = (error: unknown): string => {
+    if (error instanceof Error && error.message.trim()) return error.message.trim();
+
+    if (typeof error === 'string') {
+        try {
+            const parsed = JSON.parse(error) as { description?: unknown; reason?: unknown };
+            if (typeof parsed.description === 'string' && parsed.description.trim()) return parsed.description.trim();
+            if (typeof parsed.reason === 'string' && parsed.reason.trim()) return parsed.reason.trim();
+        } catch {
+            if (error.trim()) return error.trim();
+        }
+    }
+
+    if (error && typeof error === 'object') {
+        const details = error as { description?: unknown; reason?: unknown; message?: unknown };
+        if (typeof details.description === 'string' && details.description.trim()) return details.description.trim();
+        if (typeof details.reason === 'string' && details.reason.trim()) return details.reason.trim();
+        if (typeof details.message === 'string' && details.message.trim()) return details.message.trim();
+    }
+
+    return 'Payment failed.';
+};
+
 const openNativeRazorpayCheckout = async (
     input: OpenCheckoutInput
 ): Promise<RazorpayPaymentSuccessResponse> => {
-    const checkout = getNativeRazorpayCheckout();
-    if (!checkout) {
-        throw new Error(
-            'This app build does not include the native Razorpay checkout plugin. Rebuild the Capacitor app with the Razorpay plugin installed.'
-        );
+    try {
+        const result = await Checkout.open(buildNativeCheckoutOptions(input)) as RazorpayNativePluginResult;
+        const payment = normalizeNativePaymentSuccess(result?.response);
+        if (payment) return payment;
+        throw new Error('Native Razorpay checkout returned an incomplete payment response.');
+    } catch (error) {
+        throw new Error(getNativeCheckoutErrorMessage(error));
     }
-
-    return new Promise<RazorpayPaymentSuccessResponse>((resolve, reject) => {
-        let settled = false;
-        const safeResolve = (value: RazorpayPaymentSuccessResponse) => {
-            if (settled) return;
-            settled = true;
-            resolve(value);
-        };
-        const safeReject = (error: Error) => {
-            if (settled) return;
-            settled = true;
-            reject(error);
-        };
-
-        checkout.open(
-            buildNativeCheckoutOptions(input),
-            (response) => {
-                if (
-                    response?.razorpay_order_id
-                    && response?.razorpay_payment_id
-                    && response?.razorpay_signature
-                ) {
-                    safeResolve(response);
-                    return;
-                }
-                safeReject(new Error('Native Razorpay checkout returned an incomplete payment response.'));
-            },
-            (response) => {
-                const errorDetails = 'error' in response ? response.error : undefined;
-                const description =
-                    errorDetails?.description
-                    || errorDetails?.reason
-                    || ('description' in response ? response.description : undefined)
-                    || ('reason' in response ? response.reason : undefined)
-                    || 'Payment failed.';
-                safeReject(new Error(description));
-            }
-        );
-    });
 };
 
 export const openRazorpayCheckout = async (
