@@ -48,6 +48,14 @@ const isNativeRuntime = (): boolean => {
     }
 };
 
+const isNativeRazorpayAvailable = (): boolean => {
+    try {
+        return Capacitor.isPluginAvailable('Checkout');
+    } catch {
+        return false;
+    }
+};
+
 export interface BookingPaymentDraft {
     listing_id: string;
     listing_type: ListingType;
@@ -281,7 +289,7 @@ const openNativeRazorpayCheckout = async (
 export const openRazorpayCheckout = async (
     input: OpenCheckoutInput
 ): Promise<RazorpayPaymentSuccessResponse> => {
-    if (isNativeRuntime()) {
+    if (isNativeRuntime() && isNativeRazorpayAvailable()) {
         return openNativeRazorpayCheckout(input);
     }
 
