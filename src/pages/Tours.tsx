@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTours } from '../lib/destinations';
+import { getListingReviewSummaryMap, getTours, type ListingReviewSummary } from '../lib/destinations';
 import { DestinationCard } from '../components/DestinationCard';
 import { Search, Loader2 } from 'lucide-react';
 import type { Destination } from '../lib/destinations';
@@ -12,12 +12,20 @@ export const Tours: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const [reviewSummaryById, setReviewSummaryById] = useState<Record<string, ListingReviewSummary>>({});
 
     useEffect(() => {
-        getTours().then((data: Destination[]) => {
-            setTours(data);
-            setLoading(false);
-        });
+        const load = async () => {
+            try {
+                const data = await getTours();
+                setTours(data);
+                const summary = await getListingReviewSummaryMap(data.map((item) => item.id));
+                setReviewSummaryById(summary);
+            } finally {
+                setLoading(false);
+            }
+        };
+        void load();
     }, []);
 
     const filteredTours = tours.filter(dest => {
@@ -87,19 +95,24 @@ export const Tours: React.FC = () => {
                     </div>
                 ) : filteredTours.length > 0 ? (
                     <div className="grid grid-cols-4 gap-6">
-                        {filteredTours.map(tour => (
-                            <DestinationCard
-                                key={tour.id}
-                                id={tour.id}
-                                title={tour.title}
-                                location={tour.location}
-                                price={tour.price}
-                                image_url={tour.image_url}
-                                description={tour.description}
-                                category={tour.category}
-                                listingType="tour"
-                            />
-                        ))}
+                        {filteredTours.map(tour => {
+                            const summary = reviewSummaryById[String(tour.id)];
+                            return (
+                                <DestinationCard
+                                    key={tour.id}
+                                    id={tour.id}
+                                    title={tour.title}
+                                    location={tour.location}
+                                    price={tour.price}
+                                    rating={summary?.average_rating ?? undefined}
+                                    reviewCount={summary?.review_count || 0}
+                                    image_url={tour.image_url}
+                                    description={tour.description}
+                                    category={tour.category}
+                                    listingType="tour"
+                                />
+                            );
+                        })}
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '100px 0', background: 'var(--surface-main)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>

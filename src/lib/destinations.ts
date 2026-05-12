@@ -179,6 +179,23 @@ export interface PostBoostPaymentRecord {
     created_at?: string | null;
 }
 
+export interface ListingReviewRecord {
+    id: string;
+    listing_id: string;
+    user_id: string;
+    rating: number;
+    created_at?: string | null;
+    updated_at?: string | null;
+    reviewer_name?: string | null;
+    reviewer_avatar_url?: string | null;
+}
+
+export interface ListingReviewSummary {
+    listing_id: string;
+    average_rating: number | null;
+    review_count: number;
+}
+
 export interface FavoriteListingRecord {
     favorite_id: string;
     listing_id: string;
@@ -462,13 +479,22 @@ const extractCheckConstraintName = (message: string | undefined): string | null 
 
 type FavoriteIdColumn = 'listing_id' | 'activity_id' | 'destination_id' | 'post_id';
 type FavoriteTypeColumn = 'listing_type' | 'type';
+type ReviewListingIdColumn = 'post_id' | 'listing_id' | 'destination_id' | 'activity_id' | 'tour_id' | 'event_id' | 'guide_id' | 'package_id';
+type ReviewUserIdColumn = 'user_id' | 'reviewer_id' | 'tourist_user_id' | 'traveler_user_id' | 'customer_user_id';
+type ReviewRatingColumn = 'rating' | 'stars' | 'star_rating' | 'score';
 
 const FAVORITE_ID_COLUMNS: FavoriteIdColumn[] = ['listing_id', 'activity_id', 'destination_id', 'post_id'];
 const FAVORITE_TYPE_COLUMNS: FavoriteTypeColumn[] = ['listing_type', 'type'];
+const REVIEW_LISTING_ID_COLUMNS: ReviewListingIdColumn[] = ['post_id', 'listing_id', 'destination_id', 'activity_id', 'tour_id', 'event_id', 'guide_id', 'package_id'];
+const REVIEW_USER_ID_COLUMNS: ReviewUserIdColumn[] = ['user_id', 'reviewer_id', 'tourist_user_id', 'traveler_user_id', 'customer_user_id'];
+const REVIEW_RATING_COLUMNS: ReviewRatingColumn[] = ['rating', 'stars', 'star_rating', 'score'];
 
 let favoriteIdColumnHint: FavoriteIdColumn = 'listing_id';
 let favoriteTypeColumnHint: FavoriteTypeColumn | null = 'listing_type';
 let favoriteGuideTypeHint: 'guide' | 'event' = 'guide';
+let reviewListingIdColumnHint: ReviewListingIdColumn = 'post_id';
+let reviewUserIdColumnHint: ReviewUserIdColumn = 'user_id';
+let reviewRatingColumnHint: ReviewRatingColumn = 'rating';
 
 const uniqueValues = <T,>(values: T[]): T[] => Array.from(new Set(values));
 
@@ -481,6 +507,21 @@ const getOrderedFavoriteTypeColumns = (): Array<FavoriteTypeColumn | null> => un
     favoriteTypeColumnHint,
     ...FAVORITE_TYPE_COLUMNS,
     null,
+]);
+
+const getOrderedReviewListingIdColumns = (): ReviewListingIdColumn[] => uniqueValues([
+    reviewListingIdColumnHint,
+    ...REVIEW_LISTING_ID_COLUMNS,
+]);
+
+const getOrderedReviewUserIdColumns = (): ReviewUserIdColumn[] => uniqueValues([
+    reviewUserIdColumnHint,
+    ...REVIEW_USER_ID_COLUMNS,
+]);
+
+const getOrderedReviewRatingColumns = (): ReviewRatingColumn[] => uniqueValues([
+    reviewRatingColumnHint,
+    ...REVIEW_RATING_COLUMNS,
 ]);
 
 const getFavoriteTypeValues = (listingType: ListingType): string[] => {
@@ -522,6 +563,16 @@ const pickFavoriteListingType = (row: Record<string, unknown>): ListingType => n
 
 const normalizeFavoriteLookupId = (value: string | number): string => String(value).trim();
 
+const normalizeLooseLookupId = (value: unknown): string => {
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    const lowered = trimmed.toLowerCase();
+    if (lowered === 'undefined' || lowered === 'null') return '';
+    return trimmed;
+};
+
 const mapFavoriteRow = (row: Record<string, unknown>): FavoriteRecord | null => {
     const listingId = pickFavoriteListingId(row);
     const userId = typeof row.user_id === 'string' ? row.user_id : '';
@@ -558,6 +609,161 @@ const rememberFavoriteSchemaHints = (
     if (typeValue === 'guide' || typeValue === 'event') {
         favoriteGuideTypeHint = typeValue;
     }
+};
+
+const rememberReviewSchemaHints = (
+    listingIdColumn?: ReviewListingIdColumn | null,
+    userColumn?: ReviewUserIdColumn | null,
+    ratingColumn?: ReviewRatingColumn | null,
+) => {
+    if (listingIdColumn) reviewListingIdColumnHint = listingIdColumn;
+    if (userColumn) reviewUserIdColumnHint = userColumn;
+    if (ratingColumn) reviewRatingColumnHint = ratingColumn;
+};
+
+const findPresentReviewListingIdColumn = (row: Record<string, unknown>): ReviewListingIdColumn | null => (
+    REVIEW_LISTING_ID_COLUMNS.find((column) => normalizeLooseLookupId(row[column]).length > 0) || null
+);
+
+const findPresentReviewUserColumn = (row: Record<string, unknown>): ReviewUserIdColumn | null => (
+    REVIEW_USER_ID_COLUMNS.find((column) => normalizeLooseLookupId(row[column]).length > 0) || null
+);
+
+const findPresentReviewRatingColumn = (row: Record<string, unknown>): ReviewRatingColumn | null => (
+    REVIEW_RATING_COLUMNS.find((column) => {
+        const raw = row[column];
+        const parsed = typeof raw === 'number' ? raw : Number(raw);
+        return Number.isFinite(parsed);
+    }) || null
+);
+
+const pickReviewListingId = (row: Record<string, unknown>): string | null => {
+    const column = findPresentReviewListingIdColumn(row);
+    if (!column) return null;
+    const value = normalizeLooseLookupId(row[column]);
+    return value || null;
+};
+
+const pickReviewUserId = (row: Record<string, unknown>): string | null => {
+    const column = findPresentReviewUserColumn(row);
+    if (!column) return null;
+    const value = normalizeLooseLookupId(row[column]);
+    return value || null;
+};
+
+const pickReviewRating = (row: Record<string, unknown>): number | null => {
+    const column = findPresentReviewRatingColumn(row);
+    if (!column) return null;
+    const raw = row[column];
+    const parsed = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isFinite(parsed)) return null;
+    return Math.min(5, Math.max(1, Math.round(parsed)));
+};
+
+const mapListingReviewRow = (
+    row: Record<string, unknown>,
+    profileMap?: Map<string, Pick<Profile, 'full_name' | 'profile_image_url'>>
+): ListingReviewRecord | null => {
+    const id = normalizeLooseLookupId(row.id);
+    const listingId = pickReviewListingId(row);
+    const userId = pickReviewUserId(row);
+    const rating = pickReviewRating(row);
+    if (!id || !listingId || !userId || rating === null) return null;
+
+    const profile = profileMap?.get(userId);
+    rememberReviewSchemaHints(
+        findPresentReviewListingIdColumn(row),
+        findPresentReviewUserColumn(row),
+        findPresentReviewRatingColumn(row),
+    );
+
+    return {
+        id,
+        listing_id: listingId,
+        user_id: userId,
+        rating,
+        created_at: typeof row.created_at === 'string' ? row.created_at : null,
+        updated_at: typeof row.updated_at === 'string'
+            ? row.updated_at
+            : typeof row.edited_at === 'string'
+                ? row.edited_at
+                : null,
+        reviewer_name: profile?.full_name || null,
+        reviewer_avatar_url: profile?.profile_image_url || null,
+    };
+};
+
+const fetchReviewRowsForListingIds = async (listingIds: string[]): Promise<Record<string, unknown>[]> => {
+    const normalizedIds = Array.from(new Set(listingIds.map((value) => normalizeLooseLookupId(value)).filter(Boolean)));
+    if (normalizedIds.length === 0) return [];
+
+    for (const column of getOrderedReviewListingIdColumns()) {
+        let result = await supabase
+            .from('reviews_posts')
+            .select('*')
+            .in(column, normalizedIds);
+
+        if (result.error && isInvalidUuidInputError(result.error)) {
+            const uuidOnlyIds = normalizedIds.filter((value) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value));
+            if (uuidOnlyIds.length === 0) {
+                continue;
+            }
+            result = await supabase
+                .from('reviews_posts')
+                .select('*')
+                .in(column, uuidOnlyIds);
+        }
+
+        if (!result.error) {
+            rememberReviewSchemaHints(column, null, null);
+            return safeArray(result.data as Record<string, unknown>[]);
+        }
+
+        if (isMissingRelationNamedError(result.error, 'reviews_posts')) {
+            return [];
+        }
+
+        if (isMissingSpecificColumnError(result.error, column) || isMissingColumnError(result.error)) {
+            continue;
+        }
+
+        console.error('Error fetching listing reviews:', result.error);
+        return [];
+    }
+
+    return [];
+};
+
+const hydrateReviewProfiles = async (
+    rows: Record<string, unknown>[]
+): Promise<Map<string, Pick<Profile, 'full_name' | 'profile_image_url'>>> => {
+    const userIds = Array.from(new Set(
+        rows
+            .map((row) => pickReviewUserId(row))
+            .filter((value): value is string => Boolean(value)),
+    ));
+    if (userIds.length === 0) return new Map();
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, profile_image_url')
+        .in('id', userIds);
+
+    if (error) {
+        console.error('Error fetching review profiles:', error);
+        return new Map();
+    }
+
+    const profileMap = new Map<string, Pick<Profile, 'full_name' | 'profile_image_url'>>();
+    safeArray(data as Array<Record<string, unknown>>).forEach((row) => {
+        const id = normalizeLooseLookupId(row.id);
+        if (!id) return;
+        profileMap.set(id, {
+            full_name: typeof row.full_name === 'string' ? row.full_name : '',
+            profile_image_url: typeof row.profile_image_url === 'string' ? row.profile_image_url : '',
+        });
+    });
+    return profileMap;
 };
 
 const isMissingSpecificColumnError = (
@@ -1171,6 +1377,217 @@ export const getActivePaidAds = async (): Promise<PaidAdRecord[]> => {
         });
 
     return paidAds.filter((row): row is PaidAdRecord => row !== null);
+};
+
+export const getListingReviewSummaryMap = async (
+    listingIds: Array<string | number>
+): Promise<Record<string, ListingReviewSummary>> => {
+    const normalizedIds = Array.from(new Set(
+        listingIds
+            .map((value) => normalizeLooseLookupId(value))
+            .filter(Boolean),
+    ));
+    if (normalizedIds.length === 0) return {};
+
+    const rows = await fetchReviewRowsForListingIds(normalizedIds);
+    const reviews = rows
+        .map((row) => mapListingReviewRow(row))
+        .filter((row): row is ListingReviewRecord => Boolean(row));
+
+    const bucket = new Map<string, { total: number; count: number }>();
+    reviews.forEach((review) => {
+        const current = bucket.get(review.listing_id) || { total: 0, count: 0 };
+        current.total += review.rating;
+        current.count += 1;
+        bucket.set(review.listing_id, current);
+    });
+
+    const summary: Record<string, ListingReviewSummary> = {};
+    normalizedIds.forEach((listingId) => {
+        const current = bucket.get(listingId);
+        summary[listingId] = {
+            listing_id: listingId,
+            average_rating: current && current.count > 0
+                ? Number((current.total / current.count).toFixed(1))
+                : null,
+            review_count: current?.count || 0,
+        };
+    });
+
+    return summary;
+};
+
+export const getListingReviewsForListingIds = async (
+    listingIds: Array<string | number>
+): Promise<ListingReviewRecord[]> => {
+    const normalizedIds = Array.from(new Set(
+        listingIds
+            .map((value) => normalizeLooseLookupId(value))
+            .filter(Boolean),
+    ));
+    if (normalizedIds.length === 0) return [];
+
+    const rows = await fetchReviewRowsForListingIds(normalizedIds);
+    const profileMap = await hydrateReviewProfiles(rows);
+
+    return rows
+        .map((row) => mapListingReviewRow(row, profileMap))
+        .filter((row): row is ListingReviewRecord => Boolean(row))
+        .sort((a, b) => new Date(b.updated_at || b.created_at || 0).getTime() - new Date(a.updated_at || a.created_at || 0).getTime());
+};
+
+export const getListingReviews = async (listingId: string | number): Promise<ListingReviewRecord[]> => {
+    const normalizedId = normalizeLooseLookupId(listingId);
+    if (!normalizedId) return [];
+    return getListingReviewsForListingIds([normalizedId]);
+};
+
+export const getCurrentUserListingReview = async (
+    userId: string,
+    listingId: string | number
+): Promise<ListingReviewRecord | null> => {
+    const normalizedUserId = normalizeLooseLookupId(userId);
+    const normalizedListingId = normalizeLooseLookupId(listingId);
+    if (!normalizedUserId || !normalizedListingId) return null;
+
+    const rows = await getListingReviews(normalizedListingId);
+    return rows.find((row) => row.user_id === normalizedUserId) || null;
+};
+
+export const saveListingReview = async (input: {
+    listingId: string | number;
+    userId: string;
+    rating: number;
+}): Promise<ListingReviewRecord> => {
+    const listingId = normalizeLooseLookupId(input.listingId);
+    const userId = normalizeLooseLookupId(input.userId);
+    const rating = Math.min(5, Math.max(1, Math.round(input.rating)));
+
+    if (!listingId) throw new Error('Listing id is required to save a review.');
+    if (!userId) throw new Error('User id is required to save a review.');
+
+    const existingReview = await getCurrentUserListingReview(userId, listingId);
+    const now = new Date().toISOString();
+
+    if (existingReview) {
+        for (const ratingColumn of getOrderedReviewRatingColumns()) {
+            let payload: Record<string, unknown> = {
+                [ratingColumn]: rating,
+                updated_at: now,
+            };
+
+            while (Object.keys(payload).length > 0) {
+                const result = await supabase
+                    .from('reviews_posts')
+                    .update(payload)
+                    .eq('id', existingReview.id)
+                    .select('*')
+                    .maybeSingle();
+
+                if (!result.error && result.data) {
+                    const profileMap = await hydrateReviewProfiles([result.data as Record<string, unknown>]);
+                    const mapped = mapListingReviewRow(result.data as Record<string, unknown>, profileMap);
+                    if (mapped) {
+                        rememberReviewSchemaHints(null, null, ratingColumn);
+                        return mapped;
+                    }
+                    break;
+                }
+
+                if (result.error && isMissingColumnError(result.error)) {
+                    const missingColumn = extractMissingColumnName(result.error.message);
+                    if (missingColumn && missingColumn in payload) {
+                        delete payload[missingColumn];
+                        continue;
+                    }
+                }
+
+                if (result.error && isMissingSpecificColumnError(result.error, ratingColumn)) {
+                    break;
+                }
+
+                if (result.error) throw result.error;
+            }
+        }
+    }
+
+    for (const listingIdColumn of getOrderedReviewListingIdColumns()) {
+        for (const userColumn of getOrderedReviewUserIdColumns()) {
+            for (const ratingColumn of getOrderedReviewRatingColumns()) {
+                let payload: Record<string, unknown> = {
+                    [listingIdColumn]: listingId,
+                    [userColumn]: userId,
+                    [ratingColumn]: rating,
+                    updated_at: now,
+                };
+                let addedFallbackComment = false;
+
+                while (Object.keys(payload).length > 0) {
+                    const result = await supabase
+                        .from('reviews_posts')
+                        .insert([payload])
+                        .select('*')
+                        .maybeSingle();
+
+                    if (!result.error && result.data) {
+                        const profileMap = await hydrateReviewProfiles([result.data as Record<string, unknown>]);
+                        const mapped = mapListingReviewRow(result.data as Record<string, unknown>, profileMap);
+                        if (mapped) {
+                            rememberReviewSchemaHints(listingIdColumn, userColumn, ratingColumn);
+                            return mapped;
+                        }
+                        break;
+                    }
+
+                    if (result.error?.code === '23505') {
+                        const retryExisting = await getCurrentUserListingReview(userId, listingId);
+                        if (retryExisting) {
+                            return saveListingReview({ listingId, userId, rating });
+                        }
+                    }
+
+                    if (result.error && isMissingColumnError(result.error)) {
+                        const missingColumn = extractMissingColumnName(result.error.message);
+                        if (missingColumn && missingColumn in payload) {
+                            delete payload[missingColumn];
+                            continue;
+                        }
+                        if (
+                            isMissingSpecificColumnError(result.error, listingIdColumn)
+                            || isMissingSpecificColumnError(result.error, userColumn)
+                            || isMissingSpecificColumnError(result.error, ratingColumn)
+                        ) {
+                            break;
+                        }
+                    }
+
+                    if (result.error) {
+                        const requiredColumn = extractNotNullColumnName(result.error.message);
+                        if (!addedFallbackComment && requiredColumn && (
+                            requiredColumn === 'comment'
+                            || requiredColumn === 'review'
+                            || requiredColumn === 'review_text'
+                            || requiredColumn === 'body'
+                        )) {
+                            payload[requiredColumn] = '';
+                            addedFallbackComment = true;
+                            continue;
+                        }
+                        if (requiredColumn === 'created_at' || requiredColumn === 'reviewed_at' || requiredColumn === 'submitted_at') {
+                            payload[requiredColumn] = now;
+                            continue;
+                        }
+                        if (isInvalidUuidInputError(result.error)) {
+                            break;
+                        }
+                        throw result.error;
+                    }
+                }
+            }
+        }
+    }
+
+    throw new Error('Could not save your review in the current review schema.');
 };
 
 export const createOrUpdateListing = async (listing: ListingInput) => {

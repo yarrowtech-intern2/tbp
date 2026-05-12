@@ -13,6 +13,8 @@ import {
   Loader2,
   MapPin,
   Search,
+  Star,
+  TrendingUp,
   UserCircle2,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -20,9 +22,11 @@ import {
   addListingFavorite,
   getActivePaidAds,
   getBookings,
+  getListingReviewSummaryMap,
   getPublicListingsByType,
   hasActiveBoost,
   type PaidAdRecord,
+  type ListingReviewSummary,
   isListingFavorited,
   removeListingFavorite,
   type PostRecord,
@@ -168,6 +172,13 @@ const formatStartDate = (startsAt: string | undefined): string | null => {
   });
 };
 
+const getReviewLabel = (summary: ListingReviewSummary | undefined): string => {
+  if (!summary || summary.review_count === 0 || summary.average_rating === null) {
+    return 'No reviews yet';
+  }
+  return `${summary.average_rating.toFixed(1)} · ${summary.review_count} ${summary.review_count === 1 ? 'review' : 'reviews'}`;
+};
+
 const getToneClass = (section: SectionTab): string => `dh-tone-${section}`;
 
 const dedupePosts = (posts: PostRecord[]): PostRecord[] => {
@@ -227,7 +238,11 @@ const scoreAdRelevance = (ad: PaidAdRecord, posts: PostRecord[]): number => {
   return bestScore;
 };
 
-const ListingCard: React.FC<{ post: PostRecord; isBooked: boolean }> = ({ post, isBooked }) => {
+const ListingCard: React.FC<{
+  post: PostRecord;
+  isBooked: boolean;
+  reviewSummary?: ListingReviewSummary;
+}> = ({ post, isBooked, reviewSummary }) => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const canFavorite = profile?.role === 'tourist';
@@ -243,6 +258,7 @@ const ListingCard: React.FC<{ post: PostRecord; isBooked: boolean }> = ({ post, 
   const location = getPostLocation(post);
   const startsAt = formatStartDate(typeof post.starts_at === 'string' ? post.starts_at : undefined);
   const priceLabel = formatPrice(post.price);
+  const boosted = hasActiveBoost(post);
   const chipLabel = post.sub_category && post.sub_category.trim().length > 0
     ? post.sub_category.trim()
     : getSectionTitle(type).slice(0, -1);
@@ -317,8 +333,16 @@ const ListingCard: React.FC<{ post: PostRecord; isBooked: boolean }> = ({ post, 
         />
         <div className="listing-card-media-overlay" />
         <div className="listing-card-media-top">
-          <span className="listing-card-chip">{chipLabel}</span>
-          {isBooked && <span className="listing-card-booked-pill">Booked</span>}
+          <div className="listing-card-badge-cluster">
+            <span className="listing-card-chip">{chipLabel}</span>
+            {boosted && (
+              <span className="listing-card-boost-badge">
+                <TrendingUp size={12} />
+                Boosted
+              </span>
+            )}
+            {isBooked && <span className="listing-card-booked-pill">Booked</span>}
+          </div>
           <button
             type="button"
             className={`listing-card-fav-btn${isFavorite ? ' is-active' : ''}`}
@@ -349,6 +373,10 @@ const ListingCard: React.FC<{ post: PostRecord; isBooked: boolean }> = ({ post, 
           <p className="listing-card-sub">{subtitle}</p>
 
           <div className="listing-card-meta">
+            <span className={`listing-card-meta-item${reviewSummary?.review_count ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
+              <Star size={14} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
+              <span>{getReviewLabel(reviewSummary)}</span>
+            </span>
             <span className="listing-card-meta-item">
               <MapPin size={14} />
               <span>{location}</span>
@@ -383,6 +411,10 @@ const ListingCard: React.FC<{ post: PostRecord; isBooked: boolean }> = ({ post, 
         <p className="listing-card-sub">{subtitle}</p>
 
         <div className="listing-card-meta">
+          <span className={`listing-card-meta-item${reviewSummary?.review_count ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
+            <Star size={14} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
+            <span>{getReviewLabel(reviewSummary)}</span>
+          </span>
           <span className="listing-card-meta-item">
             <MapPin size={14} />
             <span>{location}</span>
@@ -470,8 +502,9 @@ const CarouselRow: React.FC<{
     byTypeAndId: Set<string>;
     byId: Set<string>;
   };
+  reviewSummaryByPostId?: Record<string, ListingReviewSummary>;
   indexOffset?: number;
-}> = ({ posts, bookedLookup, indexOffset = 0 }) => {
+}> = ({ posts, bookedLookup, reviewSummaryByPostId = {}, indexOffset = 0 }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -522,6 +555,7 @@ const CarouselRow: React.FC<{
           <Reveal key={post.id} delay={indexOffset * 100 + (index + 1) * 55}>
             <ListingCard
               post={post}
+              reviewSummary={reviewSummaryByPostId[String(post.id).trim()]}
               isBooked={
                 bookedLookup.byTypeAndId.has(`${toListingTypeValue(getPostType(post))}:${String(post.id).trim()}`)
                 || bookedLookup.byId.has(String(post.id).trim())
@@ -627,10 +661,11 @@ const Section: React.FC<{
     byTypeAndId: Set<string>;
     byId: Set<string>;
   };
+  reviewSummaryByPostId: Record<string, ListingReviewSummary>;
   indexOffset: number;
   activeTab: SectionTab | null;
   onToggleFilter: (tab: SectionTab) => void;
-}> = ({ section, posts, bookedLookup, indexOffset, activeTab, onToggleFilter }) => {
+}> = ({ section, posts, bookedLookup, reviewSummaryByPostId, indexOffset, activeTab, onToggleFilter }) => {
   return (
     <section className={`dh-listing-section ${getToneClass(section)}`}>
       <Reveal delay={indexOffset * 100}>
@@ -653,7 +688,12 @@ const Section: React.FC<{
       </Reveal>
 
       {posts.length > 0 ? (
-        <CarouselRow posts={posts} bookedLookup={bookedLookup} indexOffset={indexOffset} />
+        <CarouselRow
+          posts={posts}
+          bookedLookup={bookedLookup}
+          reviewSummaryByPostId={reviewSummaryByPostId}
+          indexOffset={indexOffset}
+        />
       ) : (
         <Reveal delay={indexOffset * 100 + 80}>
           <p className="dh-empty-text">No {getSectionTitle(section).toLowerCase()} available yet.</p>
@@ -674,6 +714,7 @@ export const DashboardHome: React.FC = () => {
   const [eventPosts, setEventPosts] = useState<PostRecord[]>([]);
   const [paidAds, setPaidAds] = useState<PaidAdRecord[]>([]);
   const [suggestedPosts, setSuggestedPosts] = useState<PostRecord[]>([]);
+  const [reviewSummaryByPostId, setReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
   const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
 
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -822,6 +863,32 @@ export const DashboardHome: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
+    const listingIds = dedupePosts([...tourPosts, ...activityPosts, ...eventPosts])
+      .map((post) => String(post.id || '').trim())
+      .filter(Boolean);
+
+    if (listingIds.length === 0) {
+      setReviewSummaryByPostId({});
+      return;
+    }
+
+    let cancelled = false;
+
+    void getListingReviewSummaryMap(listingIds)
+      .then((summary) => {
+        if (!cancelled) setReviewSummaryByPostId(summary);
+      })
+      .catch((error) => {
+        console.error('Review summary load failed:', error);
+        if (!cancelled) setReviewSummaryByPostId({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activityPosts, eventPosts, tourPosts]);
+
+  useEffect(() => {
     if (!user) return;
 
     const unsubscribe = onBookingSync(() => {
@@ -919,6 +986,7 @@ export const DashboardHome: React.FC = () => {
               <CarouselRow
                 posts={recommendedPosts.slice(0, 8)}
                 bookedLookup={bookedLookup}
+                reviewSummaryByPostId={reviewSummaryByPostId}
                 indexOffset={0}
               />
             </section>
@@ -956,6 +1024,7 @@ export const DashboardHome: React.FC = () => {
                 section="tours"
                 posts={filteredTourPosts}
                 bookedLookup={bookedLookup}
+                reviewSummaryByPostId={reviewSummaryByPostId}
                 indexOffset={sectionIndexOffset++}
                 activeTab={activeTab}
                 onToggleFilter={handleTab}
@@ -967,6 +1036,7 @@ export const DashboardHome: React.FC = () => {
                 section="activities"
                 posts={filteredActivityPosts}
                 bookedLookup={bookedLookup}
+                reviewSummaryByPostId={reviewSummaryByPostId}
                 indexOffset={sectionIndexOffset++}
                 activeTab={activeTab}
                 onToggleFilter={handleTab}
@@ -978,6 +1048,7 @@ export const DashboardHome: React.FC = () => {
                 section="events"
                 posts={filteredEventPosts}
                 bookedLookup={bookedLookup}
+                reviewSummaryByPostId={reviewSummaryByPostId}
                 indexOffset={sectionIndexOffset++}
                 activeTab={activeTab}
                 onToggleFilter={handleTab}

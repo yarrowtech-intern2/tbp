@@ -226,6 +226,31 @@
   font-weight: 800;
 }
 
+.txp-card-rating.is-empty {
+  background: rgba(17, 17, 17, 0.72);
+  color: #ffffff;
+}
+
+.txp-card-boosted {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .txp-card-copy {
   position: absolute;
   left: 18px;
@@ -472,6 +497,14 @@
     min-height: 24px;
     padding: 0 8px;
     font-size: 0.68rem;
+  }
+
+  .txp-card-boosted {
+    top: 12px;
+    right: 12px;
+    min-height: 24px;
+    padding: 0 9px;
+    font-size: 0.6rem;
   }
 
   .txp-card-copy {

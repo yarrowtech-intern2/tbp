@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getActivities } from '../lib/destinations';
+import { getActivities, getListingReviewSummaryMap, type ListingReviewSummary } from '../lib/destinations';
 import { DestinationCard } from '../components/DestinationCard';
 import { Search, Loader2 } from 'lucide-react';
 import type { Destination } from '../lib/destinations';
@@ -12,12 +12,20 @@ export const Activities: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const [reviewSummaryById, setReviewSummaryById] = useState<Record<string, ListingReviewSummary>>({});
 
     useEffect(() => {
-        getActivities().then((data: Destination[]) => {
-            setActivities(data);
-            setLoading(false);
-        });
+        const load = async () => {
+            try {
+                const data = await getActivities();
+                setActivities(data);
+                const summary = await getListingReviewSummaryMap(data.map((item) => item.id));
+                setReviewSummaryById(summary);
+            } finally {
+                setLoading(false);
+            }
+        };
+        void load();
     }, []);
 
     const filteredActivities = activities.filter(dest => {
@@ -87,19 +95,24 @@ export const Activities: React.FC = () => {
                     </div>
                 ) : filteredActivities.length > 0 ? (
                     <div className="grid grid-cols-4 gap-6">
-                        {filteredActivities.map(activity => (
-                            <DestinationCard
-                                key={activity.id}
-                                id={activity.id}
-                                title={activity.title}
-                                location={activity.location}
-                                price={activity.price}
-                                image_url={activity.image_url}
-                                description={activity.description}
-                                category={activity.category}
-                                listingType="activity"
-                            />
-                        ))}
+                        {filteredActivities.map(activity => {
+                            const summary = reviewSummaryById[String(activity.id)];
+                            return (
+                                <DestinationCard
+                                    key={activity.id}
+                                    id={activity.id}
+                                    title={activity.title}
+                                    location={activity.location}
+                                    price={activity.price}
+                                    rating={summary?.average_rating ?? undefined}
+                                    reviewCount={summary?.review_count || 0}
+                                    image_url={activity.image_url}
+                                    description={activity.description}
+                                    category={activity.category}
+                                    listingType="activity"
+                                />
+                            );
+                        })}
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '100px 0', background: 'var(--surface-main)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-light)' }}>

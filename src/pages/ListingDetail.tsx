@@ -1,14 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Heart, Loader2, MapPin, MessageCircle, ShieldCheck, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Heart, Loader2, MapPin, MessageCircle, ShieldCheck, Star, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
     addListingFavorite,
+    getCurrentUserListingReview,
     getBookings,
     getListingById,
+    getListingReviewSummaryMap,
+    getListingReviews,
     getOrCreateConversation,
+    hasActiveBoost,
     isListingFavorited,
     removeListingFavorite,
+    saveListingReview,
+    type ListingReviewRecord,
     type PostRecord,
 } from '../lib/destinations';
 import type { ListingType } from '../lib/platform';
@@ -57,6 +63,11 @@ const getListingImage = (listing: PostRecord): string => (
     || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1200'
 );
 
+const formatReviewSummary = (average: number | null, count: number): string => {
+    if (!count || average === null) return 'No reviews yet';
+    return `${average.toFixed(1)} from ${count} ${count === 1 ? 'rating' : 'ratings'}`;
+};
+
 export const ListingDetail: React.FC = () => {
     const { id, type } = useParams<{ id: string; type?: string }>();
     const navigate = useNavigate();
@@ -75,6 +86,14 @@ export const ListingDetail: React.FC = () => {
     const [bookingSyncTick, setBookingSyncTick] = useState(0);
     const [retryingConfirmation, setRetryingConfirmation] = useState(false);
     const [autoRetryAttempted, setAutoRetryAttempted] = useState(false);
+    const [reviewLoading, setReviewLoading] = useState(false);
+    const [reviewSaving, setReviewSaving] = useState(false);
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const [reviewAverage, setReviewAverage] = useState<number | null>(null);
+    const [reviewCount, setReviewCount] = useState(0);
+    const [reviews, setReviews] = useState<ListingReviewRecord[]>([]);
+    const [myReview, setMyReview] = useState<ListingReviewRecord | null>(null);
+    const [selectedRating, setSelectedRating] = useState(0);
     const [checkIn, setCheckIn] = useState('');
     const [guests, setGuests] = useState(1);
     const [listing, setListing] = useState<PostRecord | null>(null);
@@ -95,6 +114,57 @@ export const ListingDetail: React.FC = () => {
         void load();
     }, [id, listingType]);
 
+    useEffect(() => {
+        const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
+        if (!listingId) {
+            setReviewAverage(null);
+            setReviewCount(0);
+            setReviews([]);
+            setMyReview(null);
+            setSelectedRating(0);
+            return;
+        }
+
+        let cancelled = false;
+        const loadReviews = async () => {
+            setReviewLoading(true);
+            setReviewError(null);
+            try {
+                const [summaryMap, reviewRows, currentUserReview] = await Promise.all([
+                    getListingReviewSummaryMap([listingId]),
+                    getListingReviews(listingId),
+                    user?.id && profile?.role === 'tourist' ? getCurrentUserListingReview(user.id, listingId) : Promise.resolve(null),
+                ]);
+
+                if (cancelled) return;
+
+                const summary = summaryMap[listingId];
+                setReviewAverage(summary?.average_rating ?? null);
+                setReviewCount(summary?.review_count ?? 0);
+                setReviews(reviewRows);
+                setMyReview(currentUserReview);
+                setSelectedRating(currentUserReview?.rating || 0);
+            } catch (error) {
+                console.error('Failed to load listing reviews:', error);
+                if (!cancelled) {
+                    setReviewError(error instanceof Error ? error.message : 'Could not load reviews.');
+                    setReviewAverage(null);
+                    setReviewCount(0);
+                    setReviews([]);
+                    setMyReview(null);
+                    setSelectedRating(0);
+                }
+            } finally {
+                if (!cancelled) setReviewLoading(false);
+            }
+        };
+
+        void loadReviews();
+        return () => {
+            cancelled = true;
+        };
+    }, [id, listing?.id, profile?.role, user?.id]);
+
     const title = listing ? getListingTitle(listing) : '';
     const image = listing ? getListingImage(listing) : '';
     const description = typeof listing?.description === 'string' ? listing.description : 'No description provided yet.';
@@ -111,6 +181,7 @@ export const ListingDetail: React.FC = () => {
     const total = useMemo(() => unitPrice * guests, [guests, unitPrice]);
     const canBook = profile?.role === 'tourist';
     const canFavorite = profile?.role === 'tourist';
+    const canReview = profile?.role === 'tourist';
     const canMessageProviderAfterBooking = Boolean(
         user
         && ownerUserId
@@ -119,6 +190,7 @@ export const ListingDetail: React.FC = () => {
         && !confirmingBooking
         && !bookingPendingSync
     );
+    const boosted = listing ? hasActiveBoost(listing) : false;
 
     const retryPendingConfirmation = async () => {
         const currentUserId = normalizeUuidString(user?.id);
@@ -412,6 +484,44 @@ export const ListingDetail: React.FC = () => {
         }
     };
 
+    const handleReviewSave = async () => {
+        const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
+        if (!user || !listingId) {
+            navigate('/auth');
+            return;
+        }
+        if (!canReview) {
+            alert('Only tourist accounts can submit ratings.');
+            return;
+        }
+        if (!selectedRating) {
+            setReviewError('Select a star rating before saving.');
+            return;
+        }
+
+        setReviewSaving(true);
+        setReviewError(null);
+        try {
+            const saved = await saveListingReview({
+                listingId,
+                userId: user.id,
+                rating: selectedRating,
+            });
+            const summaryMap = await getListingReviewSummaryMap([listingId]);
+            const latestReviews = await getListingReviews(listingId);
+            const summary = summaryMap[listingId];
+            setMyReview(saved);
+            setReviewAverage(summary?.average_rating ?? null);
+            setReviewCount(summary?.review_count ?? 0);
+            setReviews(latestReviews);
+        } catch (error) {
+            console.error('Saving review failed:', error);
+            setReviewError(error instanceof Error ? error.message : 'Could not save your rating.');
+        } finally {
+            setReviewSaving(false);
+        }
+    };
+
     if (loading) {
         return (
             <main className="container" style={{ minHeight: '70vh', display: 'grid', placeItems: 'center', paddingTop: '120px' }}>
@@ -454,6 +564,15 @@ export const ListingDetail: React.FC = () => {
                         <div className="listing-detail-content">
                             <div className="listing-detail-meta-row">
                                 <span className="listing-detail-type-pill">{displayType}</span>
+                                {boosted && (
+                                    <span className="listing-detail-boost-pill">
+                                        <TrendingUp size={14} /> Boosted
+                                    </span>
+                                )}
+                                <span className={`listing-detail-review-pill${reviewCount ? '' : ' is-empty'}`}>
+                                    <Star size={14} fill={reviewCount ? 'currentColor' : 'none'} />
+                                    {formatReviewSummary(reviewAverage, reviewCount)}
+                                </span>
                                 <span className="listing-detail-location-chip">
                                     <MapPin size={14} /> {location}
                                 </span>
@@ -565,6 +684,93 @@ export const ListingDetail: React.FC = () => {
                         )}
                     </aside>
                 </div>
+
+                <section className="listing-review-section">
+                    <div className="listing-review-summary">
+                        <div>
+                            <p className="listing-review-kicker">Traveler Ratings</p>
+                            <h2>Reviews</h2>
+                        </div>
+                        <div className="listing-review-score-card">
+                            <strong>{reviewAverage?.toFixed(1) || '0.0'}</strong>
+                            <span>{formatReviewSummary(reviewAverage, reviewCount)}</span>
+                        </div>
+                    </div>
+
+                    {canReview && (
+                        <div className="listing-review-editor">
+                            <div>
+                                <h3>{myReview ? 'Update your rating' : 'Rate this listing'}</h3>
+                                <p>{myReview ? `You rated this ${myReview.rating} star${myReview.rating === 1 ? '' : 's'}.` : 'Leave a star rating for this listing.'}</p>
+                            </div>
+                            <div className="listing-review-star-row" role="radiogroup" aria-label="Listing rating">
+                                {[1, 2, 3, 4, 5].map((value) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        className={`listing-review-star${selectedRating >= value ? ' is-active' : ''}`}
+                                        aria-pressed={selectedRating >= value}
+                                        onClick={() => setSelectedRating(value)}
+                                    >
+                                        <Star size={20} fill={selectedRating >= value ? 'currentColor' : 'none'} />
+                                        <span>{value}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {reviewError && <p className="listing-review-error">{reviewError}</p>}
+                            <button
+                                type="button"
+                                className="btn btn-primary listing-detail-pill-btn"
+                                onClick={() => void handleReviewSave()}
+                                disabled={reviewSaving}
+                            >
+                                {reviewSaving ? <Loader2 className="animate-spin" size={16} /> : myReview ? 'Update Rating' : 'Submit Rating'}
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="listing-review-list">
+                        {reviewLoading ? (
+                            <div className="listing-review-empty">
+                                <Loader2 className="animate-spin" size={18} />
+                                <span>Loading reviews...</span>
+                            </div>
+                        ) : reviews.length > 0 ? (
+                            reviews.slice(0, 8).map((review) => (
+                                <article key={review.id} className="listing-review-item">
+                                    <div className="listing-review-avatar">
+                                        {review.reviewer_avatar_url ? (
+                                            <img src={review.reviewer_avatar_url} alt={review.reviewer_name || 'Traveler'} />
+                                        ) : (
+                                            <span>{(review.reviewer_name || 'T').charAt(0).toUpperCase()}</span>
+                                        )}
+                                    </div>
+                                    <div className="listing-review-copy">
+                                        <div className="listing-review-copy-top">
+                                            <strong>{review.reviewer_name || 'Traveler'}</strong>
+                                            <span>{new Date(review.updated_at || review.created_at || Date.now()).toLocaleDateString('en-IN')}</span>
+                                        </div>
+                                        <div className="listing-review-stars" aria-label={`${review.rating} star rating`}>
+                                            {Array.from({ length: 5 }).map((_, index) => (
+                                                <Star
+                                                    key={`${review.id}-star-${index}`}
+                                                    size={14}
+                                                    fill={index < review.rating ? 'currentColor' : 'none'}
+                                                />
+                                            ))}
+                                            <small>{review.rating}.0</small>
+                                        </div>
+                                    </div>
+                                </article>
+                            ))
+                        ) : (
+                            <div className="listing-review-empty">
+                                <Star size={18} />
+                                <span>No reviews yet.</span>
+                            </div>
+                        )}
+                    </div>
+                </section>
             </div>
         </main>
     );

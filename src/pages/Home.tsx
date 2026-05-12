@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Hero } from '../components/Hero';
 import { Link } from 'react-router-dom';
-import { getActivities } from '../lib/destinations';
+import { getActivities, getListingReviewSummaryMap, type ListingReviewSummary } from '../lib/destinations';
 import { DestinationCard } from '../components/DestinationCard';
 import type { Destination } from '../lib/destinations';
 import { ChevronRight, ArrowRight, Loader2 } from 'lucide-react';
@@ -9,12 +9,21 @@ import { ChevronRight, ArrowRight, Loader2 } from 'lucide-react';
 export const Home: React.FC = () => {
     const [destinations, setDestinations] = useState<Destination[]>([]);
     const [loading, setLoading] = useState(true);
+    const [reviewSummaryById, setReviewSummaryById] = useState<Record<string, ListingReviewSummary>>({});
 
     useEffect(() => {
-        getActivities().then((data: Destination[]) => {
-            setDestinations(data.slice(0, 4));
-            setLoading(false);
-        });
+        const load = async () => {
+            try {
+                const data = await getActivities();
+                const selected = data.slice(0, 4);
+                setDestinations(selected);
+                const summary = await getListingReviewSummaryMap(selected.map((item) => item.id));
+                setReviewSummaryById(summary);
+            } finally {
+                setLoading(false);
+            }
+        };
+        void load();
     }, []);
 
     return (
@@ -46,19 +55,24 @@ export const Home: React.FC = () => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-4 gap-6">
-                            {destinations.map(destination => (
-                                <DestinationCard
-                                    key={destination.id}
-                                    id={destination.id}
-                                    title={destination.title}
-                                    location={destination.location}
-                                    price={destination.price}
-                                    image_url={destination.image_url}
-                                    description={destination.description}
-                                    category={destination.category}
-                                    listingType="activity"
-                                />
-                            ))}
+                            {destinations.map(destination => {
+                                const summary = reviewSummaryById[String(destination.id)];
+                                return (
+                                    <DestinationCard
+                                        key={destination.id}
+                                        id={destination.id}
+                                        title={destination.title}
+                                        location={destination.location}
+                                        price={destination.price}
+                                        rating={summary?.average_rating ?? undefined}
+                                        reviewCount={summary?.review_count || 0}
+                                        image_url={destination.image_url}
+                                        description={destination.description}
+                                        category={destination.category}
+                                        listingType="activity"
+                                    />
+                                );
+                            })}
                         </div>
                     )}
 

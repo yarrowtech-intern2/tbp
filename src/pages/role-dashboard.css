@@ -855,6 +855,25 @@
     margin-top: 2px;
 }
 
+.rdb-review-summary-line {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.rdb-review-stars {
+    align-items: center;
+    color: #d97706;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.rdb-review-stars strong {
+    color: var(--text-main);
+    font-size: 0.78rem;
+    margin-left: 4px;
+}
+
 .rdb-provider-bookings-grid {
     display: grid;
     gap: 10px;

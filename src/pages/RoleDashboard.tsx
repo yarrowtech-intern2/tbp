@@ -16,6 +16,7 @@ import {
     MessageSquare,
     Package,
     Search,
+    Star,
     Shield,
     TrendingUp,
     Upload,
@@ -32,6 +33,8 @@ import {
     getContentModerationQueue,
     getConversations,
     getFavoriteListings,
+    getListingReviewSummaryMap,
+    getListingReviewsForListingIds,
     getModerationAuditLogs,
     getMyAds,
     getMyPosts,
@@ -45,6 +48,8 @@ import {
     type AppNotificationRecord,
     type ConversationRecord,
     type FavoriteListingRecord,
+    type ListingReviewRecord,
+    type ListingReviewSummary,
     type ModerationAuditLogRecord,
     type PostRecord,
     type UnifiedBooking,
@@ -161,6 +166,11 @@ const formatDateTime = (value?: string | null) => {
     });
 };
 
+const formatRatingSummary = (summary?: ListingReviewSummary): string => {
+    if (!summary || summary.review_count === 0 || summary.average_rating === null) return 'No reviews yet';
+    return `${summary.average_rating.toFixed(1)} average from ${summary.review_count} ${summary.review_count === 1 ? 'rating' : 'ratings'}`;
+};
+
 const titleForPost = (item: PostRecord) => item.title || item.name || 'Untitled listing';
 const toListingPathType = (type: string | null | undefined): 'tour' | 'activity' | 'event' => {
     if (type === 'tour') return 'tour';
@@ -269,6 +279,8 @@ export const RoleDashboard: React.FC = () => {
     const [providerBookings, setProviderBookings] = useState<UnifiedBooking[]>([]);
     const [providerConversations, setProviderConversations] = useState<ConversationRecord[]>([]);
     const [providerNotifications, setProviderNotifications] = useState<AppNotificationRecord[]>([]);
+    const [providerReviewSummaryByPostId, setProviderReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
+    const [providerListingReviews, setProviderListingReviews] = useState<ListingReviewRecord[]>([]);
     const [boostingPostId, setBoostingPostId] = useState<string | null>(null);
     const [boostPlanByPostId, setBoostPlanByPostId] = useState<Record<string, PromotionPlanKey>>({});
     const [boostDialog, setBoostDialog] = useState<BoostDialogState | null>(null);
@@ -427,6 +439,46 @@ export const RoleDashboard: React.FC = () => {
         void loadAdminAccountLocations();
     }, [activeSection, effectiveRole]);
 
+    useEffect(() => {
+        if (effectiveRole !== 'provider') {
+            setProviderReviewSummaryByPostId({});
+            setProviderListingReviews([]);
+            return;
+        }
+
+        const listingIds = providerListings
+            .map((item) => String(item.id || '').trim())
+            .filter(Boolean);
+
+        if (listingIds.length === 0) {
+            setProviderReviewSummaryByPostId({});
+            setProviderListingReviews([]);
+            return;
+        }
+
+        let cancelled = false;
+        void Promise.all([
+            getListingReviewSummaryMap(listingIds),
+            getListingReviewsForListingIds(listingIds),
+        ])
+            .then(([summary, reviews]) => {
+                if (cancelled) return;
+                setProviderReviewSummaryByPostId(summary);
+                setProviderListingReviews(reviews);
+            })
+            .catch((err) => {
+                console.error('Provider review data load failed:', err);
+                if (!cancelled) {
+                    setProviderReviewSummaryByPostId({});
+                    setProviderListingReviews([]);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [effectiveRole, providerListings]);
+
     const navItems: NavItem[] = useMemo(() => {
         if (effectiveRole === 'admin') {
             return [
@@ -547,6 +599,15 @@ export const RoleDashboard: React.FC = () => {
 
     const providerRows = providerListings
         .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
+
+    const providerListingMap = useMemo(() => {
+        const map = new Map<string, PostRecord>();
+        providerListings.forEach((item) => {
+            const id = String(item.id || '').trim();
+            if (id) map.set(id, item);
+        });
+        return map;
+    }, [providerListings]);
 
     const providerAdRows = providerAds
         .filter((item) => !query || `${item.title || ''} ${item.link || ''} ${item.cta_text || ''}`.toLowerCase().includes(query));
@@ -1342,6 +1403,7 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'listings') {
             return (
+                <>
                 <section className="rdb-panel rdb-panel-wide">
                     <div className="rdb-panel-head">
                         <h2>Listings and Status</h2>
@@ -1353,6 +1415,9 @@ export const RoleDashboard: React.FC = () => {
                                 <div>
                                     <p>{titleForPost(item)}</p>
                                     <small>{item.type || 'listing'} - {formatDate(item.created_at)}</small>
+                                    <small className="rdb-review-summary-line">
+                                        {formatRatingSummary(providerReviewSummaryByPostId[String(item.id || '').trim()])}
+                                    </small>
                                     {hasActiveBoost(item) && (
                                         <small>Boost active until {formatDate(item.boost_end || null)}</small>
                                     )}
@@ -1394,6 +1459,33 @@ export const RoleDashboard: React.FC = () => {
                         {providerRows.length === 0 && <p className="rdb-empty">No matching listings.</p>}
                     </div>
                 </section>
+                <section className="rdb-panel rdb-panel-wide">
+                    <div className="rdb-panel-head">
+                        <h2>Latest Ratings Received</h2>
+                        <small>{providerListingReviews.length} records</small>
+                    </div>
+                    <div className="rdb-list">
+                        {providerListingReviews.slice(0, 12).map((item) => {
+                            const listing = providerListingMap.get(item.listing_id);
+                            return (
+                                <div key={item.id} className="rdb-list-row">
+                                    <div>
+                                        <p>{listing ? titleForPost(listing) : 'Listing'}</p>
+                                        <small>{item.reviewer_name || 'Traveler'} - {formatDate(item.updated_at || item.created_at)}</small>
+                                    </div>
+                                    <div className="rdb-review-stars" aria-label={`${item.rating} star rating`}>
+                                        {Array.from({ length: 5 }).map((_, index) => (
+                                            <Star key={`${item.id}-star-${index}`} size={14} fill={index < item.rating ? 'currentColor' : 'none'} />
+                                        ))}
+                                        <strong>{item.rating}.0</strong>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {providerListingReviews.length === 0 && <p className="rdb-empty">No reviews yet.</p>}
+                    </div>
+                </section>
+                </>
             );
         }
 

@@ -118,6 +118,14 @@
   z-index: 4;
 }
 
+.listing-card-badge-cluster {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
 .listing-card-chip {
   color: #111111;
   font-family: 'Outfit', sans-serif;
@@ -143,6 +151,23 @@
   padding: 0 10px;
   text-transform: uppercase;
   text-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+.listing-card-boost-badge {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  color: #f8fafc;
+  display: inline-flex;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .listing-card-fav-btn {
@@ -314,6 +339,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.listing-card-review-pill {
+  color: #fde68a;
+}
+
+.listing-card-review-empty {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .listing-card-actions {

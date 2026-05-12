@@ -1,8 +1,14 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ClipboardList, Home, LayoutDashboard, Search, Star, UserCircle2, X } from 'lucide-react';
+import { ClipboardList, Home, LayoutDashboard, Search, Star, TrendingUp, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { getPublicListingsByType, type PostRecord } from '../lib/destinations';
+import {
+  getListingReviewSummaryMap,
+  getPublicListingsByType,
+  hasActiveBoost,
+  type ListingReviewSummary,
+  type PostRecord,
+} from '../lib/destinations';
 import { isProviderRole, normalizeRoleValue } from '../lib/platform';
 import './tourist-explore-page.css';
 
@@ -62,10 +68,9 @@ const getListingHref = (post: ExploreCardRecord): string => {
   return `/listings/${type}/${post.id}`;
 };
 
-const scoreRating = (post: PostRecord): string => {
-  const seed = String(post.id || post.title || post.location || '1');
-  const base = 4.1 + (seed.length % 4) * 0.1;
-  return base.toFixed(1);
+const getReviewLabel = (summary: ListingReviewSummary | undefined): string => {
+  if (!summary || summary.review_count === 0 || summary.average_rating === null) return 'No reviews yet';
+  return `${summary.average_rating.toFixed(1)} · ${summary.review_count} ${summary.review_count === 1 ? 'review' : 'reviews'}`;
 };
 
 export const TouristExplorePage: React.FC = () => {
@@ -76,6 +81,7 @@ export const TouristExplorePage: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState<ExploreCardRecord[]>([]);
+  const [reviewSummaryByPostId, setReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
 
   const resolvedRole = typeof profile?.role === 'string' && profile.role.trim()
     ? normalizeRoleValue(profile.role)
@@ -134,6 +140,31 @@ export const TouristExplorePage: React.FC = () => {
 
     void load();
   }, [user]);
+
+  useEffect(() => {
+    const listingIds = posts
+      .map((post) => String(post.id || '').trim())
+      .filter(Boolean);
+
+    if (listingIds.length === 0) {
+      setReviewSummaryByPostId({});
+      return;
+    }
+
+    let cancelled = false;
+    void getListingReviewSummaryMap(listingIds)
+      .then((summary) => {
+        if (!cancelled) setReviewSummaryByPostId(summary);
+      })
+      .catch((error) => {
+        console.error('Failed loading review summaries for explore:', error);
+        if (!cancelled) setReviewSummaryByPostId({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [posts]);
 
   if (!user) return null;
   if (providerAccount || providerByLabel || adminAccount) {
@@ -237,6 +268,7 @@ export const TouristExplorePage: React.FC = () => {
           <section className="txp-grid" aria-label="Explore results">
             {filteredPosts.map((post, index) => {
               const size = CARD_SIZE_PATTERN[index % CARD_SIZE_PATTERN.length];
+              const reviewSummary = reviewSummaryByPostId[String(post.id || '').trim()];
               return (
                 <Link
                   key={`txp-card-${post.id}`}
@@ -246,10 +278,16 @@ export const TouristExplorePage: React.FC = () => {
                   <div className="txp-card-media">
                     <div className="txp-card-image" style={{ backgroundImage: `url(${getPostImage(post)})` }} />
                     <div className="txp-card-overlay" />
-                    <span className="txp-card-rating">
-                      <Star size={12} fill="currentColor" />
-                      {scoreRating(post)}
+                    <span className={`txp-card-rating${reviewSummary?.review_count ? '' : ' is-empty'}`}>
+                      <Star size={12} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
+                      {getReviewLabel(reviewSummary)}
                     </span>
+                    {hasActiveBoost(post) && (
+                      <span className="txp-card-boosted">
+                        <TrendingUp size={12} />
+                        Boosted
+                      </span>
+                    )}
                     <div className="txp-card-copy">
                       <h2>{getPostTitle(post)}</h2>
                       <strong>{formatPrice(post.price)}</strong>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, Loader2, MapPin } from 'lucide-react';
+import { Heart, Loader2, MapPin, Star } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { addListingFavorite, isListingFavorited, removeListingFavorite } from '../lib/destinations';
@@ -12,6 +12,7 @@ interface DestinationProps {
     location: string;
     price: number;
     rating?: number;
+    reviewCount?: number;
     image_url: string;
     description?: string;
     category?: string;
@@ -35,6 +36,8 @@ export const DestinationCard: React.FC<DestinationProps> = ({
     title,
     location,
     price,
+    rating,
+    reviewCount = 0,
     image_url,
     description,
     category,
@@ -50,6 +53,9 @@ export const DestinationCard: React.FC<DestinationProps> = ({
     const locationLabel = location?.split(',')[0]?.trim() || 'Location available after booking';
     const chipLabel = category?.trim() || listingPathType.toUpperCase();
     const priceLabel = formatPrice(price);
+    const reviewLabel = typeof rating === 'number' && reviewCount > 0
+        ? `${rating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`
+        : 'No reviews yet';
 
     useEffect(() => {
         if (!user || !id || !canFavorite) {
@@ -149,6 +155,10 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                     <p className="listing-card-sub">{subtitle}</p>
 
                     <div className="listing-card-meta">
+                        <span className={`listing-card-meta-item${typeof rating === 'number' && reviewCount > 0 ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
+                            <Star size={14} fill={typeof rating === 'number' && reviewCount > 0 ? 'currentColor' : 'none'} />
+                            <span>{reviewLabel}</span>
+                        </span>
                         <span className="listing-card-meta-item">
                             <MapPin size={14} />
                             <span>{locationLabel}</span>
@@ -173,6 +183,10 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                 <p className="listing-card-sub">{subtitle}</p>
 
                 <div className="listing-card-meta">
+                    <span className={`listing-card-meta-item${typeof rating === 'number' && reviewCount > 0 ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
+                        <Star size={14} fill={typeof rating === 'number' && reviewCount > 0 ? 'currentColor' : 'none'} />
+                        <span>{reviewLabel}</span>
+                    </span>
                     <span className="listing-card-meta-item">
                         <MapPin size={14} />
                         <span>{locationLabel}</span>
