@@ -15,6 +15,7 @@ import {
     normalizeRoleValue,
 } from './platform';
 import { resolveProfileCoordinates } from './accountGeo';
+import { isPromotionWindowActive, type PromotionPlanKey } from './promotions';
 
 export interface Destination {
     id: string;
@@ -91,6 +92,9 @@ export interface PostRecord {
     created_at?: string;
     starts_at?: string;
     status?: ListingStatus | string | null;
+    is_boosted?: boolean | null;
+    boost_start?: string | null;
+    boost_end?: string | null;
     rejection_reason?: string | null;
     reviewed_at?: string | null;
     reviewed_by?: string | null;
@@ -123,6 +127,56 @@ export interface FavoriteRecord {
     listing_type: ListingType;
     has_explicit_type?: boolean;
     created_at?: string;
+}
+
+export interface AdRecord {
+    id: string;
+    user_id: string;
+    image_url?: string | null;
+    link?: string | null;
+    created_at?: string | null;
+    title?: string | null;
+    cta_text?: string | null;
+}
+
+export interface AdPaymentRecord {
+    id: string;
+    ad_id: string;
+    user_id: string;
+    plan_key: PromotionPlanKey;
+    duration_days?: number | null;
+    amount: number;
+    status?: string | null;
+    payment_order_id?: string | null;
+    payment_id?: string | null;
+    payment_signature?: string | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
+    created_at?: string | null;
+}
+
+export interface PaidAdRecord extends AdRecord {
+    payment_amount: number;
+    payment_status: string | null;
+    plan_key: PromotionPlanKey | null;
+    starts_at: string | null;
+    ends_at: string | null;
+}
+
+export interface PostBoostPaymentRecord {
+    id: string;
+    post_id: string;
+    user_id: string;
+    plan_key: PromotionPlanKey;
+    duration_days?: number | null;
+    amount: number;
+    status?: string | null;
+    payment_order_id?: string | null;
+    payment_id?: string | null;
+    payment_signature?: string | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
+    created_at?: string | null;
 }
 
 export interface FavoriteListingRecord {
@@ -589,6 +643,64 @@ const getListingImageFromPost = (post: PostRecord): string => (
     || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1200'
 );
 
+const mapAdRow = (row: Record<string, unknown> | null): AdRecord | null => {
+    if (!row) return null;
+
+    const id = typeof row.id === 'string'
+        ? row.id.trim()
+        : typeof row.id === 'number' && Number.isFinite(row.id)
+            ? String(row.id)
+            : '';
+    const userId = typeof row.user_id === 'string' ? row.user_id.trim() : '';
+    if (!id || !userId) return null;
+
+    return {
+        id,
+        user_id: userId,
+        image_url: typeof row.image_url === 'string' ? row.image_url : null,
+        link: typeof row.link === 'string' ? row.link : null,
+        created_at: typeof row.created_at === 'string' ? row.created_at : null,
+        title: typeof row.title === 'string' ? row.title : null,
+        cta_text: typeof row.cta_text === 'string' ? row.cta_text : null,
+    };
+};
+
+const mapAdPaymentRow = (row: Record<string, unknown> | null): AdPaymentRecord | null => {
+    if (!row) return null;
+
+    const id = typeof row.id === 'string'
+        ? row.id.trim()
+        : typeof row.id === 'number' && Number.isFinite(row.id)
+            ? String(row.id)
+            : '';
+    const adId = typeof row.ad_id === 'string'
+        ? row.ad_id.trim()
+        : typeof row.ad_id === 'number' && Number.isFinite(row.ad_id)
+            ? String(row.ad_id)
+            : '';
+    const userId = typeof row.user_id === 'string' ? row.user_id.trim() : '';
+    const amount = typeof row.amount === 'number' ? row.amount : Number(row.amount || 0);
+    const planKey = typeof row.plan_key === 'string' ? row.plan_key.trim() as PromotionPlanKey : null;
+
+    if (!id || !adId || !userId || !planKey || !Number.isFinite(amount) || amount <= 0) return null;
+
+    return {
+        id,
+        ad_id: adId,
+        user_id: userId,
+        plan_key: planKey,
+        duration_days: typeof row.duration_days === 'number' ? row.duration_days : Number(row.duration_days || 0) || null,
+        amount,
+        status: typeof row.status === 'string' ? row.status : null,
+        payment_order_id: typeof row.payment_order_id === 'string' ? row.payment_order_id : null,
+        payment_id: typeof row.payment_id === 'string' ? row.payment_id : null,
+        payment_signature: typeof row.payment_signature === 'string' ? row.payment_signature : null,
+        starts_at: typeof row.starts_at === 'string' ? row.starts_at : null,
+        ends_at: typeof row.ends_at === 'string' ? row.ends_at : null,
+        created_at: typeof row.created_at === 'string' ? row.created_at : null,
+    };
+};
+
 const normalizeBookingStatus = (value: string | null | undefined): BookingStatus => {
     const normalized = (value || '').trim().toLowerCase();
     if (normalized === 'pending' || normalized === 'confirmed' || normalized === 'cancelled' || normalized === 'completed') {
@@ -904,6 +1016,10 @@ export const getPublicListingsByType = async (type: ListingType): Promise<PostRe
     ]);
 };
 
+export const hasActiveBoost = (post: Pick<PostRecord, 'is_boosted' | 'boost_start' | 'boost_end'>): boolean => (
+    post.is_boosted === true && isPromotionWindowActive(post.boost_start, post.boost_end)
+);
+
 export const getMyPosts = async (userId: string) => {
     const { data, error } = await supabase
         .from('posts')
@@ -917,6 +1033,144 @@ export const getMyPosts = async (userId: string) => {
     }
 
     return safeArray(data) as PostRecord[];
+};
+
+export const getMyAds = async (userId: string): Promise<PaidAdRecord[]> => {
+    const [{ data: adRows, error: adError }, { data: paymentRows, error: paymentError }] = await Promise.all([
+        supabase
+            .from('ads')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('ad_payments')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false }),
+    ]);
+
+    if (adError) {
+        console.error('Error fetching provider ads:', adError);
+        return [];
+    }
+
+    if (paymentError && !isMissingRelationNamedError(paymentError, 'ad_payments')) {
+        console.error('Error fetching provider ad payments:', paymentError);
+    }
+
+    const ads = safeArray(adRows as Record<string, unknown>[])
+        .map((row) => mapAdRow(row))
+        .filter((row): row is AdRecord => Boolean(row));
+    const payments = safeArray(paymentRows as Record<string, unknown>[])
+        .map((row) => mapAdPaymentRow(row))
+        .filter((row): row is AdPaymentRecord => Boolean(row));
+    const latestPaymentByAdId = new Map<string, AdPaymentRecord>();
+
+    payments.forEach((payment) => {
+        if (!latestPaymentByAdId.has(payment.ad_id)) {
+            latestPaymentByAdId.set(payment.ad_id, payment);
+        }
+    });
+
+    return ads.map((ad) => {
+        const payment = latestPaymentByAdId.get(ad.id);
+        return {
+            ...ad,
+            payment_amount: payment?.amount || 0,
+            payment_status: payment?.status || null,
+            plan_key: payment?.plan_key || null,
+            starts_at: payment?.starts_at || null,
+            ends_at: payment?.ends_at || null,
+        };
+    });
+};
+
+export const getActivePaidAds = async (): Promise<PaidAdRecord[]> => {
+    const functionResult = await supabase.functions.invoke('get-active-ads', {
+        body: {},
+    });
+
+    if (!functionResult.error) {
+        const payload = functionResult.data as { ads?: unknown[] } | null;
+        const functionAds = safeArray(payload?.ads as Record<string, unknown>[])
+            .map((row) => {
+                const ad = mapAdRow(row);
+                if (!ad) return null;
+                return {
+                    ...ad,
+                    payment_amount: typeof row.payment_amount === 'number' ? row.payment_amount : Number(row.payment_amount || 0) || 0,
+                    payment_status: typeof row.payment_status === 'string' ? row.payment_status : null,
+                    plan_key: typeof row.plan_key === 'string' ? row.plan_key as PromotionPlanKey : null,
+                    starts_at: typeof row.starts_at === 'string' ? row.starts_at : null,
+                    ends_at: typeof row.ends_at === 'string' ? row.ends_at : null,
+                } satisfies PaidAdRecord;
+            })
+            .filter((row): row is PaidAdRecord => row !== null);
+
+        if (functionAds.length > 0) {
+            return functionAds;
+        }
+    } else {
+        console.warn('get-active-ads function unavailable, falling back to client ad query:', functionResult.error.message);
+    }
+
+    const { data: paymentRows, error: paymentError } = await supabase
+        .from('ad_payments')
+        .select('*')
+        .order('amount', { ascending: false })
+        .order('created_at', { ascending: false });
+
+    if (paymentError) {
+        if (!isMissingRelationNamedError(paymentError, 'ad_payments')) {
+            console.error('Error fetching active ad payments:', paymentError);
+        }
+        return [];
+    }
+
+    const payments = safeArray(paymentRows as Record<string, unknown>[])
+        .map((row) => mapAdPaymentRow(row))
+        .filter((row): row is AdPaymentRecord => Boolean(row))
+        .filter((row) => {
+            const normalizedStatus = (row.status || '').trim().toLowerCase();
+            const statusAllowed = !normalizedStatus || normalizedStatus === 'paid' || normalizedStatus === 'active';
+            return statusAllowed && isPromotionWindowActive(row.starts_at, row.ends_at);
+        });
+
+    const adIds = Array.from(new Set(payments.map((payment) => payment.ad_id).filter(Boolean)));
+    if (adIds.length === 0) return [];
+
+    const { data: adRows, error: adError } = await supabase
+        .from('ads')
+        .select('*')
+        .in('id', adIds);
+
+    if (adError) {
+        console.error('Error fetching ads:', adError);
+        return [];
+    }
+
+    const adsById = new Map<string, AdRecord>();
+    safeArray(adRows as Record<string, unknown>[])
+        .map((row) => mapAdRow(row))
+        .filter((row): row is AdRecord => Boolean(row))
+        .forEach((row) => {
+            adsById.set(row.id, row);
+        });
+
+    const paidAds: Array<PaidAdRecord | null> = payments.map((payment) => {
+            const ad = adsById.get(payment.ad_id);
+            if (!ad) return null;
+            return {
+                ...ad,
+                payment_amount: payment.amount,
+                payment_status: payment.status || null,
+                plan_key: payment.plan_key,
+                starts_at: payment.starts_at || null,
+                ends_at: payment.ends_at || null,
+            } satisfies PaidAdRecord;
+        });
+
+    return paidAds.filter((row): row is PaidAdRecord => row !== null);
 };
 
 export const createOrUpdateListing = async (listing: ListingInput) => {

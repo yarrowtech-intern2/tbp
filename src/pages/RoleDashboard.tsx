@@ -1,21 +1,24 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import {
     BadgeDollarSign,
     CheckCircle2,
     ClipboardList,
     Clock3,
     Compass,
+    ExternalLink,
     FileText,
     Globe2,
     Heart,
     Home,
     LayoutDashboard,
     Loader2,
+    Megaphone,
     MessageSquare,
     Package,
     Search,
     Shield,
     TrendingUp,
+    Upload,
     UserCircle2,
     Users,
     XCircle,
@@ -30,12 +33,15 @@ import {
     getConversations,
     getFavoriteListings,
     getModerationAuditLogs,
+    getMyAds,
     getMyPosts,
     getNotifications,
     getPosts,
     getProviderBookings,
     getVerificationQueue,
+    hasActiveBoost,
     type AdminAccountLocationRecord,
+    type PaidAdRecord,
     type AppNotificationRecord,
     type ConversationRecord,
     type FavoriteListingRecord,
@@ -45,6 +51,17 @@ import {
     type VerificationRecord,
 } from '../lib/destinations';
 import { isProviderRole, normalizeRoleValue } from '../lib/platform';
+import {
+    confirmPromotionPurchase,
+    createPromotionOrder,
+    openPromotionRazorpayCheckout,
+} from '../lib/payments';
+import {
+    PROMOTION_PLAN_LIST,
+    getPromotionPlan,
+    isPromotionWindowActive,
+    type PromotionPlanKey,
+} from '../lib/promotions';
 import './role-dashboard.css';
 
 type DashboardRole = 'tourist' | 'provider' | 'admin';
@@ -55,6 +72,7 @@ type SidebarKey =
     | 'bookings'
     | 'favorites'
     | 'listings'
+    | 'advertisements'
     | 'manage_posts'
     | 'messages'
     | 'moderation'
@@ -86,7 +104,20 @@ type MobileNavItem = {
     to?: string;
 };
 
+type BoostDialogState = {
+    postId: string;
+    title: string;
+    planKey: PromotionPlanKey;
+    planLabel: string;
+    amount: number;
+    status: 'confirm' | 'creating_order' | 'checkout' | 'activating' | 'success' | 'error';
+    message?: string | null;
+    endsAt?: string | null;
+};
+
 const LIVE_STATUSES = new Set(['live', 'published', 'approved']);
+const PROMO_IMAGE_BUCKET = 'avatars';
+const MAX_PROMO_IMAGE_MB = 8;
 
 const normalizeRoleParam = (value?: string): DashboardRole | null => {
     if (!value) return null;
@@ -148,12 +179,38 @@ const parseTouristSection = (value: string | null): SidebarKey | null => {
     return null;
 };
 
+const parseProviderSection = (value: string | null): SidebarKey | null => {
+    if (!value) return null;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
+    if (normalized === 'bookings') return 'bookings';
+    if (normalized === 'listings') return 'listings';
+    if (normalized === 'advertisements' || normalized === 'ads' || normalized === 'ad') return 'advertisements';
+    if (normalized === 'manage_posts' || normalized === 'manage-posts' || normalized === 'posts') return 'manage_posts';
+    if (normalized === 'messages') return 'messages';
+    return null;
+};
+
+const parseAdminSection = (value: string | null): SidebarKey | null => {
+    if (!value) return null;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
+    if (normalized === 'messages') return 'messages';
+    if (normalized === 'moderation') return 'moderation';
+    if (normalized === 'rejected') return 'rejected';
+    if (normalized === 'users') return 'users';
+    if (normalized === 'map') return 'map';
+    if (normalized === 'audits' || normalized === 'audit') return 'audits';
+    return null;
+};
+
 const sectionMeta: Record<SidebarKey, { title: string; subtitle: string }> = {
     overview: { title: 'Dashboard', subtitle: 'Your role-based operational summary.' },
     explore: { title: 'Explore', subtitle: 'Suggested items and quick jump context.' },
     bookings: { title: 'Bookings', subtitle: 'Booking records and status timelines.' },
     favorites: { title: 'Favorites', subtitle: 'Saved listings from your activity.' },
     listings: { title: 'Listings', subtitle: 'Provider listing lifecycle and publication state.' },
+    advertisements: { title: 'Advertisements', subtitle: 'Create paid ad creatives and track active campaigns.' },
     manage_posts: { title: 'Manage Posts', subtitle: 'Create, edit, and monitor your listing submissions.' },
     messages: { title: 'Messages', subtitle: 'Conversation and notification overview.' },
     moderation: { title: 'Moderation', subtitle: 'Queue and verification decisions.' },
@@ -184,6 +241,14 @@ export const RoleDashboard: React.FC = () => {
         () => parseTouristSection(searchParams.get('section')),
         [searchParams],
     );
+    const requestedProviderSection = useMemo(
+        () => parseProviderSection(searchParams.get('section')),
+        [searchParams],
+    );
+    const requestedAdminSection = useMemo(
+        () => parseAdminSection(searchParams.get('section')),
+        [searchParams],
+    );
     const metadataRole = typeof user?.user_metadata?.role === 'string' ? user.user_metadata.role : null;
     const effectiveRole = useMemo(
         () => effectiveRoleFromProfile(profile?.role || metadataRole),
@@ -200,9 +265,23 @@ export const RoleDashboard: React.FC = () => {
     const [touristNotifications, setTouristNotifications] = useState<AppNotificationRecord[]>([]);
 
     const [providerListings, setProviderListings] = useState<PostRecord[]>([]);
+    const [providerAds, setProviderAds] = useState<PaidAdRecord[]>([]);
     const [providerBookings, setProviderBookings] = useState<UnifiedBooking[]>([]);
     const [providerConversations, setProviderConversations] = useState<ConversationRecord[]>([]);
     const [providerNotifications, setProviderNotifications] = useState<AppNotificationRecord[]>([]);
+    const [boostingPostId, setBoostingPostId] = useState<string | null>(null);
+    const [boostPlanByPostId, setBoostPlanByPostId] = useState<Record<string, PromotionPlanKey>>({});
+    const [boostDialog, setBoostDialog] = useState<BoostDialogState | null>(null);
+    const [adSubmitting, setAdSubmitting] = useState(false);
+    const [adImageUploading, setAdImageUploading] = useState(false);
+    const [adForm, setAdForm] = useState({
+        title: '',
+        image_url: '',
+        link: '',
+        cta_text: '',
+        plan_key: 'week' as PromotionPlanKey,
+    });
+    const adImageInputRef = useRef<HTMLInputElement>(null);
 
     const [adminPublishedPosts, setAdminPublishedPosts] = useState<PostRecord[]>([]);
     const [adminQueuePosts, setAdminQueuePosts] = useState<PostRecord[]>([]);
@@ -246,15 +325,15 @@ export const RoleDashboard: React.FC = () => {
 
     useEffect(() => {
         if (effectiveRole === 'admin') {
-            setActiveSection('overview');
+            setActiveSection(requestedAdminSection || 'overview');
             return;
         }
         if (effectiveRole === 'provider') {
-            setActiveSection('overview');
+            setActiveSection(requestedProviderSection || 'overview');
             return;
         }
         setActiveSection(requestedTouristSection || 'bookings');
-    }, [effectiveRole, requestedTouristSection]);
+    }, [effectiveRole, requestedAdminSection, requestedProviderSection, requestedTouristSection]);
 
     const loadAdminAccountLocations = async (force = false) => {
         if (effectiveRole !== 'admin') return;
@@ -294,14 +373,16 @@ export const RoleDashboard: React.FC = () => {
                 }
 
                 if (effectiveRole === 'provider') {
-                    const [listings, bookings, conversations, notifications] = await Promise.all([
+                    const [listings, ads, bookings, conversations, notifications] = await Promise.all([
                         getMyPosts(user.id),
+                        getMyAds(user.id),
                         getProviderBookings(user.id),
                         getConversations(user.id),
                         getNotifications(user.id, 50),
                     ]);
                     if (cancelled) return;
                     setProviderListings(listings);
+                    setProviderAds(ads);
                     setProviderBookings(bookings);
                     setProviderConversations(conversations);
                     setProviderNotifications(notifications);
@@ -363,6 +444,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                 { key: 'bookings', label: 'Bookings', icon: ClipboardList },
                 { key: 'listings', label: 'Listings', icon: Package },
+                { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
                 { key: 'manage_posts', label: 'Manage Posts', icon: FileText },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
@@ -465,6 +547,9 @@ export const RoleDashboard: React.FC = () => {
 
     const providerRows = providerListings
         .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
+
+    const providerAdRows = providerAds
+        .filter((item) => !query || `${item.title || ''} ${item.link || ''} ${item.cta_text || ''}`.toLowerCase().includes(query));
 
     const providerBookingRows = providerBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''} ${item.traveler_name || ''} ${item.traveler_email || ''} ${item.traveler_phone || ''}`.toLowerCase().includes(query));
@@ -644,6 +729,7 @@ export const RoleDashboard: React.FC = () => {
             return {
                 bookings: providerBookingRows.length,
                 listings: providerRows.length,
+                advertisements: providerAdRows.length,
                 manage_posts: providerRows.length,
                 messages: providerNotifications.length,
             };
@@ -666,9 +752,222 @@ export const RoleDashboard: React.FC = () => {
         favoriteRows.length,
         providerBookingRows.length,
         providerNotifications.length,
+        providerAdRows.length,
         providerRows.length,
         touristRows.length,
     ]);
+
+    const refreshProviderPromotionState = async () => {
+        if (!user) return;
+        const [nextListings, nextAds] = await Promise.all([
+            getMyPosts(user.id),
+            getMyAds(user.id),
+        ]);
+        setProviderListings(nextListings);
+        setProviderAds(nextAds);
+    };
+
+    const isBoostableListing = (item: PostRecord) => {
+        const status = (item.status || '').toLowerCase();
+        return status === 'live' || status === 'published';
+    };
+
+    const handleBoostPurchase = async (item: PostRecord) => {
+        if (!user) return;
+        const postId = String(item.id || '').trim();
+        if (!postId) {
+            alert('This listing is missing an id, so it cannot be boosted.');
+            return;
+        }
+        if (!isBoostableListing(item)) {
+            alert('Only live listings can be boosted.');
+            return;
+        }
+        if (hasActiveBoost(item)) {
+            alert('This listing already has an active boost.');
+            return;
+        }
+
+        const planKey = boostPlanByPostId[item.id] || 'week';
+        const plan = getPromotionPlan(planKey);
+        setBoostDialog({
+            postId,
+            title: titleForPost(item),
+            planKey,
+            planLabel: plan.label,
+            amount: plan.amount,
+            status: 'confirm',
+            message: null,
+            endsAt: null,
+        });
+    };
+
+    const closeBoostDialog = () => {
+        if (!boostDialog) return;
+        if (boostDialog.status === 'creating_order' || boostDialog.status === 'checkout' || boostDialog.status === 'activating') {
+            return;
+        }
+        setBoostDialog(null);
+    };
+
+    const confirmBoostPurchase = async () => {
+        if (!user || !boostDialog) return;
+        const { postId, title, planKey, planLabel } = boostDialog;
+        setBoostingPostId(postId);
+        setBoostDialog((current) => current ? {
+            ...current,
+            status: 'creating_order',
+            message: 'Creating your boost payment order…',
+        } : current);
+
+        try {
+            const order = await createPromotionOrder({
+                kind: 'boost',
+                post_id: postId,
+                plan_key: planKey,
+                label: title,
+            });
+            setBoostDialog((current) => current ? {
+                ...current,
+                status: 'checkout',
+                message: 'Payment order is ready. Complete the checkout to start the boost.',
+            } : current);
+            const payment = await openPromotionRazorpayCheckout({
+                order,
+                item_label: `${title} (${planLabel})`,
+                prefill: {
+                    name: profile?.full_name || undefined,
+                    email: user.email || undefined,
+                    contact: profile?.phone || undefined,
+                },
+            });
+            setBoostDialog((current) => current ? {
+                ...current,
+                status: 'activating',
+                message: 'Payment received. Activating the boost on your listing…',
+            } : current);
+            const result = await confirmPromotionPurchase({
+                kind: 'boost',
+                plan_key: planKey,
+                payment,
+                boost: { post_id: postId },
+            });
+            await refreshProviderPromotionState();
+            setBoostDialog((current) => current ? {
+                ...current,
+                status: 'success',
+                message: `Boost activated successfully for ${planLabel}.`,
+                endsAt: result.ends_at || null,
+            } : current);
+        } catch (error) {
+            console.error('Boost purchase failed:', error);
+            setBoostDialog((current) => current ? {
+                ...current,
+                status: 'error',
+                message: error instanceof Error ? error.message : 'Could not complete boost purchase.',
+            } : current);
+        } finally {
+            setBoostingPostId(null);
+        }
+    };
+
+    const uploadPromoImage = async (file: File): Promise<string> => {
+        if (!user) throw new Error('You must be logged in to upload an image.');
+
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${user.id}/promo-ad-${Date.now()}.${ext}`;
+        const { error } = await supabase.storage
+            .from(PROMO_IMAGE_BUCKET)
+            .upload(path, file, { upsert: true, contentType: file.type });
+
+        if (error) throw error;
+
+        const { data } = supabase.storage.from(PROMO_IMAGE_BUCKET).getPublicUrl(path);
+        return `${data.publicUrl}?t=${Date.now()}`;
+    };
+
+    const handleAdImageUpload = async (file: File) => {
+        if (!user) return;
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file.');
+            return;
+        }
+        if (file.size > MAX_PROMO_IMAGE_MB * 1024 * 1024) {
+            alert(`Image is too large. Max allowed size is ${MAX_PROMO_IMAGE_MB}MB.`);
+            return;
+        }
+
+        setAdImageUploading(true);
+        try {
+            const uploadedUrl = await uploadPromoImage(file);
+            setAdForm((current) => ({ ...current, image_url: uploadedUrl }));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to upload ad image.';
+            console.error('Ad image upload failed:', error);
+            alert(message);
+        } finally {
+            setAdImageUploading(false);
+        }
+    };
+
+    const handleAdSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!user || adSubmitting || adImageUploading) return;
+
+        const title = adForm.title.trim();
+        const imageUrl = adForm.image_url.trim();
+        const link = adForm.link.trim();
+        const ctaText = adForm.cta_text.trim();
+        if (!title || !imageUrl || !link || !ctaText) {
+            alert('Title, uploaded image, link, and CTA text are required.');
+            return;
+        }
+
+        const plan = getPromotionPlan(adForm.plan_key);
+        setAdSubmitting(true);
+
+        try {
+            const order = await createPromotionOrder({
+                kind: 'ad',
+                plan_key: adForm.plan_key,
+                title,
+            });
+            const payment = await openPromotionRazorpayCheckout({
+                order,
+                item_label: `${title} (${plan.label})`,
+                prefill: {
+                    name: profile?.full_name || undefined,
+                    email: user.email || undefined,
+                    contact: profile?.phone || undefined,
+                },
+            });
+            await confirmPromotionPurchase({
+                kind: 'ad',
+                plan_key: adForm.plan_key,
+                payment,
+                ad: {
+                    title,
+                    image_url: imageUrl,
+                    link,
+                    cta_text: ctaText,
+                },
+            });
+            setAdForm({
+                title: '',
+                image_url: '',
+                link: '',
+                cta_text: '',
+                plan_key: 'week',
+            });
+            await refreshProviderPromotionState();
+            alert(`Advertisement is live for ${plan.label}.`);
+        } catch (error) {
+            console.error('Ad purchase failed:', error);
+            alert(error instanceof Error ? error.message : 'Could not complete advertisement purchase.');
+        } finally {
+            setAdSubmitting(false);
+        }
+    };
 
     const renderTouristSection = () => {
         if (activeSection === 'bookings') {
@@ -1054,8 +1353,42 @@ export const RoleDashboard: React.FC = () => {
                                 <div>
                                     <p>{titleForPost(item)}</p>
                                     <small>{item.type || 'listing'} - {formatDate(item.created_at)}</small>
+                                    {hasActiveBoost(item) && (
+                                        <small>Boost active until {formatDate(item.boost_end || null)}</small>
+                                    )}
                                 </div>
-                                <span className={`rdb-pill rdb-pill-${(item.status || 'pending').toLowerCase()}`}>{item.status || 'pending'}</span>
+                                <div className="rdb-row-actions rdb-row-actions-promo">
+                                    <span className={`rdb-pill rdb-pill-${(item.status || 'pending').toLowerCase()}`}>{item.status || 'pending'}</span>
+                                    {hasActiveBoost(item) ? (
+                                        <span className="rdb-pill rdb-pill-paid">Boosted</span>
+                                    ) : isBoostableListing(item) ? (
+                                        <>
+                                            <select
+                                                className="rdb-promo-select"
+                                                value={boostPlanByPostId[item.id] || 'week'}
+                                                onChange={(e) => setBoostPlanByPostId((current) => ({
+                                                    ...current,
+                                                    [item.id]: e.target.value as PromotionPlanKey,
+                                                }))}
+                                                aria-label={`Boost plan for ${titleForPost(item)}`}
+                                            >
+                                                {PROMOTION_PLAN_LIST.map((plan) => (
+                                                    <option key={plan.key} value={plan.key}>
+                                                        {plan.label} - {formatCurrency(plan.amount)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                className="rdb-post-edit-btn"
+                                                onClick={() => void handleBoostPurchase(item)}
+                                                disabled={boostingPostId === String(item.id || '').trim()}
+                                            >
+                                                {boostingPostId === String(item.id || '').trim() ? 'Processing…' : 'Boost'}
+                                            </button>
+                                        </>
+                                    ) : null}
+                                </div>
                             </div>
                         ))}
                         {providerRows.length === 0 && <p className="rdb-empty">No matching listings.</p>}
@@ -1072,6 +1405,7 @@ export const RoleDashboard: React.FC = () => {
                         <div className="rdb-action-list">
                             <Link to="/provider/studio" className="rdb-inline-link">Open Provider Studio</Link>
                             <Link to="/provider/studio" className="rdb-inline-link">Create New Post</Link>
+                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('advertisements')}>Open ads panel</button>
                             <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('listings')}>View listing statuses</button>
                         </div>
                     </article>
@@ -1101,6 +1435,138 @@ export const RoleDashboard: React.FC = () => {
                                 </div>
                             ))}
                             {providerRows.length === 0 && <p className="rdb-empty">No posts yet. Open Provider Studio to create one.</p>}
+                        </div>
+                    </article>
+                </section>
+            );
+        }
+
+        if (activeSection === 'advertisements') {
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <div className="rdb-panel-head">
+                            <h2>Create Advertisement</h2>
+                            <small>{formatCurrency(getPromotionPlan(adForm.plan_key).amount)} plan</small>
+                        </div>
+                        <form className="rdb-ad-form" onSubmit={handleAdSubmit}>
+                            <label className="rdb-ad-field">
+                                <span>Title</span>
+                                <input
+                                    value={adForm.title}
+                                    onChange={(e) => setAdForm((current) => ({ ...current, title: e.target.value }))}
+                                    placeholder="Weekend staycation launch"
+                                    required
+                                />
+                            </label>
+                            <label className="rdb-ad-field">
+                                <span>Ad Image</span>
+                                <div className="rdb-ad-upload-row">
+                                    <button
+                                        type="button"
+                                        className="rdb-row-edit-link"
+                                        disabled={adImageUploading}
+                                        onClick={() => adImageInputRef.current?.click()}
+                                    >
+                                        <Upload size={13} />
+                                        <span>{adImageUploading ? 'Uploading…' : 'Upload from device'}</span>
+                                    </button>
+                                    <small>Required. Use a banner-style image for best results.</small>
+                                </div>
+                                <input
+                                    ref={adImageInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="rdb-ad-file-input"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) void handleAdImageUpload(file);
+                                        e.target.value = '';
+                                    }}
+                                />
+                                {adForm.image_url && (
+                                    <div className="rdb-ad-preview">
+                                        <img src={adForm.image_url} alt="Ad preview" />
+                                    </div>
+                                )}
+                            </label>
+                            <label className="rdb-ad-field">
+                                <span>Destination Link</span>
+                                <input
+                                    value={adForm.link}
+                                    onChange={(e) => setAdForm((current) => ({ ...current, link: e.target.value }))}
+                                    placeholder="/listings/tour/..."
+                                    required
+                                />
+                            </label>
+                            <label className="rdb-ad-field">
+                                <span>CTA Text</span>
+                                <input
+                                    value={adForm.cta_text}
+                                    onChange={(e) => setAdForm((current) => ({ ...current, cta_text: e.target.value }))}
+                                    placeholder="Book now"
+                                    required
+                                />
+                            </label>
+                            <label className="rdb-ad-field">
+                                <span>Plan</span>
+                                <select
+                                    value={adForm.plan_key}
+                                    onChange={(e) => setAdForm((current) => ({ ...current, plan_key: e.target.value as PromotionPlanKey }))}
+                                >
+                                    {PROMOTION_PLAN_LIST.map((plan) => (
+                                        <option key={plan.key} value={plan.key}>
+                                            {plan.label} - {formatCurrency(plan.amount)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <button type="submit" className="rdb-btn rdb-btn-full" disabled={adSubmitting || adImageUploading}>
+                                {adSubmitting || adImageUploading ? 'Processing…' : 'Pay & Publish Ad'}
+                            </button>
+                        </form>
+                    </article>
+
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Your Advertisements</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${providerAdRows.length} records`}</small>
+                        </div>
+                        <div className="rdb-list">
+                            {providerAdRows.slice(0, 16).map((ad) => {
+                                const isActive = isPromotionWindowActive(ad.starts_at, ad.ends_at);
+                                return (
+                                    <div key={ad.id} className="rdb-list-row rdb-list-row-ad">
+                                        <div className="rdb-ad-row-main">
+                                            <div className="rdb-ad-thumb">
+                                                {ad.image_url ? <img src={ad.image_url} alt={ad.title || 'Ad'} /> : <Megaphone size={18} />}
+                                            </div>
+                                            <div className="rdb-ad-row-copy">
+                                                <p>{ad.title || 'Untitled ad'}</p>
+                                                <small>{ad.cta_text || 'CTA missing'} - {ad.link || 'No link'}</small>
+                                                <small>
+                                                    {ad.plan_key ? `${getPromotionPlan(ad.plan_key).label} • ` : ''}
+                                                    {ad.ends_at ? `Ends ${formatDate(ad.ends_at)}` : 'No end date'}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div className="rdb-row-actions">
+                                            <span className={`rdb-pill rdb-pill-${isActive ? 'paid' : 'pending'}`}>{isActive ? 'active' : 'expired'}</span>
+                                            <span className="rdb-pill rdb-pill-live">{formatCurrency(ad.payment_amount || 0)}</span>
+                                            <a
+                                                href={ad.link || '#'}
+                                                className="rdb-row-edit-link"
+                                                target={ad.link?.startsWith('http') ? '_blank' : undefined}
+                                                rel={ad.link?.startsWith('http') ? 'noreferrer' : undefined}
+                                            >
+                                                <ExternalLink size={13} />
+                                                <span>Open</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {providerAdRows.length === 0 && <p className="rdb-empty">No ads yet. Create your first paid advertisement here.</p>}
                         </div>
                     </article>
                 </section>
@@ -1187,6 +1653,7 @@ export const RoleDashboard: React.FC = () => {
                         <div className="rdb-action-list">
                             <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('bookings')}>Open bookings panel</button>
                             <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('listings')}>Open listings panel</button>
+                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('advertisements')}>Open ads panel</button>
                             <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('messages')}>Open messages panel</button>
                         </div>
                     </article>
@@ -1673,6 +2140,103 @@ export const RoleDashboard: React.FC = () => {
                     )}
                 </section>
             </div>
+
+            {boostDialog && (
+                <div className="rdb-modal-backdrop" onClick={closeBoostDialog}>
+                    <section
+                        className="rdb-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="boost-modal-title"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="rdb-modal-head">
+                            <div>
+                                <p className="rdb-modal-kicker">Boost Listing</p>
+                                <h2 id="boost-modal-title">{boostDialog.title}</h2>
+                            </div>
+                            <button
+                                type="button"
+                                className="rdb-modal-close"
+                                onClick={closeBoostDialog}
+                                disabled={boostDialog.status === 'creating_order' || boostDialog.status === 'checkout' || boostDialog.status === 'activating'}
+                                aria-label="Close boost dialog"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="rdb-modal-body">
+                            <div className="rdb-stat-list">
+                                <div><span>Plan</span><strong>{boostDialog.planLabel}</strong></div>
+                                <div><span>Cost</span><strong>{formatCurrency(boostDialog.amount)}</strong></div>
+                                <div><span>Status</span><strong>{boostDialog.status.replace('_', ' ')}</strong></div>
+                                {boostDialog.endsAt && (
+                                    <div><span>Active Until</span><strong>{formatDate(boostDialog.endsAt)}</strong></div>
+                                )}
+                            </div>
+
+                            {boostDialog.status === 'confirm' && (
+                                <p className="rdb-modal-copy">
+                                    Your listing will be promoted to the top of the recommendation row for the selected time window.
+                                    Payment is processed in Razorpay test mode.
+                                </p>
+                            )}
+
+                            {(boostDialog.status === 'creating_order' || boostDialog.status === 'checkout' || boostDialog.status === 'activating') && (
+                                <div className="rdb-modal-status is-progress">
+                                    <Loader2 size={18} className="animate-spin" />
+                                    <p>{boostDialog.message || 'Processing your boost…'}</p>
+                                </div>
+                            )}
+
+                            {boostDialog.status === 'success' && (
+                                <div className="rdb-modal-status is-success">
+                                    <CheckCircle2 size={18} />
+                                    <p>{boostDialog.message}</p>
+                                </div>
+                            )}
+
+                            {boostDialog.status === 'error' && (
+                                <div className="rdb-modal-status is-error">
+                                    <XCircle size={18} />
+                                    <p>{boostDialog.message}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="rdb-modal-actions">
+                            {boostDialog.status === 'confirm' && (
+                                <>
+                                    <button type="button" className="rdb-modal-btn rdb-modal-btn--ghost" onClick={closeBoostDialog}>
+                                        Cancel
+                                    </button>
+                                    <button type="button" className="rdb-modal-btn rdb-modal-btn--primary" onClick={() => void confirmBoostPurchase()}>
+                                        Continue to Payment
+                                    </button>
+                                </>
+                            )}
+
+                            {boostDialog.status === 'success' && (
+                                <button type="button" className="rdb-modal-btn rdb-modal-btn--primary" onClick={closeBoostDialog}>
+                                    Done
+                                </button>
+                            )}
+
+                            {boostDialog.status === 'error' && (
+                                <>
+                                    <button type="button" className="rdb-modal-btn rdb-modal-btn--ghost" onClick={closeBoostDialog}>
+                                        Close
+                                    </button>
+                                    <button type="button" className="rdb-modal-btn rdb-modal-btn--primary" onClick={() => void confirmBoostPurchase()}>
+                                        Try Again
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </section>
+                </div>
+            )}
 
             <nav className="rdb-bottom-nav" aria-label="Mobile dashboard navigation">
                 <div className="rdb-bottom-nav-track">

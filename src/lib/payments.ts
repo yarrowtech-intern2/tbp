@@ -11,6 +11,7 @@ import type {
     RazorpayPaymentSuccessResponse,
 } from '../types/razorpay';
 import type { ListingType } from './platform';
+import type { PromotionPlanKey } from './promotions';
 
 const RAZORPAY_SDK_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -195,9 +196,114 @@ export const confirmRazorpayBooking = async (
     return { booking_id: payload.booking_id };
 };
 
+export type PromotionKind = 'boost' | 'ad';
+
+export interface PromotionOrderPayload extends RazorpayOrderPayload {}
+
+export interface BoostPromotionDraft {
+    kind: 'boost';
+    post_id: string;
+    plan_key: PromotionPlanKey;
+    label: string;
+}
+
+export interface AdPromotionDraft {
+    kind: 'ad';
+    plan_key: PromotionPlanKey;
+    title: string;
+}
+
+export type PromotionPaymentDraft = BoostPromotionDraft | AdPromotionDraft;
+
+export interface ConfirmPromotionPurchaseInput {
+    kind: PromotionKind;
+    plan_key: PromotionPlanKey;
+    payment: RazorpayPaymentSuccessResponse;
+    boost?: {
+        post_id: string;
+    };
+    ad?: {
+        title: string;
+        image_url: string;
+        link: string;
+        cta_text: string;
+    };
+}
+
+export interface ConfirmPromotionPurchaseResult {
+    kind: PromotionKind;
+    post_id?: string;
+    ad_id?: string;
+    starts_at?: string | null;
+    ends_at?: string | null;
+}
+
+export const createPromotionOrder = async (
+    draft: PromotionPaymentDraft
+): Promise<PromotionOrderPayload> => {
+    const accessToken = await getAccessTokenOrThrow();
+    const { data, error } = await supabase.functions.invoke('create-razorpay-promo-order', {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+        body: draft,
+    });
+
+    if (error) {
+        if (error instanceof FunctionsFetchError) {
+            throw new Error('Supabase function `create-razorpay-promo-order` is not reachable. Deploy the new promo edge functions and try again.');
+        }
+        throw new Error(await getFunctionErrorMessage(error, 'Could not create promotion payment order.'));
+    }
+
+    const payload = data as Partial<PromotionOrderPayload> | null;
+    if (!payload?.order_id || !payload?.key_id || typeof payload.amount !== 'number' || !payload.currency) {
+        throw new Error('Invalid promotion payment order response from backend.');
+    }
+
+    return {
+        order_id: payload.order_id,
+        amount: payload.amount,
+        currency: payload.currency,
+        key_id: payload.key_id,
+    };
+};
+
+export const confirmPromotionPurchase = async (
+    input: ConfirmPromotionPurchaseInput
+): Promise<ConfirmPromotionPurchaseResult> => {
+    const accessToken = await getAccessTokenOrThrow();
+    const { data, error } = await supabase.functions.invoke('confirm-razorpay-promo-purchase', {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+        body: input,
+    });
+
+    if (error) {
+        if (error instanceof FunctionsFetchError) {
+            throw new Error('Supabase function `confirm-razorpay-promo-purchase` is not reachable. Deploy the new promo edge functions and try again.');
+        }
+        throw new Error(await getFunctionErrorMessage(error, 'Promotion payment verification failed.'));
+    }
+
+    const payload = data as Partial<ConfirmPromotionPurchaseResult> | null;
+    if (!payload?.kind) {
+        throw new Error('Promotion confirmation response is missing kind.');
+    }
+
+    return payload as ConfirmPromotionPurchaseResult;
+};
+
 interface OpenCheckoutInput {
     order: RazorpayOrderPayload;
     booking: BookingPaymentDraft;
+    prefill?: RazorpayCheckoutPrefill;
+}
+
+interface PromotionCheckoutInput {
+    order: PromotionOrderPayload;
+    item_label: string;
     prefill?: RazorpayCheckoutPrefill;
 }
 
@@ -205,19 +311,22 @@ interface RazorpayNativePluginResult {
     response?: RazorpayPaymentSuccessResponse | string | null;
 }
 
-const buildNativeCheckoutOptions = (input: OpenCheckoutInput) => ({
+interface NativeCheckoutConfig {
+    order: RazorpayOrderPayload;
+    prefill?: RazorpayCheckoutPrefill;
+    description: string;
+    notes?: Record<string, string>;
+}
+
+const buildNativeCheckoutOptions = (input: NativeCheckoutConfig) => ({
     key: input.order.key_id,
     amount: String(input.order.amount),
     currency: input.order.currency,
     name: 'The Better Pass',
-    description: `Booking for ${input.booking.listing_title}`,
+    description: input.description,
     order_id: input.order.order_id,
     prefill: input.prefill,
-    notes: {
-        listing_id: input.booking.listing_id,
-        listing_type: input.booking.listing_type,
-        booking_date: input.booking.booking_date || '',
-    },
+    notes: input.notes,
     theme: { color: '#1769ff' },
 });
 
@@ -274,7 +383,7 @@ const getNativeCheckoutErrorMessage = (error: unknown): string => {
 };
 
 const openNativeRazorpayCheckout = async (
-    input: OpenCheckoutInput
+    input: NativeCheckoutConfig
 ): Promise<RazorpayPaymentSuccessResponse> => {
     try {
         const result = await Checkout.open(buildNativeCheckoutOptions(input)) as RazorpayNativePluginResult;
@@ -290,7 +399,16 @@ export const openRazorpayCheckout = async (
     input: OpenCheckoutInput
 ): Promise<RazorpayPaymentSuccessResponse> => {
     if (isNativeRuntime() && isNativeRazorpayAvailable()) {
-        return openNativeRazorpayCheckout(input);
+        return openNativeRazorpayCheckout({
+            order: input.order,
+            prefill: input.prefill,
+            description: `Booking for ${input.booking.listing_title}`,
+            notes: {
+                listing_id: input.booking.listing_id,
+                listing_type: input.booking.listing_type,
+                booking_date: input.booking.booking_date || '',
+            },
+        });
     }
 
     await loadRazorpaySdk();
@@ -337,6 +455,69 @@ export const openRazorpayCheckout = async (
         checkout.on('payment.failed', (response) => {
             const description = response?.error?.description || response?.error?.reason || 'Payment failed.';
             safeReject(new Error(description));
+        });
+        checkout.open();
+    });
+};
+
+export const openPromotionRazorpayCheckout = async (
+    input: PromotionCheckoutInput
+): Promise<RazorpayPaymentSuccessResponse> => {
+    const description = `Promotion for ${input.item_label}`;
+
+    if (isNativeRuntime() && isNativeRazorpayAvailable()) {
+        return openNativeRazorpayCheckout({
+            order: input.order,
+            prefill: input.prefill,
+            description,
+            notes: {
+                promotion_label: input.item_label,
+            },
+        });
+    }
+
+    await loadRazorpaySdk();
+
+    if (!window.Razorpay) {
+        throw new Error('Razorpay checkout SDK is unavailable.');
+    }
+    const RazorpayCheckout = window.Razorpay;
+
+    return new Promise<RazorpayPaymentSuccessResponse>((resolve, reject) => {
+        let settled = false;
+        const safeResolve = (value: RazorpayPaymentSuccessResponse) => {
+            if (settled) return;
+            settled = true;
+            resolve(value);
+        };
+        const safeReject = (error: Error) => {
+            if (settled) return;
+            settled = true;
+            reject(error);
+        };
+
+        const options: RazorpayCheckoutOptions = {
+            key: input.order.key_id,
+            amount: input.order.amount,
+            currency: input.order.currency,
+            name: 'The Better Pass',
+            description,
+            order_id: input.order.order_id,
+            prefill: input.prefill,
+            notes: {
+                promotion_label: input.item_label,
+            },
+            theme: { color: '#1769ff' },
+            modal: {
+                ondismiss: () => safeReject(new Error('Payment was cancelled.')),
+            },
+            handler: (response) => safeResolve(response),
+        };
+
+        const checkout = new RazorpayCheckout(options);
+        checkout.on('payment.failed', (response) => {
+            const failureDescription = response?.error?.description || response?.error?.reason || 'Payment failed.';
+            safeReject(new Error(failureDescription));
         });
         checkout.open();
     });

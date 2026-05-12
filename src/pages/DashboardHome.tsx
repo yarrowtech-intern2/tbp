@@ -18,8 +18,11 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import {
   addListingFavorite,
+  getActivePaidAds,
   getBookings,
   getPublicListingsByType,
+  hasActiveBoost,
+  type PaidAdRecord,
   isListingFavorited,
   removeListingFavorite,
   type PostRecord,
@@ -142,10 +145,6 @@ const toListingTypeValue = (tab: SectionTab): ListingType => {
   return 'activity';
 };
 
-const getListingHref = (post: PostRecord): string => {
-  return `/listings/${toListingTypePath(getPostType(post))}/${post.id}`;
-};
-
 const formatPrice = (price: number | null | undefined): string => {
   if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) {
     return 'Price on request';
@@ -200,6 +199,32 @@ const scoreRecommendation = (post: PostRecord): number => {
   if (typeof post.location === 'string' && post.location.trim().length > 0) score += 1;
   if (getPostType(post) === 'tours') score += 1;
   return score;
+};
+
+const isExternalHref = (href?: string | null): boolean => Boolean(href && /^https?:\/\//i.test(href));
+
+const tokenize = (value: string): string[] => value
+  .toLowerCase()
+  .split(/[^a-z0-9]+/i)
+  .map((item) => item.trim())
+  .filter((item) => item.length > 2);
+
+const scoreAdRelevance = (ad: PaidAdRecord, posts: PostRecord[]): number => {
+  const adTokens = new Set(tokenize(`${ad.title || ''} ${ad.link || ''}`));
+  if (adTokens.size === 0) return 0;
+
+  let bestScore = 0;
+  posts.forEach((post) => {
+    const postTokens = new Set(tokenize(`${getPostTitle(post)} ${getPostLocation(post)} ${post.sub_category || ''}`));
+    let overlap = 0;
+    adTokens.forEach((token) => {
+      if (postTokens.has(token)) overlap += 1;
+    });
+    if (typeof ad.link === 'string' && ad.link.includes(String(post.id))) overlap += 4;
+    if (overlap > bestScore) bestScore = overlap;
+  });
+
+  return bestScore;
 };
 
 const ListingCard: React.FC<{ post: PostRecord; isBooked: boolean }> = ({ post, isBooked }) => {
@@ -419,6 +444,19 @@ const PromoBanner: React.FC<{
     return <article className={`dh-ad-banner${compact ? ' is-compact' : ''}`}>{content}</article>;
   }
 
+  if (isExternalHref(href)) {
+    return (
+      <a
+        href={href}
+        className={`dh-ad-banner${compact ? ' is-compact' : ''}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {content}
+      </a>
+    );
+  }
+
   return (
     <Link to={href} className={`dh-ad-banner${compact ? ' is-compact' : ''}`}>
       {content}
@@ -507,6 +545,81 @@ const CarouselRow: React.FC<{
   );
 };
 
+const AdCarousel: React.FC<{ ads: PaidAdRecord[] }> = ({ ads }) => {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const element = rowRef.current;
+    if (!element) return;
+
+    const check = () => {
+      setCanScrollLeft(element.scrollLeft > 4);
+      setCanScrollRight(element.scrollLeft < element.scrollWidth - element.clientWidth - 4);
+    };
+
+    check();
+    element.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check, { passive: true });
+
+    return () => {
+      element.removeEventListener('scroll', check);
+      window.removeEventListener('resize', check);
+    };
+  }, [ads.length]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    const element = rowRef.current;
+    if (!element) return;
+    element.scrollBy({
+      left: direction === 'right' ? element.clientWidth * 0.92 : -(element.clientWidth * 0.92),
+      behavior: 'smooth',
+    });
+  };
+
+  return (
+    <div className="dh-carousel-wrap">
+      {canScrollLeft && (
+        <button
+          type="button"
+          className="dh-carousel-arrow dh-carousel-arrow--left"
+          onClick={() => scroll('left')}
+          aria-label="Scroll ad carousel left"
+        >
+          <ChevronLeft size={18} />
+        </button>
+      )}
+
+      <div ref={rowRef} className="dh-ad-row">
+        {ads.map((ad, index) => (
+          <Reveal key={ad.id} className="dh-ad-row-item" delay={(index + 1) * 45}>
+            <PromoBanner
+              title={ad.title?.trim() || 'Sponsored placement'}
+              subtitle={ad.cta_text?.trim() || 'Sponsored promotion from a live provider listing.'}
+              image={ad.image_url?.trim() || FALLBACK_IMAGE}
+              badge="Sponsored"
+              cta={ad.cta_text?.trim() || 'Open now'}
+              href={ad.link?.trim() || undefined}
+            />
+          </Reveal>
+        ))}
+      </div>
+
+      {canScrollRight && (
+        <button
+          type="button"
+          className="dh-carousel-arrow dh-carousel-arrow--right"
+          onClick={() => scroll('right')}
+          aria-label="Scroll ad carousel right"
+        >
+          <ChevronRight size={18} />
+        </button>
+      )}
+    </div>
+  );
+};
+
 const Section: React.FC<{
   section: SectionTab;
   posts: PostRecord[];
@@ -559,6 +672,7 @@ export const DashboardHome: React.FC = () => {
   const [tourPosts, setTourPosts] = useState<PostRecord[]>([]);
   const [activityPosts, setActivityPosts] = useState<PostRecord[]>([]);
   const [eventPosts, setEventPosts] = useState<PostRecord[]>([]);
+  const [paidAds, setPaidAds] = useState<PaidAdRecord[]>([]);
   const [suggestedPosts, setSuggestedPosts] = useState<PostRecord[]>([]);
   const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
 
@@ -618,7 +732,20 @@ export const DashboardHome: React.FC = () => {
       ...filteredEventPosts,
     ]);
 
-    return [...pool].sort((a, b) => scoreRecommendation(b) - scoreRecommendation(a)).slice(0, 6);
+    return [...pool]
+      .sort((a, b) => {
+        const boostDelta = Number(hasActiveBoost(b)) - Number(hasActiveBoost(a));
+        if (boostDelta !== 0) return boostDelta;
+
+        const scoreDelta = scoreRecommendation(b) - scoreRecommendation(a);
+        if (scoreDelta !== 0) return scoreDelta;
+
+        const boostEndDelta = new Date(b.boost_end || 0).getTime() - new Date(a.boost_end || 0).getTime();
+        if (boostEndDelta !== 0) return boostEndDelta;
+
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      })
+      .slice(0, 8);
   }, [
     suggestedPosts,
     filteredTourPosts,
@@ -627,8 +754,21 @@ export const DashboardHome: React.FC = () => {
     searchQueryNormalized,
   ]);
 
-  const primaryRecommendation = recommendedPosts[0] || null;
-  const secondaryPromotion = recommendedPosts[1] || filteredEventPosts[0] || filteredActivityPosts[0] || null;
+  const rankedAds = useMemo(() => {
+    const sourcePosts = recommendedPosts.length > 0
+      ? recommendedPosts
+      : dedupePosts([...filteredTourPosts, ...filteredActivityPosts, ...filteredEventPosts]);
+
+    return [...paidAds].sort((a, b) => {
+      const amountDelta = (b.payment_amount || 0) - (a.payment_amount || 0);
+      if (amountDelta !== 0) return amountDelta;
+
+      const relevanceDelta = scoreAdRelevance(b, sourcePosts) - scoreAdRelevance(a, sourcePosts);
+      if (relevanceDelta !== 0) return relevanceDelta;
+
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+  }, [filteredActivityPosts, filteredEventPosts, filteredTourPosts, paidAds, recommendedPosts]);
 
   const bookedLookup = useMemo(() => {
     const byTypeAndId = new Set<string>();
@@ -654,16 +794,18 @@ export const DashboardHome: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [tours, activities, events, bookings] = await Promise.all([
+        const [tours, activities, events, ads, bookings] = await Promise.all([
           getPublicListingsByType('tour'),
           getPublicListingsByType('activity'),
           getPublicListingsByType('guide'),
+          getActivePaidAds(),
           getBookings(user.id),
         ]);
 
         setTourPosts(tours);
         setActivityPosts(activities);
         setEventPosts(events);
+        setPaidAds(ads);
         setTouristBookings(bookings);
 
         const all = dedupePosts([...tours, ...activities, ...events]);
@@ -768,9 +910,9 @@ export const DashboardHome: React.FC = () => {
             <section className="dh-recommend-section">
               <div className="dh-section-top">
                 <div className="dh-section-heading">
-                  <p className="dh-section-kicker">Recommended</p>
-                  <h2 className="dh-listing-section-title">Picked for your explore feed</h2>
-                  <p className="dh-listing-section-sub">High-visibility cards for your next shortlist.</p>
+                  {/* <p className="dh-section-kicker">Recommended</p> */}
+                  <h2 className="dh-listing-section-title">Recommended Packages for you</h2>
+                  {/* <p className="dh-listing-section-sub">High-visibility cards for your next shortlist.</p> */}
                 </div>
               </div>
 
@@ -787,32 +929,17 @@ export const DashboardHome: React.FC = () => {
           <section className="dh-ad-section">
             <div className="dh-section-top">
               <div className="dh-section-heading">
-                <p className="dh-section-kicker">Advertisements</p>
-                <h2 className="dh-listing-section-title">Sponsored picks</h2>
-                <p className="dh-listing-section-sub">Promoted spaces designed to feel native to the explore experience.</p>
+                {/* <p className="dh-section-kicker">Advertisements</p> */}
+                <h2 className="dh-listing-section-title">Sponsored</h2>
+                {/* <p className="dh-listing-section-sub">Paid placements ordered by campaign weight and listing relevance.</p> */}
               </div>
             </div>
 
-            <div className="dh-ad-grid">
-              <PromoBanner
-                title={primaryRecommendation ? getPostTitle(primaryRecommendation) : 'Forest escape with slow-travel comfort'}
-                subtitle={primaryRecommendation ? getPostSubtitle(primaryRecommendation) : 'Discover a promoted stay, activity, or route with clean booking flow.'}
-                image={primaryRecommendation ? getPostImage(primaryRecommendation) : FALLBACK_IMAGE}
-                badge="Sponsored"
-                cta="Explore now"
-                href={primaryRecommendation ? getListingHref(primaryRecommendation) : undefined}
-              />
-
-              <PromoBanner
-                title={secondaryPromotion ? `Featured ${getSectionTitle(getPostType(secondaryPromotion)).slice(0, -1)}` : 'Guide spotlight'}
-                subtitle={secondaryPromotion ? getPostLocation(secondaryPromotion) : 'Highlight trusted guides and focused local expertise in a secondary promo slot.'}
-                image={secondaryPromotion ? getPostImage(secondaryPromotion) : '/images/home4/city.jpg'}
-                badge="Partner pick"
-                cta="Open feature"
-                href={secondaryPromotion ? getListingHref(secondaryPromotion) : undefined}
-                compact
-              />
-            </div>
+            {rankedAds.length > 0 ? (
+              <AdCarousel ads={rankedAds} />
+            ) : (
+              <p className="dh-empty-text">No sponsored ads are live right now.</p>
+            )}
           </section>
         </Reveal>
 
