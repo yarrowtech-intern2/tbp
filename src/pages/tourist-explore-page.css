@@ -1,12 +1,11 @@
 .txp-page {
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--bg-main);
   color: #0b0b0f;
   padding: 108px 0 40px;
 }
 
 :root[data-theme='dark'] .txp-page {
-  background: #000000;
   color: #f8fafc;
 }
 
@@ -167,12 +166,18 @@
   margin-bottom: 22px;
   text-decoration: none;
   color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 30px;
+  box-shadow: none;
+  padding: 0;
+  overflow: hidden;
 }
 
 .txp-card-media {
   position: relative;
   overflow: hidden;
-  border-radius: 34px;
+  border-radius: 0;
   background-color: #d9d9d9;
 }
 
@@ -186,98 +191,191 @@
   will-change: transform;
 }
 
-.txp-card:hover .txp-card-image,
-.txp-card:focus-visible .txp-card-image {
-  transform: scale(1.045);
-}
-
 .txp-card--tall .txp-card-media {
-  aspect-ratio: 0.76;
+  aspect-ratio: 0.72;
 }
 
 .txp-card--medium .txp-card-media {
-  aspect-ratio: 0.98;
+  aspect-ratio: 0.76;
 }
 
 .txp-card--short .txp-card-media {
-  aspect-ratio: 1.15;
+  aspect-ratio: 0.82;
 }
 
 .txp-card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.78) 100%);
+  background: linear-gradient(180deg, rgba(8, 11, 18, 0.05) 0%, rgba(8, 11, 18, 0.18) 48%, rgba(8, 11, 18, 0.42) 100%);
+}
+
+.txp-card-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  z-index: 3;
+}
+
+.txp-card-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.06) 26%,
+    rgba(0, 0, 0, 0.24) 52%,
+    rgba(0, 0, 0, 0.5) 76%,
+    rgba(0, 0, 0, 0.66) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.txp-card-content::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 38%,
+    rgba(0, 0, 0, 0.28) 58%,
+    rgba(0, 0, 0, 0.62) 80%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.txp-card-content > * {
+  position: relative;
+  z-index: 2;
+}
+
+.txp-card-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.txp-card-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  color: #16181f;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .txp-card-rating {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 30px;
+  min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.94);
-  color: #111111;
-  font-size: 0.78rem;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  color: #141820;
+  font-size: 0.66rem;
   font-weight: 800;
 }
 
 .txp-card-rating.is-empty {
-  background: rgba(17, 17, 17, 0.72);
-  color: #ffffff;
+  background: rgba(15, 18, 24, 0.76);
+  border-color: rgba(255, 255, 255, 0.26);
+  color: #f5f7fb;
 }
 
 .txp-card-boosted {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 30px;
-  padding: 0 12px;
+  min-height: 26px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.28);
   color: #ffffff;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .txp-card-copy {
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 18px;
-  z-index: 2;
   color: #ffffff;
 }
 
 .txp-card-copy h2,
-.txp-card-copy strong {
+.txp-card-copy strong,
+.txp-card-copy p {
   margin: 0;
 }
 
 .txp-card-copy h2 {
-  font-family: 'Outfit', sans-serif;
-  font-size: clamp(1.25rem, 2vw, 2.25rem);
-  line-height: 1;
-  letter-spacing: -0.04em;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.08rem, 1.55vw, 1.45rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
 }
 
 .txp-card-copy strong {
   display: block;
-  margin-top: 6px;
-  font-size: clamp(1rem, 1.3vw, 1.6rem);
-  font-weight: 800;
+  margin-top: 4px;
+  color: rgba(241, 245, 253, 0.94);
+  font-size: clamp(0.86rem, 1.05vw, 1.04rem);
+  font-weight: 760;
   line-height: 1;
+}
+
+.txp-card-copy p {
+  margin-top: 7px;
+  color: rgba(230, 236, 248, 0.86);
+  font-size: 0.8rem;
+  line-height: 1.42;
+}
+
+:root[data-theme='dark'] .txp-card {
+  border: none;
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .txp-card-chip {
+  background: rgba(15, 18, 24, 0.82);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #f4f6fb;
+}
+
+:root[data-theme='dark'] .txp-card-copy {
+  color: #f5f7fb;
+}
+
+:root[data-theme='dark'] .txp-card-copy strong,
+:root[data-theme='dark'] .txp-card-copy p {
+  color: rgba(232, 236, 245, 0.82);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .txp-card:hover,
+  .txp-card:focus-visible {
+    transform: none !important;
+  }
+
+  .txp-card:hover .txp-card-image,
+  .txp-card:focus-visible .txp-card-image {
+    transform: scale(1.08);
+  }
 }
 
 .txp-state {
@@ -438,7 +536,7 @@
   }
 
   .txp-card-media {
-    border-radius: 26px;
+    border-radius: 0;
   }
 
   .txp-bottom-nav {
@@ -491,26 +589,32 @@
     column-gap: 12px;
   }
 
+  .txp-card {
+    border-radius: 24px;
+    padding: 0;
+  }
+
   .txp-card-rating {
-    top: 12px;
-    left: 12px;
     min-height: 24px;
     padding: 0 8px;
-    font-size: 0.68rem;
+    font-size: 0.62rem;
   }
 
   .txp-card-boosted {
-    top: 12px;
-    right: 12px;
     min-height: 24px;
     padding: 0 9px;
     font-size: 0.6rem;
   }
 
-  .txp-card-copy {
-    left: 14px;
-    right: 14px;
-    bottom: 14px;
+  .txp-card-chip {
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 0.6rem;
+  }
+
+  .txp-card-content {
+    padding: 10px;
+    gap: 8px;
   }
 
   .txp-card-copy h2 {
@@ -520,5 +624,10 @@
   .txp-card-copy strong {
     margin-top: 4px;
     font-size: 0.88rem;
+  }
+
+  .txp-card-copy p {
+    margin-top: 6px;
+    font-size: 0.74rem;
   }
 }

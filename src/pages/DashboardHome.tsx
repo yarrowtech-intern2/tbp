@@ -364,11 +364,7 @@ const ListingCard: React.FC<{
           </div>
         )}
 
-        <div className="listing-card-title-static-wrap">
-          <h3 className="listing-card-title-static">{title}</h3>
-        </div>
-
-        <div className="listing-card-reveal-panel">
+        <div className="listing-card-content-overlay">
           <h3 className="listing-card-title">{title}</h3>
           <p className="listing-card-sub">{subtitle}</p>
 
@@ -403,43 +399,6 @@ const ListingCard: React.FC<{
               </Link>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="listing-card-mobile-content">
-        <h3 className="listing-card-title">{title}</h3>
-        <p className="listing-card-sub">{subtitle}</p>
-
-        <div className="listing-card-meta">
-          <span className={`listing-card-meta-item${reviewSummary?.review_count ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
-            <Star size={14} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
-            <span>{getReviewLabel(reviewSummary)}</span>
-          </span>
-          <span className="listing-card-meta-item">
-            <MapPin size={14} />
-            <span>{location}</span>
-          </span>
-          {startsAt && (
-            <span className="listing-card-meta-item">
-              <CalendarDays size={14} />
-              <span>{startsAt}</span>
-            </span>
-          )}
-        </div>
-
-        <div className="listing-card-actions">
-          <span className="listing-card-price">{priceLabel}</span>
-          {isBooked ? (
-            <span className="listing-btn-booked">Booked</span>
-          ) : (
-            <Link
-              to={`/listings/${listingTypePath}/${post.id}`}
-              className="listing-btn-book"
-              onClick={(event) => event.stopPropagation()}
-            >
-              Book Now
-            </Link>
-          )}
         </div>
       </div>
     </article>

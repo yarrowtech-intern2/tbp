@@ -5,7 +5,7 @@
   --primary: #0b0b0f;
   --primary-soft: rgba(11, 11, 15, 0.05);
   --accent: #a24b18;
-  --bg-main: #ffffff;
+  --bg-main: #dbdbdb;
   --bg-card: #ffffff;
   --surface-main: #ffffff;
   --surface-elevated: #ffffff;
@@ -53,6 +53,18 @@
   --danger-text: #f87171;
   --shadow-subtle: 0 12px 28px rgba(0, 0, 0, 0.42);
   --shadow-card: 0 30px 80px rgba(0, 0, 0, 0.55);
+
+  --tbp-card-surface: #0a0a0a;
+  --tbp-card-border: rgba(255, 255, 255, 0.16);
+  --tbp-card-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
+  --tbp-card-shadow-hover: 0 22px 46px rgba(0, 0, 0, 0.46);
+}
+
+:root {
+  --tbp-card-surface: #f2f3f5;
+  --tbp-card-border: rgba(255, 255, 255, 0.92);
+  --tbp-card-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  --tbp-card-shadow-hover: 0 22px 40px rgba(15, 23, 42, 0.18);
 }
 
 * {
@@ -399,6 +411,35 @@ h4,
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   background-image: linear-gradient(135deg, rgba(47, 107, 255, 0.08), rgba(15, 23, 42, 0.03));
+}
+
+/* Global card language */
+:where(
+  .card,
+  [class$='-card'],
+  [class*='-card '],
+  [class$='-banner'],
+  [class*='-banner ']
+) {
+  background: var(--tbp-card-surface);
+  border: 1px solid var(--tbp-card-border);
+  border-radius: 30px;
+  box-shadow: var(--tbp-card-shadow);
+  overflow: hidden;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.32s ease, border-color 0.32s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    .card,
+    [class$='-card'],
+    [class*='-card '],
+    [class$='-banner'],
+    [class*='-banner ']
+  ):hover {
+    transform: translateY(-4px);
+    box-shadow: var(--tbp-card-shadow-hover);
+  }
 }
 
 @media (max-width: 768px) {

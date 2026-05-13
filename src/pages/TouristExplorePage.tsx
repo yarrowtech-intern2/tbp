@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+﻿import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClipboardList, Home, LayoutDashboard, Search, Star, TrendingUp, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -71,6 +71,12 @@ const getListingHref = (post: ExploreCardRecord): string => {
 const getReviewLabel = (summary: ListingReviewSummary | undefined): string => {
   if (!summary || summary.review_count === 0 || summary.average_rating === null) return 'No reviews yet';
   return `${summary.average_rating.toFixed(1)} · ${summary.review_count} ${summary.review_count === 1 ? 'review' : 'reviews'}`;
+};
+
+const getTypeChipLabel = (post: ExploreCardRecord): string => {
+  if (post.exploreType === 'tours') return 'Tour';
+  if (post.exploreType === 'guides') return 'Guide';
+  return 'Activity';
 };
 
 export const TouristExplorePage: React.FC = () => {
@@ -278,19 +284,25 @@ export const TouristExplorePage: React.FC = () => {
                   <div className="txp-card-media">
                     <div className="txp-card-image" style={{ backgroundImage: `url(${getPostImage(post)})` }} />
                     <div className="txp-card-overlay" />
-                    <span className={`txp-card-rating${reviewSummary?.review_count ? '' : ' is-empty'}`}>
-                      <Star size={12} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
-                      {getReviewLabel(reviewSummary)}
-                    </span>
-                    {hasActiveBoost(post) && (
-                      <span className="txp-card-boosted">
-                        <TrendingUp size={12} />
-                        Boosted
-                      </span>
-                    )}
-                    <div className="txp-card-copy">
-                      <h2>{getPostTitle(post)}</h2>
-                      <strong>{formatPrice(post.price)}</strong>
+                    <div className="txp-card-content">
+                      <div className="txp-card-chips">
+                        <span className="txp-card-chip">{getTypeChipLabel(post)}</span>
+                        <span className={`txp-card-rating${reviewSummary?.review_count ? '' : ' is-empty'}`}>
+                          <Star size={12} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
+                          {getReviewLabel(reviewSummary)}
+                        </span>
+                        {hasActiveBoost(post) && (
+                          <span className="txp-card-boosted">
+                            <TrendingUp size={12} />
+                            Boosted
+                          </span>
+                        )}
+                      </div>
+                      <div className="txp-card-copy">
+                        <h2>{getPostTitle(post)}</h2>
+                        <strong>{formatPrice(post.price)}</strong>
+                        <p>{getPostLocation(post)}</p>
+                      </div>
                     </div>
                   </div>
                 </Link>
@@ -325,3 +337,5 @@ export const TouristExplorePage: React.FC = () => {
     </main>
   );
 };
+
+
