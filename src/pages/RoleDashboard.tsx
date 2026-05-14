@@ -1,12 +1,10 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    BadgeDollarSign,
     Bell,
     CalendarDays,
     CheckCircle2,
     ChevronLeft,
     ClipboardList,
-    Clock3,
     Compass,
     ExternalLink,
     FileText,
@@ -24,7 +22,6 @@ import {
     Star,
     SquarePen,
     Shield,
-    TrendingUp,
     Upload,
     UserCircle2,
     Users,
@@ -248,22 +245,6 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     return null;
 };
 
-const sectionMeta: Record<SidebarKey, { title: string; subtitle: string }> = {
-    overview: { title: 'Dashboard', subtitle: 'Your role-based operational summary.' },
-    explore: { title: 'Explore', subtitle: 'Suggested items and quick jump context.' },
-    bookings: { title: 'Bookings', subtitle: 'Booking records and status timelines.' },
-    favorites: { title: 'Favorites', subtitle: 'Saved listings from your activity.' },
-    listings: { title: 'Listings', subtitle: 'Provider listing lifecycle and publication state.' },
-    advertisements: { title: 'Advertisements', subtitle: 'Create paid ad creatives and track active campaigns.' },
-    manage_posts: { title: 'Manage Posts', subtitle: 'Create, edit, and monitor your listing submissions.' },
-    messages: { title: 'Messages', subtitle: 'Conversation and notification overview.' },
-    moderation: { title: 'Moderation', subtitle: 'Queue and verification decisions.' },
-    rejected: { title: 'Rejected', subtitle: 'Listings removed from the active moderation queue.' },
-    users: { title: 'Users', subtitle: 'Platform user distribution and recent profiles.' },
-    map: { title: 'Map', subtitle: 'Account geography and role-based location visibility.' },
-    audits: { title: 'Audit Logs', subtitle: 'Recent administrative actions on platform entities.' },
-};
-
 const LazyAdminAccountMap = lazy(async () => {
     const module = await import('../components/admin/AdminAccountMap');
     return { default: module.AdminAccountMap };
@@ -331,12 +312,105 @@ const AdminLineChart: React.FC<{ data: number[] }> = ({ data }) => {
     );
 };
 
+type RoleChartSegment = {
+    label: string;
+    value: number;
+    color: string;
+};
+
+const buildRollingMonthlyCounts = (
+    values: Array<string | null | undefined>,
+    monthsCount = 5,
+): Array<{ month: string; count: number; isCurrentMonth: boolean }> => {
+    const safeMonths = Math.max(1, Math.min(12, Math.trunc(monthsCount)));
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const monthKeys: string[] = [];
+    const labels: string[] = [];
+
+    for (let idx = safeMonths - 1; idx >= 0; idx -= 1) {
+        const d = new Date(now.getFullYear(), now.getMonth() - idx, 1);
+        monthKeys.push(`${d.getFullYear()}-${d.getMonth()}`);
+        labels.push(monthLabels[d.getMonth()]);
+    }
+
+    const counts = monthKeys.map(() => 0);
+    values.forEach((value) => {
+        if (!value) return;
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return;
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const keyIndex = monthKeys.indexOf(key);
+        if (keyIndex >= 0) counts[keyIndex] += 1;
+    });
+
+    return labels.map((month, index) => ({
+        month,
+        count: counts[index],
+        isCurrentMonth: index === labels.length - 1,
+    }));
+};
+
+const buildRollingDailyCounts = (
+    values: Array<string | null | undefined>,
+    daysCount = 10,
+): number[] => {
+    const safeDays = Math.max(2, Math.trunc(daysCount));
+    const counts = new Array(safeDays).fill(0);
+    const dayMs = 86400000;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+
+    values.forEach((value) => {
+        if (!value) return;
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return;
+        const bucket = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const age = Math.floor((todayMs - bucket) / dayMs);
+        if (age >= 0 && age < safeDays) {
+            counts[safeDays - 1 - age] += 1;
+        }
+    });
+
+    return counts;
+};
+
+const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: number; label: string }> = ({
+    segments,
+    centerValue,
+    label,
+}) => {
+    const normalizedSegments = segments
+        .map((segment) => ({ ...segment, value: Math.max(0, Math.round(segment.value)) }))
+        .filter((segment) => segment.value > 0);
+
+    const total = normalizedSegments.reduce((sum, segment) => sum + segment.value, 0);
+    let angle = 0;
+    const gradient = total > 0
+        ? `conic-gradient(${normalizedSegments.map((segment) => {
+            const start = angle;
+            angle += (segment.value / total) * 360;
+            return `${segment.color} ${start.toFixed(1)}deg ${angle.toFixed(1)}deg`;
+        }).join(', ')})`
+        : 'conic-gradient(#c7c7cb 0deg 360deg)';
+
+    const ariaText = `${label}: ${segments.map((segment) => `${segment.label} ${Math.max(0, Math.round(segment.value))}`).join(', ')}`;
+
+    return (
+        <div className="rdb-role-donut" role="img" aria-label={ariaText}>
+            <div className="rdb-role-donut-ring" style={{ background: gradient }} />
+            <strong>{Math.max(0, Math.round(centerValue))}</strong>
+        </div>
+    );
+};
+
 export const RoleDashboard: React.FC = () => {
     const { user, profile, profileLoading } = useAuth();
     const { role: roleParam } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [search, setSearch] = useState('');
+    const search = '';
     const [activeSection, setActiveSection] = useState<SidebarKey>('overview');
     const [isDesktopDashboard, setIsDesktopDashboard] = useState(
         typeof window === 'undefined' ? true : window.innerWidth >= 700,
@@ -363,7 +437,6 @@ export const RoleDashboard: React.FC = () => {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [lastLoadedAt, setLastLoadedAt] = useState<string | null>(null);
 
     const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
     const [touristFavorites, setTouristFavorites] = useState<FavoriteListingRecord[]>([]);
@@ -468,16 +541,14 @@ export const RoleDashboard: React.FC = () => {
     }, [activeSection, effectiveRole, isDesktopDashboard]);
 
     useEffect(() => {
-        if (effectiveRole !== 'admin' || isDesktopDashboard) {
+        if (isDesktopDashboard) {
             setAdminMobileMenuOpen(false);
         }
-    }, [effectiveRole, isDesktopDashboard]);
+    }, [isDesktopDashboard]);
 
     useEffect(() => {
-        if (effectiveRole === 'admin') {
-            setAdminMobileMenuOpen(false);
-        }
-    }, [activeSection, effectiveRole]);
+        setAdminMobileMenuOpen(false);
+    }, [activeSection]);
 
     useEffect(() => {
         if (effectiveRole === 'admin') {
@@ -554,7 +625,6 @@ export const RoleDashboard: React.FC = () => {
                     setAdminUsers(adminSnapshot.users);
                     setAdminRevenueDb(adminSnapshot.revenue);
                 }
-                if (!cancelled) setLastLoadedAt(new Date().toISOString());
             } catch (err: unknown) {
                 if (cancelled) return;
                 setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
@@ -583,7 +653,6 @@ export const RoleDashboard: React.FC = () => {
                 setAdminAuditLogs(snapshot.audits);
                 setAdminUsers(snapshot.users);
                 setAdminRevenueDb(snapshot.revenue);
-                setLastLoadedAt(new Date().toISOString());
             } catch (err) {
                 if (disposed) return;
                 console.error('Failed to refresh admin dashboard live data:', err);
@@ -832,6 +901,75 @@ export const RoleDashboard: React.FC = () => {
         return counts;
     }, [adminAuditLogs]);
 
+    const touristBookingStatusBreakdown = useMemo(() => {
+        let pending = 0;
+        let confirmed = 0;
+        let completed = 0;
+        let cancelled = 0;
+        for (const item of touristBookings) {
+            const status = (item.status || '').toLowerCase();
+            if (status === 'cancelled') {
+                cancelled += 1;
+            } else if (status === 'completed') {
+                completed += 1;
+            } else if (status === 'confirmed') {
+                confirmed += 1;
+            } else {
+                pending += 1;
+            }
+        }
+        return { pending, confirmed, completed, cancelled };
+    }, [touristBookings]);
+
+    const providerListingTypeBreakdown = useMemo(() => ({
+        tours: providerListings.filter((item) => item.type === 'tour').length,
+        activities: providerListings.filter((item) => item.type === 'activity').length,
+        guides: providerListings.filter((item) => item.type === 'guide' || item.type === 'event').length,
+    }), [providerListings]);
+
+    const providerBookingStatusBreakdown = useMemo(() => {
+        let pending = 0;
+        let confirmed = 0;
+        let completed = 0;
+        let cancelled = 0;
+        for (const item of providerBookings) {
+            const status = (item.status || '').toLowerCase();
+            if (status === 'cancelled') {
+                cancelled += 1;
+            } else if (status === 'completed') {
+                completed += 1;
+            } else if (status === 'confirmed') {
+                confirmed += 1;
+            } else {
+                pending += 1;
+            }
+        }
+        return { pending, confirmed, completed, cancelled };
+    }, [providerBookings]);
+
+    const touristMonthlyBookings = useMemo(
+        () => buildRollingMonthlyCounts(touristBookings.map((item) => item.booking_date || item.created_at)),
+        [touristBookings],
+    );
+
+    const providerMonthlyListings = useMemo(
+        () => buildRollingMonthlyCounts(providerListings.map((item) => item.created_at)),
+        [providerListings],
+    );
+
+    const touristActivityTrend = useMemo(
+        () => buildRollingDailyCounts([
+            ...touristBookings.map((item) => item.created_at || item.booking_date),
+            ...touristNotifications.map((item) => item.created_at),
+        ]),
+        [touristBookings, touristNotifications],
+    );
+
+    const providerBookingTrend = useMemo(
+        () => buildRollingDailyCounts(providerBookings.map((item) => item.booking_date || item.created_at)),
+        [providerBookings],
+    );
+
     const touristRows = touristBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''}`.toLowerCase().includes(query));
 
@@ -1003,12 +1141,6 @@ export const RoleDashboard: React.FC = () => {
         if (!listingId) return null;
         return `/listings/${toListingPathType(item.listing_type)}/${listingId}`;
     };
-    const getTravelerSummary = (item: UnifiedBooking): string => {
-        const name = item.traveler_name?.trim() || 'Traveler';
-        const email = item.traveler_email?.trim() || '';
-        const phone = item.traveler_phone?.trim() || '';
-        return [name, email, phone].filter(Boolean).join(' - ') || 'Traveler details unavailable';
-    };
     const userName = profile?.full_name || user?.email?.split('@')[0] || 'User';
     const userEmail = user?.email || '';
     const userInitials = userName
@@ -1017,8 +1149,6 @@ export const RoleDashboard: React.FC = () => {
         .map((n) => n[0]?.toUpperCase() ?? '')
         .join('');
 
-    const headerMeta = sectionMeta[activeSection] || sectionMeta.overview;
-    const activeNavLabel = navItems.find((item) => item.key === activeSection)?.label || 'Dashboard';
     const sectionCounts: Partial<Record<SidebarKey, number>> = useMemo(() => {
         if (effectiveRole === 'tourist') {
             return {
@@ -1396,82 +1526,91 @@ export const RoleDashboard: React.FC = () => {
 
         return (
             <>
-                <section className="rdb-kpis">
-                    <article className="rdb-kpi rdb-kpi-highlight">
-                        <div className="rdb-kpi-head"><ClipboardList size={15} /><p>Total Bookings</p></div>
-                        <strong>{touristBookings.length}</strong>
-                        <span>All trips booked by you</span>
-                    </article>
-                    <article className="rdb-kpi">
-                        <div className="rdb-kpi-head"><CheckCircle2 size={15} /><p>Completed</p></div>
-                        <strong>{touristMetrics.completed}</strong>
-                        <span>Trips completed</span>
-                    </article>
-                    <article className="rdb-kpi">
-                        <div className="rdb-kpi-head"><TrendingUp size={15} /><p>Upcoming</p></div>
-                        <strong>{touristMetrics.upcoming}</strong>
-                        <span>Pending and confirmed</span>
-                    </article>
-                    <article className="rdb-kpi">
-                        <div className="rdb-kpi-head"><Heart size={15} /><p>Favorites</p></div>
-                        <strong>{touristFavorites.length}</strong>
-                        <span>Saved places</span>
-                    </article>
-                </section>
-
-                <section className="rdb-content-grid">
-                    <article className="rdb-panel rdb-panel-wide">
-                        <div className="rdb-panel-head">
-                            <h2>Upcoming and Recent Trips</h2>
-                            <small>{query ? `Filtered by "${search}"` : 'Latest 6 records'}</small>
-                        </div>
-                        <div className="rdb-list">
-                            {touristRows.slice(0, 6).map((item) => {
-                                const bookingPath = getBookingDetailPath(item);
-                                const rowContent = (
-                                    <>
-                                        <div>
-                                            <p>{item.listing_title || 'Package'}</p>
-                                            <small>{formatDate(item.booking_date || item.created_at)}</small>
-                                        </div>
-                                        <span className={`rdb-pill rdb-pill-${item.status}`}>{item.status}</span>
-                                    </>
-                                );
-
-                                if (!bookingPath) {
-                                    return <div key={item.id} className="rdb-list-row">{rowContent}</div>;
-                                }
-
-                                return (
-                                    <Link key={item.id} to={bookingPath} className="rdb-list-row rdb-list-row-link">
-                                        {rowContent}
-                                    </Link>
-                                );
-                            })}
-                            {touristRows.length === 0 && <p className="rdb-empty">No matching bookings.</p>}
+                <div className="rdb-admin-kpi-row">
+                    <article className="rdb-admin-dark-card">
+                        <div className="rdb-admin-dark-card-layout">
+                            <div className="rdb-admin-dark-main">
+                                <p className="rdb-admin-dark-card-title">Total</p>
+                                <h2 className="rdb-admin-dark-card-heading">Bookings</h2>
+                                <strong className="rdb-admin-dark-card-number">{touristBookings.length}</strong>
+                            </div>
+                            <div className="rdb-admin-dark-breakdown">
+                                <span>Confirmed <strong>{touristBookingStatusBreakdown.confirmed}</strong></span>
+                                <span>Pending <strong>{touristBookingStatusBreakdown.pending}</strong></span>
+                                <span>Completed <strong>{touristBookingStatusBreakdown.completed}</strong></span>
+                            </div>
                         </div>
                     </article>
 
-                    <article className="rdb-panel">
-                        <h2>Quick Snapshot</h2>
-                        <div className="rdb-stat-list">
-                            <div><span>Review Queue</span><strong>{touristMetrics.reviewable}</strong></div>
-                            <div><span>Total Spend</span><strong>{formatCurrency(touristMetrics.spend)}</strong></div>
-                            <div><span>Conversations</span><strong>{touristConversations.length}</strong></div>
-                            <div><span>Notifications</span><strong>{touristNotifications.length}</strong></div>
+                    <article className="rdb-admin-light-card rdb-admin-light-card--users">
+                        <p className="rdb-admin-light-card-title">Trip</p>
+                        <h2 className="rdb-admin-light-card-heading">Status</h2>
+                        <div className="rdb-admin-users-layout rdb-role-users-layout">
+                            <RoleDonutChart
+                                segments={[
+                                    { label: 'Completed', value: touristBookingStatusBreakdown.completed, color: '#ff6700' },
+                                    { label: 'Confirmed', value: touristBookingStatusBreakdown.confirmed, color: '#2f2f33' },
+                                    { label: 'Pending', value: touristBookingStatusBreakdown.pending, color: '#b7b7bd' },
+                                    { label: 'Cancelled', value: touristBookingStatusBreakdown.cancelled, color: '#8f8f95' },
+                                ]}
+                                centerValue={touristBookings.length}
+                                label="Tourist booking status"
+                            />
+                            <div className="rdb-admin-users-breakdown">
+                                <div>Completed <span>{touristBookingStatusBreakdown.completed}</span></div>
+                                <div>Upcoming <span>{touristMetrics.upcoming}</span></div>
+                                <div>Saved Places <span>{touristFavorites.length}</span></div>
+                                <div>Messages <span>{touristConversations.length}</span></div>
+                            </div>
                         </div>
                     </article>
 
-                    <article className="rdb-panel">
-                        <h2>Suggested Actions</h2>
-                        <div className="rdb-action-list">
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('explore')}>Open explore panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('bookings')}>Open bookings panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('messages')}>Open messages panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('favorites')}>Open favorites panel</button>
+                    <article className="rdb-admin-light-card rdb-admin-light-card--revenue">
+                        <div className="rdb-admin-revenue-head">
+                            <div>
+                                <p className="rdb-admin-light-card-title">Total</p>
+                                <h2 className="rdb-admin-light-card-heading">Spend</h2>
+                            </div>
+                            <button
+                                type="button"
+                                className="rdb-admin-arrow-btn"
+                                onClick={() => setActiveSection('bookings')}
+                                title="Open bookings"
+                            >
+                                <ExternalLink size={15} />
+                            </button>
                         </div>
+                        <strong className="rdb-admin-light-card-number rdb-admin-light-card-number--revenue">{formatRupeeShort(touristMetrics.spend)}</strong>
                     </article>
-                </section>
+                </div>
+
+                <div className="rdb-admin-charts-row">
+                    <article className="rdb-admin-chart-card">
+                        <h3>Bookings</h3>
+                        <p>Total count per month</p>
+                        <AdminBarChart data={touristMonthlyBookings} />
+                    </article>
+
+                    <article className="rdb-admin-chart-card">
+                        <h3>Trip Activity</h3>
+                        <div className="rdb-admin-mod-list">
+                            {touristRows.slice(0, 3).map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className="rdb-admin-mod-item"
+                                    onClick={() => setActiveSection('bookings')}
+                                >
+                                    {item.listing_title || 'Package'} • {item.status}
+                                </button>
+                            ))}
+                            {touristRows.length === 0 && (
+                                <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No bookings yet</p>
+                            )}
+                        </div>
+                        <AdminLineChart data={touristActivityTrend} />
+                    </article>
+                </div>
             </>
         );
     };
@@ -1908,89 +2047,91 @@ export const RoleDashboard: React.FC = () => {
 
         return (
             <>
-                <section className="rdb-kpis">
-                    <article className="rdb-kpi rdb-kpi-highlight">
-                        <div className="rdb-kpi-head"><LayoutDashboard size={15} /><p>Total Listings</p></div>
-                        <strong>{providerListings.length}</strong>
-                        <span>All provider posts</span>
-                    </article>
-                    <article className="rdb-kpi">
-                        <div className="rdb-kpi-head"><Clock3 size={15} /><p>Pending</p></div>
-                        <strong>{providerMetrics.pending}</strong>
-                        <span>Awaiting admin review</span>
-                    </article>
-                    <article className="rdb-kpi">
-                        <div className="rdb-kpi-head"><CheckCircle2 size={15} /><p>Live</p></div>
-                        <strong>{providerMetrics.live}</strong>
-                        <span>Currently published</span>
-                    </article>
-                    <article className="rdb-kpi">
-                        <div className="rdb-kpi-head"><BadgeDollarSign size={15} /><p>Revenue</p></div>
-                        <strong>{formatCurrency(providerMetrics.revenue)}</strong>
-                        <span>Non-cancelled bookings</span>
-                    </article>
-                </section>
-
-                <section className="rdb-content-grid">
-                    <article className="rdb-panel rdb-panel-wide">
-                        <div className="rdb-panel-head">
-                            <h2>Listings and Status</h2>
-                            <small>{query ? `Filtered by "${search}"` : 'Latest 6 records'}</small>
+                <div className="rdb-admin-kpi-row">
+                    <article className="rdb-admin-dark-card">
+                        <div className="rdb-admin-dark-card-layout">
+                            <div className="rdb-admin-dark-main">
+                                <p className="rdb-admin-dark-card-title">Total</p>
+                                <h2 className="rdb-admin-dark-card-heading">Listings</h2>
+                                <strong className="rdb-admin-dark-card-number">{providerListings.length}</strong>
+                            </div>
+                            <div className="rdb-admin-dark-breakdown">
+                                <span>Tours <strong>{providerListingTypeBreakdown.tours}</strong></span>
+                                <span>Activities <strong>{providerListingTypeBreakdown.activities}</strong></span>
+                                <span>Guides <strong>{providerListingTypeBreakdown.guides}</strong></span>
+                            </div>
                         </div>
-                        <div className="rdb-list">
-                            {providerRows.slice(0, 6).map((item) => (
-                                <div key={item.id} className="rdb-list-row">
-                                    <div>
-                                        <p>{titleForPost(item)}</p>
-                                        <small>{item.type || 'listing'} - {formatDate(item.created_at)}</small>
-                                    </div>
-                                    <span className={`rdb-pill rdb-pill-${(item.status || 'pending').toLowerCase()}`}>{item.status || 'pending'}</span>
-                                </div>
+                    </article>
+
+                    <article className="rdb-admin-light-card rdb-admin-light-card--users">
+                        <p className="rdb-admin-light-card-title">Total</p>
+                        <h2 className="rdb-admin-light-card-heading">Bookings</h2>
+                        <div className="rdb-admin-users-layout rdb-role-users-layout">
+                            <RoleDonutChart
+                                segments={[
+                                    { label: 'Confirmed', value: providerBookingStatusBreakdown.confirmed, color: '#ff6700' },
+                                    { label: 'Completed', value: providerBookingStatusBreakdown.completed, color: '#2f2f33' },
+                                    { label: 'Pending', value: providerBookingStatusBreakdown.pending, color: '#b7b7bd' },
+                                    { label: 'Cancelled', value: providerBookingStatusBreakdown.cancelled, color: '#8f8f95' },
+                                ]}
+                                centerValue={providerBookingRows.length}
+                                label="Provider booking status"
+                            />
+                            <div className="rdb-admin-users-breakdown">
+                                <div>Pending <span>{providerMetrics.pending}</span></div>
+                                <div>Live <span>{providerMetrics.live}</span></div>
+                                <div>Rejected <span>{providerMetrics.rejected}</span></div>
+                                <div>Messages <span>{providerConversations.length}</span></div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article className="rdb-admin-light-card rdb-admin-light-card--revenue">
+                        <div className="rdb-admin-revenue-head">
+                            <div>
+                                <p className="rdb-admin-light-card-title">Total</p>
+                                <h2 className="rdb-admin-light-card-heading">Revenue</h2>
+                            </div>
+                            <button
+                                type="button"
+                                className="rdb-admin-arrow-btn"
+                                onClick={() => setActiveSection('bookings')}
+                                title="Open provider bookings"
+                            >
+                                <ExternalLink size={15} />
+                            </button>
+                        </div>
+                        <strong className="rdb-admin-light-card-number rdb-admin-light-card-number--revenue">{formatRupeeShort(providerMetrics.revenue)}</strong>
+                    </article>
+                </div>
+
+                <div className="rdb-admin-charts-row">
+                    <article className="rdb-admin-chart-card">
+                        <h3>Listings</h3>
+                        <p>Total created per month</p>
+                        <AdminBarChart data={providerMonthlyListings} />
+                    </article>
+
+                    <article className="rdb-admin-chart-card">
+                        <h3>Bookings</h3>
+                        <div className="rdb-admin-mod-list">
+                            {providerBookingRows.slice(0, 3).map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className="rdb-admin-mod-item"
+                                    onClick={() => setActiveSection('bookings')}
+                                >
+                                    {item.listing_title || 'Package'} • {item.status}
+                                </button>
                             ))}
-                            {providerRows.length === 0 && <p className="rdb-empty">No matching listings.</p>}
+                            {providerBookingRows.length === 0 && (
+                                <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No bookings yet</p>
+                            )}
                         </div>
+                        <AdminLineChart data={providerBookingTrend} />
                     </article>
-
-                    <article className="rdb-panel">
-                        <h2>Operational Summary</h2>
-                        <div className="rdb-stat-list">
-                            <div><span>Rejected Listings</span><strong>{providerMetrics.rejected}</strong></div>
-                            <div><span>Total Bookings</span><strong>{providerBookings.length}</strong></div>
-                            <div><span>Conversations</span><strong>{providerConversations.length}</strong></div>
-                            <div><span>Notifications</span><strong>{providerNotifications.length}</strong></div>
-                        </div>
-                    </article>
-
-                    <article className="rdb-panel">
-                        <div className="rdb-panel-head">
-                            <h2>Recent Bookings</h2>
-                            <small>{providerBookingRows.length} records</small>
-                        </div>
-                        <div className="rdb-list">
-                            {providerBookingRows.slice(0, 5).map((item) => (
-                                <div key={item.id} className="rdb-list-row">
-                                    <div>
-                                        <p>{item.listing_title || 'Package'}</p>
-                                        <small>{formatDate(item.booking_date || item.created_at)}</small>
-                                        <small>{getTravelerSummary(item)}</small>
-                                    </div>
-                                    <span className={`rdb-pill rdb-pill-${item.status}`}>{item.status}</span>
-                                </div>
-                            ))}
-                            {providerBookingRows.length === 0 && <p className="rdb-empty">No bookings yet.</p>}
-                        </div>
-                    </article>
-
-                    <article className="rdb-panel">
-                        <h2>Suggested Actions</h2>
-                        <div className="rdb-action-list">
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('bookings')}>Open bookings panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('listings')}>Open listings panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('advertisements')}>Open ads panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('messages')}>Open messages panel</button>
-                        </div>
-                    </article>
-                </section>
+                </div>
             </>
         );
     };
@@ -2394,21 +2535,12 @@ export const RoleDashboard: React.FC = () => {
     if (!user || profileLoading) return null;
 
     const adminDateStr = new Date().toLocaleDateString('en-GB').split('/').join('.');
+    const dashboardRoleLabel = effectiveRole === 'admin' ? 'Admin' : effectiveRole === 'provider' ? 'Provider' : 'Tourist';
 
     return (
-        <main className={`rdb-page${effectiveRole === 'admin' ? ' rdb-page--admin' : ''}`}>
-            <div className={`container rdb-shell${effectiveRole === 'admin' ? ' rdb-shell--admin' : ''}`}>
+        <main className="rdb-page rdb-page--admin">
+            <div className="container rdb-shell rdb-shell--admin">
                 <aside className="rdb-sidebar">
-                    {effectiveRole !== 'admin' && (
-                        <div className="rdb-brand">
-                            <span className="rdb-brand-mark" />
-                            <div>
-                                <p className="rdb-brand-name">The Better Pass</p>
-                                <p className="rdb-brand-role">{effectiveRole} Dashboard</p>
-                            </div>
-                        </div>
-                    )}
-
                     <nav className="rdb-nav" aria-label="Dashboard menu">
                         {navItems.map((item) => {
                             const Icon = item.icon;
@@ -2419,7 +2551,7 @@ export const RoleDashboard: React.FC = () => {
                                     className={`rdb-nav-item${item.key === activeSection ? ' is-active' : ''}`}
                                     onClick={() => {
                                         setActiveSection(item.key);
-                                        if (effectiveRole === 'admin' && !isDesktopDashboard) {
+                                        if (!isDesktopDashboard) {
                                             setAdminMobileMenuOpen(false);
                                         }
                                     }}
@@ -2437,16 +2569,14 @@ export const RoleDashboard: React.FC = () => {
                         })}
                     </nav>
 
-                    {effectiveRole === 'admin' && (
-                        <button
-                            type="button"
-                            className="rdb-admin-sidebar-back"
-                            onClick={() => navigate(-1)}
-                            title="Go back"
-                        >
-                            <ChevronLeft size={20} />
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        className="rdb-admin-sidebar-back"
+                        onClick={() => navigate(-1)}
+                        title="Go back"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
 
                     <div className="rdb-profile">
                         <div className="rdb-profile-avatar">{userInitials || '?'}</div>
@@ -2458,110 +2588,68 @@ export const RoleDashboard: React.FC = () => {
                 </aside>
 
                 <section className="rdb-main">
-                    {effectiveRole === 'admin' ? (
-                        <header className={`rdb-admin-topbar${isDesktopDashboard ? ' is-desktop' : ' is-mobile'}${activeSection !== 'overview' ? ' is-subpage' : ''}`}>
-                            <div className="rdb-admin-topbar-main">
-                                <div className="rdb-admin-topbar-title">
-                                    <small>Admin</small>
-                                    <h1>Dashboard</h1>
-                                </div>
-                                <div className="rdb-admin-topbar-controls">
-                                    {!isDesktopDashboard && (
-                                        <button
-                                            type="button"
-                                            className={`rdb-admin-ctrl-btn rdb-admin-menu-btn${adminMobileMenuOpen ? ' is-open' : ''}`}
-                                            title="Open dashboard menu"
-                                            aria-expanded={adminMobileMenuOpen}
-                                            aria-controls="rdb-admin-mobile-menu"
-                                            onClick={() => setAdminMobileMenuOpen((open) => !open)}
-                                        >
-                                            <Menu size={18} />
-                                        </button>
-                                    )}
-                                    {isDesktopDashboard && (
-                                        <>
-                                            <button type="button" className="rdb-admin-ctrl-btn" title="Notifications">
-                                                <Bell size={18} />
-                                            </button>
-                                            <div className="rdb-admin-date-pill">
-                                                <div>
-                                                    <span className="rdb-admin-date-label">Date</span>
-                                                    <span className="rdb-admin-date-value">{adminDateStr}</span>
-                                                </div>
-                                                <span className="rdb-admin-date-icon">
-                                                    <CalendarDays size={19} />
-                                                </span>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
+                    <header className={`rdb-admin-topbar${isDesktopDashboard ? ' is-desktop' : ' is-mobile'}${activeSection !== 'overview' ? ' is-subpage' : ''}`}>
+                        <div className="rdb-admin-topbar-main">
+                            <div className="rdb-admin-topbar-title">
+                                <small>{dashboardRoleLabel}</small>
+                                <h1>Dashboard</h1>
                             </div>
-
-                            {!isDesktopDashboard && adminMobileMenuOpen && (
-                                <nav id="rdb-admin-mobile-menu" className="rdb-admin-mobile-menu" aria-label="Admin dashboard sections">
-                                    {navItems.map((item) => {
-                                        const isActive = item.key === activeSection;
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={`admin-mobile-${item.key}`}
-                                                className={`rdb-admin-mobile-menu-item${isActive ? ' is-active' : ''}`}
-                                                onClick={() => {
-                                                    setActiveSection(item.key);
-                                                    setAdminMobileMenuOpen(false);
-                                                }}
-                                            >
-                                                <span>{item.label}</span>
-                                                {typeof sectionCounts[item.key] === 'number' && (
-                                                    <strong>{sectionCounts[item.key]}</strong>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </nav>
-                            )}
-                        </header>
-                    ) : (
-                        <>
-                            <header className="rdb-header">
-                                <div className="rdb-search">
-                                    <Search size={16} />
-                                    <input
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        placeholder="Search in dashboard..."
-                                        aria-label="Search dashboard data"
-                                    />
-                                </div>
-                                <div className="rdb-header-actions">
-                                    {effectiveRole === 'provider' && <Link to="/provider/studio" className="rdb-btn">Provider Studio</Link>}
-                                    {effectiveRole === 'tourist' && <Link to="/?tab=tours" className="rdb-btn">Explore Trips</Link>}
-                                </div>
-                            </header>
-                            <section className="rdb-title-row">
-                                <div className="rdb-title-head">
-                                    <h1>{headerMeta.title}</h1>
-                                    <div className="rdb-title-badges">
-                                        <span className="rdb-chip">{activeNavLabel}</span>
-                                        <span className="rdb-chip">Updated {formatDateTime(lastLoadedAt)}</span>
-                                    </div>
-                                </div>
-                                <p>{headerMeta.subtitle}</p>
-                            </section>
-                            <nav className="rdb-inline-nav" aria-label="Dashboard quick sections">
-                                {navItems.map((item) => (
+                            <div className="rdb-admin-topbar-controls">
+                                {!isDesktopDashboard && (
                                     <button
                                         type="button"
-                                        key={`inline-${item.key}`}
-                                        className={`rdb-inline-tab${item.key === activeSection ? ' is-active' : ''}`}
-                                        onClick={() => setActiveSection(item.key)}
+                                        className={`rdb-admin-ctrl-btn rdb-admin-menu-btn${adminMobileMenuOpen ? ' is-open' : ''}`}
+                                        title="Open dashboard menu"
+                                        aria-expanded={adminMobileMenuOpen}
+                                        aria-controls="rdb-admin-mobile-menu"
+                                        onClick={() => setAdminMobileMenuOpen((open) => !open)}
                                     >
-                                        {item.label}
+                                        <Menu size={18} />
                                     </button>
-                                ))}
+                                )}
+                                {isDesktopDashboard && (
+                                    <button type="button" className="rdb-admin-ctrl-btn" title="Notifications">
+                                        <Bell size={18} />
+                                    </button>
+                                )}
+                                {isDesktopDashboard && (
+                                    <div className="rdb-admin-date-pill">
+                                        <div>
+                                            <span className="rdb-admin-date-label">Date</span>
+                                            <span className="rdb-admin-date-value">{adminDateStr}</span>
+                                        </div>
+                                        <span className="rdb-admin-date-icon">
+                                            <CalendarDays size={19} />
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {!isDesktopDashboard && adminMobileMenuOpen && (
+                            <nav id="rdb-admin-mobile-menu" className="rdb-admin-mobile-menu" aria-label="Dashboard sections">
+                                {navItems.map((item) => {
+                                    const isActive = item.key === activeSection;
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={`mobile-${item.key}`}
+                                            className={`rdb-admin-mobile-menu-item${isActive ? ' is-active' : ''}`}
+                                            onClick={() => {
+                                                setActiveSection(item.key);
+                                                setAdminMobileMenuOpen(false);
+                                            }}
+                                        >
+                                            <span>{item.label}</span>
+                                            {typeof sectionCounts[item.key] === 'number' && (
+                                                <strong>{sectionCounts[item.key]}</strong>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </nav>
-                        </>
-                    )}
+                        )}
+                    </header>
 
                     {loading ? (
                         <div className="rdb-loading">
@@ -2677,7 +2765,7 @@ export const RoleDashboard: React.FC = () => {
                 </div>
             )}
 
-            {effectiveRole !== 'admin' && (
+            {!isDesktopDashboard && (
                 <nav className="rdb-bottom-nav" aria-label="Mobile dashboard navigation">
                     <div className="rdb-bottom-nav-track">
                         {mobileNavItems.map((item) => {
@@ -2692,9 +2780,13 @@ export const RoleDashboard: React.FC = () => {
                                     onClick={() => {
                                         if (item.section) {
                                             setActiveSection(item.section);
+                                            setAdminMobileMenuOpen(false);
                                             return;
                                         }
-                                        if (item.to) navigate(item.to);
+                                        if (item.to) {
+                                            setAdminMobileMenuOpen(false);
+                                            navigate(item.to);
+                                        }
                                     }}
                                     aria-current={isActive ? 'page' : undefined}
                                 >

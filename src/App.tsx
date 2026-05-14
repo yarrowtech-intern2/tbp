@@ -218,7 +218,8 @@ const AppNavbar: React.FC = () => {
   const { user } = useAuth();
   const { pathname } = useLocation();
   const isGuestLanding = !user && pathname === '/';
-  if (isGuestLanding || HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
+  const isDashboardRoute = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+  if (isGuestLanding || isDashboardRoute || HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
   return <Navbar />;
 };
 
