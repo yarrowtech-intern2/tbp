@@ -1757,3 +1757,1049 @@
         font-size: clamp(1.6rem, 2.2vw, 2rem);
     }
 }
+
+/* ============================================================
+   ADMIN DASHBOARD - reference-aligned redesign
+   ============================================================ */
+
+.rdb-page--admin {
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+    padding: 0;
+    background: #d9d9dc;
+}
+
+:root[data-theme='dark'] .rdb-page--admin {
+    background: #d9d9dc;
+}
+
+.rdb-page--admin .container {
+    width: min(100%, 1460px);
+    max-width: 1460px;
+    height: 100dvh;
+    margin: 0 auto;
+    padding: clamp(14px, 1.8vw, 24px) clamp(10px, 1.2vw, 16px) clamp(10px, 1.2vw, 16px);
+}
+
+.rdb-shell--admin {
+    --accent: #ff6700;
+    --rdb-admin-bg: #d9d9dc;
+    --rdb-admin-card: #f2f2f3;
+    --rdb-admin-muted: #828286;
+    --rdb-admin-icon: #8c8c90;
+    min-height: 100%;
+    height: 100%;
+}
+
+.rdb-shell--admin .rdb-sidebar,
+.rdb-shell--admin .rdb-main {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.rdb-shell--admin .rdb-main {
+    padding: 2px 0 0;
+    gap: 12px;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.rdb-brand--admin {
+    width: 100%;
+}
+
+.rdb-admin-brand-logo {
+    width: 118px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.rdb-shell--admin .rdb-profile {
+    display: none;
+}
+
+.rdb-admin-sidebar-back {
+    display: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: #090909;
+    color: #f5f5f5;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-top: auto;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.rdb-admin-sidebar-back:hover {
+    transform: scale(1.04);
+    opacity: 0.92;
+}
+
+.rdb-admin-topbar {
+    display: grid;
+    gap: 10px;
+}
+
+.rdb-admin-topbar.is-desktop.is-subpage {
+    margin-top: clamp(24px, 3.6vh, 42px);
+}
+
+.rdb-admin-topbar-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.rdb-admin-topbar-title {
+    min-width: 0;
+}
+
+.rdb-admin-topbar-title small {
+    font-size: clamp(1.22rem, 2.1vw, 1.72rem);
+    line-height: 1.02;
+    font-weight: 500;
+    color: #0f0f10;
+    display: block;
+    margin: 0;
+}
+
+.rdb-admin-topbar-title h1 {
+    margin: 0;
+    font-size: clamp(2.08rem, 4.1vw, 2.86rem);
+    line-height: 0.98;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+    color: #0f0f10;
+}
+
+.rdb-admin-topbar-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+}
+
+.rdb-admin-topbar-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    min-width: 180px;
+    max-width: 360px;
+    width: min(100%, 360px);
+    flex: 1 1 260px;
+    border-radius: 999px;
+    background: #ececee;
+    border: 1px solid rgba(10, 10, 10, 0.08);
+    padding: 0 14px;
+}
+
+.rdb-admin-topbar-search svg {
+    color: #7f7f85;
+    flex-shrink: 0;
+}
+
+.rdb-admin-topbar-search input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font: inherit;
+    font-size: 0.88rem;
+    color: #141415;
+    min-width: 0;
+    flex: 1;
+}
+
+.rdb-admin-ctrl-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: #ceced1;
+    color: var(--rdb-admin-icon);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.rdb-admin-ctrl-btn:hover {
+    transform: scale(1.03);
+    opacity: 0.92;
+}
+
+.rdb-admin-date-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 224px;
+    height: 52px;
+    border-radius: 999px;
+    background: #ceced1;
+    border: none;
+    padding: 6px 6px 6px 14px;
+}
+
+.rdb-admin-date-pill > div {
+    display: grid;
+    gap: 2px;
+}
+
+.rdb-admin-date-label {
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: #2f2f31;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.rdb-admin-date-value {
+    font-size: clamp(1.04rem, 1.7vw, 1.38rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: #141416;
+    line-height: 1;
+}
+
+.rdb-admin-date-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #8f8f94;
+    color: #111;
+    flex-shrink: 0;
+}
+
+.rdb-admin-avatar-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: none;
+    background: #ceced1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--rdb-admin-icon);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.rdb-admin-avatar-circle--icon {
+    font-size: 0;
+}
+
+.rdb-admin-mobile-head,
+.rdb-admin-mobile-menu {
+    display: none;
+}
+
+.rdb-admin-kpi-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1.03fr 0.97fr;
+    grid-template-areas:
+        'packages revenue'
+        'packages users';
+}
+
+.rdb-admin-dark-card {
+    grid-area: packages;
+    background: #000;
+    border-radius: 22px;
+    border: none;
+    padding: 18px 18px 16px;
+    min-height: 220px;
+    color: #fff;
+}
+
+.rdb-admin-dark-card-layout {
+    height: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.rdb-admin-dark-main {
+    display: grid;
+    gap: 2px;
+}
+
+.rdb-admin-dark-card-title {
+    margin: 0;
+    font-size: 1.12rem;
+    line-height: 1;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.rdb-admin-dark-card-heading {
+    margin: 0;
+    font-size: clamp(1.66rem, 3vw, 2.2rem);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.rdb-admin-dark-card-number {
+    display: block;
+    margin-top: 10px;
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(2.7rem, 5.2vw, 3.7rem);
+    line-height: 0.9;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.rdb-admin-dark-breakdown {
+    display: grid;
+    gap: 6px;
+    padding-top: 8px;
+}
+
+.rdb-admin-dark-breakdown span {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 116px;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.rdb-admin-dark-breakdown strong {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.rdb-admin-light-card {
+    background: var(--rdb-admin-card);
+    border: none;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.rdb-admin-light-card:hover {
+    border-color: transparent;
+}
+
+.rdb-admin-light-card--revenue {
+    grid-area: revenue;
+}
+
+.rdb-admin-light-card--users {
+    grid-area: users;
+}
+
+.rdb-admin-light-card-title {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1;
+    font-weight: 500;
+    color: #151515;
+}
+
+.rdb-admin-light-card-heading {
+    margin: 0;
+    font-size: clamp(1.42rem, 2.8vw, 1.96rem);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+    color: #111;
+}
+
+.rdb-admin-light-card-number {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(2.25rem, 4.6vw, 3rem);
+    line-height: 0.9;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.rdb-admin-light-card-number--revenue {
+    margin-top: auto;
+    font-size: clamp(1.94rem, 3.5vw, 2.66rem);
+    white-space: nowrap;
+}
+
+.rdb-admin-users-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.rdb-admin-users-breakdown {
+    display: grid;
+    gap: 5px;
+}
+
+.rdb-admin-users-breakdown div {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #222;
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    white-space: nowrap;
+}
+
+.rdb-admin-users-breakdown span {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.rdb-admin-revenue-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.rdb-admin-arrow-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: none;
+    background: #9a9a9f;
+    color: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.rdb-admin-arrow-btn:hover {
+    opacity: 0.92;
+    color: #111;
+}
+
+.rdb-admin-charts-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.rdb-admin-chart-card {
+    background: var(--rdb-admin-card);
+    border: none;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: none;
+}
+
+.rdb-admin-chart-card h3 {
+    margin: 0;
+    font-size: clamp(1.38rem, 2.4vw, 1.82rem);
+    line-height: 0.98;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+    color: #101011;
+}
+
+.rdb-admin-chart-card > p {
+    margin: 4px 0 10px;
+    font-size: 0.8rem;
+    color: #252529;
+}
+
+.rdb-admin-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    height: 220px;
+    padding-top: 4px;
+}
+
+.rdb-admin-bar-item {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+}
+
+.rdb-admin-bar-track {
+    width: 100%;
+    max-width: 58px;
+    height: 176px;
+    display: flex;
+    align-items: flex-end;
+    border-radius: 14px;
+    background: transparent;
+    overflow: hidden;
+}
+
+.rdb-admin-bar-fill {
+    width: 100%;
+    min-height: 8px;
+    border-radius: 14px;
+    background: #c8c8cb;
+    transition: height 0.45s ease;
+}
+
+.rdb-admin-bar-fill--active {
+    background: var(--accent);
+}
+
+.rdb-admin-bar-label {
+    font-size: 0.94rem;
+    font-weight: 500;
+    color: #1f2022;
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+
+.rdb-admin-mod-list {
+    display: grid;
+    gap: 8px;
+    margin: 6px 0 8px;
+}
+
+.rdb-admin-mod-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    font-size: 0.84rem;
+    line-height: 1.34;
+    color: #1b1c1d;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.rdb-admin-mod-item:hover {
+    color: var(--accent);
+}
+
+.rdb-admin-mod-item--empty,
+.rdb-admin-mod-item--empty:hover {
+    color: #66696c;
+    cursor: default;
+}
+
+.rdb-admin-line-chart {
+    display: block;
+    width: 100%;
+    height: 174px;
+    margin-top: 8px;
+    overflow: visible;
+}
+
+.rdb-shell--admin .rdb-content-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.rdb-shell--admin .rdb-panel {
+    background: var(--rdb-admin-card);
+    border: none;
+    border-radius: 20px;
+    box-shadow: none;
+    padding: 16px;
+    gap: 10px;
+}
+
+.rdb-shell--admin .rdb-panel h2 {
+    font-size: clamp(1.26rem, 2.4vw, 1.84rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.rdb-shell--admin .rdb-panel-head {
+    align-items: center;
+}
+
+.rdb-shell--admin .rdb-panel-head small {
+    font-size: 0.78rem;
+    color: #595a5f;
+}
+
+.rdb-shell--admin .rdb-list {
+    gap: 8px;
+}
+
+.rdb-shell--admin .rdb-list-row {
+    border: none;
+    border-radius: 13px;
+    background: #ececef;
+    padding: 10px 12px;
+}
+
+.rdb-shell--admin .rdb-list-row::before {
+    display: none;
+}
+
+.rdb-shell--admin .rdb-list-row:hover {
+    transform: none;
+    border-color: transparent;
+    background: #e7e7ea;
+}
+
+.rdb-shell--admin .rdb-list-row p {
+    color: #151517;
+}
+
+.rdb-shell--admin .rdb-list-row small {
+    color: #5f6066;
+}
+
+.rdb-shell--admin .rdb-stat-list div {
+    border: none;
+    border-radius: 12px;
+    background: #ececef;
+    padding: 10px 12px;
+}
+
+.rdb-shell--admin .rdb-stat-list div:hover {
+    border-color: transparent;
+}
+
+.rdb-shell--admin .rdb-stat-list span {
+    color: #5a5b60;
+    font-size: 0.75rem;
+}
+
+.rdb-shell--admin .rdb-stat-list strong {
+    color: #121214;
+    font-size: 0.9rem;
+}
+
+.rdb-shell--admin .rdb-inline-link,
+.rdb-shell--admin .rdb-row-edit-link,
+.rdb-shell--admin .rdb-btn {
+    min-height: 34px;
+    border-radius: 11px;
+    font-size: 0.78rem;
+}
+
+.rdb-shell--admin .rdb-user-split div {
+    border: none;
+    border-radius: 13px;
+    background: #ececef;
+}
+
+.rdb-shell--admin .rdb-user-split p {
+    font-size: 0.62rem;
+}
+
+.rdb-shell--admin .rdb-user-split strong {
+    font-size: 1.12rem;
+}
+
+.rdb-shell--admin .rdb-empty {
+    border: 1px dashed color-mix(in srgb, var(--accent) 24%, transparent);
+    background: #ececef;
+    color: #5a5b60;
+    padding: 18px 14px;
+}
+
+.rdb-shell--admin .rdb-moderation-media {
+    border-radius: 14px;
+    min-height: 180px;
+}
+
+.rdb-shell--admin .rdb-moderation-info h3 {
+    font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+}
+
+.rdb-shell--admin .rdb-moderation-desc {
+    color: #58595f;
+    font-size: 0.86rem;
+}
+
+@media (min-width: 1024px) {
+    .rdb-shell--admin {
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .rdb-shell--admin .rdb-sidebar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        align-self: stretch;
+        max-height: 100%;
+        overflow-y: auto;
+        padding: 4px 0 8px;
+        gap: 8px;
+    }
+
+    .rdb-shell--admin .rdb-brand {
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    .rdb-shell--admin .rdb-nav {
+        width: 100%;
+        gap: 10px;
+        justify-items: center;
+        align-content: center;
+        margin-block: auto;
+    }
+
+    .rdb-shell--admin .rdb-nav-item {
+        width: 60px;
+        height: 60px;
+        min-height: 60px;
+        border-radius: 50%;
+        border: none;
+        background: #efeff0;
+        color: #17171a;
+        margin: 0;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .rdb-shell--admin .rdb-nav-item-content {
+        justify-content: center;
+    }
+
+    .rdb-shell--admin .rdb-nav-item-content svg {
+        width: 22px;
+        height: 22px;
+        stroke-width: 2.05;
+    }
+
+    .rdb-shell--admin .rdb-nav-item-content span,
+    .rdb-shell--admin .rdb-nav-count {
+        display: none;
+    }
+
+    .rdb-shell--admin .rdb-nav-item:hover {
+        transform: none;
+        opacity: 0.9;
+    }
+
+    .rdb-shell--admin .rdb-nav-item.is-active {
+        background: var(--accent) !important;
+        border-color: transparent !important;
+    }
+
+    .rdb-shell--admin .rdb-nav-item.is-active .rdb-nav-item-content svg {
+        color: #111;
+    }
+
+    .rdb-shell--admin .rdb-admin-sidebar-back {
+        display: flex;
+        margin: 0 auto 0;
+    }
+
+    .rdb-shell--admin .rdb-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rdb-admin-kpi-row {
+        grid-template-columns: 1.2fr 1.08fr 0.98fr;
+        grid-template-areas: 'packages users revenue';
+        align-items: stretch;
+    }
+
+    .rdb-admin-dark-card,
+    .rdb-admin-light-card {
+        min-height: 236px;
+    }
+
+    .rdb-admin-charts-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .rdb-admin-chart-card {
+        min-height: 304px;
+        padding: 16px;
+    }
+}
+
+@media (max-width: 1023px) {
+    .rdb-shell--admin {
+        min-height: auto;
+        height: auto;
+    }
+
+    .rdb-page--admin {
+        min-height: 100dvh;
+        height: auto;
+        padding: 0;
+        overflow: auto;
+    }
+
+    .rdb-page--admin .container {
+        width: 100%;
+        max-width: none;
+        height: auto;
+        min-height: 100dvh;
+        padding: 12px 10px 10px;
+    }
+
+    .rdb-shell--admin .rdb-main {
+        gap: 10px;
+        overflow: visible;
+    }
+
+    .rdb-admin-menu-btn.is-open {
+        background: #101011;
+        color: #f5f5f6;
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-topbar-main {
+        display: grid;
+        gap: 12px;
+        align-items: start;
+        justify-content: stretch;
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-topbar-controls {
+        margin-left: 0;
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        flex: 0 0 auto;
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-topbar-search {
+        width: 100%;
+        max-width: none;
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-topbar-title small {
+        font-size: clamp(1.2rem, 5.2vw, 1.9rem);
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-topbar-title h1 {
+        font-size: clamp(2rem, 8.6vw, 3.2rem);
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-ctrl-btn {
+        width: 48px;
+        height: 48px;
+    }
+
+    .rdb-admin-mobile-menu {
+        display: grid;
+        gap: 8px;
+        background: #ececee;
+        border-radius: 20px;
+        padding: 10px;
+    }
+
+    .rdb-admin-mobile-menu-item {
+        width: 100%;
+        border: none;
+        background: #f7f7f8;
+        border-radius: 16px;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 14px;
+        font: inherit;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #131315;
+        cursor: pointer;
+    }
+
+    .rdb-admin-mobile-menu-item strong {
+        color: var(--accent);
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .rdb-admin-mobile-menu-item.is-active {
+        background: #101011;
+        color: #fff;
+    }
+
+    .rdb-admin-mobile-menu-item.is-active strong {
+        color: var(--accent);
+    }
+
+    .rdb-admin-kpi-row {
+        gap: 12px;
+    }
+
+    .rdb-admin-dark-card {
+        border-radius: 20px;
+        min-height: 286px;
+    }
+
+    .rdb-admin-light-card {
+        border-radius: 18px;
+        min-height: 150px;
+    }
+
+    .rdb-admin-chart-card {
+        border-radius: 18px;
+        padding: 14px;
+    }
+
+    .rdb-admin-chart-card h3 {
+        font-size: clamp(1.3rem, 5.4vw, 1.8rem);
+    }
+
+    .rdb-admin-bar-chart {
+        height: 188px;
+    }
+
+    .rdb-admin-bar-track {
+        max-width: 54px;
+        height: 150px;
+    }
+
+    .rdb-admin-bar-label {
+        font-size: 0.84rem;
+    }
+
+    .rdb-admin-line-chart {
+        height: 154px;
+    }
+}
+
+@media (max-width: 699px) {
+    .rdb-page--admin {
+        padding: 0;
+    }
+
+    .rdb-shell--admin .rdb-main {
+        gap: 8px;
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-topbar-title small {
+        font-size: clamp(1.06rem, 4.8vw, 1.5rem);
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-topbar-title h1 {
+        font-size: clamp(2rem, 9.8vw, 2.6rem);
+    }
+
+    .rdb-admin-kpi-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .rdb-admin-dark-card {
+        min-height: 220px;
+        padding: 14px;
+        border-radius: 18px;
+    }
+
+    .rdb-admin-dark-card-title {
+        font-size: 0.94rem;
+    }
+
+    .rdb-admin-dark-card-heading {
+        font-size: clamp(1.8rem, 9.2vw, 2.3rem);
+    }
+
+    .rdb-admin-dark-card-number {
+        font-size: clamp(3.1rem, 15vw, 4.2rem);
+        margin-top: 8px;
+    }
+
+    .rdb-admin-dark-breakdown {
+        display: none;
+    }
+
+    .rdb-admin-light-card {
+        padding: 12px;
+        min-height: 112px;
+        border-radius: 16px;
+        gap: 8px;
+    }
+
+    .rdb-admin-light-card-title {
+        font-size: 0.84rem;
+    }
+
+    .rdb-admin-light-card-heading {
+        font-size: 0.86rem;
+    }
+
+    .rdb-admin-light-card-number,
+    .rdb-admin-light-card-number--revenue {
+        font-size: clamp(1.8rem, 9.6vw, 2.48rem);
+    }
+
+    .rdb-admin-users-layout {
+        margin-top: 0;
+        display: grid;
+        gap: 2px;
+    }
+
+    .rdb-admin-users-breakdown {
+        display: none;
+    }
+
+    .rdb-admin-arrow-btn {
+        width: 38px;
+        height: 38px;
+    }
+
+    .rdb-admin-chart-card {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .rdb-admin-chart-card h3 {
+        font-size: 1.36rem;
+    }
+
+    .rdb-admin-chart-card > p,
+    .rdb-admin-mod-item {
+        font-size: 0.84rem;
+    }
+
+    .rdb-admin-bar-chart {
+        height: 164px;
+        gap: 6px;
+    }
+
+    .rdb-admin-bar-track {
+        height: 124px;
+        max-width: 40px;
+        border-radius: 12px;
+    }
+
+    .rdb-admin-bar-fill {
+        border-radius: 12px;
+    }
+
+    .rdb-admin-bar-label {
+        font-size: 0.8rem;
+    }
+
+    .rdb-admin-line-chart {
+        height: 132px;
+        margin-top: 6px;
+    }
+}
