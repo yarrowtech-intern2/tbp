@@ -230,6 +230,9 @@ export const Profile: React.FC = () => {
     const { theme, toggleTheme } = useTheme();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
+    const [showMobileProfileNav, setShowMobileProfileNav] = useState(
+        typeof window !== 'undefined' ? window.innerWidth <= 900 : false,
+    );
 
     /* data */
     const [travelerBookings, setTravelerBookings] = useState<UnifiedBooking[]>([]);
@@ -256,6 +259,17 @@ export const Profile: React.FC = () => {
     const [localCoverUrl, setLocalCoverUrl] = useState<string | undefined>();
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const coverInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const media = window.matchMedia('(max-width: 900px)');
+        const sync = (event?: MediaQueryListEvent) => {
+            setShowMobileProfileNav(event ? event.matches : media.matches);
+        };
+        sync();
+        media.addEventListener('change', sync);
+        return () => media.removeEventListener('change', sync);
+    }, []);
 
     /* sync form + local images with profile */
     useEffect(() => {
@@ -489,7 +503,7 @@ export const Profile: React.FC = () => {
     if (!user) return null;
 
     return (
-        <main className="prf-page animate-fade">
+        <main className="prf-page">
             <div className="container prf-shell">
 
                 {/* Back */}
@@ -1016,7 +1030,11 @@ export const Profile: React.FC = () => {
                 </section>
             </div>
 
-            <nav className="prf-bottom-nav" aria-label="Mobile role navigation">
+            <nav
+                className="prf-bottom-nav"
+                aria-label="Mobile role navigation"
+                style={{ display: showMobileProfileNav ? 'block' : 'none' }}
+            >
                 <div className="prf-bottom-nav-track">
                     {profileMobileNavItems.map((item) => {
                         const Icon = item.icon;

@@ -487,15 +487,16 @@ export const Navbar: React.FC = () => {
                     .nbr-desktop { display: none !important; }
                     .nbr-mobile  { display: flex !important; flex-direction: column; align-items: stretch; padding: 0 16px; top: 16px; }
 
-                    /* Mobile-only: no navbar shell background */
                     .nbr-mobile-pill {
-                        backdrop-filter: none !important;
-                        -webkit-backdrop-filter: none !important;
-                        background: transparent !important;
-                        border: none !important;
-                        border-radius: 0 !important;
-                        box-shadow: none !important;
-                        padding: 0 !important;
+                        backdrop-filter: blur(20px) saturate(200%) !important;
+                        -webkit-backdrop-filter: blur(20px) saturate(200%) !important;
+                        background: ${navSurface} !important;
+                        border: 1px solid ${navBorder} !important;
+                        border-radius: 999px !important;
+                        box-shadow:
+                            0 4px 24px rgba(15,23,42,0.10),
+                            inset 0 1px 0 ${navInset} !important;
+                        padding: 7px 10px !important;
                     }
 
                     .nbr-avatar-sm-wrap { display: none !important; }
