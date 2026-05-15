@@ -80,6 +80,7 @@ type DashboardRole = 'tourist' | 'provider' | 'admin';
 
 type SidebarKey =
     | 'overview'
+    | 'revenue'
     | 'explore'
     | 'bookings'
     | 'favorites'
@@ -108,6 +109,54 @@ type AdminDashboardSnapshot = {
     audits: ModerationAuditLogRecord[];
     users: AdminProfileRow[];
     revenue: number;
+    revenueRows: AdminRevenueBookingRow[];
+};
+
+type AdminRevenueBookingRow = {
+    id: string;
+    listing_title: string;
+    listing_type: string;
+    traveler_id: string;
+    provider_id: string;
+    payment_id: string;
+    payment_order_id: string;
+    status: string;
+    payment_status: string;
+    booking_date: string | null;
+    created_at: string | null;
+    paid_at: string | null;
+    total_price: number;
+    unit_price: number;
+    number_of_people: number;
+    revenue_amount: number;
+    revenue_amount_source: 'total_price' | 'unit_price_x_people';
+    included_in_revenue: boolean;
+    exclusion_reason: string | null;
+};
+
+type AccountRevenueRow = {
+    id: string;
+    listing_title: string;
+    listing_type: string;
+    payment_id: string;
+    payment_order_id: string;
+    status: string;
+    payment_status: string;
+    booking_date: string | null;
+    created_at: string | null;
+    paid_at: string | null;
+    total_price: number;
+    unit_price: number;
+    number_of_people: number;
+    revenue_amount: number;
+    revenue_amount_source: 'total_price' | 'unit_price_x_people';
+    included_in_revenue: boolean;
+    exclusion_reason: string | null;
+    traveler_id: string;
+    provider_id: string;
+    traveler_name: string | null;
+    traveler_email: string | null;
+    traveler_phone: string | null;
 };
 
 type NavItem = {
@@ -179,7 +228,11 @@ const sumBookedRevenue = (rows: Array<Record<string, unknown>>): number => rows.
     const hasPaidAt = typeof row.paid_at === 'string' && row.paid_at.trim().length > 0;
     if (status === 'cancelled' || status === 'rejected' || paymentStatus === 'refunded') return sum;
     if (paymentStatus !== 'paid' && !hasPaidAt) return sum;
-    return sum + Math.max(0, toFiniteNumber(row.total_price));
+    const total = Math.max(0, toFiniteNumber(row.total_price));
+    if (total > 0) return sum + total;
+    const unit = Math.max(0, toFiniteNumber(row.unit_price));
+    const people = Math.max(1, Math.floor(toFiniteNumber(row.number_of_people)));
+    return sum + (unit * people);
 }, 0);
 
 const formatDate = (value?: string | null) => {
@@ -199,6 +252,54 @@ const formatDateTime = (value?: string | null) => {
         hour: '2-digit',
         minute: '2-digit',
     });
+};
+
+const buildAccountRevenueRow = (item: UnifiedBooking): AccountRevenueRow => {
+    const status = String(item.status || '').trim().toLowerCase();
+    const paymentStatus = String(item.payment_status || '').trim().toLowerCase();
+    const totalPrice = Math.max(0, toFiniteNumber(item.total_price));
+    const unitPrice = Math.max(0, toFiniteNumber(item.unit_price));
+    const numberOfPeople = Math.max(1, Math.floor(toFiniteNumber(item.number_of_people)));
+    const revenueAmount = totalPrice > 0 ? totalPrice : (unitPrice * numberOfPeople);
+    const revenueAmountSource = totalPrice > 0 ? 'total_price' : 'unit_price_x_people';
+    const hasPaidAt = typeof item.paid_at === 'string' && item.paid_at.trim().length > 0;
+    const isPaid = paymentStatus === 'paid' || hasPaidAt;
+    const isRefunded = paymentStatus === 'refunded';
+    const isCancelledOrRejected = status === 'cancelled' || status === 'canceled' || status === 'rejected' || status === 'declined';
+    const includedInRevenue = isPaid && !isRefunded && !isCancelledOrRejected && revenueAmount > 0;
+
+    let exclusionReason: string | null = null;
+    if (!includedInRevenue) {
+        if (isRefunded) exclusionReason = 'Refunded payment';
+        else if (isCancelledOrRejected) exclusionReason = 'Cancelled/rejected booking';
+        else if (!isPaid) exclusionReason = 'Payment not settled';
+        else exclusionReason = 'Amount unavailable';
+    }
+
+    return {
+        id: String(item.id || ''),
+        listing_title: String(item.listing_title || 'Untitled booking'),
+        listing_type: String(item.listing_type || 'unknown'),
+        payment_id: String(item.payment_id || ''),
+        payment_order_id: String(item.payment_order_id || ''),
+        status: String(item.status || 'pending'),
+        payment_status: String(item.payment_status || 'pending'),
+        booking_date: item.booking_date || null,
+        created_at: item.created_at || null,
+        paid_at: item.paid_at || null,
+        total_price: totalPrice,
+        unit_price: unitPrice,
+        number_of_people: numberOfPeople,
+        revenue_amount: revenueAmount,
+        revenue_amount_source: revenueAmountSource,
+        included_in_revenue: includedInRevenue,
+        exclusion_reason: exclusionReason,
+        traveler_id: String(item.user_id || ''),
+        provider_id: String(item.provider_user_id || ''),
+        traveler_name: item.traveler_name || null,
+        traveler_email: item.traveler_email || null,
+        traveler_phone: item.traveler_phone || null,
+    };
 };
 
 const getNotificationRoute = (item: AppNotificationRecord, role: DashboardRole): string | null => {
@@ -238,6 +339,7 @@ const parseTouristSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'overview') return 'overview';
     if (normalized === 'explore') return 'explore';
     if (normalized === 'bookings') return 'bookings';
+    if (normalized === 'revenue' || normalized === 'spend') return 'revenue';
     if (normalized === 'messages') return 'messages';
     if (normalized === 'favorites' || normalized === 'favs') return 'favorites';
     return null;
@@ -248,6 +350,7 @@ const parseProviderSection = (value: string | null): SidebarKey | null => {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'bookings') return 'bookings';
+    if (normalized === 'revenue') return 'revenue';
     if (normalized === 'listings') return 'listings';
     if (normalized === 'studio' || normalized === 'create') return 'studio';
     if (normalized === 'advertisements' || normalized === 'ads' || normalized === 'ad') return 'advertisements';
@@ -262,6 +365,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'messages') return 'messages';
     if (normalized === 'notifications') return 'messages';
+    if (normalized === 'revenue') return 'revenue';
     if (normalized === 'moderation') return 'moderation';
     if (normalized === 'rejected') return 'rejected';
     if (normalized === 'users') return 'users';
@@ -506,6 +610,7 @@ export const RoleDashboard: React.FC = () => {
     const [adminAuditLogs, setAdminAuditLogs] = useState<ModerationAuditLogRecord[]>([]);
     const [adminUsers, setAdminUsers] = useState<AdminProfileRow[]>([]);
     const [adminAccountLocations, setAdminAccountLocations] = useState<AdminAccountLocationRecord[]>([]);
+    const [adminRevenueRows, setAdminRevenueRows] = useState<AdminRevenueBookingRow[]>([]);
     const [selectedModerationId, setSelectedModerationId] = useState<string | null>(null);
     const [selectedRejectedId, setSelectedRejectedId] = useState<string | null>(null);
     const [adminRevenueDb, setAdminRevenueDb] = useState(0);
@@ -520,7 +625,7 @@ export const RoleDashboard: React.FC = () => {
     const [providerBookingActionId, setProviderBookingActionId] = useState<string | null>(null);
 
     const fetchAdminDashboardSnapshot = useCallback(async (): Promise<AdminDashboardSnapshot> => {
-        const [posts, queuePosts, verifications, audits, usersResult, bookingsResult] = await Promise.all([
+        const [posts, queuePosts, verifications, audits, usersResult, bookingsResult, revenueResult] = await Promise.all([
             getPosts(),
             getContentModerationQueue(),
             getVerificationQueue(),
@@ -531,17 +636,72 @@ export const RoleDashboard: React.FC = () => {
                 .order('created_at', { ascending: false }),
             supabase
                 .from('bookings')
-                .select('total_price, payment_status, status, paid_at')
+                .select('id, listing_title, listing_type, user_id, provider_user_id, payment_id, payment_order_id, status, payment_status, booking_date, created_at, paid_at, total_price, unit_price, number_of_people')
                 .order('created_at', { ascending: false }),
+            supabase.rpc('get_admin_revenue'),
         ]);
 
         if (bookingsResult.error) {
             console.error('Error fetching admin revenue rows:', bookingsResult.error);
         }
+        if (revenueResult.error) {
+            console.warn('get_admin_revenue RPC unavailable, using bookings fallback:', revenueResult.error.message);
+        }
 
         const bookingRows = Array.isArray(bookingsResult.data)
             ? bookingsResult.data as Array<Record<string, unknown>>
             : [];
+        const detailedRevenueRows: AdminRevenueBookingRow[] = bookingRows.map((row) => {
+            const status = String(row.status || '').trim().toLowerCase();
+            const paymentStatus = String(row.payment_status || '').trim().toLowerCase();
+            const hasPaidAt = typeof row.paid_at === 'string' && row.paid_at.trim().length > 0;
+            const totalPrice = Math.max(0, toFiniteNumber(row.total_price));
+            const unitPrice = Math.max(0, toFiniteNumber(row.unit_price));
+            const numberOfPeople = Math.max(1, Math.floor(toFiniteNumber(row.number_of_people)));
+            const revenueAmount = totalPrice > 0 ? totalPrice : (unitPrice * numberOfPeople);
+            const revenueAmountSource = totalPrice > 0 ? 'total_price' : 'unit_price_x_people';
+            const isRefunded = paymentStatus === 'refunded';
+            const isCancelledOrRejected = status === 'cancelled' || status === 'canceled' || status === 'rejected' || status === 'declined';
+            const isPaid = paymentStatus === 'paid' || hasPaidAt;
+            const includedInRevenue = isPaid && !isRefunded && !isCancelledOrRejected && revenueAmount > 0;
+
+            let exclusionReason: string | null = null;
+            if (!includedInRevenue) {
+                if (isRefunded) exclusionReason = 'Refunded payment';
+                else if (isCancelledOrRejected) exclusionReason = 'Cancelled/rejected booking';
+                else if (!isPaid) exclusionReason = 'Payment not settled';
+                else exclusionReason = 'Amount unavailable';
+            }
+
+            return {
+                id: String(row.id || ''),
+                listing_title: String(row.listing_title || 'Untitled booking'),
+                listing_type: String(row.listing_type || 'unknown'),
+                traveler_id: String(row.user_id || ''),
+                provider_id: String(row.provider_user_id || ''),
+                payment_id: String(row.payment_id || ''),
+                payment_order_id: String(row.payment_order_id || ''),
+                status: String(row.status || 'pending'),
+                payment_status: String(row.payment_status || 'pending'),
+                booking_date: typeof row.booking_date === 'string' ? row.booking_date : null,
+                created_at: typeof row.created_at === 'string' ? row.created_at : null,
+                paid_at: typeof row.paid_at === 'string' ? row.paid_at : null,
+                total_price: totalPrice,
+                unit_price: unitPrice,
+                number_of_people: numberOfPeople,
+                revenue_amount: revenueAmount,
+                revenue_amount_source: revenueAmountSource,
+                included_in_revenue: includedInRevenue,
+                exclusion_reason: exclusionReason,
+            };
+        });
+        const rpcRevenueRow = Array.isArray(revenueResult.data)
+            ? revenueResult.data[0] as Record<string, unknown> | undefined
+            : (revenueResult.data as Record<string, unknown> | null) || null;
+        const revenueFromRpc = rpcRevenueRow
+            ? Math.max(0, toFiniteNumber(rpcRevenueRow.net_revenue ?? rpcRevenueRow.gross_revenue))
+            : 0;
+        const hasRpcRevenue = !revenueResult.error && Boolean(rpcRevenueRow);
 
         return {
             posts,
@@ -549,7 +709,8 @@ export const RoleDashboard: React.FC = () => {
             verifications,
             audits,
             users: usersResult.error ? [] : (usersResult.data as AdminProfileRow[] || []),
-            revenue: sumBookedRevenue(bookingRows),
+            revenue: hasRpcRevenue ? revenueFromRpc : sumBookedRevenue(bookingRows),
+            revenueRows: detailedRevenueRows,
         };
     }, []);
 
@@ -657,6 +818,7 @@ export const RoleDashboard: React.FC = () => {
                     setAdminAuditLogs(adminSnapshot.audits);
                     setAdminUsers(adminSnapshot.users);
                     setAdminRevenueDb(adminSnapshot.revenue);
+                    setAdminRevenueRows(adminSnapshot.revenueRows);
                 }
             } catch (err: unknown) {
                 if (cancelled) return;
@@ -686,6 +848,7 @@ export const RoleDashboard: React.FC = () => {
                 setAdminAuditLogs(snapshot.audits);
                 setAdminUsers(snapshot.users);
                 setAdminRevenueDb(snapshot.revenue);
+                setAdminRevenueRows(snapshot.revenueRows);
             } catch (err) {
                 if (disposed) return;
                 console.error('Failed to refresh admin dashboard live data:', err);
@@ -765,6 +928,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'admin') {
             return [
                 { key: 'overview', label: 'Dashboard', icon: FileText },
+                { key: 'revenue', label: 'Revenue', icon: CalendarDays },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
                 { key: 'users', label: 'Users', icon: Users },
@@ -777,6 +941,7 @@ export const RoleDashboard: React.FC = () => {
             return [
                 { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                 { key: 'bookings', label: 'Bookings', icon: ClipboardList },
+                { key: 'revenue', label: 'Revenue', icon: CalendarDays },
                 { key: 'studio', label: 'Studio', icon: SquarePen },
                 { key: 'listings', label: 'Listings', icon: Package },
                 { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
@@ -787,6 +952,7 @@ export const RoleDashboard: React.FC = () => {
             { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
             { key: 'explore', label: 'Explore', icon: Compass },
             { key: 'bookings', label: 'Bookings', icon: ClipboardList },
+            { key: 'revenue', label: 'Spend', icon: CalendarDays },
             { key: 'messages', label: 'Messages', icon: MessageSquare },
             { key: 'favorites', label: 'Favorites', icon: Heart },
         ];
@@ -807,6 +973,7 @@ export const RoleDashboard: React.FC = () => {
             { id: 'explore', label: 'Explore', icon: Search, to: '/explore' },
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview' },
             { id: 'bookings', label: 'Bookings', icon: ClipboardList, section: 'bookings' },
+            { id: 'revenue', label: 'Spend', icon: CalendarDays, section: 'revenue' },
             { id: 'profile', label: 'Profile', icon: UserCircle2, to: '/profile' },
         ];
     }, [effectiveRole, navItems]);
@@ -821,8 +988,9 @@ export const RoleDashboard: React.FC = () => {
             return new Date(item.booking_date).getTime() >= Date.now() - 86400000;
         }).length;
         const spend = touristBookings
-            .filter((item) => item.status !== 'cancelled' && item.status !== 'rejected')
-            .reduce((sum, item) => sum + (item.total_price || 0), 0);
+            .map((item) => buildAccountRevenueRow(item))
+            .filter((item) => item.included_in_revenue)
+            .reduce((sum, item) => sum + item.revenue_amount, 0);
 
         return {
             completed,
@@ -836,8 +1004,9 @@ export const RoleDashboard: React.FC = () => {
         const pending = providerListings.filter((item) => item.status === 'pending').length;
         const live = providerListings.filter((item) => LIVE_STATUSES.has((item.status || '').toLowerCase())).length;
         const revenue = providerBookings
-            .filter((item) => item.status !== 'cancelled' && item.status !== 'rejected')
-            .reduce((sum, item) => sum + (item.total_price || 0), 0);
+            .map((item) => buildAccountRevenueRow(item))
+            .filter((item) => item.included_in_revenue)
+            .reduce((sum, item) => sum + item.revenue_amount, 0);
         const rejected = providerListings.filter((item) => item.status === 'rejected').length;
         return { pending, live, revenue, rejected };
     }, [providerBookings, providerListings]);
@@ -1012,6 +1181,10 @@ export const RoleDashboard: React.FC = () => {
     const touristRows = touristBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''}`.toLowerCase().includes(query));
 
+    const touristRevenueRows = touristBookings.map((item) => buildAccountRevenueRow(item));
+    const touristRevenueFilteredRows = touristRevenueRows
+        .filter((item) => !query || `${item.id} ${item.listing_title} ${item.listing_type} ${item.payment_id} ${item.payment_order_id} ${item.status} ${item.payment_status}`.toLowerCase().includes(query));
+
     const favoriteRows = touristFavorites
         .filter((item) => !query || `${item.title || ''} ${item.location || ''} ${item.listing_type || ''}`.toLowerCase().includes(query));
 
@@ -1032,6 +1205,10 @@ export const RoleDashboard: React.FC = () => {
 
     const providerBookingRows = providerBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''} ${item.traveler_name || ''} ${item.traveler_email || ''} ${item.traveler_phone || ''}`.toLowerCase().includes(query));
+
+    const providerRevenueRows = providerBookings.map((item) => buildAccountRevenueRow(item));
+    const providerRevenueFilteredRows = providerRevenueRows
+        .filter((item) => !query || `${item.id} ${item.listing_title} ${item.listing_type} ${item.payment_id} ${item.payment_order_id} ${item.status} ${item.payment_status} ${item.traveler_name || ''} ${item.traveler_email || ''}`.toLowerCase().includes(query));
 
     const providerBookingFilteredRows = useMemo(() => {
         const fromTime = providerBookingDateFrom ? new Date(`${providerBookingDateFrom}T00:00:00`).getTime() : null;
@@ -1191,6 +1368,9 @@ export const RoleDashboard: React.FC = () => {
     const adminAuditRows = adminAuditLogs
         .filter((item) => !query || `${item.entity_type} ${item.action} ${item.entity_id}`.toLowerCase().includes(query));
 
+    const adminRevenueFilteredRows = adminRevenueRows
+        .filter((item) => !query || `${item.id} ${item.listing_title} ${item.listing_type} ${item.payment_id} ${item.payment_order_id} ${item.traveler_id} ${item.provider_id} ${item.status} ${item.payment_status}`.toLowerCase().includes(query));
+
     const adminNotificationRows = centerNotifications
         .filter((item) => !query || `${item.title || ''} ${item.body || ''} ${item.type || ''}`.toLowerCase().includes(query));
 
@@ -1242,6 +1422,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'tourist') {
             return {
                 bookings: touristRows.length,
+                revenue: touristRevenueFilteredRows.length,
                 messages: touristNotificationRows.length,
                 favorites: favoriteRows.length,
             };
@@ -1249,6 +1430,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'provider') {
             return {
                 bookings: providerBookingRows.length,
+                revenue: providerRevenueFilteredRows.length,
                 studio: providerRows.length,
                 listings: providerRows.length,
                 advertisements: providerAdRows.length,
@@ -1256,6 +1438,7 @@ export const RoleDashboard: React.FC = () => {
             };
         }
         return {
+            revenue: adminRevenueFilteredRows.length,
             messages: adminNotificationRows.length,
             moderation: adminQueueRows.length,
             rejected: adminRejectedRows.length,
@@ -1266,6 +1449,7 @@ export const RoleDashboard: React.FC = () => {
     }, [
         adminAccountLocations.length,
         adminAuditRows.length,
+        adminRevenueFilteredRows.length,
         adminNotificationRows.length,
         adminQueueRows.length,
         adminRejectedRows.length,
@@ -1273,10 +1457,12 @@ export const RoleDashboard: React.FC = () => {
         effectiveRole,
         favoriteRows.length,
         providerBookingRows.length,
+        providerRevenueFilteredRows.length,
         providerNotificationRows.length,
         providerAdRows.length,
         providerRows.length,
         touristNotificationRows.length,
+        touristRevenueFilteredRows.length,
         touristRows.length,
     ]);
 
@@ -1529,6 +1715,52 @@ export const RoleDashboard: React.FC = () => {
             );
         }
 
+        if (activeSection === 'revenue') {
+            const includedRows = touristRevenueFilteredRows.filter((item) => item.included_in_revenue);
+            const excludedRows = touristRevenueFilteredRows.filter((item) => !item.included_in_revenue);
+            const derivedSpend = includedRows.reduce((sum, item) => sum + item.revenue_amount, 0);
+
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <h2>Spend Breakdown</h2>
+                        <div className="rdb-stat-list">
+                            <div><span>Total Spend</span><strong>{formatRupeeShort(touristMetrics.spend)}</strong></div>
+                            <div><span>Contributing Rows</span><strong>{includedRows.length}</strong></div>
+                            <div><span>Excluded Rows</span><strong>{excludedRows.length}</strong></div>
+                            <div><span>Derived Spend</span><strong>{formatRupeeShort(derivedSpend)}</strong></div>
+                        </div>
+                    </article>
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Spend Source Rows</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${touristRevenueFilteredRows.length} records`}</small>
+                        </div>
+                        <div className="rdb-list">
+                            {touristRevenueFilteredRows.slice(0, 80).map((item) => (
+                                <div key={item.id || `${item.payment_id}-${item.payment_order_id}`} className="rdb-list-row">
+                                    <div>
+                                        <p>{item.listing_title} ({item.listing_type})</p>
+                                        <small>Booking ID: {item.id || 'N/A'} | Payment ID: {item.payment_id || 'N/A'} | Order ID: {item.payment_order_id || 'N/A'}</small>
+                                        <small>Status: {item.status} | Payment: {item.payment_status} | Source: {item.revenue_amount_source === 'total_price' ? 'total_price' : 'unit_price x travelers'}</small>
+                                        <small>Created: {formatDateTime(item.created_at)} | Paid: {formatDateTime(item.paid_at)} | Date: {formatDate(item.booking_date)}</small>
+                                        {!item.included_in_revenue && <small>Excluded: {item.exclusion_reason || 'Not eligible for spend'}</small>}
+                                    </div>
+                                    <div className="rdb-row-actions">
+                                        <span className={`rdb-pill ${item.included_in_revenue ? 'rdb-pill-paid' : 'rdb-pill-cancelled'}`}>
+                                            {item.included_in_revenue ? 'included' : 'excluded'}
+                                        </span>
+                                        <span className="rdb-pill rdb-pill-live">{formatCurrency(item.revenue_amount)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {touristRevenueFilteredRows.length === 0 && <p className="rdb-empty">No spend rows found.</p>}
+                        </div>
+                    </article>
+                </section>
+            );
+        }
+
         if (activeSection === 'messages') {
             return (
                 <section className="rdb-content-grid">
@@ -1698,8 +1930,8 @@ export const RoleDashboard: React.FC = () => {
                             <button
                                 type="button"
                                 className="rdb-admin-arrow-btn"
-                                onClick={() => setActiveSection('bookings')}
-                                title="Open bookings"
+                                onClick={() => setActiveSection('revenue')}
+                                title="Open spend breakdown"
                             >
                                 <ExternalLink size={15} />
                             </button>
@@ -1885,6 +2117,53 @@ export const RoleDashboard: React.FC = () => {
                         })}
                         {providerBookingFilteredRows.length === 0 && <p className="rdb-empty">No matching bookings.</p>}
                     </div>
+                </section>
+            );
+        }
+
+        if (activeSection === 'revenue') {
+            const includedRows = providerRevenueFilteredRows.filter((item) => item.included_in_revenue);
+            const excludedRows = providerRevenueFilteredRows.filter((item) => !item.included_in_revenue);
+            const derivedRevenue = includedRows.reduce((sum, item) => sum + item.revenue_amount, 0);
+
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <h2>Revenue Breakdown</h2>
+                        <div className="rdb-stat-list">
+                            <div><span>Total Revenue</span><strong>{formatRupeeShort(providerMetrics.revenue)}</strong></div>
+                            <div><span>Contributing Rows</span><strong>{includedRows.length}</strong></div>
+                            <div><span>Excluded Rows</span><strong>{excludedRows.length}</strong></div>
+                            <div><span>Derived Revenue</span><strong>{formatRupeeShort(derivedRevenue)}</strong></div>
+                        </div>
+                    </article>
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Revenue Source Rows</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${providerRevenueFilteredRows.length} records`}</small>
+                        </div>
+                        <div className="rdb-list">
+                            {providerRevenueFilteredRows.slice(0, 80).map((item) => (
+                                <div key={item.id || `${item.payment_id}-${item.payment_order_id}`} className="rdb-list-row">
+                                    <div>
+                                        <p>{item.listing_title} ({item.listing_type})</p>
+                                        <small>Booking ID: {item.id || 'N/A'} | Payment ID: {item.payment_id || 'N/A'} | Order ID: {item.payment_order_id || 'N/A'}</small>
+                                        <small>Traveler: {item.traveler_name || item.traveler_id || 'N/A'} | Email: {item.traveler_email || 'N/A'} | Phone: {item.traveler_phone || 'N/A'}</small>
+                                        <small>Status: {item.status} | Payment: {item.payment_status} | Source: {item.revenue_amount_source === 'total_price' ? 'total_price' : 'unit_price x travelers'}</small>
+                                        <small>Created: {formatDateTime(item.created_at)} | Paid: {formatDateTime(item.paid_at)} | Date: {formatDate(item.booking_date)}</small>
+                                        {!item.included_in_revenue && <small>Excluded: {item.exclusion_reason || 'Not eligible for revenue'}</small>}
+                                    </div>
+                                    <div className="rdb-row-actions">
+                                        <span className={`rdb-pill ${item.included_in_revenue ? 'rdb-pill-paid' : 'rdb-pill-cancelled'}`}>
+                                            {item.included_in_revenue ? 'included' : 'excluded'}
+                                        </span>
+                                        <span className="rdb-pill rdb-pill-live">{formatCurrency(item.revenue_amount)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {providerRevenueFilteredRows.length === 0 && <p className="rdb-empty">No revenue rows found.</p>}
+                        </div>
+                    </article>
                 </section>
             );
         }
@@ -2261,8 +2540,8 @@ export const RoleDashboard: React.FC = () => {
                             <button
                                 type="button"
                                 className="rdb-admin-arrow-btn"
-                                onClick={() => setActiveSection('bookings')}
-                                title="Open provider bookings"
+                                onClick={() => setActiveSection('revenue')}
+                                title="Open revenue breakdown"
                             >
                                 <ExternalLink size={15} />
                             </button>
@@ -2353,6 +2632,58 @@ export const RoleDashboard: React.FC = () => {
                                 </div>
                             ))}
                             {adminNotificationRows.length === 0 && <p className="rdb-empty">No notifications available yet.</p>}
+                        </div>
+                    </article>
+                </section>
+            );
+        }
+
+        if (activeSection === 'revenue') {
+            const includedRows = adminRevenueFilteredRows.filter((item) => item.included_in_revenue);
+            const excludedRows = adminRevenueFilteredRows.filter((item) => !item.included_in_revenue);
+            const derivedRevenue = includedRows.reduce((sum, item) => sum + item.revenue_amount, 0);
+
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <h2>Revenue Breakdown</h2>
+                        <div className="rdb-stat-list">
+                            <div><span>Net Revenue</span><strong>{formatRupeeShort(adminRevenueDb)}</strong></div>
+                            <div><span>Contributing Rows</span><strong>{includedRows.length}</strong></div>
+                            <div><span>Excluded Rows</span><strong>{excludedRows.length}</strong></div>
+                            <div><span>Derived Total</span><strong>{formatRupeeShort(derivedRevenue)}</strong></div>
+                        </div>
+                        <div className="rdb-action-list">
+                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('overview')}>
+                                Back to Dashboard
+                            </button>
+                        </div>
+                    </article>
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Revenue Source Rows</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${adminRevenueFilteredRows.length} records`}</small>
+                        </div>
+                        <div className="rdb-list">
+                            {adminRevenueFilteredRows.slice(0, 80).map((item) => (
+                                <div key={item.id || `${item.payment_id}-${item.payment_order_id}`} className="rdb-list-row">
+                                    <div>
+                                        <p>{item.listing_title} ({item.listing_type})</p>
+                                        <small>Booking ID: {item.id || 'N/A'} | Payment ID: {item.payment_id || 'N/A'} | Order ID: {item.payment_order_id || 'N/A'}</small>
+                                        <small>Traveler: {item.traveler_id || 'N/A'} | Provider: {item.provider_id || 'N/A'}</small>
+                                        <small>Status: {item.status} | Payment: {item.payment_status} | Source: {item.revenue_amount_source === 'total_price' ? 'total_price' : 'unit_price x travelers'}</small>
+                                        <small>Created: {formatDateTime(item.created_at)} | Paid: {formatDateTime(item.paid_at)} | Date: {formatDate(item.booking_date)}</small>
+                                        {!item.included_in_revenue && <small>Excluded: {item.exclusion_reason || 'Not eligible for revenue'}</small>}
+                                    </div>
+                                    <div className="rdb-row-actions">
+                                        <span className={`rdb-pill ${item.included_in_revenue ? 'rdb-pill-paid' : 'rdb-pill-cancelled'}`}>
+                                            {item.included_in_revenue ? 'included' : 'excluded'}
+                                        </span>
+                                        <span className="rdb-pill rdb-pill-live">{formatCurrency(item.revenue_amount)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {adminRevenueFilteredRows.length === 0 && <p className="rdb-empty">No revenue rows found.</p>}
                         </div>
                     </article>
                 </section>
@@ -2659,8 +2990,8 @@ export const RoleDashboard: React.FC = () => {
                             <button
                                 type="button"
                                 className="rdb-admin-arrow-btn"
-                                onClick={() => setActiveSection('moderation')}
-                                title="Go to Moderation Queue"
+                                onClick={() => setActiveSection('revenue')}
+                                title="Open Revenue Breakdown"
                             >
                                 <ExternalLink size={15} />
                             </button>
