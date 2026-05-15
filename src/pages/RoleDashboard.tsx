@@ -30,6 +30,8 @@ import {
     XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import ReactECharts from 'echarts-for-react';
+import type { EChartsOption } from 'echarts';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { useTheme } from '../hooks/useTheme';
@@ -408,65 +410,194 @@ const LazyProviderStudio = lazy(async () => {
     return { default: module.ProviderStudio };
 });
 
+type ChartPalette = {
+    accent: string;
+    text: string;
+    textStrong: string;
+    grid: string;
+    neutral: string;
+    neutralDark: string;
+};
+
+const getChartPalette = (): ChartPalette => {
+    if (typeof window === 'undefined') {
+        return {
+            accent: '#ff6700',
+            text: '#4d4f55',
+            textStrong: '#111114',
+            grid: 'rgba(20, 20, 22, 0.12)',
+            neutral: '#b7b7bd',
+            neutralDark: '#2f2f33',
+        };
+    }
+
+    const styles = getComputedStyle(document.documentElement);
+    const pick = (name: string, fallback: string) => {
+        const value = styles.getPropertyValue(name).trim();
+        return value || fallback;
+    };
+
+    return {
+        accent: pick('--accent', '#ff6700'),
+        text: pick('--rdb-admin-text', '#4d4f55'),
+        textStrong: pick('--rdb-admin-text-strong', '#111114'),
+        grid: pick('--rdb-admin-chip', 'rgba(20, 20, 22, 0.12)'),
+        neutral: '#b7b7bd',
+        neutralDark: '#2f2f33',
+    };
+};
+
 const AdminBarChart: React.FC<{
     data: Array<{ month: string; count: number; isCurrentMonth: boolean }>;
-}> = ({ data }) => {
-    const max = Math.max(...data.map((d) => d.count), 1);
+    themeKey: string;
+}> = ({ data, themeKey }) => {
+    const palette = useMemo(() => getChartPalette(), [themeKey]);
+    const option = useMemo<EChartsOption>(() => ({
+        animationDuration: 500,
+        animationEasing: 'cubicOut',
+        grid: {
+            top: 14,
+            right: 6,
+            bottom: 12,
+            left: 6,
+            containLabel: true,
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            formatter: (params: unknown) => {
+                const point = Array.isArray(params) ? params[0] as { axisValueLabel?: string; data?: number | { value?: number } } : null;
+                const rawValue = typeof point?.data === 'number'
+                    ? point.data
+                    : typeof point?.data === 'object' && point.data
+                        ? Number((point.data as { value?: number }).value || 0)
+                        : 0;
+                return `${point?.axisValueLabel || 'Month'}: <strong>${Math.max(0, rawValue)}</strong>`;
+            },
+            backgroundColor: '#131316',
+            borderWidth: 0,
+            textStyle: { color: '#f6f6f8' },
+            padding: [8, 10],
+        },
+        xAxis: {
+            type: 'category',
+            data: data.map((item) => item.month),
+            axisTick: { show: false },
+            axisLine: { lineStyle: { color: palette.grid } },
+            axisLabel: {
+                color: palette.text,
+                fontSize: 12,
+                margin: 10,
+            },
+        },
+        yAxis: {
+            type: 'value',
+            min: 0,
+            minInterval: 1,
+            splitNumber: 4,
+            axisLabel: { show: false },
+            axisTick: { show: false },
+            axisLine: { show: false },
+            splitLine: { lineStyle: { color: palette.grid } },
+        },
+        series: [{
+            type: 'bar',
+            barMaxWidth: 44,
+            data: data.map((item) => ({
+                value: item.count,
+                itemStyle: {
+                    color: item.isCurrentMonth ? palette.accent : palette.neutral,
+                    borderRadius: [12, 12, 0, 0],
+                },
+            })),
+            emphasis: {
+                itemStyle: {
+                    color: palette.accent,
+                },
+            },
+        }],
+    }), [data, palette]);
+
     return (
-        <div className="rdb-admin-bar-chart">
-            {data.map(({ month, count, isCurrentMonth }) => (
-                <div key={month} className="rdb-admin-bar-item">
-                    <div className="rdb-admin-bar-track">
-                        <div
-                            className={`rdb-admin-bar-fill${isCurrentMonth ? ' rdb-admin-bar-fill--active' : ''}`}
-                            style={{ height: `${(count / max) * 100}%` }}
-                        />
-                    </div>
-                    <span className="rdb-admin-bar-label">{month}</span>
-                </div>
-            ))}
+        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--bar">
+            <ReactECharts
+                option={option}
+                style={{ width: '100%', height: '100%' }}
+                opts={{ renderer: 'canvas' }}
+            />
         </div>
     );
 };
 
-const AdminLineChart: React.FC<{ data: number[] }> = ({ data }) => {
-    const max = Math.max(...data, 1);
-    const W = 300;
-    const H = 120;
-    const padTop = 6;
-    const padBottom = 12;
-    const step = W / Math.max(data.length - 1, 1);
-    const pts = data.map((val, idx) => ({
-        x: idx * step,
-        y: H - padBottom - (val / max) * (H - padTop - padBottom),
-    }));
+const AdminLineChart: React.FC<{ data: number[]; themeKey: string }> = ({ data, themeKey }) => {
+    const palette = useMemo(() => getChartPalette(), [themeKey]);
+    const labels = useMemo(
+        () => data.map((_, idx) => `D${idx + 1}`),
+        [data],
+    );
+    const option = useMemo<EChartsOption>(() => ({
+        animationDuration: 500,
+        animationEasing: 'cubicOut',
+        grid: {
+            top: 14,
+            right: 8,
+            bottom: 8,
+            left: 8,
+            containLabel: false,
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'line', snap: true },
+            formatter: (params: unknown) => {
+                const point = Array.isArray(params) ? params[0] as { axisValueLabel?: string; data?: number } : null;
+                return `${point?.axisValueLabel || 'Day'}: <strong>${Math.max(0, Number(point?.data || 0))}</strong>`;
+            },
+            backgroundColor: '#131316',
+            borderWidth: 0,
+            textStyle: { color: '#f6f6f8' },
+            padding: [8, 10],
+        },
+        xAxis: {
+            type: 'category',
+            data: labels,
+            show: false,
+            boundaryGap: false,
+        },
+        yAxis: {
+            type: 'value',
+            min: 0,
+            minInterval: 1,
+            show: false,
+        },
+        series: [{
+            type: 'line',
+            data,
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 8,
+            lineStyle: {
+                color: palette.accent,
+                width: 3.4,
+            },
+            itemStyle: {
+                color: palette.textStrong,
+                borderWidth: 2,
+                borderColor: palette.accent,
+            },
+            areaStyle: {
+                color: 'rgba(255, 103, 0, 0.12)',
+            },
+        }],
+    }), [data, labels, palette]);
+
     return (
-        <svg
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            className="rdb-admin-line-chart"
-            aria-hidden="true"
-        >
-            <line
-                x1="0"
-                y1={H - 2}
-                x2={W}
-                y2={H - 2}
-                stroke="rgba(0, 0, 0, 0.68)"
-                strokeWidth="1.1"
+        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--line">
+            <ReactECharts
+                option={option}
+                style={{ width: '100%', height: '100%' }}
+                opts={{ renderer: 'canvas' }}
             />
-            <polyline
-                points={pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="2"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-            />
-            {pts.map((p, i) => (
-                <circle key={i} cx={p.x} cy={p.y} r="3.2" fill="#0f0f0f" />
-            ))}
-        </svg>
+        </div>
     );
 };
 
@@ -534,30 +665,57 @@ const buildRollingDailyCounts = (
     return counts;
 };
 
-const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: number; label: string }> = ({
+const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: number; label: string; themeKey: string }> = ({
     segments,
     centerValue,
     label,
+    themeKey,
 }) => {
+    const palette = useMemo(() => getChartPalette(), [themeKey]);
     const normalizedSegments = segments
         .map((segment) => ({ ...segment, value: Math.max(0, Math.round(segment.value)) }))
         .filter((segment) => segment.value > 0);
 
-    const total = normalizedSegments.reduce((sum, segment) => sum + segment.value, 0);
-    let angle = 0;
-    const gradient = total > 0
-        ? `conic-gradient(${normalizedSegments.map((segment) => {
-            const start = angle;
-            angle += (segment.value / total) * 360;
-            return `${segment.color} ${start.toFixed(1)}deg ${angle.toFixed(1)}deg`;
-        }).join(', ')})`
-        : 'conic-gradient(#c7c7cb 0deg 360deg)';
-
+    const option = useMemo<EChartsOption>(() => ({
+        animationDuration: 450,
+        tooltip: {
+            trigger: 'item',
+            formatter: '{b}: <strong>{c}</strong> ({d}%)',
+            backgroundColor: '#131316',
+            borderWidth: 0,
+            textStyle: { color: '#f6f6f8' },
+            padding: [8, 10],
+        },
+        series: [{
+            type: 'pie',
+            radius: ['62%', '92%'],
+            center: ['50%', '50%'],
+            label: { show: false },
+            labelLine: { show: false },
+            itemStyle: { borderWidth: 0 },
+            data: normalizedSegments.length > 0
+                ? normalizedSegments.map((segment) => ({
+                    name: segment.label,
+                    value: segment.value,
+                    itemStyle: { color: segment.color },
+                }))
+                : [{
+                    name: 'No data',
+                    value: 1,
+                    itemStyle: { color: palette.neutral },
+                }],
+        }],
+    }), [normalizedSegments, palette.neutral]);
     const ariaText = `${label}: ${segments.map((segment) => `${segment.label} ${Math.max(0, Math.round(segment.value))}`).join(', ')}`;
 
     return (
         <div className="rdb-role-donut" role="img" aria-label={ariaText}>
-            <div className="rdb-role-donut-ring" style={{ background: gradient }} />
+            <ReactECharts
+                className="rdb-role-donut-chart"
+                option={option}
+                style={{ width: '100%', height: '100%' }}
+                opts={{ renderer: 'canvas' }}
+            />
             <strong>{Math.max(0, Math.round(centerValue))}</strong>
         </div>
     );
@@ -1935,6 +2093,7 @@ export const RoleDashboard: React.FC = () => {
                                 ]}
                                 centerValue={touristBookings.length}
                                 label="Tourist booking status"
+                                themeKey={theme}
                             />
                             <div className="rdb-admin-users-breakdown">
                                 <div>Completed <span>{touristBookingStatusBreakdown.completed}</span></div>
@@ -1968,7 +2127,7 @@ export const RoleDashboard: React.FC = () => {
                     <article className="rdb-admin-chart-card">
                         <h3>Bookings</h3>
                         <p>Total count per month</p>
-                        <AdminBarChart data={touristMonthlyBookings} />
+                        <AdminBarChart data={touristMonthlyBookings} themeKey={theme} />
                     </article>
 
                     <article className="rdb-admin-chart-card">
@@ -1988,7 +2147,7 @@ export const RoleDashboard: React.FC = () => {
                                 <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No bookings yet</p>
                             )}
                         </div>
-                        <AdminLineChart data={touristActivityTrend} />
+                        <AdminLineChart data={touristActivityTrend} themeKey={theme} />
                     </article>
                 </div>
             </>
@@ -2546,6 +2705,7 @@ export const RoleDashboard: React.FC = () => {
                                 ]}
                                 centerValue={providerBookingRows.length}
                                 label="Provider booking status"
+                                themeKey={theme}
                             />
                             <div className="rdb-admin-users-breakdown">
                                 <div>Pending <span>{providerMetrics.pending}</span></div>
@@ -2579,7 +2739,7 @@ export const RoleDashboard: React.FC = () => {
                     <article className="rdb-admin-chart-card">
                         <h3>Listings</h3>
                         <p>Total created per month</p>
-                        <AdminBarChart data={providerMonthlyListings} />
+                        <AdminBarChart data={providerMonthlyListings} themeKey={theme} />
                     </article>
 
                     <article className="rdb-admin-chart-card">
@@ -2599,7 +2759,7 @@ export const RoleDashboard: React.FC = () => {
                                 <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No bookings yet</p>
                             )}
                         </div>
-                        <AdminLineChart data={providerBookingTrend} />
+                        <AdminLineChart data={providerBookingTrend} themeKey={theme} />
                     </article>
                 </div>
             </>
@@ -3046,7 +3206,7 @@ export const RoleDashboard: React.FC = () => {
                     <article className="rdb-admin-chart-card">
                         <h3>Packages</h3>
                         <p>Total view per month</p>
-                        <AdminBarChart data={adminMonthlyPackages} />
+                        <AdminBarChart data={adminMonthlyPackages} themeKey={theme} />
                     </article>
 
                     <article className="rdb-admin-chart-card">
@@ -3069,7 +3229,7 @@ export const RoleDashboard: React.FC = () => {
                                 <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No pending items</p>
                             )}
                         </div>
-                        <AdminLineChart data={adminAuditTrend} />
+                        <AdminLineChart data={adminAuditTrend} themeKey={theme} />
                     </article>
                 </div>
             </>
@@ -3100,7 +3260,8 @@ export const RoleDashboard: React.FC = () => {
                                             setAdminMobileMenuOpen(false);
                                         }
                                     }}
-                                    title={item.label}
+                                    data-tooltip={item.label}
+                                    aria-label={item.label}
                                 >
                                     <span className="rdb-nav-item-content">
                                         <Icon size={18} />

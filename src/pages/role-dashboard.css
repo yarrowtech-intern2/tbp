@@ -2258,18 +2258,10 @@
     place-items: center;
 }
 
-.rdb-role-donut-ring {
+.rdb-role-donut-chart {
     position: absolute;
     inset: 0;
-    border-radius: 50%;
-}
-
-.rdb-role-donut-ring::after {
-    content: '';
-    position: absolute;
-    inset: 18px;
-    border-radius: 50%;
-    background: var(--rdb-admin-card);
+    z-index: 0;
 }
 
 .rdb-role-donut strong {
@@ -2355,52 +2347,18 @@
     color: var(--rdb-admin-text-muted);
 }
 
-.rdb-admin-bar-chart {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 10px;
+.rdb-admin-echart-wrap {
+    width: 100%;
+}
+
+.rdb-admin-echart-wrap--bar {
     height: 220px;
     padding-top: 4px;
 }
 
-.rdb-admin-bar-item {
-    flex: 1;
-    min-width: 0;
-    display: grid;
-    justify-items: center;
-    gap: 8px;
-}
-
-.rdb-admin-bar-track {
-    width: 100%;
-    max-width: 58px;
-    height: 176px;
-    display: flex;
-    align-items: flex-end;
-    border-radius: 14px;
-    background: transparent;
-    overflow: hidden;
-}
-
-.rdb-admin-bar-fill {
-    width: 100%;
-    min-height: 8px;
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--rdb-admin-circle) 70%, var(--rdb-admin-card-soft));
-    transition: height 0.45s ease;
-}
-
-.rdb-admin-bar-fill--active {
-    background: var(--accent);
-}
-
-.rdb-admin-bar-label {
-    font-size: 0.94rem;
-    font-weight: 500;
-    color: var(--rdb-admin-text);
-    letter-spacing: -0.02em;
-    text-transform: none;
+.rdb-admin-echart-wrap--line {
+    height: 174px;
+    margin-top: 8px;
 }
 
 .rdb-admin-mod-list {
@@ -2431,14 +2389,6 @@
 .rdb-admin-mod-item--empty:hover {
     color: var(--rdb-admin-text-muted);
     cursor: default;
-}
-
-.rdb-admin-line-chart {
-    display: block;
-    width: 100%;
-    height: 174px;
-    margin-top: 8px;
-    overflow: visible;
 }
 
 .rdb-shell--admin .rdb-content-grid {
@@ -2581,7 +2531,7 @@
         top: 0;
         align-self: stretch;
         max-height: 100%;
-        overflow-y: auto;
+        overflow: visible;
         padding: 4px 0 8px;
         gap: 8px;
     }
@@ -2614,6 +2564,15 @@
         margin: 0;
         padding: 0;
         justify-content: center;
+        position: relative;
+        overflow: visible;
+        isolation: isolate;
+        transition:
+            transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+            background-color 220ms ease,
+            color 220ms ease,
+            box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 180ms ease;
     }
 
     .rdb-shell--admin .rdb-nav-item-content {
@@ -2631,9 +2590,54 @@
         display: none;
     }
 
+    .rdb-shell--admin .rdb-nav-item::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: calc(100% + 16px);
+        top: 50%;
+        transform: translateY(-50%) translateX(-14px) scale(0.9);
+        white-space: nowrap;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.01em;
+        padding: 10px 13px;
+        color: #fff;
+        border-radius: 12px;
+        border: 1px solid color-mix(in srgb, var(--accent) 70%, #b34900);
+        background: var(--accent);
+        box-shadow:
+            0 14px 34px color-mix(in srgb, #000 52%, transparent),
+            inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+        opacity: 0;
+        pointer-events: none;
+        transition:
+            opacity 180ms ease,
+            transform 340ms cubic-bezier(0.16, 1, 0.3, 1),
+            box-shadow 340ms cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 8;
+    }
+
+    .rdb-shell--admin .rdb-nav-item:hover::after,
+    .rdb-shell--admin .rdb-nav-item:focus-visible::after {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0) scale(1);
+    }
+
+    .rdb-shell--admin .rdb-nav-item:hover::after,
+    .rdb-shell--admin .rdb-nav-item:focus-visible::after {
+        box-shadow:
+            0 16px 34px color-mix(in srgb, #000 56%, transparent),
+            0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent),
+            0 0 22px color-mix(in srgb, var(--accent) 22%, transparent);
+    }
+
     .rdb-shell--admin .rdb-nav-item:hover {
-        transform: none;
-        opacity: 0.9;
+        transform: translateY(-1px) scale(1.02);
+        opacity: 1;
+        box-shadow:
+            0 10px 24px color-mix(in srgb, #000 34%, transparent),
+            0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
     }
 
     .rdb-shell--admin .rdb-nav-item.is-active {
@@ -2674,9 +2678,15 @@
         grid-template-columns: 1fr 1fr;
     }
 
-    .rdb-admin-chart-card {
+.rdb-admin-chart-card {
         min-height: 304px;
         padding: 16px;
+    }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .rdb-shell--admin .rdb-nav-item::after {
+        display: none;
     }
 }
 
@@ -2807,20 +2817,11 @@
         font-size: clamp(1.3rem, 5.4vw, 1.8rem);
     }
 
-    .rdb-admin-bar-chart {
+    .rdb-admin-echart-wrap--bar {
         height: 188px;
     }
 
-    .rdb-admin-bar-track {
-        max-width: 54px;
-        height: 150px;
-    }
-
-    .rdb-admin-bar-label {
-        font-size: 0.84rem;
-    }
-
-    .rdb-admin-line-chart {
+    .rdb-admin-echart-wrap--line {
         height: 154px;
     }
 }
@@ -2908,18 +2909,14 @@
         display: none;
     }
 
-    .rdb-role-donut {
-        width: 78px;
-        height: 78px;
-    }
+.rdb-role-donut {
+    width: 78px;
+    height: 78px;
+}
 
-    .rdb-role-donut-ring::after {
-        inset: 15px;
-    }
-
-    .rdb-role-donut strong {
-        font-size: 0.96rem;
-    }
+.rdb-role-donut strong {
+    font-size: 0.96rem;
+}
 
     .rdb-admin-arrow-btn {
         width: 38px;
@@ -2940,27 +2937,12 @@
         font-size: 0.84rem;
     }
 
-    .rdb-admin-bar-chart {
-        height: 164px;
-        gap: 6px;
-    }
+.rdb-admin-echart-wrap--bar {
+    height: 164px;
+}
 
-    .rdb-admin-bar-track {
-        height: 124px;
-        max-width: 40px;
-        border-radius: 12px;
-    }
-
-    .rdb-admin-bar-fill {
-        border-radius: 12px;
-    }
-
-    .rdb-admin-bar-label {
-        font-size: 0.8rem;
-    }
-
-    .rdb-admin-line-chart {
-        height: 132px;
-        margin-top: 6px;
-    }
+.rdb-admin-echart-wrap--line {
+    height: 132px;
+    margin-top: 6px;
+}
 }
