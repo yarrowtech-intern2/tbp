@@ -28,6 +28,7 @@ import {
     type ListingInput,
     type PostRecord,
 } from '../lib/destinations';
+import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
 import { LISTING_LABELS, getRoleLabel, type ListingType, canRolePublish } from '../lib/platform';
 import './provider-studio.css';
 
@@ -245,6 +246,10 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const galleryImages = useMemo(
         () => normalizeImageList(form.gallery_images || []),
         [form.gallery_images]
+    );
+    const pricingPreview = useMemo(
+        () => calculatePricingFromProviderUnit(typeof form.price === 'number' ? form.price : 0, 1, PLATFORM_FEE_RATE),
+        [form.price]
     );
 
     const applyGallery = useCallback((nextImages: string[]) => {
@@ -683,12 +688,17 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     <input
                                         className="ps-input"
                                         type="number"
-                                        min="0"
+                                        min="1"
                                         value={typeof form.price === 'number' ? form.price : ''}
                                         onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) || null }))}
                                         placeholder="0"
                                         disabled={!canAccessStudio}
+                                        required
                                     />
+                                    <p className="ps-price-note">
+                                        Tourist price shown in package cards: <strong>Rs {pricingPreview.tourist_unit_price.toLocaleString()}</strong> (includes {Math.round(PLATFORM_FEE_RATE * 100)}% platform fee).
+                                        You will receive <strong>Rs {pricingPreview.provider_unit_price.toLocaleString()}</strong> per booking.
+                                    </p>
                                 </label>
                                 <label className="ps-field">
                                     <span className="ps-field-label"><Clock size={13} /> Start Date</span>
@@ -818,7 +828,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                                         {getListingStatusLabel(listing.status)}
                                                     </span>
                                                     {typeof listing.price === 'number' && (
-                                                        <span className="ps-price">Rs {listing.price.toLocaleString()}</span>
+                                                        <span className="ps-price">
+                                                            You receive Rs {listing.price.toLocaleString()} · Tourist sees Rs {calculatePricingFromProviderUnit(listing.price, 1, PLATFORM_FEE_RATE).tourist_unit_price.toLocaleString()}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>

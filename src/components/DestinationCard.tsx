@@ -3,6 +3,7 @@ import { Heart, Loader2, MapPin, Star } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { addListingFavorite, isListingFavorited, removeListingFavorite } from '../lib/destinations';
+import { calculatePricingFromProviderUnit } from '../lib/pricing';
 import type { ListingType } from '../lib/platform';
 import './listing-card.css';
 
@@ -19,16 +20,17 @@ interface DestinationProps {
     listingType?: ListingType;
 }
 
-const formatPrice = (price: number | null | undefined): string => {
-    if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) {
+const formatPrice = (providerPrice: number | null | undefined): string => {
+    if (typeof providerPrice !== 'number' || Number.isNaN(providerPrice) || providerPrice <= 0) {
         return 'Price on request';
     }
+    const touristPrice = calculatePricingFromProviderUnit(providerPrice, 1).tourist_unit_price;
 
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
         maximumFractionDigits: 0,
-    }).format(price);
+    }).format(touristPrice);
 };
 
 export const DestinationCard: React.FC<DestinationProps> = ({

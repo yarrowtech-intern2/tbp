@@ -16,6 +16,7 @@ import {
 } from './platform';
 import { resolveProfileCoordinates } from './accountGeo';
 import { isPromotionWindowActive, type PromotionPlanKey } from './promotions';
+import { deriveBookingAmounts } from './pricing';
 
 export interface Destination {
     id: string;
@@ -354,6 +355,12 @@ export interface UnifiedBooking {
     number_of_people: number;
     unit_price: number;
     total_price: number;
+    platform_fee_rate?: number | null;
+    platform_fee_amount?: number | null;
+    provider_payout_amount?: number | null;
+    payout_status?: string | null;
+    payout_processed_at?: string | null;
+    payout_reference?: string | null;
     status: BookingStatus;
     payment_status?: PaymentStatus;
     payment_order_id?: string | null;
@@ -1031,6 +1038,12 @@ const mapUnifiedBooking = (row: Record<string, unknown>): UnifiedBooking => ({
             ? row.price
             : 0,
     total_price: typeof row.total_price === 'number' ? row.total_price : 0,
+    platform_fee_rate: typeof row.platform_fee_rate === 'number' ? row.platform_fee_rate : null,
+    platform_fee_amount: typeof row.platform_fee_amount === 'number' ? row.platform_fee_amount : null,
+    provider_payout_amount: typeof row.provider_payout_amount === 'number' ? row.provider_payout_amount : null,
+    payout_status: typeof row.payout_status === 'string' ? row.payout_status : null,
+    payout_processed_at: typeof row.payout_processed_at === 'string' ? row.payout_processed_at : null,
+    payout_reference: typeof row.payout_reference === 'string' ? row.payout_reference : null,
     status: normalizeBookingStatus(typeof row.status === 'string' ? row.status : undefined),
     payment_status: typeof row.payment_status === 'string' ? row.payment_status as PaymentStatus : undefined,
     payment_order_id: typeof row.payment_order_id === 'string' ? row.payment_order_id : null,
@@ -1897,6 +1910,9 @@ export const createBooking = async (booking: {
     price?: number;
     unit_price?: number;
     total_price: number;
+    platform_fee_rate?: number;
+    platform_fee_amount?: number;
+    provider_payout_amount?: number;
     status?: BookingStatus;
     payment_status?: PaymentStatus;
     payment_order_id?: string | null;
@@ -1917,6 +1933,15 @@ export const createBooking = async (booking: {
         throw new Error('Only tourist accounts can place bookings.');
     }
 
+    const normalizedAmounts = deriveBookingAmounts({
+        unitPrice: booking.unit_price ?? booking.price ?? 0,
+        totalPrice: booking.total_price,
+        numberOfPeople: booking.number_of_people,
+        platformFeeRate: booking.platform_fee_rate ?? null,
+        platformFeeAmount: booking.platform_fee_amount ?? null,
+        providerPayoutAmount: booking.provider_payout_amount ?? null,
+    });
+
     const unifiedPayload = {
         user_id: booking.user_id,
         listing_id: booking.listing_id || booking.activity_id,
@@ -1925,8 +1950,11 @@ export const createBooking = async (booking: {
         listing_title: booking.listing_title || null,
         listing_image: booking.listing_image || null,
         number_of_people: booking.number_of_people,
-        unit_price: booking.unit_price ?? booking.price ?? 0,
-        total_price: booking.total_price,
+        unit_price: normalizedAmounts.provider_unit_price,
+        total_price: normalizedAmounts.total_price,
+        platform_fee_rate: normalizedAmounts.platform_fee_rate,
+        platform_fee_amount: normalizedAmounts.platform_fee_amount,
+        provider_payout_amount: normalizedAmounts.provider_payout_amount,
         status: booking.status || 'pending',
         payment_status: booking.payment_status || 'pending',
         payment_order_id: booking.payment_order_id || null,
@@ -2846,6 +2874,7 @@ export const respondToBookingRequest = async (args: {
         provider_decision_at: decisionAt,
         provider_decision_by: providerUserId,
         rejection_reason: args.decision === 'reject' ? rejectionReason : null,
+        payout_status: args.decision === 'accept' ? 'ready_for_payout' : 'cancelled',
     };
 
     let updateResult: { data: Record<string, unknown> | null; error: { code?: string; message?: string } | null } = {

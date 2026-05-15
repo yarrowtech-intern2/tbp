@@ -9,6 +9,7 @@ import {
   type ListingReviewSummary,
   type PostRecord,
 } from '../lib/destinations';
+import { calculatePricingFromProviderUnit } from '../lib/pricing';
 import { isProviderRole, normalizeRoleValue } from '../lib/platform';
 import './tourist-explore-page.css';
 
@@ -58,9 +59,10 @@ const getPostLocation = (post: PostRecord): string => {
     : 'Location unavailable';
 };
 
-const formatPrice = (price: number | null | undefined): string => {
-  if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) return 'Custom';
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(price);
+const formatPrice = (providerPrice: number | null | undefined): string => {
+  if (typeof providerPrice !== 'number' || Number.isNaN(providerPrice) || providerPrice <= 0) return 'Custom';
+  const touristPrice = calculatePricingFromProviderUnit(providerPrice, 1).tourist_unit_price;
+  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(touristPrice);
 };
 
 const getListingHref = (post: ExploreCardRecord): string => {

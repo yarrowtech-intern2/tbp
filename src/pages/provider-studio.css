@@ -779,9 +779,17 @@
 
 .ps-price {
     font-size: 0.82rem;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text-main);
     margin-left: auto;
+    text-align: right;
+}
+
+.ps-price-note {
+    margin: 8px 0 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--text-muted);
 }
 
 .ps-edit-btn {

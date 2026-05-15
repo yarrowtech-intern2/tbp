@@ -66,6 +66,9 @@ export interface BookingPaymentDraft {
     number_of_people: number;
     unit_price: number;
     total_price: number;
+    platform_fee_rate?: number;
+    platform_fee_amount?: number;
+    provider_payout_amount?: number;
     booking_date?: string | null;
 }
 

@@ -21,14 +21,19 @@ interface CreateOrderBody {
     listing_id?: string;
     listing_type?: string;
     listing_title?: string;
+    provider_user_id?: string | null;
     number_of_people?: number;
     unit_price?: number;
     total_price?: number;
+    platform_fee_rate?: number;
+    platform_fee_amount?: number;
+    provider_payout_amount?: number;
     booking_date?: string | null;
     currency?: string;
 }
 
 type ListingType = 'tour' | 'activity' | 'guide';
+const PLATFORM_FEE_RATE = 0.15;
 
 const encoder = new TextEncoder();
 const LEGACY_LISTING_ID_COLUMNS = ['listing_id', 'post_id', 'activity_id'] as const;
@@ -40,6 +45,35 @@ const toPositiveNumber = (value: unknown): number | null => {
         if (Number.isFinite(parsed) && parsed > 0) return parsed;
     }
     return null;
+};
+
+const toOptionalPositiveNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return null;
+};
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const calculatePricing = (providerUnitPrice: number, numberOfPeople: number, feeRate = PLATFORM_FEE_RATE) => {
+    const safePeople = Math.max(1, Math.floor(numberOfPeople));
+    const safeUnit = roundMoney(Math.max(0, providerUnitPrice));
+    const safeRate = Number.isFinite(feeRate) && feeRate >= 0 ? feeRate : PLATFORM_FEE_RATE;
+    const touristUnitPrice = roundMoney(safeUnit * (1 + safeRate));
+    const providerSubtotal = roundMoney(safeUnit * safePeople);
+    const totalPrice = roundMoney(touristUnitPrice * safePeople);
+    const platformFeeAmount = roundMoney(totalPrice - providerSubtotal);
+    return {
+        providerUnitPrice: safeUnit,
+        touristUnitPrice,
+        providerSubtotal,
+        platformFeeRate: safeRate,
+        platformFeeAmount,
+        totalPrice,
+    };
 };
 
 const normalizeInteger = (value: unknown, fallback = 1): number => {
@@ -176,27 +210,79 @@ Deno.serve(async (req) => {
         const body = (await req.json()) as CreateOrderBody;
 
         const listingId = normalizeLooseString(body.listing_id);
-        const listingType = normalizeLooseString(body.listing_type);
-        const listingTitle = normalizeLooseString(body.listing_title);
-        const totalPrice = toPositiveNumber(body.total_price);
-        const unitPrice = toPositiveNumber(body.unit_price);
+        const listingTypeInput = normalizeLooseString(body.listing_type);
+        const listingTitleInput = normalizeLooseString(body.listing_title);
+        const requestedTotalPrice = toPositiveNumber(body.total_price);
+        const requestedUnitPrice = toPositiveNumber(body.unit_price);
         const numberOfPeople = normalizeInteger(body.number_of_people, 1);
+        const requestedPlatformFeeRate = toOptionalPositiveNumber(body.platform_fee_rate);
         const currency = typeof body.currency === 'string' ? body.currency.trim().toUpperCase() : 'INR';
 
-        if (!listingId || !listingType || !listingTitle) {
+        if (!listingId || !listingTypeInput || !listingTitleInput) {
             return jsonResponse(400, { error: 'listing_id, listing_type, and listing_title are required.' });
         }
-        if (listingType !== 'tour' && listingType !== 'activity' && listingType !== 'guide') {
+        if (listingTypeInput !== 'tour' && listingTypeInput !== 'activity' && listingTypeInput !== 'guide') {
             return jsonResponse(400, { error: 'Invalid listing_type.' });
         }
-        if (!totalPrice || !unitPrice) {
+        if (!requestedTotalPrice || !requestedUnitPrice) {
             return jsonResponse(400, { error: 'unit_price and total_price must be positive numbers.' });
         }
         if (currency !== 'INR') {
             return jsonResponse(400, { error: 'Only INR currency is supported.' });
         }
 
-        const amountInPaise = Math.round(totalPrice * 100);
+        const supabaseUrl = ensureEnv('SUPABASE_URL');
+        const serviceRoleKey = ensureEnv('SUPABASE_SERVICE_ROLE_KEY');
+        const admin = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { persistSession: false },
+        });
+
+        let listingType = listingTypeInput as ListingType;
+        let listingTitle = listingTitleInput;
+        let listingImage = '';
+        let providerUserId = normalizeLooseString(body.provider_user_id);
+        let providerUnitPrice = requestedUnitPrice;
+
+        const listingLookup = await admin
+            .from('posts')
+            .select('id, title, name, type, price, image_url, cover_image_url, thumbnail_url, provider_user_id, user_id')
+            .eq('id', listingId)
+            .maybeSingle();
+
+        if (!listingLookup.error && listingLookup.data) {
+            const listingRow = listingLookup.data as Record<string, unknown>;
+            const dbType = normalizeLooseString(listingRow.type).toLowerCase();
+            if (dbType === 'tour' || dbType === 'activity') {
+                listingType = dbType;
+            } else if (dbType === 'guide' || dbType === 'event') {
+                listingType = 'guide';
+            }
+            listingTitle = normalizeLooseString(listingRow.title)
+                || normalizeLooseString(listingRow.name)
+                || listingTitle;
+            listingImage = normalizeLooseString(listingRow.image_url)
+                || normalizeLooseString(listingRow.cover_image_url)
+                || normalizeLooseString(listingRow.thumbnail_url);
+            providerUserId = normalizeLooseString(listingRow.provider_user_id)
+                || normalizeLooseString(listingRow.user_id)
+                || providerUserId;
+            const dbPrice = toPositiveNumber(listingRow.price);
+            if (dbPrice) providerUnitPrice = dbPrice;
+        }
+
+        const pricing = calculatePricing(
+            providerUnitPrice,
+            numberOfPeople,
+            requestedPlatformFeeRate ?? PLATFORM_FEE_RATE
+        );
+
+        if (Math.abs(pricing.totalPrice - requestedTotalPrice) > 0.5) {
+            return jsonResponse(400, {
+                error: `Price mismatch. Expected total is ${pricing.totalPrice.toFixed(2)} for ${numberOfPeople} traveler(s).`,
+            });
+        }
+
+        const amountInPaise = Math.round(pricing.totalPrice * 100);
         if (amountInPaise <= 0) {
             return jsonResponse(400, { error: 'total_price must be greater than zero.' });
         }
@@ -216,7 +302,13 @@ Deno.serve(async (req) => {
                 listing_type: listingType,
                 listing_title: listingTitle.slice(0, 40),
                 number_of_people: String(numberOfPeople),
-                unit_price: String(unitPrice),
+                provider_user_id: providerUserId,
+                unit_price: String(pricing.providerUnitPrice),
+                total_price: String(pricing.totalPrice),
+                tourist_unit_price: String(pricing.touristUnitPrice),
+                platform_fee_rate: String(pricing.platformFeeRate),
+                platform_fee_amount: String(pricing.platformFeeAmount),
+                provider_payout_amount: String(pricing.providerSubtotal),
                 booking_date: body.booking_date || '',
             },
         };
@@ -250,27 +342,38 @@ Deno.serve(async (req) => {
             return jsonResponse(502, { error: 'Razorpay did not return an order id.' });
         }
 
-        const supabaseUrl = ensureEnv('SUPABASE_URL');
-        const serviceRoleKey = ensureEnv('SUPABASE_SERVICE_ROLE_KEY');
-        const admin = createClient(supabaseUrl, serviceRoleKey, {
-            auth: { persistSession: false },
-        });
-
-        const listingTypeSafe = listingType as ListingType;
-        const listingImage = '';
         let uuidListingIdFallback: string | null = null;
+        const travelerProfile = await admin
+            .from('profiles')
+            .select('full_name, email, phone')
+            .eq('id', user.id)
+            .maybeSingle();
+        const travelerData = (travelerProfile.data as Record<string, unknown> | null) || null;
+        const travelerName = normalizeLooseString(travelerData?.full_name)
+            || normalizeLooseString(travelerData?.email)
+            || null;
+        const travelerEmail = normalizeLooseString(travelerData?.email) || null;
+        const travelerPhone = normalizeLooseString(travelerData?.phone) || null;
 
         const pendingPayload: Record<string, unknown> = {
             user_id: user.id,
+            provider_user_id: providerUserId || null,
             listing_id: listingId,
             post_id: listingId,
             source_listing_id: listingId,
-            listing_type: listingTypeSafe,
+            listing_type: listingType,
             listing_title: listingTitle,
             listing_image: listingImage || null,
             number_of_people: numberOfPeople,
-            unit_price: unitPrice,
-            total_price: totalPrice,
+            unit_price: pricing.providerUnitPrice,
+            total_price: pricing.totalPrice,
+            platform_fee_rate: pricing.platformFeeRate,
+            platform_fee_amount: pricing.platformFeeAmount,
+            provider_payout_amount: pricing.providerSubtotal,
+            payout_status: 'pending_provider_acceptance',
+            user_name: travelerName,
+            user_email: travelerEmail,
+            user_phone: travelerPhone,
             status: 'pending',
             payment_status: 'pending',
             payment_order_id: orderId,
@@ -305,7 +408,7 @@ Deno.serve(async (req) => {
             if (
                 isInvalidUuidInputError(result.error)
             ) {
-                uuidListingIdFallback = uuidListingIdFallback || await deterministicListingUuid(listingTypeSafe, listingId);
+                uuidListingIdFallback = uuidListingIdFallback || await deterministicListingUuid(listingType, listingId);
                 if (applyUuidFallbackToNextListingIdColumn(pendingPayload, listingId, uuidListingIdFallback)) {
                     continue;
                 }
@@ -364,7 +467,7 @@ Deno.serve(async (req) => {
                         user_id: user.id,
                         activity_id: listingId,
                         number_of_people: numberOfPeople,
-                        price: unitPrice,
+                        price: pricing.providerUnitPrice,
                         status: 'pending',
                     }]);
             }

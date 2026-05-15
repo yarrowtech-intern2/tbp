@@ -20,6 +20,7 @@ import {
 import type { ListingType } from '../lib/platform';
 import { confirmRazorpayBooking, createRazorpayOrder, openRazorpayCheckout } from '../lib/payments';
 import { getLocalBookedLookup, markListingBookedLocally, onBookingSync } from '../lib/bookingSync';
+import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
 import {
     clearPendingBookingConfirmation,
     getPendingBookingConfirmation,
@@ -172,7 +173,7 @@ export const ListingDetail: React.FC = () => {
     const image = listing ? getListingImage(listing) : '';
     const description = typeof listing?.description === 'string' ? listing.description : 'No description provided yet.';
     const location = typeof listing?.location === 'string' ? listing.location : 'Location available after booking';
-    const unitPrice = typeof listing?.price === 'number' ? listing.price : 0;
+    const providerUnitPrice = typeof listing?.price === 'number' ? listing.price : 0;
     const ownerUserId = normalizeUuidString(listing?.provider_user_id)
         || normalizeUuidString(listing?.user_id)
         || null;
@@ -181,7 +182,10 @@ export const ListingDetail: React.FC = () => {
         ? (toInternalListingType(listingTypeValue || undefined) as ListingType)
         : (listingType || 'activity');
     const displayType = effectiveType === 'guide' ? 'event' : effectiveType;
-    const total = useMemo(() => unitPrice * guests, [guests, unitPrice]);
+    const pricing = useMemo(
+        () => calculatePricingFromProviderUnit(providerUnitPrice, guests, PLATFORM_FEE_RATE),
+        [providerUnitPrice, guests]
+    );
     const canBook = profile?.role === 'tourist';
     const canFavorite = profile?.role === 'tourist';
     const canReview = profile?.role === 'tourist';
@@ -404,8 +408,11 @@ export const ListingDetail: React.FC = () => {
                 listing_title: title,
                 listing_image: image,
                 number_of_people: guests,
-                unit_price: unitPrice,
-                total_price: total,
+                unit_price: pricing.provider_unit_price,
+                total_price: pricing.total_price,
+                platform_fee_rate: pricing.platform_fee_rate,
+                platform_fee_amount: pricing.platform_fee_amount,
+                provider_payout_amount: pricing.provider_payout_amount,
                 booking_date: checkIn || null,
             };
 
@@ -682,7 +689,7 @@ export const ListingDetail: React.FC = () => {
                             <form onSubmit={handleBooking} className="listing-book-form">
                                 <div className="listing-book-head">
                                     <h3>Reserve</h3>
-                                    <strong>Rs {unitPrice.toLocaleString()}</strong>
+                                    <strong>Rs {pricing.tourist_unit_price.toLocaleString()}</strong>
                                 </div>
 
                                 <label className="listing-book-field">
@@ -707,7 +714,12 @@ export const ListingDetail: React.FC = () => {
 
                                 <div className="listing-book-total">
                                     <span>Total</span>
-                                    <strong>Rs {total.toLocaleString()}</strong>
+                                    <strong>Rs {pricing.total_price.toLocaleString()}</strong>
+                                </div>
+
+                                <div className="listing-book-total">
+                                    <span>Includes platform fee ({Math.round(PLATFORM_FEE_RATE * 100)}%)</span>
+                                    <strong>Rs {pricing.platform_fee_amount.toLocaleString()}</strong>
                                 </div>
 
                                 {!canBook && (
@@ -727,7 +739,7 @@ export const ListingDetail: React.FC = () => {
                                 </button>
 
                                 <p className="listing-book-security">
-                                    <ShieldCheck size={14} /> Secure booking, no hidden charges.
+                                    <ShieldCheck size={14} /> Secure booking. Price shown is tax-inclusive and includes platform fee.
                                 </p>
                             </form>
                         )}

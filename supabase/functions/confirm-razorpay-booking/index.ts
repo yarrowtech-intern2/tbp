@@ -52,6 +52,9 @@ interface BookingPayload {
     number_of_people?: number;
     unit_price?: number;
     total_price?: number;
+    platform_fee_rate?: number;
+    platform_fee_amount?: number;
+    provider_payout_amount?: number;
     booking_date?: string | null;
 }
 
@@ -67,6 +70,7 @@ interface ConfirmBody {
 }
 
 type SupabaseAdminClient = ReturnType<typeof createClient>;
+const PLATFORM_FEE_RATE = 0.15;
 
 const toPositiveNumber = (value: unknown): number | null => {
     if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
@@ -75,6 +79,35 @@ const toPositiveNumber = (value: unknown): number | null => {
         if (Number.isFinite(parsed) && parsed > 0) return parsed;
     }
     return null;
+};
+
+const toOptionalPositiveNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return null;
+};
+
+const roundMoney = (value: number): number => Math.round(value * 100) / 100;
+
+const calculatePricing = (providerUnitPrice: number, numberOfPeople: number, feeRate = PLATFORM_FEE_RATE) => {
+    const safePeople = Math.max(1, Math.floor(numberOfPeople));
+    const safeUnit = roundMoney(Math.max(0, providerUnitPrice));
+    const safeRate = Number.isFinite(feeRate) && feeRate >= 0 ? feeRate : PLATFORM_FEE_RATE;
+    const touristUnitPrice = roundMoney(safeUnit * (1 + safeRate));
+    const providerSubtotal = roundMoney(safeUnit * safePeople);
+    const totalPrice = roundMoney(touristUnitPrice * safePeople);
+    const platformFeeAmount = roundMoney(totalPrice - providerSubtotal);
+    return {
+        providerUnitPrice: safeUnit,
+        touristUnitPrice,
+        providerSubtotal,
+        platformFeeRate: safeRate,
+        platformFeeAmount,
+        totalPrice,
+    };
 };
 
 const normalizePeopleCount = (value: unknown): number => {
@@ -486,6 +519,9 @@ Deno.serve(async (req) => {
         let numberOfPeople = normalizePeopleCount(booking?.number_of_people);
         let unitPrice = toPositiveNumber(booking?.unit_price);
         let totalPrice = toPositiveNumber(booking?.total_price);
+        let platformFeeRate = toOptionalPositiveNumber(booking?.platform_fee_rate);
+        let platformFeeAmount = toOptionalPositiveNumber(booking?.platform_fee_amount);
+        let providerPayoutAmount = toOptionalPositiveNumber(booking?.provider_payout_amount);
         let bookingDateRaw = normalizeLooseString(booking?.booking_date);
         let bookingDate = bookingDateRaw || null;
 
@@ -507,6 +543,9 @@ Deno.serve(async (req) => {
             providerUserId = providerUserId || normalizeOptionalUuid(pending.provider_user_id);
             if (!unitPrice) unitPrice = toPositiveNumber(pending.unit_price);
             if (!totalPrice) totalPrice = toPositiveNumber(pending.total_price);
+            if (!platformFeeRate) platformFeeRate = toOptionalPositiveNumber(pending.platform_fee_rate);
+            if (!platformFeeAmount) platformFeeAmount = toOptionalPositiveNumber(pending.platform_fee_amount);
+            if (!providerPayoutAmount) providerPayoutAmount = toOptionalPositiveNumber(pending.provider_payout_amount);
             if (!bookingDate) {
                 bookingDateRaw = normalizeLooseString(pending.booking_date);
                 bookingDate = bookingDateRaw || null;
@@ -537,7 +576,11 @@ Deno.serve(async (req) => {
                 listingId = listingId || normalizeLooseString(notes.listing_id);
                 listingType = listingType || normalizeListingType(notes.listing_type);
                 listingTitle = listingTitle || normalizeLooseString(notes.listing_title);
+                providerUserId = providerUserId || normalizeOptionalUuid(notes.provider_user_id);
                 if (!unitPrice) unitPrice = toPositiveNumber(notes.unit_price);
+                if (!platformFeeRate) platformFeeRate = toOptionalPositiveNumber(notes.platform_fee_rate);
+                if (!platformFeeAmount) platformFeeAmount = toOptionalPositiveNumber(notes.platform_fee_amount);
+                if (!providerPayoutAmount) providerPayoutAmount = toOptionalPositiveNumber(notes.provider_payout_amount);
                 if (!bookingDate) {
                     bookingDateRaw = normalizeLooseString(notes.booking_date);
                     bookingDate = bookingDateRaw || null;
@@ -556,9 +599,21 @@ Deno.serve(async (req) => {
         if (!listingId || !listingType || !listingTitle) {
             return jsonResponse(400, { error: 'listing_id, listing_type, and listing_title are required.' });
         }
-        if (!unitPrice || !totalPrice) {
+        if (!unitPrice) {
             return jsonResponse(400, { error: 'Invalid booking amount.' });
         }
+        const computedPricing = calculatePricing(unitPrice, numberOfPeople, platformFeeRate ?? PLATFORM_FEE_RATE);
+        totalPrice = totalPrice && totalPrice > 0 ? roundMoney(totalPrice) : computedPricing.totalPrice;
+        if (Math.abs(totalPrice - computedPricing.totalPrice) > 0.5) {
+            totalPrice = computedPricing.totalPrice;
+        }
+        platformFeeRate = computedPricing.platformFeeRate;
+        platformFeeAmount = platformFeeAmount && platformFeeAmount > 0
+            ? roundMoney(platformFeeAmount)
+            : roundMoney(Math.max(0, totalPrice - computedPricing.providerSubtotal));
+        providerPayoutAmount = providerPayoutAmount && providerPayoutAmount > 0
+            ? roundMoney(providerPayoutAmount)
+            : computedPricing.providerSubtotal;
 
         const existingLookup = await admin
             .from('bookings')
@@ -603,6 +658,10 @@ Deno.serve(async (req) => {
             number_of_people: numberOfPeople,
             unit_price: unitPrice,
             total_price: totalPrice,
+            platform_fee_rate: platformFeeRate,
+            platform_fee_amount: platformFeeAmount,
+            provider_payout_amount: providerPayoutAmount,
+            payout_status: 'pending_provider_acceptance',
             status: 'pending',
             payment_status: 'paid',
             payment_order_id: orderId,
@@ -611,6 +670,9 @@ Deno.serve(async (req) => {
             payment_currency: 'INR',
             paid_at: new Date().toISOString(),
             booking_date: bookingDate,
+            user_name: travelerName,
+            user_email: travelerEmail || null,
+            user_phone: travelerPhone || null,
         };
 
         const pendingMatch = await admin

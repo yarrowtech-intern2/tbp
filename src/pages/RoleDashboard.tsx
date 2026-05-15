@@ -63,6 +63,7 @@ import {
     type VerificationRecord,
 } from '../lib/destinations';
 import { isProviderRole, normalizeRoleValue } from '../lib/platform';
+import { deriveBookingAmounts } from '../lib/pricing';
 import {
     confirmPromotionPurchase,
     createPromotionOrder,
@@ -130,6 +131,8 @@ type AdminRevenueBookingRow = {
     number_of_people: number;
     revenue_amount: number;
     revenue_amount_source: 'total_price' | 'unit_price_x_people';
+    provider_payout_amount: number;
+    platform_fee_amount: number;
     included_in_revenue: boolean;
     exclusion_reason: string | null;
 };
@@ -157,6 +160,8 @@ type AccountRevenueRow = {
     traveler_name: string | null;
     traveler_email: string | null;
     traveler_phone: string | null;
+    provider_payout_amount: number;
+    platform_fee_amount: number;
 };
 
 type NavItem = {
@@ -222,17 +227,25 @@ const toFiniteNumber = (value: unknown): number => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const sumBookedRevenue = (rows: Array<Record<string, unknown>>): number => rows.reduce((sum, row) => {
+type RevenuePerspective = 'tourist' | 'provider' | 'admin_platform';
+
+const sumBookedRevenue = (rows: Array<Record<string, unknown>>, perspective: RevenuePerspective): number => rows.reduce((sum, row) => {
     const status = String(row.status || '').toLowerCase();
     const paymentStatus = String(row.payment_status || '').toLowerCase();
     const hasPaidAt = typeof row.paid_at === 'string' && row.paid_at.trim().length > 0;
     if (status === 'cancelled' || status === 'rejected' || paymentStatus === 'refunded') return sum;
     if (paymentStatus !== 'paid' && !hasPaidAt) return sum;
-    const total = Math.max(0, toFiniteNumber(row.total_price));
-    if (total > 0) return sum + total;
-    const unit = Math.max(0, toFiniteNumber(row.unit_price));
-    const people = Math.max(1, Math.floor(toFiniteNumber(row.number_of_people)));
-    return sum + (unit * people);
+    const amounts = deriveBookingAmounts({
+        unitPrice: toFiniteNumber(row.unit_price),
+        totalPrice: toFiniteNumber(row.total_price),
+        numberOfPeople: toFiniteNumber(row.number_of_people),
+        platformFeeRate: toFiniteNumber(row.platform_fee_rate) || null,
+        platformFeeAmount: toFiniteNumber(row.platform_fee_amount) || null,
+        providerPayoutAmount: toFiniteNumber(row.provider_payout_amount) || null,
+    });
+    if (perspective === 'provider') return sum + amounts.provider_payout_amount;
+    if (perspective === 'admin_platform') return sum + amounts.platform_fee_amount;
+    return sum + amounts.total_price;
 }, 0);
 
 const formatDate = (value?: string | null) => {
@@ -254,14 +267,23 @@ const formatDateTime = (value?: string | null) => {
     });
 };
 
-const buildAccountRevenueRow = (item: UnifiedBooking): AccountRevenueRow => {
+const buildAccountRevenueRow = (item: UnifiedBooking, perspective: RevenuePerspective): AccountRevenueRow => {
     const status = String(item.status || '').trim().toLowerCase();
     const paymentStatus = String(item.payment_status || '').trim().toLowerCase();
-    const totalPrice = Math.max(0, toFiniteNumber(item.total_price));
-    const unitPrice = Math.max(0, toFiniteNumber(item.unit_price));
-    const numberOfPeople = Math.max(1, Math.floor(toFiniteNumber(item.number_of_people)));
-    const revenueAmount = totalPrice > 0 ? totalPrice : (unitPrice * numberOfPeople);
-    const revenueAmountSource = totalPrice > 0 ? 'total_price' : 'unit_price_x_people';
+    const amounts = deriveBookingAmounts({
+        unitPrice: toFiniteNumber(item.unit_price),
+        totalPrice: toFiniteNumber(item.total_price),
+        numberOfPeople: toFiniteNumber(item.number_of_people),
+        platformFeeRate: toFiniteNumber(item.platform_fee_rate) || null,
+        platformFeeAmount: toFiniteNumber(item.platform_fee_amount) || null,
+        providerPayoutAmount: toFiniteNumber(item.provider_payout_amount) || null,
+    });
+    const revenueAmount = perspective === 'provider'
+        ? amounts.provider_payout_amount
+        : perspective === 'admin_platform'
+            ? amounts.platform_fee_amount
+            : amounts.total_price;
+    const revenueAmountSource = toFiniteNumber(item.total_price) > 0 ? 'total_price' : 'unit_price_x_people';
     const hasPaidAt = typeof item.paid_at === 'string' && item.paid_at.trim().length > 0;
     const isPaid = paymentStatus === 'paid' || hasPaidAt;
     const isRefunded = paymentStatus === 'refunded';
@@ -287,9 +309,9 @@ const buildAccountRevenueRow = (item: UnifiedBooking): AccountRevenueRow => {
         booking_date: item.booking_date || null,
         created_at: item.created_at || null,
         paid_at: item.paid_at || null,
-        total_price: totalPrice,
-        unit_price: unitPrice,
-        number_of_people: numberOfPeople,
+        total_price: amounts.total_price,
+        unit_price: amounts.provider_unit_price,
+        number_of_people: amounts.number_of_people,
         revenue_amount: revenueAmount,
         revenue_amount_source: revenueAmountSource,
         included_in_revenue: includedInRevenue,
@@ -299,6 +321,8 @@ const buildAccountRevenueRow = (item: UnifiedBooking): AccountRevenueRow => {
         traveler_name: item.traveler_name || null,
         traveler_email: item.traveler_email || null,
         traveler_phone: item.traveler_phone || null,
+        provider_payout_amount: amounts.provider_payout_amount,
+        platform_fee_amount: amounts.platform_fee_amount,
     };
 };
 
@@ -636,7 +660,7 @@ export const RoleDashboard: React.FC = () => {
                 .order('created_at', { ascending: false }),
             supabase
                 .from('bookings')
-                .select('id, listing_title, listing_type, user_id, provider_user_id, payment_id, payment_order_id, status, payment_status, booking_date, created_at, paid_at, total_price, unit_price, number_of_people')
+                .select('*')
                 .order('created_at', { ascending: false }),
             supabase.rpc('get_admin_revenue'),
         ]);
@@ -655,11 +679,16 @@ export const RoleDashboard: React.FC = () => {
             const status = String(row.status || '').trim().toLowerCase();
             const paymentStatus = String(row.payment_status || '').trim().toLowerCase();
             const hasPaidAt = typeof row.paid_at === 'string' && row.paid_at.trim().length > 0;
-            const totalPrice = Math.max(0, toFiniteNumber(row.total_price));
-            const unitPrice = Math.max(0, toFiniteNumber(row.unit_price));
-            const numberOfPeople = Math.max(1, Math.floor(toFiniteNumber(row.number_of_people)));
-            const revenueAmount = totalPrice > 0 ? totalPrice : (unitPrice * numberOfPeople);
-            const revenueAmountSource = totalPrice > 0 ? 'total_price' : 'unit_price_x_people';
+            const amounts = deriveBookingAmounts({
+                unitPrice: toFiniteNumber(row.unit_price),
+                totalPrice: toFiniteNumber(row.total_price),
+                numberOfPeople: toFiniteNumber(row.number_of_people),
+                platformFeeRate: toFiniteNumber(row.platform_fee_rate) || null,
+                platformFeeAmount: toFiniteNumber(row.platform_fee_amount) || null,
+                providerPayoutAmount: toFiniteNumber(row.provider_payout_amount) || null,
+            });
+            const revenueAmount = amounts.platform_fee_amount;
+            const revenueAmountSource = toFiniteNumber(row.total_price) > 0 ? 'total_price' : 'unit_price_x_people';
             const isRefunded = paymentStatus === 'refunded';
             const isCancelledOrRejected = status === 'cancelled' || status === 'canceled' || status === 'rejected' || status === 'declined';
             const isPaid = paymentStatus === 'paid' || hasPaidAt;
@@ -686,30 +715,24 @@ export const RoleDashboard: React.FC = () => {
                 booking_date: typeof row.booking_date === 'string' ? row.booking_date : null,
                 created_at: typeof row.created_at === 'string' ? row.created_at : null,
                 paid_at: typeof row.paid_at === 'string' ? row.paid_at : null,
-                total_price: totalPrice,
-                unit_price: unitPrice,
-                number_of_people: numberOfPeople,
+                total_price: amounts.total_price,
+                unit_price: amounts.provider_unit_price,
+                number_of_people: amounts.number_of_people,
                 revenue_amount: revenueAmount,
                 revenue_amount_source: revenueAmountSource,
+                provider_payout_amount: amounts.provider_payout_amount,
+                platform_fee_amount: amounts.platform_fee_amount,
                 included_in_revenue: includedInRevenue,
                 exclusion_reason: exclusionReason,
             };
         });
-        const rpcRevenueRow = Array.isArray(revenueResult.data)
-            ? revenueResult.data[0] as Record<string, unknown> | undefined
-            : (revenueResult.data as Record<string, unknown> | null) || null;
-        const revenueFromRpc = rpcRevenueRow
-            ? Math.max(0, toFiniteNumber(rpcRevenueRow.net_revenue ?? rpcRevenueRow.gross_revenue))
-            : 0;
-        const hasRpcRevenue = !revenueResult.error && Boolean(rpcRevenueRow);
-
         return {
             posts,
             queuePosts,
             verifications,
             audits,
             users: usersResult.error ? [] : (usersResult.data as AdminProfileRow[] || []),
-            revenue: hasRpcRevenue ? revenueFromRpc : sumBookedRevenue(bookingRows),
+            revenue: sumBookedRevenue(bookingRows, 'admin_platform'),
             revenueRows: detailedRevenueRows,
         };
     }, []);
@@ -988,7 +1011,7 @@ export const RoleDashboard: React.FC = () => {
             return new Date(item.booking_date).getTime() >= Date.now() - 86400000;
         }).length;
         const spend = touristBookings
-            .map((item) => buildAccountRevenueRow(item))
+            .map((item) => buildAccountRevenueRow(item, 'tourist'))
             .filter((item) => item.included_in_revenue)
             .reduce((sum, item) => sum + item.revenue_amount, 0);
 
@@ -1004,7 +1027,7 @@ export const RoleDashboard: React.FC = () => {
         const pending = providerListings.filter((item) => item.status === 'pending').length;
         const live = providerListings.filter((item) => LIVE_STATUSES.has((item.status || '').toLowerCase())).length;
         const revenue = providerBookings
-            .map((item) => buildAccountRevenueRow(item))
+            .map((item) => buildAccountRevenueRow(item, 'provider'))
             .filter((item) => item.included_in_revenue)
             .reduce((sum, item) => sum + item.revenue_amount, 0);
         const rejected = providerListings.filter((item) => item.status === 'rejected').length;
@@ -1181,7 +1204,7 @@ export const RoleDashboard: React.FC = () => {
     const touristRows = touristBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''}`.toLowerCase().includes(query));
 
-    const touristRevenueRows = touristBookings.map((item) => buildAccountRevenueRow(item));
+    const touristRevenueRows = touristBookings.map((item) => buildAccountRevenueRow(item, 'tourist'));
     const touristRevenueFilteredRows = touristRevenueRows
         .filter((item) => !query || `${item.id} ${item.listing_title} ${item.listing_type} ${item.payment_id} ${item.payment_order_id} ${item.status} ${item.payment_status}`.toLowerCase().includes(query));
 
@@ -1206,7 +1229,7 @@ export const RoleDashboard: React.FC = () => {
     const providerBookingRows = providerBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''} ${item.traveler_name || ''} ${item.traveler_email || ''} ${item.traveler_phone || ''}`.toLowerCase().includes(query));
 
-    const providerRevenueRows = providerBookings.map((item) => buildAccountRevenueRow(item));
+    const providerRevenueRows = providerBookings.map((item) => buildAccountRevenueRow(item, 'provider'));
     const providerRevenueFilteredRows = providerRevenueRows
         .filter((item) => !query || `${item.id} ${item.listing_title} ${item.listing_type} ${item.payment_id} ${item.payment_order_id} ${item.status} ${item.payment_status} ${item.traveler_name || ''} ${item.traveler_email || ''}`.toLowerCase().includes(query));
 
@@ -1743,6 +1766,7 @@ export const RoleDashboard: React.FC = () => {
                                         <p>{item.listing_title} ({item.listing_type})</p>
                                         <small>Booking ID: {item.id || 'N/A'} | Payment ID: {item.payment_id || 'N/A'} | Order ID: {item.payment_order_id || 'N/A'}</small>
                                         <small>Status: {item.status} | Payment: {item.payment_status} | Source: {item.revenue_amount_source === 'total_price' ? 'total_price' : 'unit_price x travelers'}</small>
+                                        <small>Total paid: {formatCurrency(item.total_price)} | Provider payout: {formatCurrency(item.provider_payout_amount)} | Platform fee: {formatCurrency(item.platform_fee_amount)}</small>
                                         <small>Created: {formatDateTime(item.created_at)} | Paid: {formatDateTime(item.paid_at)} | Date: {formatDate(item.booking_date)}</small>
                                         {!item.included_in_revenue && <small>Excluded: {item.exclusion_reason || 'Not eligible for spend'}</small>}
                                     </div>
@@ -2129,17 +2153,17 @@ export const RoleDashboard: React.FC = () => {
             return (
                 <section className="rdb-content-grid">
                     <article className="rdb-panel">
-                        <h2>Revenue Breakdown</h2>
+                        <h2>Payout Breakdown</h2>
                         <div className="rdb-stat-list">
-                            <div><span>Total Revenue</span><strong>{formatRupeeShort(providerMetrics.revenue)}</strong></div>
+                            <div><span>Total Payout</span><strong>{formatRupeeShort(providerMetrics.revenue)}</strong></div>
                             <div><span>Contributing Rows</span><strong>{includedRows.length}</strong></div>
                             <div><span>Excluded Rows</span><strong>{excludedRows.length}</strong></div>
-                            <div><span>Derived Revenue</span><strong>{formatRupeeShort(derivedRevenue)}</strong></div>
+                            <div><span>Derived Payout</span><strong>{formatRupeeShort(derivedRevenue)}</strong></div>
                         </div>
                     </article>
                     <article className="rdb-panel rdb-panel-wide">
                         <div className="rdb-panel-head">
-                            <h2>Revenue Source Rows</h2>
+                            <h2>Payout Source Rows</h2>
                             <small>{query ? `Filtered by "${search}"` : `${providerRevenueFilteredRows.length} records`}</small>
                         </div>
                         <div className="rdb-list">
@@ -2150,6 +2174,7 @@ export const RoleDashboard: React.FC = () => {
                                         <small>Booking ID: {item.id || 'N/A'} | Payment ID: {item.payment_id || 'N/A'} | Order ID: {item.payment_order_id || 'N/A'}</small>
                                         <small>Traveler: {item.traveler_name || item.traveler_id || 'N/A'} | Email: {item.traveler_email || 'N/A'} | Phone: {item.traveler_phone || 'N/A'}</small>
                                         <small>Status: {item.status} | Payment: {item.payment_status} | Source: {item.revenue_amount_source === 'total_price' ? 'total_price' : 'unit_price x travelers'}</small>
+                                        <small>Total paid: {formatCurrency(item.total_price)} | Provider payout: {formatCurrency(item.provider_payout_amount)} | Platform fee: {formatCurrency(item.platform_fee_amount)}</small>
                                         <small>Created: {formatDateTime(item.created_at)} | Paid: {formatDateTime(item.paid_at)} | Date: {formatDate(item.booking_date)}</small>
                                         {!item.included_in_revenue && <small>Excluded: {item.exclusion_reason || 'Not eligible for revenue'}</small>}
                                     </div>
@@ -2646,9 +2671,9 @@ export const RoleDashboard: React.FC = () => {
             return (
                 <section className="rdb-content-grid">
                     <article className="rdb-panel">
-                        <h2>Revenue Breakdown</h2>
+                        <h2>Platform Revenue Breakdown</h2>
                         <div className="rdb-stat-list">
-                            <div><span>Net Revenue</span><strong>{formatRupeeShort(adminRevenueDb)}</strong></div>
+                            <div><span>Platform Revenue</span><strong>{formatRupeeShort(adminRevenueDb)}</strong></div>
                             <div><span>Contributing Rows</span><strong>{includedRows.length}</strong></div>
                             <div><span>Excluded Rows</span><strong>{excludedRows.length}</strong></div>
                             <div><span>Derived Total</span><strong>{formatRupeeShort(derivedRevenue)}</strong></div>
@@ -2672,6 +2697,7 @@ export const RoleDashboard: React.FC = () => {
                                         <small>Booking ID: {item.id || 'N/A'} | Payment ID: {item.payment_id || 'N/A'} | Order ID: {item.payment_order_id || 'N/A'}</small>
                                         <small>Traveler: {item.traveler_id || 'N/A'} | Provider: {item.provider_id || 'N/A'}</small>
                                         <small>Status: {item.status} | Payment: {item.payment_status} | Source: {item.revenue_amount_source === 'total_price' ? 'total_price' : 'unit_price x travelers'}</small>
+                                        <small>Total paid: {formatCurrency(item.total_price)} | Provider payout: {formatCurrency(item.provider_payout_amount)} | Platform fee: {formatCurrency(item.platform_fee_amount)}</small>
                                         <small>Created: {formatDateTime(item.created_at)} | Paid: {formatDateTime(item.paid_at)} | Date: {formatDate(item.booking_date)}</small>
                                         {!item.included_in_revenue && <small>Excluded: {item.exclusion_reason || 'Not eligible for revenue'}</small>}
                                     </div>
