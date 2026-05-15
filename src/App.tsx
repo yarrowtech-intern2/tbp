@@ -146,26 +146,6 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
   return <>{children}</>;
 };
 
-const ProviderRestrictedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, profile, loading, profileLoading } = useAuth();
-  const role = resolveUserRole(user, profile?.role);
-  const isProvider = isProviderAccount(role);
-
-  if (loading || profileLoading) {
-    return null;
-  }
-
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (isProvider) {
-    return <Navigate to="/dashboard/provider" replace />;
-  }
-
-  return <>{children}</>;
-};
-
 function App() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -196,7 +176,7 @@ function App() {
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-            <Route path="/notifications" element={<ProviderRestrictedRoute><Notifications /></ProviderRestrictedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
             <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />
             <Route path="/provider/studio" element={<ProviderRoute><ProviderStudio /></ProviderRoute>} />

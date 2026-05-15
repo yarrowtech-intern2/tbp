@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useNotifications } from '../hooks/useNotifications';
 import { supabase } from '../lib/supabase';
 import {
     getAdminAccountLocations,
@@ -407,6 +408,7 @@ const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: numb
 
 export const RoleDashboard: React.FC = () => {
     const { user, profile, profileLoading } = useAuth();
+    const { unreadCount } = useNotifications();
     const { role: roleParam } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -559,7 +561,7 @@ export const RoleDashboard: React.FC = () => {
             setActiveSection(requestedProviderSection || 'overview');
             return;
         }
-        setActiveSection(requestedTouristSection || 'bookings');
+        setActiveSection(requestedTouristSection || 'overview');
     }, [effectiveRole, requestedAdminSection, requestedProviderSection, requestedTouristSection]);
 
     const loadAdminAccountLocations = async (force = false) => {
@@ -2608,8 +2610,19 @@ export const RoleDashboard: React.FC = () => {
                                     </button>
                                 )}
                                 {isDesktopDashboard && (
-                                    <button type="button" className="rdb-admin-ctrl-btn" title="Notifications">
+                                    <button
+                                        type="button"
+                                        className="rdb-admin-ctrl-btn"
+                                        title="Notifications"
+                                        aria-label="Open notifications"
+                                        onClick={() => navigate('/notifications')}
+                                    >
                                         <Bell size={18} />
+                                        {unreadCount > 0 && (
+                                            <span className="rdb-admin-ctrl-badge">
+                                                {unreadCount > 99 ? '99+' : unreadCount}
+                                            </span>
+                                        )}
                                     </button>
                                 )}
                                 {isDesktopDashboard && (

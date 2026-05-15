@@ -1162,7 +1162,7 @@
 
 @media (max-width: 768px) {
   .dh-page {
-    padding: 108px 0 136px;
+    padding: calc(72px + env(safe-area-inset-top, 0px)) 0 136px;
   }
 
   .dh-reveal {

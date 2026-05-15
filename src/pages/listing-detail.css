@@ -457,6 +457,12 @@
   margin-left: 4px;
 }
 
+@media (max-width: 899px) {
+  .listing-detail-page {
+    padding-top: calc(72px + env(safe-area-inset-top, 0px));
+  }
+}
+
 @media (min-width: 900px) {
   .listing-detail-page {
     padding: 128px 0 90px;

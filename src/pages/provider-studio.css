@@ -841,6 +841,12 @@
     }
 }
 
+@media (max-width: 979px) {
+    .ps-page {
+        padding-top: calc(72px + env(safe-area-inset-top, 0px));
+    }
+}
+
 @media (max-width: 520px) {
     .ps-image-upload-row {
         flex-direction: column;

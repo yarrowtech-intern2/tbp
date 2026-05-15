@@ -118,7 +118,7 @@
 
 @media (max-width: 700px) {
     .terms-page {
-        padding: 104px 20px 56px;
+        padding: calc(72px + env(safe-area-inset-top, 0px)) 20px 56px;
     }
 
     .terms-header {

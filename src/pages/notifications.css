@@ -219,7 +219,7 @@
 
 @media (max-width: 760px) {
     .ntf-page {
-        padding-top: 106px;
+        padding-top: calc(72px + env(safe-area-inset-top, 0px));
         padding-bottom: 24px;
     }
 

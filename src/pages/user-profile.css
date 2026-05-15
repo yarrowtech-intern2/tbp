@@ -372,7 +372,7 @@
 
 @media (max-width: 640px) {
     .upr-page {
-        padding-top: 104px;
+        padding-top: calc(72px + env(safe-area-inset-top, 0px));
         padding-bottom: 88px;
     }
 

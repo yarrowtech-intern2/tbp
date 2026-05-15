@@ -774,6 +774,12 @@
     }
 }
 
+@media (max-width: 979px) {
+    .ac-page {
+        padding-top: calc(72px + env(safe-area-inset-top, 0px));
+    }
+}
+
 @media (min-width: 900px) {
     .ac-stats {
         grid-template-columns: repeat(5, minmax(0, 1fr));

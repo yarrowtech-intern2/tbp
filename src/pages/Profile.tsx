@@ -1044,7 +1044,7 @@ export const Profile: React.FC = () => {
                 .prf-page {
                     background: var(--bg-main);
                     min-height: 100vh;
-                    padding-top: 140px;
+                    padding-top: 112px;
                     padding-bottom: 100px;
                 }
                 .prf-shell {
@@ -1839,7 +1839,7 @@ export const Profile: React.FC = () => {
 
                 /* ── Responsive ─────────────────────────────────── */
                 @media (max-width: 640px) {
-                    .prf-page { padding-top: 110px; }
+                    .prf-page { padding-top: calc(72px + env(safe-area-inset-top, 0px)); }
                     .prf-cover { height: 150px; }
                     .prf-avatar-wrap { height: 84px; margin-top: -42px; width: 84px; }
                     .prf-avatar-row { padding: 0 16px; }

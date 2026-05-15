@@ -84,7 +84,7 @@
 
 @media (max-width: 760px) {
     .pt-page {
-        padding-top: 102px;
+        padding-top: calc(72px + env(safe-area-inset-top, 0px));
     }
 
     .pt-shell {

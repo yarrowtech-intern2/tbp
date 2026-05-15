@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -11,6 +11,7 @@ export const Navbar: React.FC = () => {
     const { user, profile, profileLoading, signOut, isAdmin, isProvider, roleLabel } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [showMenu, setShowMenu] = useState(false);
+    const mobileNavRef = useRef<HTMLDivElement | null>(null);
     const location = useLocation();
 
     const isDark = theme === 'dark';
@@ -112,6 +113,31 @@ export const Navbar: React.FC = () => {
     const avatarSrc = profile?.profile_image_url
         || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`;
 
+    useEffect(() => {
+        if (!showMenu) return;
+
+        const onPointerDown = (event: MouseEvent | TouchEvent) => {
+            const target = event.target as Node | null;
+            if (!target) return;
+            if (mobileNavRef.current?.contains(target)) return;
+            setShowMenu(false);
+        };
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setShowMenu(false);
+        };
+
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('touchstart', onPointerDown, { passive: true });
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('touchstart', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [showMenu]);
+
     return (
         <>
             {/* ── Desktop nav bar ─────────────────────────────── */}
@@ -165,7 +191,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* ── Mobile nav bar ──────────────────────────────── */}
-            <div className="nbr-bar nbr-mobile">
+            <div className="nbr-bar nbr-mobile" ref={mobileNavRef}>
                 <div className="nbr-pill nbr-mobile-pill">
                     <Link to={homePath} aria-label="Home" className="nbr-logo-wrap">
                         <img src={logoSrc} alt="The Better Pass" className="nbr-logo nbr-logo--sm" />
