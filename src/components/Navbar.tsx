@@ -52,6 +52,7 @@ export const Navbar: React.FC = () => {
     const adminAccount = isAdmin || adminByLabel || resolvedRole === 'admin' || location.pathname.startsWith('/dashboard/admin') || location.pathname.startsWith('/admin');
     const isTourist = roleReady && !providerAccount && !adminAccount && (resolvedRole === 'tourist' || normalizedRoleLabel === 'tourist');
     const dashboardPath = providerAccount ? '/dashboard/provider' : adminAccount ? '/dashboard/admin' : '/dashboard';
+    const providerStudioPath = '/dashboard/provider?section=studio';
     const touristDashboardPath = '/dashboard/tourist';
     const touristExplorePath = '/explore';
     const touristBookingsPath = '/dashboard/tourist?section=bookings';
@@ -166,7 +167,10 @@ export const Navbar: React.FC = () => {
                                 </Link>
                             )}
                             {providerAccount && (
-                                <Link to="/provider/studio" className={`nbr-link${location.pathname === '/provider/studio' ? ' nbr-link--active' : ''}`}>
+                                <Link
+                                    to={providerStudioPath}
+                                    className={`nbr-link${location.pathname.startsWith('/dashboard/provider') && new URLSearchParams(location.search).get('section') === 'studio' ? ' nbr-link--active' : ''}`}
+                                >
                                     Studio
                                 </Link>
                             )}
@@ -225,7 +229,7 @@ export const Navbar: React.FC = () => {
                             <Link to="/admin" className="nbr-drop-item" onClick={() => setShowMenu(false)}>Admin</Link>
                         )}
                         {user && providerAccount && (
-                            <Link to="/provider/studio" className="nbr-drop-item" onClick={() => setShowMenu(false)}>Studio</Link>
+                            <Link to={providerStudioPath} className="nbr-drop-item" onClick={() => setShowMenu(false)}>Studio</Link>
                         )}
                         {!user && (
                             <Link to="/auth" className="nbr-drop-item nbr-drop-item--accent" onClick={() => setShowMenu(false)}>

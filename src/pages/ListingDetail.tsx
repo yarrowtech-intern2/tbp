@@ -83,6 +83,9 @@ export const ListingDetail: React.FC = () => {
     const [bookingPendingSync, setBookingPendingSync] = useState(false);
     const [bookingError, setBookingError] = useState<string | null>(null);
     const [hasExistingBooking, setHasExistingBooking] = useState(false);
+    const [hasConfirmedBooking, setHasConfirmedBooking] = useState(false);
+    const [bookingAwaitingProvider, setBookingAwaitingProvider] = useState(false);
+    const [hasRetryablePendingConfirmation, setHasRetryablePendingConfirmation] = useState(false);
     const [bookingSyncTick, setBookingSyncTick] = useState(0);
     const [retryingConfirmation, setRetryingConfirmation] = useState(false);
     const [autoRetryAttempted, setAutoRetryAttempted] = useState(false);
@@ -186,7 +189,7 @@ export const ListingDetail: React.FC = () => {
         user
         && ownerUserId
         && ownerUserId !== user.id
-        && (bookingSuccess || hasExistingBooking)
+        && (bookingSuccess || hasConfirmedBooking)
         && !confirmingBooking
         && !bookingPendingSync
     );
@@ -216,8 +219,10 @@ export const ListingDetail: React.FC = () => {
                 listingId,
                 listingType: effectiveType,
             });
-            setBookingSuccess(true);
+            setBookingSuccess(false);
             setHasExistingBooking(true);
+            setHasConfirmedBooking(false);
+            setBookingAwaitingProvider(true);
             setBookingPendingSync(false);
             markListingBookedLocally({
                 userId: currentUserId,
@@ -257,6 +262,9 @@ export const ListingDetail: React.FC = () => {
     useEffect(() => {
         if (!user || !listing?.id || !canBook) {
             setHasExistingBooking(false);
+            setHasConfirmedBooking(false);
+            setBookingAwaitingProvider(false);
+            setHasRetryablePendingConfirmation(false);
             setBookingPendingSync(false);
             return;
         }
@@ -267,22 +275,45 @@ export const ListingDetail: React.FC = () => {
                 const rows = await getBookings(user.id);
                 if (cancelled) return;
                 const listingId = String(listing.id).trim();
+                const pendingPayload = getPendingBookingConfirmation({
+                    userId: user.id,
+                    listingId,
+                    listingType: effectiveType,
+                });
+                const hasPendingPayload = Boolean(pendingPayload);
                 const localLookup = getLocalBookedLookup(user.id);
                 const locallyBooked = localLookup.byTypeAndId.has(`${effectiveType}:${listingId}`) || localLookup.byId.has(listingId);
-                const booked = rows.some((item) => {
+                const relevantRows = rows.filter((item) => String(item.listing_id || '').trim() === listingId);
+                const confirmed = relevantRows.some((item) => {
                     const status = (item.status || '').toLowerCase();
-                    if (status === 'cancelled' || status === 'canceled') return false;
-                    return String(item.listing_id || '').trim() === listingId;
+                    return status === 'confirmed' || status === 'completed';
                 });
-                const hasPendingServerBooking = rows.some((item) => {
+                const awaitingProvider = relevantRows.some((item) => {
                     const status = (item.status || '').toLowerCase();
                     if (status !== 'pending') return false;
-                    return String(item.listing_id || '').trim() === listingId;
+                    const paymentStatus = (item.payment_status || '').toLowerCase();
+                    const hasPaidSignal = paymentStatus === 'paid'
+                        || Boolean(item.paid_at)
+                        || Boolean(item.payment_id);
+                    return hasPaidSignal;
                 });
-                setHasExistingBooking(booked);
-                if (hasPendingServerBooking) {
+                const hasPendingServerBookingSync = relevantRows.some((item) => {
+                    const status = (item.status || '').toLowerCase();
+                    if (status !== 'pending') return false;
+                    const paymentStatus = (item.payment_status || '').toLowerCase();
+                    const hasPaidSignal = paymentStatus === 'paid'
+                        || Boolean(item.paid_at)
+                        || Boolean(item.payment_id);
+                    return !hasPaidSignal;
+                });
+                const hasActiveBooking = confirmed || awaitingProvider || (hasPendingServerBookingSync && hasPendingPayload);
+                setHasExistingBooking(hasActiveBooking);
+                setHasConfirmedBooking(confirmed);
+                setBookingAwaitingProvider(awaitingProvider);
+                setHasRetryablePendingConfirmation(hasPendingPayload);
+                if (hasPendingServerBookingSync && hasPendingPayload) {
                     setBookingPendingSync(true);
-                } else if (booked) {
+                } else if (awaitingProvider || confirmed) {
                     setBookingPendingSync(false);
                 } else if (locallyBooked) {
                     setBookingPendingSync(true);
@@ -292,6 +323,9 @@ export const ListingDetail: React.FC = () => {
             } catch {
                 if (!cancelled) {
                     setHasExistingBooking(false);
+                    setHasConfirmedBooking(false);
+                    setBookingAwaitingProvider(false);
+                    setHasRetryablePendingConfirmation(false);
                 }
             }
         };
@@ -358,6 +392,7 @@ export const ListingDetail: React.FC = () => {
 
         setBookingLoading(true);
         setConfirmingBooking(false);
+        setBookingAwaitingProvider(false);
         setBookingPendingSync(false);
         setBookingError(null);
         let paymentCaptured = false;
@@ -401,8 +436,10 @@ export const ListingDetail: React.FC = () => {
                 booking: bookingDraft,
                 payment,
             });
-            setBookingSuccess(true);
+            setBookingSuccess(false);
             setHasExistingBooking(true);
+            setHasConfirmedBooking(false);
+            setBookingAwaitingProvider(true);
             setConfirmingBooking(false);
             setBookingPendingSync(false);
             clearPendingBookingConfirmation({
@@ -599,16 +636,28 @@ export const ListingDetail: React.FC = () => {
                         </div>
                     </section>
 
-                    <aside className={`listing-book-card${bookingSuccess || hasExistingBooking || confirmingBooking || bookingPendingSync ? ' listing-book-card--booked' : ''}`}>
-                        {bookingSuccess || hasExistingBooking || confirmingBooking || bookingPendingSync ? (
+                    <aside className={`listing-book-card${bookingSuccess || hasExistingBooking || confirmingBooking || bookingPendingSync || bookingAwaitingProvider ? ' listing-book-card--booked' : ''}`}>
+                        {bookingSuccess || hasExistingBooking || confirmingBooking || bookingPendingSync || bookingAwaitingProvider ? (
                             <div className="listing-book-success">
-                                <h3>{confirmingBooking || bookingPendingSync ? 'Confirming booking' : 'Booking confirmed'}</h3>
-                                <p>{confirmingBooking || bookingPendingSync ? 'Payment received. We are finalizing your booking now.' : 'Your spot is already reserved for this listing.'}</p>
+                                <h3>
+                                    {confirmingBooking || bookingPendingSync
+                                        ? 'Confirming booking'
+                                        : bookingAwaitingProvider && !hasConfirmedBooking
+                                            ? 'Awaiting provider confirmation'
+                                            : 'Booking confirmed'}
+                                </h3>
+                                <p>
+                                    {confirmingBooking || bookingPendingSync
+                                        ? 'Payment received. We are finalizing your booking now.'
+                                        : bookingAwaitingProvider && !hasConfirmedBooking
+                                            ? 'Payment is complete. The provider will review your booking request shortly.'
+                                            : 'Your spot is already reserved for this listing.'}
+                                </p>
                                 {bookingError && (
                                     <p className="listing-book-warning">{bookingError}</p>
                                 )}
                                 <div className="listing-book-success-actions">
-                                    {bookingPendingSync && (
+                                    {bookingPendingSync && hasRetryablePendingConfirmation && (
                                         <button
                                             type="button"
                                             onClick={() => void retryPendingConfirmation()}

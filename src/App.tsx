@@ -15,7 +15,6 @@ const DestinationDetail = lazy(async () => ({ default: (await import('./pages/De
 const Profile = lazy(async () => ({ default: (await import('./pages/Profile')).Profile }));
 const AdminConsole = lazy(async () => ({ default: (await import('./pages/AdminConsole')).AdminConsole }));
 const AdminListingReview = lazy(async () => ({ default: (await import('./pages/AdminListingReview')).AdminListingReview }));
-const ProviderStudio = lazy(async () => ({ default: (await import('./pages/ProviderStudio')).ProviderStudio }));
 const ProviderTerms = lazy(async () => ({ default: (await import('./pages/ProviderTerms')).ProviderTerms }));
 const TermsAndConditions = lazy(async () => ({ default: (await import('./pages/TermsAndConditions')).TermsAndConditions }));
 const ListingDetail = lazy(async () => ({ default: (await import('./pages/ListingDetail')).ListingDetail }));
@@ -179,7 +178,7 @@ function App() {
             <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
             <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />
-            <Route path="/provider/studio" element={<ProviderRoute><ProviderStudio /></ProviderRoute>} />
+            <Route path="/provider/studio" element={<ProviderRoute><Navigate to="/dashboard/provider?section=studio" replace /></ProviderRoute>} />
             <Route path="/provider/terms" element={<ProviderRoute><ProviderTerms /></ProviderRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

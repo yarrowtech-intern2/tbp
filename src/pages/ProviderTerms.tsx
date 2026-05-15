@@ -6,7 +6,7 @@ import './provider-terms.css';
 export const ProviderTerms: React.FC = () => (
     <main className="pt-page">
         <div className="container pt-shell">
-            <Link to="/provider/studio" className="pt-back">
+            <Link to="/dashboard/provider?section=studio" className="pt-back">
                 <ArrowLeft size={15} /> Back to Provider Studio
             </Link>
 
@@ -40,4 +40,3 @@ export const ProviderTerms: React.FC = () => (
         </div>
     </main>
 );
-

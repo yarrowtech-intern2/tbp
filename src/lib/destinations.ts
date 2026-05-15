@@ -366,6 +366,8 @@ export interface UnifiedBooking {
     traveler_name?: string | null;
     traveler_email?: string | null;
     traveler_phone?: string | null;
+    rejection_reason?: string | null;
+    provider_decision_at?: string | null;
     created_at: string;
 }
 
@@ -909,7 +911,8 @@ const mapAdPaymentRow = (row: Record<string, unknown> | null): AdPaymentRecord |
 
 const normalizeBookingStatus = (value: string | null | undefined): BookingStatus => {
     const normalized = (value || '').trim().toLowerCase();
-    if (normalized === 'pending' || normalized === 'confirmed' || normalized === 'cancelled' || normalized === 'completed') {
+    if (normalized === 'canceled') return 'cancelled';
+    if (normalized === 'pending' || normalized === 'confirmed' || normalized === 'cancelled' || normalized === 'completed' || normalized === 'rejected') {
         return normalized;
     }
     return 'pending';
@@ -989,7 +992,7 @@ const mapUnifiedBooking = (row: Record<string, unknown>): UnifiedBooking => ({
         : {
             traveler_name: typeof row.traveler_name === 'string' ? row.traveler_name : null,
             traveler_email: typeof row.traveler_email === 'string' ? row.traveler_email : null,
-            traveler_phone: typeof row.traveler_phone === 'string' ? row.traveler_phone : null,
+    traveler_phone: typeof row.traveler_phone === 'string' ? row.traveler_phone : null,
         }),
     id: String(row.id),
     user_id: typeof row.user_id === 'string' ? row.user_id : undefined,
@@ -1022,6 +1025,8 @@ const mapUnifiedBooking = (row: Record<string, unknown>): UnifiedBooking => ({
     payment_currency: typeof row.payment_currency === 'string' ? row.payment_currency : null,
     paid_at: typeof row.paid_at === 'string' ? row.paid_at : null,
     booking_date: typeof row.booking_date === 'string' ? row.booking_date : null,
+    rejection_reason: typeof row.rejection_reason === 'string' ? row.rejection_reason : null,
+    provider_decision_at: typeof row.provider_decision_at === 'string' ? row.provider_decision_at : null,
     created_at: typeof row.created_at === 'string' ? row.created_at : new Date().toISOString(),
 });
 
@@ -1746,7 +1751,7 @@ export const reviewListing = async (
                 : effectiveStatus === 'live' || effectiveStatus === 'published'
                     ? `${listingTitle} is approved and now live.`
                     : `${listingTitle} is approved.`,
-            metadata: { listing_id: listingId, route: '/provider/studio' },
+            metadata: { listing_id: listingId, route: '/dashboard/provider?section=studio' },
         });
     }
 
@@ -2780,6 +2785,179 @@ export const getProviderBookings = async (userId: string): Promise<UnifiedBookin
             traveler_phone: traveler.phone || item.traveler_phone || null,
         };
     });
+};
+
+export const respondToBookingRequest = async (args: {
+    bookingId: string;
+    providerUserId: string;
+    decision: 'accept' | 'reject';
+    rejectionReason?: string | null;
+}): Promise<UnifiedBooking> => {
+    const bookingId = args.bookingId.trim();
+    const providerUserId = args.providerUserId.trim();
+    if (!bookingId || !providerUserId) {
+        throw new Error('Booking id or provider id is missing.');
+    }
+
+    const bookingResult = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .maybeSingle();
+
+    if (bookingResult.error) throw bookingResult.error;
+    if (!bookingResult.data) throw new Error('Booking not found.');
+
+    const rawBooking = bookingResult.data as Record<string, unknown>;
+    const ownerProviderId = typeof rawBooking.provider_user_id === 'string' ? rawBooking.provider_user_id.trim() : '';
+    if (!ownerProviderId || ownerProviderId !== providerUserId) {
+        throw new Error('You are not allowed to update this booking.');
+    }
+
+    const currentStatus = normalizeBookingStatus(typeof rawBooking.status === 'string' ? rawBooking.status : undefined);
+    if (currentStatus !== 'pending') {
+        throw new Error(`Only pending bookings can be updated. Current status: ${currentStatus}.`);
+    }
+
+    const decisionAt = new Date().toISOString();
+    const requestedStatus: BookingStatus = args.decision === 'accept' ? 'confirmed' : 'rejected';
+    const normalizedReason = typeof args.rejectionReason === 'string' ? args.rejectionReason.trim() : '';
+    const rejectionReason = normalizedReason || null;
+
+    const updatePayload: Record<string, unknown> = {
+        status: requestedStatus,
+        provider_decision_at: decisionAt,
+        provider_decision_by: providerUserId,
+        rejection_reason: args.decision === 'reject' ? rejectionReason : null,
+    };
+
+    let updateResult: { data: Record<string, unknown> | null; error: { code?: string; message?: string } | null } = {
+        data: null,
+        error: null,
+    };
+
+    while (Object.keys(updatePayload).length > 0) {
+        const result = await supabase
+            .from('bookings')
+            .update(updatePayload)
+            .eq('id', bookingId)
+            .eq('provider_user_id', providerUserId)
+            .select('*')
+            .maybeSingle();
+
+        if (!result.error) {
+            updateResult = {
+                data: (result.data as Record<string, unknown> | null) || null,
+                error: null,
+            };
+            break;
+        }
+
+        if (result.error.code === '23514') {
+            const constraintName = extractCheckConstraintName(result.error.message)?.toLowerCase() || '';
+            if (constraintName.includes('status') && updatePayload.status === 'rejected') {
+                // Backward compatibility for schemas that still allow only cancelled.
+                updatePayload.status = 'cancelled';
+                continue;
+            }
+        }
+
+        if (isMissingColumnError(result.error)) {
+            const missingColumn = extractMissingColumnName(result.error.message);
+            if (missingColumn && missingColumn in updatePayload) {
+                delete updatePayload[missingColumn];
+                continue;
+            }
+        }
+
+        updateResult = {
+            data: null,
+            error: result.error,
+        };
+        break;
+    }
+
+    if (updateResult.error) throw updateResult.error;
+    if (!updateResult.data) throw new Error('Booking update failed.');
+
+    const updated = mapUnifiedBooking(updateResult.data);
+    const travelerId = typeof rawBooking.user_id === 'string' ? rawBooking.user_id : '';
+    const listingTitle = typeof rawBooking.listing_title === 'string' && rawBooking.listing_title.trim()
+        ? rawBooking.listing_title.trim()
+        : 'your booking';
+
+    if (travelerId) {
+        if (args.decision === 'accept') {
+            await createNotifications([
+                {
+                    userId: travelerId,
+                    actorUserId: providerUserId,
+                    type: 'booking_confirmed',
+                    title: 'Booking confirmed',
+                    body: `${listingTitle} is confirmed by the provider.`,
+                    metadata: { booking_id: bookingId, route: '/dashboard/tourist?section=bookings' },
+                },
+                {
+                    userId: providerUserId,
+                    actorUserId: providerUserId,
+                    type: 'booking_confirmed',
+                    title: 'Booking accepted',
+                    body: `You confirmed booking for ${listingTitle}.`,
+                    metadata: { booking_id: bookingId, route: '/dashboard/provider?section=bookings' },
+                },
+            ]);
+        } else {
+            await createNotifications([
+                {
+                    userId: travelerId,
+                    actorUserId: providerUserId,
+                    type: 'booking_cancelled',
+                    title: 'Booking rejected',
+                    body: `${listingTitle} was rejected by the provider. Refund will be handled manually by the admin team.`,
+                    metadata: {
+                        booking_id: bookingId,
+                        route: '/dashboard/tourist?section=bookings',
+                        rejection_reason: rejectionReason,
+                    },
+                },
+                {
+                    userId: travelerId,
+                    actorUserId: providerUserId,
+                    type: 'payment_refunded',
+                    title: 'Refund initiated',
+                    body: `Your refund request for ${listingTitle} has been sent to admin for manual processing.`,
+                    metadata: { booking_id: bookingId, route: '/notifications' },
+                },
+                {
+                    userId: providerUserId,
+                    actorUserId: providerUserId,
+                    type: 'booking_cancelled',
+                    title: 'Booking rejected',
+                    body: `You rejected booking for ${listingTitle}.`,
+                    metadata: { booking_id: bookingId, route: '/dashboard/provider?section=bookings' },
+                },
+            ]);
+
+            await notifyAdmins({
+                actorUserId: providerUserId,
+                type: 'payment_refunded',
+                title: 'Manual refund required',
+                body: `Booking ${bookingId} was rejected. Process manual refund for traveler ${updated.traveler_name || travelerId}.`,
+                metadata: {
+                    booking_id: bookingId,
+                    traveler_user_id: travelerId,
+                    provider_user_id: providerUserId,
+                    listing_title: listingTitle,
+                    traveler_email: updated.traveler_email || null,
+                    traveler_phone: updated.traveler_phone || null,
+                    rejection_reason: rejectionReason,
+                    route: '/dashboard/admin',
+                },
+            });
+        }
+    }
+
+    return updated;
 };
 
 export const getProviderListingsByUserId = async (userId: string): Promise<PostRecord[]> => {

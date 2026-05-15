@@ -10,7 +10,7 @@ export type ListingType = (typeof LISTING_TYPES)[number];
 export const VERIFICATION_STATUSES = ['not_required', 'pending', 'approved', 'rejected', 'resubmitted'] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 
-export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'] as const;
+export const BOOKING_STATUSES = ['pending', 'confirmed', 'cancelled', 'completed', 'rejected'] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
 export const PAYMENT_STATUSES = ['pending', 'paid', 'refunded'] as const;

@@ -505,6 +505,16 @@
     font-weight: 600;
 }
 
+.rdb-panel-wide--studio {
+    padding: 12px;
+    gap: 8px;
+}
+
+.rdb-panel-wide--studio .rdb-panel-head {
+    padding: 0 4px;
+    margin-bottom: 2px;
+}
+
 /* ─── List rows ──────────────────────────────────────────── */
 .rdb-list {
     display: grid;
@@ -971,6 +981,26 @@
 .rdb-provider-booking-actions .rdb-row-edit-link:hover {
     background: color-mix(in srgb, var(--accent) 56%, var(--surface-main));
     border-color: color-mix(in srgb, var(--accent) 95%, var(--border-light));
+}
+
+.rdb-provider-booking-actions .rdb-row-edit-link--approve {
+    background: color-mix(in srgb, #22c55e 38%, var(--surface-main));
+    border-color: color-mix(in srgb, #16a34a 90%, var(--border-light));
+}
+
+.rdb-provider-booking-actions .rdb-row-edit-link--approve:hover {
+    background: color-mix(in srgb, #22c55e 50%, var(--surface-main));
+    border-color: color-mix(in srgb, #16a34a 98%, var(--border-light));
+}
+
+.rdb-provider-booking-actions .rdb-row-edit-link--reject {
+    background: color-mix(in srgb, #ef4444 30%, var(--surface-main));
+    border-color: color-mix(in srgb, #dc2626 88%, var(--border-light));
+}
+
+.rdb-provider-booking-actions .rdb-row-edit-link--reject:hover {
+    background: color-mix(in srgb, #ef4444 40%, var(--surface-main));
+    border-color: color-mix(in srgb, #dc2626 96%, var(--border-light));
 }
 
 :root[data-theme='light'] .rdb-provider-booking-actions .rdb-row-edit-link {
@@ -1771,7 +1801,7 @@
 }
 
 :root[data-theme='dark'] .rdb-page--admin {
-    background: #d9d9dc;
+    background: #0b0b0d;
 }
 
 .rdb-page--admin .container {
@@ -1786,10 +1816,36 @@
     --accent: #ff6700;
     --rdb-admin-bg: #d9d9dc;
     --rdb-admin-card: #f2f2f3;
-    --rdb-admin-muted: #828286;
+    --rdb-admin-card-soft: #ececef;
+    --rdb-admin-text: #111113;
+    --rdb-admin-text-strong: #0f0f10;
+    --rdb-admin-text-muted: #5b5d63;
     --rdb-admin-icon: #8c8c90;
+    --rdb-admin-chip: #ceced1;
+    --rdb-admin-circle: #8f8f94;
+    --rdb-admin-icon-surface: #efeff0;
+    --rdb-admin-icon-foreground: #17171a;
+    --rdb-admin-back-surface: #090909;
+    --rdb-admin-back-foreground: #f5f5f5;
     min-height: 100%;
     height: 100%;
+    color: var(--rdb-admin-text);
+}
+
+:root[data-theme='dark'] .rdb-shell--admin {
+    --rdb-admin-bg: #0b0b0d;
+    --rdb-admin-card: #121216;
+    --rdb-admin-card-soft: #1a1a20;
+    --rdb-admin-text: #eceef2;
+    --rdb-admin-text-strong: #f7f8fb;
+    --rdb-admin-text-muted: #a9aeb8;
+    --rdb-admin-icon: #d1d5dd;
+    --rdb-admin-chip: #212228;
+    --rdb-admin-circle: #343741;
+    --rdb-admin-icon-surface: #22242a;
+    --rdb-admin-icon-foreground: #eceef2;
+    --rdb-admin-back-surface: #f3f4f6;
+    --rdb-admin-back-foreground: #111216;
 }
 
 .rdb-shell--admin .rdb-sidebar,
@@ -1830,8 +1886,8 @@
     height: 56px;
     border-radius: 50%;
     border: none;
-    background: #090909;
-    color: #f5f5f5;
+    background: var(--rdb-admin-back-surface);
+    color: var(--rdb-admin-back-foreground);
     align-items: center;
     justify-content: center;
     cursor: pointer;
@@ -1839,6 +1895,21 @@
     transition: transform 0.16s ease, opacity 0.16s ease;
 }
 
+.rdb-admin-sidebar-theme {
+    display: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--rdb-admin-chip);
+    color: var(--rdb-admin-icon-foreground);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.rdb-admin-sidebar-theme:hover,
 .rdb-admin-sidebar-back:hover {
     transform: scale(1.04);
     opacity: 0.92;
@@ -1868,7 +1939,7 @@
     font-size: clamp(1.22rem, 2.1vw, 1.72rem);
     line-height: 1.02;
     font-weight: 500;
-    color: #0f0f10;
+    color: var(--rdb-admin-text-strong);
     display: block;
     margin: 0;
 }
@@ -1879,7 +1950,7 @@
     line-height: 0.98;
     letter-spacing: -0.03em;
     font-weight: 800;
-    color: #0f0f10;
+    color: var(--rdb-admin-text-strong);
 }
 
 .rdb-admin-topbar-controls {
@@ -1902,13 +1973,13 @@
     width: min(100%, 360px);
     flex: 1 1 260px;
     border-radius: 999px;
-    background: #ececee;
+    background: var(--rdb-admin-card-soft);
     border: 1px solid rgba(10, 10, 10, 0.08);
     padding: 0 14px;
 }
 
 .rdb-admin-topbar-search svg {
-    color: #7f7f85;
+    color: var(--rdb-admin-text-muted);
     flex-shrink: 0;
 }
 
@@ -1918,7 +1989,7 @@
     outline: none;
     font: inherit;
     font-size: 0.88rem;
-    color: #141415;
+    color: var(--rdb-admin-text-strong);
     min-width: 0;
     flex: 1;
 }
@@ -1928,7 +1999,7 @@
     height: 52px;
     border-radius: 50%;
     border: none;
-    background: #ceced1;
+    background: var(--rdb-admin-chip);
     color: var(--rdb-admin-icon);
     display: flex;
     align-items: center;
@@ -1970,7 +2041,7 @@
     min-width: 224px;
     height: 52px;
     border-radius: 999px;
-    background: #ceced1;
+    background: var(--rdb-admin-chip);
     border: none;
     padding: 6px 6px 6px 14px;
 }
@@ -1983,7 +2054,7 @@
 .rdb-admin-date-label {
     font-size: 0.76rem;
     font-weight: 500;
-    color: #2f2f31;
+    color: var(--rdb-admin-text-muted);
     letter-spacing: 0;
     text-transform: none;
 }
@@ -1992,7 +2063,7 @@
     font-size: clamp(1.04rem, 1.7vw, 1.38rem);
     font-weight: 600;
     letter-spacing: -0.02em;
-    color: #141416;
+    color: var(--rdb-admin-text-strong);
     line-height: 1;
 }
 
@@ -2003,8 +2074,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #8f8f94;
-    color: #111;
+    background: var(--rdb-admin-circle);
+    color: var(--rdb-admin-text-strong);
     flex-shrink: 0;
 }
 
@@ -2043,7 +2114,7 @@
 
 .rdb-admin-dark-card {
     grid-area: packages;
-    background: #000;
+    background: color-mix(in srgb, #000 90%, var(--rdb-admin-card));
     border-radius: 22px;
     border: none;
     padding: 18px 18px 16px;
@@ -2140,7 +2211,7 @@
     font-size: 0.88rem;
     line-height: 1;
     font-weight: 500;
-    color: #151515;
+    color: var(--rdb-admin-text);
 }
 
 .rdb-admin-light-card-heading {
@@ -2149,7 +2220,7 @@
     line-height: 0.95;
     letter-spacing: -0.03em;
     font-weight: 600;
-    color: #111;
+    color: var(--rdb-admin-text-strong);
 }
 
 .rdb-admin-light-card-number {
@@ -2206,7 +2277,7 @@
     z-index: 1;
     font-size: 1.06rem;
     font-weight: 800;
-    color: #17171a;
+    color: var(--rdb-admin-text-strong);
 }
 
 .rdb-admin-users-breakdown {
@@ -2217,7 +2288,7 @@
 .rdb-admin-users-breakdown div {
     font-size: 0.8rem;
     font-weight: 500;
-    color: #222;
+    color: var(--rdb-admin-text);
     display: flex;
     justify-content: space-between;
     gap: 14px;
@@ -2241,8 +2312,8 @@
     height: 46px;
     border-radius: 50%;
     border: none;
-    background: #9a9a9f;
-    color: #111;
+    background: var(--rdb-admin-circle);
+    color: var(--rdb-admin-text-strong);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2252,7 +2323,7 @@
 
 .rdb-admin-arrow-btn:hover {
     opacity: 0.92;
-    color: #111;
+    color: var(--rdb-admin-text-strong);
 }
 
 .rdb-admin-charts-row {
@@ -2275,13 +2346,13 @@
     line-height: 0.98;
     letter-spacing: -0.03em;
     font-weight: 600;
-    color: #101011;
+    color: var(--rdb-admin-text-strong);
 }
 
 .rdb-admin-chart-card > p {
     margin: 4px 0 10px;
     font-size: 0.8rem;
-    color: #252529;
+    color: var(--rdb-admin-text-muted);
 }
 
 .rdb-admin-bar-chart {
@@ -2316,7 +2387,7 @@
     width: 100%;
     min-height: 8px;
     border-radius: 14px;
-    background: #c8c8cb;
+    background: color-mix(in srgb, var(--rdb-admin-circle) 70%, var(--rdb-admin-card-soft));
     transition: height 0.45s ease;
 }
 
@@ -2327,7 +2398,7 @@
 .rdb-admin-bar-label {
     font-size: 0.94rem;
     font-weight: 500;
-    color: #1f2022;
+    color: var(--rdb-admin-text);
     letter-spacing: -0.02em;
     text-transform: none;
 }
@@ -2345,7 +2416,7 @@
     font: inherit;
     font-size: 0.84rem;
     line-height: 1.34;
-    color: #1b1c1d;
+    color: var(--rdb-admin-text);
     background: transparent;
     border: none;
     padding: 0;
@@ -2358,7 +2429,7 @@
 
 .rdb-admin-mod-item--empty,
 .rdb-admin-mod-item--empty:hover {
-    color: #66696c;
+    color: var(--rdb-admin-text-muted);
     cursor: default;
 }
 
@@ -2410,7 +2481,7 @@
 .rdb-shell--admin .rdb-list-row {
     border: none;
     border-radius: 13px;
-    background: #ececef;
+    background: var(--rdb-admin-card-soft);
     padding: 10px 12px;
 }
 
@@ -2421,21 +2492,21 @@
 .rdb-shell--admin .rdb-list-row:hover {
     transform: none;
     border-color: transparent;
-    background: #e7e7ea;
+    background: color-mix(in srgb, var(--rdb-admin-card-soft) 88%, var(--rdb-admin-chip));
 }
 
 .rdb-shell--admin .rdb-list-row p {
-    color: #151517;
+    color: var(--rdb-admin-text);
 }
 
 .rdb-shell--admin .rdb-list-row small {
-    color: #5f6066;
+    color: var(--rdb-admin-text-muted);
 }
 
 .rdb-shell--admin .rdb-stat-list div {
     border: none;
     border-radius: 12px;
-    background: #ececef;
+    background: var(--rdb-admin-card-soft);
     padding: 10px 12px;
 }
 
@@ -2444,12 +2515,12 @@
 }
 
 .rdb-shell--admin .rdb-stat-list span {
-    color: #5a5b60;
+    color: var(--rdb-admin-text-muted);
     font-size: 0.75rem;
 }
 
 .rdb-shell--admin .rdb-stat-list strong {
-    color: #121214;
+    color: var(--rdb-admin-text-strong);
     font-size: 0.9rem;
 }
 
@@ -2464,7 +2535,7 @@
 .rdb-shell--admin .rdb-user-split div {
     border: none;
     border-radius: 13px;
-    background: #ececef;
+    background: var(--rdb-admin-card-soft);
 }
 
 .rdb-shell--admin .rdb-user-split p {
@@ -2477,8 +2548,8 @@
 
 .rdb-shell--admin .rdb-empty {
     border: 1px dashed color-mix(in srgb, var(--accent) 24%, transparent);
-    background: #ececef;
-    color: #5a5b60;
+    background: var(--rdb-admin-card-soft);
+    color: var(--rdb-admin-text-muted);
     padding: 18px 14px;
 }
 
@@ -2492,7 +2563,7 @@
 }
 
 .rdb-shell--admin .rdb-moderation-desc {
-    color: #58595f;
+    color: var(--rdb-admin-text-muted);
     font-size: 0.86rem;
 }
 
@@ -2538,8 +2609,8 @@
         min-height: 60px;
         border-radius: 50%;
         border: none;
-        background: #efeff0;
-        color: #17171a;
+        background: var(--rdb-admin-icon-surface);
+        color: var(--rdb-admin-icon-foreground);
         margin: 0;
         padding: 0;
         justify-content: center;
@@ -2572,6 +2643,11 @@
 
     .rdb-shell--admin .rdb-nav-item.is-active .rdb-nav-item-content svg {
         color: #111;
+    }
+
+    .rdb-shell--admin .rdb-admin-sidebar-theme {
+        display: flex;
+        margin: 0 auto 8px;
     }
 
     .rdb-shell--admin .rdb-admin-sidebar-back {
@@ -2631,8 +2707,8 @@
     }
 
     .rdb-admin-menu-btn.is-open {
-        background: #101011;
-        color: #f5f5f6;
+        background: var(--rdb-admin-text-strong);
+        color: var(--rdb-admin-bg);
     }
 
     .rdb-admin-topbar.is-mobile .rdb-admin-topbar-main {
@@ -2671,7 +2747,7 @@
     .rdb-admin-mobile-menu {
         display: grid;
         gap: 8px;
-        background: #ececee;
+        background: var(--rdb-admin-card-soft);
         border-radius: 20px;
         padding: 10px;
     }
@@ -2679,7 +2755,7 @@
     .rdb-admin-mobile-menu-item {
         width: 100%;
         border: none;
-        background: #f7f7f8;
+        background: color-mix(in srgb, var(--rdb-admin-card-soft) 70%, var(--rdb-admin-card));
         border-radius: 16px;
         min-height: 40px;
         display: flex;
@@ -2689,7 +2765,7 @@
         font: inherit;
         font-size: 0.88rem;
         font-weight: 600;
-        color: #131315;
+        color: var(--rdb-admin-text-strong);
         cursor: pointer;
     }
 
@@ -2700,8 +2776,8 @@
     }
 
     .rdb-admin-mobile-menu-item.is-active {
-        background: #101011;
-        color: #fff;
+        background: var(--rdb-admin-text-strong);
+        color: var(--rdb-admin-bg);
     }
 
     .rdb-admin-mobile-menu-item.is-active strong {

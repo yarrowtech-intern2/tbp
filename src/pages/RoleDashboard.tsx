@@ -21,6 +21,8 @@ import {
     Settings2,
     Star,
     SquarePen,
+    Sun,
+    Moon,
     Shield,
     Upload,
     UserCircle2,
@@ -30,6 +32,7 @@ import {
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
+import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
 import {
     getAdminAccountLocations,
@@ -45,6 +48,7 @@ import {
     getNotifications,
     getPosts,
     getProviderBookings,
+    respondToBookingRequest,
     getVerificationQueue,
     hasActiveBoost,
     type AdminAccountLocationRecord,
@@ -82,7 +86,7 @@ type SidebarKey =
     | 'favorites'
     | 'listings'
     | 'advertisements'
-    | 'manage_posts'
+    | 'studio'
     | 'messages'
     | 'moderation'
     | 'rejected'
@@ -174,7 +178,7 @@ const sumBookedRevenue = (rows: Array<Record<string, unknown>>): number => rows.
     const status = String(row.status || '').toLowerCase();
     const paymentStatus = String(row.payment_status || '').toLowerCase();
     const hasPaidAt = typeof row.paid_at === 'string' && row.paid_at.trim().length > 0;
-    if (status === 'cancelled' || paymentStatus === 'refunded') return sum;
+    if (status === 'cancelled' || status === 'rejected' || paymentStatus === 'refunded') return sum;
     if (paymentStatus !== 'paid' && !hasPaidAt) return sum;
     return sum + Math.max(0, toFiniteNumber(row.total_price));
 }, 0);
@@ -227,8 +231,9 @@ const parseProviderSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'bookings') return 'bookings';
     if (normalized === 'listings') return 'listings';
+    if (normalized === 'studio' || normalized === 'create') return 'studio';
     if (normalized === 'advertisements' || normalized === 'ads' || normalized === 'ad') return 'advertisements';
-    if (normalized === 'manage_posts' || normalized === 'manage-posts' || normalized === 'posts') return 'manage_posts';
+    if (normalized === 'manage_posts' || normalized === 'manage-posts' || normalized === 'posts') return 'studio';
     if (normalized === 'messages') return 'messages';
     return null;
 };
@@ -249,6 +254,11 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
 const LazyAdminAccountMap = lazy(async () => {
     const module = await import('../components/admin/AdminAccountMap');
     return { default: module.AdminAccountMap };
+});
+
+const LazyProviderStudio = lazy(async () => {
+    const module = await import('./ProviderStudio');
+    return { default: module.ProviderStudio };
 });
 
 const AdminBarChart: React.FC<{
@@ -409,6 +419,7 @@ const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: numb
 export const RoleDashboard: React.FC = () => {
     const { user, profile, profileLoading } = useAuth();
     const { unreadCount } = useNotifications();
+    const { theme, toggleTheme } = useTheme();
     const { role: roleParam } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -478,11 +489,12 @@ export const RoleDashboard: React.FC = () => {
     const [adminMobileMenuOpen, setAdminMobileMenuOpen] = useState(false);
     const [mapFetching, setMapFetching] = useState(false);
     const [mapLoaded, setMapLoaded] = useState(false);
-    const [providerBookingStatusFilter, setProviderBookingStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
+    const [providerBookingStatusFilter, setProviderBookingStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected'>('all');
     const [providerPaymentStatusFilter, setProviderPaymentStatusFilter] = useState<'all' | 'pending' | 'paid' | 'refunded'>('all');
     const [providerPackageTypeFilter, setProviderPackageTypeFilter] = useState<'all' | 'tour' | 'activity' | 'guide'>('all');
     const [providerBookingDateFrom, setProviderBookingDateFrom] = useState('');
     const [providerBookingDateTo, setProviderBookingDateTo] = useState('');
+    const [providerBookingActionId, setProviderBookingActionId] = useState<string | null>(null);
 
     const fetchAdminDashboardSnapshot = useCallback(async (): Promise<AdminDashboardSnapshot> => {
         const [posts, queuePosts, verifications, audits, usersResult, bookingsResult] = await Promise.all([
@@ -746,9 +758,9 @@ export const RoleDashboard: React.FC = () => {
             return [
                 { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                 { key: 'bookings', label: 'Bookings', icon: ClipboardList },
+                { key: 'studio', label: 'Studio', icon: SquarePen },
                 { key: 'listings', label: 'Listings', icon: Package },
                 { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
-                { key: 'manage_posts', label: 'Manage Posts', icon: FileText },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
         }
@@ -790,7 +802,7 @@ export const RoleDashboard: React.FC = () => {
             return new Date(item.booking_date).getTime() >= Date.now() - 86400000;
         }).length;
         const spend = touristBookings
-            .filter((item) => item.status !== 'cancelled')
+            .filter((item) => item.status !== 'cancelled' && item.status !== 'rejected')
             .reduce((sum, item) => sum + (item.total_price || 0), 0);
 
         return {
@@ -805,7 +817,7 @@ export const RoleDashboard: React.FC = () => {
         const pending = providerListings.filter((item) => item.status === 'pending').length;
         const live = providerListings.filter((item) => LIVE_STATUSES.has((item.status || '').toLowerCase())).length;
         const revenue = providerBookings
-            .filter((item) => item.status !== 'cancelled')
+            .filter((item) => item.status !== 'cancelled' && item.status !== 'rejected')
             .reduce((sum, item) => sum + (item.total_price || 0), 0);
         const rejected = providerListings.filter((item) => item.status === 'rejected').length;
         return { pending, live, revenue, rejected };
@@ -910,7 +922,7 @@ export const RoleDashboard: React.FC = () => {
         let cancelled = 0;
         for (const item of touristBookings) {
             const status = (item.status || '').toLowerCase();
-            if (status === 'cancelled') {
+            if (status === 'cancelled' || status === 'rejected') {
                 cancelled += 1;
             } else if (status === 'completed') {
                 completed += 1;
@@ -936,7 +948,7 @@ export const RoleDashboard: React.FC = () => {
         let cancelled = 0;
         for (const item of providerBookings) {
             const status = (item.status || '').toLowerCase();
-            if (status === 'cancelled') {
+            if (status === 'cancelled' || status === 'rejected') {
                 cancelled += 1;
             } else if (status === 'completed') {
                 completed += 1;
@@ -1086,6 +1098,48 @@ export const RoleDashboard: React.FC = () => {
         URL.revokeObjectURL(url);
     };
 
+    const handleProviderBookingDecision = async (
+        booking: UnifiedBooking,
+        decision: 'accept' | 'reject'
+    ) => {
+        if (!user?.id) return;
+
+        const bookingId = String(booking.id || '').trim();
+        if (!bookingId) {
+            alert('Booking id is missing.');
+            return;
+        }
+
+        let rejectionReason: string | null = null;
+        if (decision === 'reject') {
+            const input = window.prompt('Optional rejection reason for traveler and admin:', '');
+            if (input === null) return;
+            rejectionReason = input.trim() || null;
+        }
+
+        setProviderBookingActionId(bookingId);
+        try {
+            const updated = await respondToBookingRequest({
+                bookingId,
+                providerUserId: user.id,
+                decision,
+                rejectionReason,
+            });
+
+            setProviderBookings((current) => current.map((item) => (
+                item.id === bookingId ? updated : item
+            )));
+
+            const refreshedNotifications = await getNotifications(user.id, 50);
+            setProviderNotifications(refreshedNotifications);
+        } catch (error) {
+            console.error('Provider booking decision failed:', error);
+            alert(error instanceof Error ? error.message : 'Could not update booking status.');
+        } finally {
+            setProviderBookingActionId(null);
+        }
+    };
+
     const adminQueueRows = adminQueuePosts
         .filter((item) => (item.status || '').toLowerCase() !== 'rejected')
         .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
@@ -1162,9 +1216,9 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'provider') {
             return {
                 bookings: providerBookingRows.length,
+                studio: providerRows.length,
                 listings: providerRows.length,
                 advertisements: providerAdRows.length,
-                manage_posts: providerRows.length,
                 messages: providerNotifications.length,
             };
         }
@@ -1627,12 +1681,13 @@ export const RoleDashboard: React.FC = () => {
                     </div>
 
                     <div className="rdb-provider-booking-filters">
-                        <select value={providerBookingStatusFilter} onChange={(e) => setProviderBookingStatusFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled')}>
+                        <select value={providerBookingStatusFilter} onChange={(e) => setProviderBookingStatusFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected')}>
                             <option value="all">All Booking Status</option>
                             <option value="pending">Pending</option>
                             <option value="confirmed">Confirmed</option>
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
+                            <option value="rejected">Rejected</option>
                         </select>
 
                         <select value={providerPaymentStatusFilter} onChange={(e) => setProviderPaymentStatusFilter(e.target.value as 'all' | 'pending' | 'paid' | 'refunded')}>
@@ -1678,6 +1733,11 @@ export const RoleDashboard: React.FC = () => {
                             const bookingStatus = (item.status || 'pending').toLowerCase();
                             const paymentStatus = (item.payment_status || 'pending').toLowerCase();
                             const travelerId = typeof item.user_id === 'string' ? item.user_id.trim() : '';
+                            const hasPaidSignal = paymentStatus === 'paid'
+                                || Boolean(item.paid_at)
+                                || Boolean(item.payment_id);
+                            const canDecideBooking = bookingStatus === 'pending' && hasPaidSignal;
+                            const actionLoading = providerBookingActionId === item.id;
                             return (
                                 <article key={item.id} className="rdb-provider-booking-card">
                                     <div className="rdb-provider-booking-head">
@@ -1731,6 +1791,26 @@ export const RoleDashboard: React.FC = () => {
                                         >
                                             Open Messages
                                         </button>
+                                        {canDecideBooking && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="rdb-row-edit-link rdb-row-edit-link--approve"
+                                                    onClick={() => void handleProviderBookingDecision(item, 'accept')}
+                                                    disabled={actionLoading}
+                                                >
+                                                    {actionLoading ? <Loader2 size={14} className="animate-spin" /> : 'Accept Booking'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="rdb-row-edit-link rdb-row-edit-link--reject"
+                                                    onClick={() => void handleProviderBookingDecision(item, 'reject')}
+                                                    disabled={actionLoading}
+                                                >
+                                                    {actionLoading ? <Loader2 size={14} className="animate-spin" /> : 'Reject Booking'}
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </article>
                             );
@@ -1871,45 +1951,27 @@ export const RoleDashboard: React.FC = () => {
             );
         }
 
-        if (activeSection === 'manage_posts') {
+        if (activeSection === 'studio') {
             return (
                 <section className="rdb-content-grid">
                     <article className="rdb-panel">
-                        <h2>Post Management</h2>
+                        <h2>Provider Studio</h2>
                         <div className="rdb-action-list">
-                            <Link to="/provider/studio" className="rdb-inline-link">Open Provider Studio</Link>
-                            <Link to="/provider/studio" className="rdb-inline-link">Create New Post</Link>
+                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('studio')}>Open Studio</button>
+                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('studio')}>Create Listing</button>
                             <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('advertisements')}>Open ads panel</button>
                             <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('listings')}>View listing statuses</button>
                         </div>
                     </article>
 
-                    <article className="rdb-panel rdb-panel-wide">
+                    <article className="rdb-panel rdb-panel-wide rdb-panel-wide--studio">
                         <div className="rdb-panel-head">
-                            <h2>Your Posts</h2>
-                            <small>{query ? `Filtered by "${search}"` : `${providerRows.length} records`}</small>
+                            <h2>Provider Studio</h2>
+                            <small>Full post creation and management</small>
                         </div>
-                        <div className="rdb-list">
-                            {providerRows.slice(0, 12).map((item) => (
-                                <div key={item.id} className="rdb-list-row">
-                                    <div>
-                                        <p>{titleForPost(item)}</p>
-                                        <small>{item.type || 'listing'} - {formatDate(item.created_at)}</small>
-                                    </div>
-                                    <div className="rdb-row-actions">
-                                        <span className={`rdb-pill rdb-pill-${(item.status || 'pending').toLowerCase()}`}>{item.status || 'pending'}</span>
-                                        <button
-                                            type="button"
-                                            className="rdb-post-edit-btn"
-                                            onClick={() => navigate(`/provider/studio?edit=${encodeURIComponent(item.id)}`)}
-                                        >
-                                            Edit Post
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                            {providerRows.length === 0 && <p className="rdb-empty">No posts yet. Open Provider Studio to create one.</p>}
-                        </div>
+                        <Suspense fallback={<div className="rdb-loading"><Loader2 size={28} className="animate-spin" /><p>Loading studio...</p></div>}>
+                            <LazyProviderStudio embedded />
+                        </Suspense>
                     </article>
                 </section>
             );
@@ -2538,6 +2600,7 @@ export const RoleDashboard: React.FC = () => {
 
     const adminDateStr = new Date().toLocaleDateString('en-GB').split('/').join('.');
     const dashboardRoleLabel = effectiveRole === 'admin' ? 'Admin' : effectiveRole === 'provider' ? 'Provider' : 'Tourist';
+    const isDarkTheme = theme === 'dark';
 
     return (
         <main className="rdb-page rdb-page--admin">
@@ -2570,6 +2633,16 @@ export const RoleDashboard: React.FC = () => {
                             );
                         })}
                     </nav>
+
+                    <button
+                        type="button"
+                        className="rdb-admin-sidebar-theme"
+                        onClick={toggleTheme}
+                        title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                        aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                    >
+                        {isDarkTheme ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
 
                     <button
                         type="button"

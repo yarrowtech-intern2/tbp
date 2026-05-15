@@ -107,7 +107,17 @@ const extractGalleryImages = (listing: PostRecord): string[] => {
     ]);
 };
 
-export const ProviderStudio: React.FC = () => {
+type ProviderStudioProps = {
+    embedded?: boolean;
+};
+
+type SubmissionModalState = {
+    mode: 'created' | 'updated';
+    listingTitle: string;
+    listingType: ListingType;
+};
+
+export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false }) => {
     const { user, profile, isProvider, verificationLabel } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const [listings, setListings] = useState<PostRecord[]>([]);
@@ -122,6 +132,7 @@ export const ProviderStudio: React.FC = () => {
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptAgreement, setAcceptAgreement] = useState(false);
     const [consentError, setConsentError] = useState<string | null>(null);
+    const [submissionModal, setSubmissionModal] = useState<SubmissionModalState | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
 
     const allowedTypes = useMemo(
@@ -152,7 +163,10 @@ export const ProviderStudio: React.FC = () => {
         void loadListings();
     }, [allowedTypes, isProvider, user]);
 
-    if (!user || !isProvider) return <Navigate to="/dashboard" replace />;
+    if (!user || !isProvider) {
+        if (embedded) return null;
+        return <Navigate to="/dashboard" replace />;
+    }
 
     const resetForm = () => {
         setEditingListingId(null);
@@ -216,6 +230,17 @@ export const ProviderStudio: React.FC = () => {
         beginEdit(target);
         setSearchParams(nextParams, { replace: true });
     }, [beginEdit, listings, loading, searchParams, setSearchParams]);
+
+    useEffect(() => {
+        if (!submissionModal) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setSubmissionModal(null);
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [submissionModal]);
 
     const galleryImages = useMemo(
         () => normalizeImageList(form.gallery_images || []),
@@ -288,6 +313,9 @@ export const ProviderStudio: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canAccessStudio || uploadingImage) return;
+        const wasEditing = Boolean(editingListingId);
+        const submittedType = form.type;
+        const submittedTitle = form.title.trim() || `Untitled ${LISTING_LABELS[form.type]}`;
         const normalizedGallery = normalizeImageList(form.gallery_images || []);
         const primaryImage = (form.image_url || '').trim();
         const coverImage = (form.cover_image_url || '').trim();
@@ -331,6 +359,11 @@ export const ProviderStudio: React.FC = () => {
             });
             await loadListings();
             resetForm();
+            setSubmissionModal({
+                mode: wasEditing ? 'updated' : 'created',
+                listingTitle: submittedTitle,
+                listingType: submittedType,
+            });
         } catch (error) {
             const err = error as {
                 error?: { code?: string; message?: string; details?: string | null; hint?: string | null };
@@ -394,8 +427,8 @@ export const ProviderStudio: React.FC = () => {
     const avatarInitial = (profile?.full_name || user.email || 'P')[0].toUpperCase();
 
     return (
-        <main className="ps-page animate-fade">
-            <div className="container" style={{ maxWidth: '1160px' }}>
+        <main className={`ps-page animate-fade${embedded ? ' ps-page--embedded' : ''}`}>
+            <div className={embedded ? 'ps-embedded-shell' : 'container'} style={embedded ? undefined : { maxWidth: '1160px' }}>
 
                 {/* Header */}
                 <div className="ps-header">
@@ -740,7 +773,7 @@ export const ProviderStudio: React.FC = () => {
                                         : 'No posts yet'}
                                 </p>
                             </div>
-                            <Link to="/dashboard" className="ps-inventory-link">
+                            <Link to={embedded ? '/dashboard/provider?section=overview' : '/dashboard'} className="ps-inventory-link">
                                 View dashboard →
                             </Link>
                         </div>
@@ -804,6 +837,45 @@ export const ProviderStudio: React.FC = () => {
                         )}
                     </article>
                 </div>
+
+                {submissionModal && (
+                    <div className="ps-modal-backdrop" onClick={() => setSubmissionModal(null)}>
+                        <section
+                            className="ps-modal"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="ps-submit-modal-title"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <div className="ps-modal-icon">
+                                <CheckCircle2 size={24} />
+                            </div>
+                            <h3 id="ps-submit-modal-title" className="ps-modal-title">
+                                {submissionModal.mode === 'updated' ? 'Listing re-submitted' : 'Listing submitted'}
+                            </h3>
+                            <p className="ps-modal-copy">
+                                <strong>{submissionModal.listingTitle}</strong> was sent for admin review.
+                                You can track status changes in your listing history and notifications.
+                            </p>
+                            <div className="ps-modal-meta">
+                                <span>{LISTING_LABELS[submissionModal.listingType]} listing</span>
+                                <span>{submissionModal.mode === 'updated' ? 'Awaiting re-approval' : 'Awaiting approval'}</span>
+                            </div>
+                            <div className="ps-modal-actions">
+                                <button type="button" className="ps-modal-btn ps-modal-btn--ghost" onClick={() => setSubmissionModal(null)}>
+                                    Continue editing
+                                </button>
+                                <Link
+                                    to="/dashboard/provider?section=listings"
+                                    className="ps-modal-btn ps-modal-btn--primary"
+                                    onClick={() => setSubmissionModal(null)}
+                                >
+                                    View statuses
+                                </Link>
+                            </div>
+                        </section>
+                    </div>
+                )}
             </div>
         </main>
     );

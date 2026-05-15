@@ -23,7 +23,7 @@ const resolveRoute = (notification: AppNotificationRecord) => {
     if (notification.type === 'message_new' && typeof notification.metadata?.conversation_id === 'string') {
         return `/messages?conversation=${notification.metadata.conversation_id}`;
     }
-    if (notification.type.startsWith('listing_')) return '/provider/studio';
+    if (notification.type.startsWith('listing_')) return '/dashboard/provider?section=studio';
     if (notification.type.startsWith('verification_')) return '/profile';
     return '/profile';
 };
