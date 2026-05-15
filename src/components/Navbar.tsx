@@ -488,15 +488,23 @@ export const Navbar: React.FC = () => {
                     .nbr-mobile  { display: flex !important; flex-direction: column; align-items: stretch; padding: 0 16px; top: 16px; }
 
                     .nbr-mobile-pill {
-                        backdrop-filter: blur(20px) saturate(200%) !important;
-                        -webkit-backdrop-filter: blur(20px) saturate(200%) !important;
-                        background: ${navSurface} !important;
-                        border: 1px solid ${navBorder} !important;
-                        border-radius: 999px !important;
-                        box-shadow:
-                            0 4px 24px rgba(15,23,42,0.10),
-                            inset 0 1px 0 ${navInset} !important;
+                        backdrop-filter: none !important;
+                        -webkit-backdrop-filter: none !important;
+                        background: transparent !important;
+                        border: none !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
                         padding: 7px 10px !important;
+                    }
+
+                    .nbr-hamburger {
+                        backdrop-filter: blur(16px) saturate(180%);
+                        -webkit-backdrop-filter: blur(16px) saturate(180%);
+                        background: ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.42)'};
+                        border: 1px solid ${isDark ? 'rgba(255,255,255,0.22)' : 'rgba(122,72,20,0.22)'};
+                        box-shadow:
+                            0 6px 18px rgba(15,23,42,0.14),
+                            inset 0 1px 0 ${isDark ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.72)'};
                     }
 
                     .nbr-avatar-sm-wrap { display: none !important; }
