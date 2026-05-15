@@ -479,6 +479,18 @@ const extractCheckConstraintName = (message: string | undefined): string | null 
     return match?.[1] || null;
 };
 
+const isMissingLegacyBookingTriggerColumnError = (
+    error: { code?: string; message?: string } | null | undefined
+) => {
+    const message = error?.message?.toLowerCase() || '';
+    if (!message.includes('record "new" has no field')) return false;
+    return (
+        message.includes('user_email')
+        || message.includes('user_name')
+        || message.includes('user_phone')
+    );
+};
+
 type FavoriteIdColumn = 'listing_id' | 'activity_id' | 'destination_id' | 'post_id';
 type FavoriteTypeColumn = 'listing_type' | 'type';
 type ReviewListingIdColumn = 'post_id' | 'listing_id' | 'destination_id' | 'activity_id' | 'tour_id' | 'event_id' | 'guide_id' | 'package_id';
@@ -912,6 +924,8 @@ const mapAdPaymentRow = (row: Record<string, unknown> | null): AdPaymentRecord |
 const normalizeBookingStatus = (value: string | null | undefined): BookingStatus => {
     const normalized = (value || '').trim().toLowerCase();
     if (normalized === 'canceled') return 'cancelled';
+    if (normalized === 'accepted') return 'confirmed';
+    if (normalized === 'declined') return 'rejected';
     if (normalized === 'pending' || normalized === 'confirmed' || normalized === 'cancelled' || normalized === 'completed' || normalized === 'rejected') {
         return normalized;
     }
@@ -2510,7 +2524,7 @@ export const submitVerificationApplication = async (userId: string, input: Signu
             type: 'verification_submitted',
             title: 'New verification request',
             body: `${input.fullName || input.email.split('@')[0] || 'Provider'} submitted account verification.`,
-            metadata: { verification_id: createdVerification.id, target_user_id: userId, route: '/admin' },
+            metadata: { verification_id: createdVerification.id, target_user_id: userId, route: '/dashboard/admin?section=moderation' },
         });
     }
 
@@ -2573,7 +2587,7 @@ export const ensureProviderVerificationRecord = async (
             type: 'verification_submitted',
             title: 'New verification request',
             body: `${profile.full_name || profile.email || 'Provider'} submitted account verification.`,
-            metadata: { verification_id: data.id, target_user_id: userId, route: '/admin' },
+            metadata: { verification_id: data.id, target_user_id: userId, route: '/dashboard/admin?section=moderation' },
         });
     }
 
@@ -2820,12 +2834,15 @@ export const respondToBookingRequest = async (args: {
     }
 
     const decisionAt = new Date().toISOString();
-    const requestedStatus: BookingStatus = args.decision === 'accept' ? 'confirmed' : 'rejected';
+    const requestedStatusCandidates = args.decision === 'accept'
+        ? ['confirmed', 'accepted']
+        : ['rejected', 'cancelled'];
+    let requestedStatusIndex = 0;
     const normalizedReason = typeof args.rejectionReason === 'string' ? args.rejectionReason.trim() : '';
     const rejectionReason = normalizedReason || null;
 
     const updatePayload: Record<string, unknown> = {
-        status: requestedStatus,
+        status: requestedStatusCandidates[requestedStatusIndex],
         provider_decision_at: decisionAt,
         provider_decision_by: providerUserId,
         rejection_reason: args.decision === 'reject' ? rejectionReason : null,
@@ -2853,11 +2870,27 @@ export const respondToBookingRequest = async (args: {
             break;
         }
 
+        if (isMissingLegacyBookingTriggerColumnError(result.error)) {
+            throw new Error('Database trigger is using legacy booking columns. Run docs/bookings-legacy-trigger-compat.sql and retry.');
+        }
+
         if (result.error.code === '23514') {
             const constraintName = extractCheckConstraintName(result.error.message)?.toLowerCase() || '';
-            if (constraintName.includes('status') && updatePayload.status === 'rejected') {
-                // Backward compatibility for schemas that still allow only cancelled.
-                updatePayload.status = 'cancelled';
+            if (constraintName.includes('status') && requestedStatusIndex < requestedStatusCandidates.length - 1) {
+                requestedStatusIndex += 1;
+                updatePayload.status = requestedStatusCandidates[requestedStatusIndex];
+                continue;
+            }
+        }
+
+        if (result.error.code === '22P02') {
+            const message = (result.error.message || '').toLowerCase();
+            if (
+                message.includes('status')
+                && requestedStatusIndex < requestedStatusCandidates.length - 1
+            ) {
+                requestedStatusIndex += 1;
+                updatePayload.status = requestedStatusCandidates[requestedStatusIndex];
                 continue;
             }
         }
@@ -2926,7 +2959,7 @@ export const respondToBookingRequest = async (args: {
                     type: 'payment_refunded',
                     title: 'Refund initiated',
                     body: `Your refund request for ${listingTitle} has been sent to admin for manual processing.`,
-                    metadata: { booking_id: bookingId, route: '/notifications' },
+                    metadata: { booking_id: bookingId, route: '/dashboard/tourist?section=bookings' },
                 },
                 {
                     userId: providerUserId,
@@ -3918,7 +3951,7 @@ export const resubmitVerificationApplication = async (userId: string) => {
         type: 'verification_resubmitted',
         title: 'Verification resubmitted',
         body: `${latest.company_name || 'Provider'} resubmitted verification.`,
-        metadata: { verification_id: latest.id, target_user_id: userId, route: '/admin' },
+        metadata: { verification_id: latest.id, target_user_id: userId, route: '/dashboard/admin?section=moderation' },
     });
 
     return {

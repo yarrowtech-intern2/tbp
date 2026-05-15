@@ -45,7 +45,6 @@ import {
     getModerationAuditLogs,
     getMyAds,
     getMyPosts,
-    getNotifications,
     getPosts,
     getProviderBookings,
     respondToBookingRequest,
@@ -202,6 +201,25 @@ const formatDateTime = (value?: string | null) => {
     });
 };
 
+const getNotificationRoute = (item: AppNotificationRecord, role: DashboardRole): string | null => {
+    const metadata = item.metadata && typeof item.metadata === 'object'
+        ? item.metadata as Record<string, unknown>
+        : null;
+    const route = metadata && typeof metadata.route === 'string'
+        ? metadata.route.trim()
+        : '';
+    if (route.startsWith('/dashboard') || route.startsWith('/messages')) return route;
+    if (item.type === 'message_new' && metadata && typeof metadata.conversation_id === 'string') {
+        return `/messages?conversation=${encodeURIComponent(metadata.conversation_id)}`;
+    }
+    if (item.type.startsWith('booking_') || item.type.startsWith('payment_')) {
+        return role === 'provider'
+            ? '/dashboard/provider?section=bookings'
+            : '/dashboard/tourist?section=bookings';
+    }
+    return null;
+};
+
 const formatRatingSummary = (summary?: ListingReviewSummary): string => {
     if (!summary || summary.review_count === 0 || summary.average_rating === null) return 'No reviews yet';
     return `${summary.average_rating.toFixed(1)} average from ${summary.review_count} ${summary.review_count === 1 ? 'rating' : 'ratings'}`;
@@ -243,6 +261,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'messages') return 'messages';
+    if (normalized === 'notifications') return 'messages';
     if (normalized === 'moderation') return 'moderation';
     if (normalized === 'rejected') return 'rejected';
     if (normalized === 'users') return 'users';
@@ -418,7 +437,13 @@ const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: numb
 
 export const RoleDashboard: React.FC = () => {
     const { user, profile, profileLoading } = useAuth();
-    const { unreadCount } = useNotifications();
+    const {
+        unreadCount,
+        notifications: centerNotifications,
+        markAsRead,
+        markAllAsRead,
+        refresh: refreshNotifications,
+    } = useNotifications();
     const { theme, toggleTheme } = useTheme();
     const { role: roleParam } = useParams();
     const [searchParams] = useSearchParams();
@@ -454,13 +479,11 @@ export const RoleDashboard: React.FC = () => {
     const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
     const [touristFavorites, setTouristFavorites] = useState<FavoriteListingRecord[]>([]);
     const [touristConversations, setTouristConversations] = useState<ConversationRecord[]>([]);
-    const [touristNotifications, setTouristNotifications] = useState<AppNotificationRecord[]>([]);
 
     const [providerListings, setProviderListings] = useState<PostRecord[]>([]);
     const [providerAds, setProviderAds] = useState<PaidAdRecord[]>([]);
     const [providerBookings, setProviderBookings] = useState<UnifiedBooking[]>([]);
     const [providerConversations, setProviderConversations] = useState<ConversationRecord[]>([]);
-    const [providerNotifications, setProviderNotifications] = useState<AppNotificationRecord[]>([]);
     const [providerReviewSummaryByPostId, setProviderReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
     const [providerListingReviews, setProviderListingReviews] = useState<ListingReviewRecord[]>([]);
     const [boostingPostId, setBoostingPostId] = useState<string | null>(null);
@@ -600,33 +623,29 @@ export const RoleDashboard: React.FC = () => {
             setError(null);
             try {
                 if (effectiveRole === 'tourist') {
-                    const [bookings, favorites, conversations, notifications] = await Promise.all([
+                    const [bookings, favorites, conversations] = await Promise.all([
                         getBookings(user.id),
                         getFavoriteListings(user.id),
                         getConversations(user.id),
-                        getNotifications(user.id, 50),
                     ]);
                     if (cancelled) return;
                     setTouristBookings(bookings);
                     setTouristFavorites(favorites);
                     setTouristConversations(conversations);
-                    setTouristNotifications(notifications);
                 }
 
                 if (effectiveRole === 'provider') {
-                    const [listings, ads, bookings, conversations, notifications] = await Promise.all([
+                    const [listings, ads, bookings, conversations] = await Promise.all([
                         getMyPosts(user.id),
                         getMyAds(user.id),
                         getProviderBookings(user.id),
                         getConversations(user.id),
-                        getNotifications(user.id, 50),
                     ]);
                     if (cancelled) return;
                     setProviderListings(listings);
                     setProviderAds(ads);
                     setProviderBookings(bookings);
                     setProviderConversations(conversations);
-                    setProviderNotifications(notifications);
                 }
 
                 if (effectiveRole === 'admin') {
@@ -971,12 +990,18 @@ export const RoleDashboard: React.FC = () => {
         [providerListings],
     );
 
+    const touristNotificationRows = centerNotifications
+        .filter((item) => !query || `${item.title || ''} ${item.body || ''} ${item.type || ''}`.toLowerCase().includes(query));
+
+    const providerNotificationRows = centerNotifications
+        .filter((item) => !query || `${item.title || ''} ${item.body || ''} ${item.type || ''}`.toLowerCase().includes(query));
+
     const touristActivityTrend = useMemo(
         () => buildRollingDailyCounts([
             ...touristBookings.map((item) => item.created_at || item.booking_date),
-            ...touristNotifications.map((item) => item.created_at),
+            ...touristNotificationRows.map((item) => item.created_at),
         ]),
-        [touristBookings, touristNotifications],
+        [touristBookings, touristNotificationRows],
     );
 
     const providerBookingTrend = useMemo(
@@ -1129,12 +1154,17 @@ export const RoleDashboard: React.FC = () => {
             setProviderBookings((current) => current.map((item) => (
                 item.id === bookingId ? updated : item
             )));
-
-            const refreshedNotifications = await getNotifications(user.id, 50);
-            setProviderNotifications(refreshedNotifications);
+            await refreshNotifications();
         } catch (error) {
             console.error('Provider booking decision failed:', error);
-            alert(error instanceof Error ? error.message : 'Could not update booking status.');
+            const fallback = 'Could not update booking status.';
+            if (error instanceof Error) {
+                alert(error.message || fallback);
+            } else if (error && typeof error === 'object' && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
+                alert((error as { message: string }).message || fallback);
+            } else {
+                alert(fallback);
+            }
         } finally {
             setProviderBookingActionId(null);
         }
@@ -1160,6 +1190,9 @@ export const RoleDashboard: React.FC = () => {
 
     const adminAuditRows = adminAuditLogs
         .filter((item) => !query || `${item.entity_type} ${item.action} ${item.entity_id}`.toLowerCase().includes(query));
+
+    const adminNotificationRows = centerNotifications
+        .filter((item) => !query || `${item.title || ''} ${item.body || ''} ${item.type || ''}`.toLowerCase().includes(query));
 
     const adminUserRows = adminUsers
         .filter((item) => !query || `${item.full_name || ''} ${item.email || ''} ${item.role || ''}`.toLowerCase().includes(query));
@@ -1209,7 +1242,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'tourist') {
             return {
                 bookings: touristRows.length,
-                messages: touristConversations.length,
+                messages: touristNotificationRows.length,
                 favorites: favoriteRows.length,
             };
         }
@@ -1219,11 +1252,11 @@ export const RoleDashboard: React.FC = () => {
                 studio: providerRows.length,
                 listings: providerRows.length,
                 advertisements: providerAdRows.length,
-                messages: providerNotifications.length,
+                messages: providerNotificationRows.length,
             };
         }
         return {
-            messages: adminAuditRows.length,
+            messages: adminNotificationRows.length,
             moderation: adminQueueRows.length,
             rejected: adminRejectedRows.length,
             users: adminUserRows.length,
@@ -1233,15 +1266,17 @@ export const RoleDashboard: React.FC = () => {
     }, [
         adminAccountLocations.length,
         adminAuditRows.length,
+        adminNotificationRows.length,
         adminQueueRows.length,
         adminRejectedRows.length,
         adminUserRows.length,
         effectiveRole,
         favoriteRows.length,
         providerBookingRows.length,
-        providerNotifications.length,
+        providerNotificationRows.length,
         providerAdRows.length,
         providerRows.length,
+        touristNotificationRows.length,
         touristRows.length,
     ]);
 
@@ -1498,35 +1533,68 @@ export const RoleDashboard: React.FC = () => {
             return (
                 <section className="rdb-content-grid">
                     <article className="rdb-panel">
-                        <h2>Messages</h2>
+                        <h2>Notifications</h2>
                         <div className="rdb-stat-list">
                             <div><span>Conversations</span><strong>{touristConversations.length}</strong></div>
-                            <div><span>Unread Alerts</span><strong>{touristNotifications.filter((n) => !n.is_read && n.type === 'message_new').length}</strong></div>
+                            <div><span>Unread Alerts</span><strong>{touristNotificationRows.filter((item) => !item.is_read).length}</strong></div>
                         </div>
                         <div className="rdb-action-list">
+                            <button type="button" className="rdb-inline-link" onClick={() => void refreshNotifications()}>
+                                Refresh
+                            </button>
+                            <button
+                                type="button"
+                                className="rdb-inline-link"
+                                onClick={() => void markAllAsRead()}
+                                disabled={touristNotificationRows.every((item) => item.is_read)}
+                            >
+                                Mark all read
+                            </button>
                             <Link to="/messages" className="rdb-inline-link">Open Message Center</Link>
                         </div>
                     </article>
                     <article className="rdb-panel rdb-panel-wide">
                         <div className="rdb-panel-head">
-                            <h2>Recent Conversations</h2>
-                            <small>{touristConversations.length} records</small>
+                            <h2>Recent Notifications</h2>
+                            <small>{touristNotificationRows.length} records</small>
                         </div>
                         <div className="rdb-list">
-                            {touristConversations.slice(0, 10).map((item) => (
-                                <Link
-                                    key={item.id}
-                                    to={`/messages?conversation=${encodeURIComponent(item.id)}`}
-                                    className="rdb-list-row rdb-list-row-link"
-                                >
-                                    <div>
-                                        <p>Conversation {item.id.slice(0, 8)}</p>
-                                        <small>Created {formatDate(item.created_at)}</small>
-                                    </div>
-                                    <span className="rdb-pill rdb-pill-approved">Open</span>
-                                </Link>
-                            ))}
-                            {touristConversations.length === 0 && <p className="rdb-empty">No conversations yet. Messaging is enabled after a confirmed booking.</p>}
+                            {touristNotificationRows.slice(0, 12).map((item) => {
+                                const route = getNotificationRoute(item, 'tourist');
+                                const rowContent = (
+                                    <>
+                                        <div>
+                                            <p>{item.title || 'Notification'}</p>
+                                            <small>{item.body || item.type || 'No details available'}</small>
+                                        </div>
+                                        <div className="rdb-row-actions">
+                                            {!item.is_read && (
+                                                <button
+                                                    type="button"
+                                                    className="rdb-row-edit-link"
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        void markAsRead(item.id);
+                                                    }}
+                                                >
+                                                    Mark read
+                                                </button>
+                                            )}
+                                            <small>{formatDateTime(item.created_at)}</small>
+                                        </div>
+                                    </>
+                                );
+                                if (!route) {
+                                    return <div key={item.id} className="rdb-list-row">{rowContent}</div>;
+                                }
+                                return (
+                                    <Link key={item.id} to={route} className="rdb-list-row rdb-list-row-link">
+                                        {rowContent}
+                                    </Link>
+                                );
+                            })}
+                            {touristNotificationRows.length === 0 && <p className="rdb-empty">No notifications yet.</p>}
                         </div>
                     </article>
                 </section>
@@ -1825,38 +1893,72 @@ export const RoleDashboard: React.FC = () => {
             return (
                 <section className="rdb-content-grid">
                     <article className="rdb-panel">
-                        <h2>Communication</h2>
+                        <h2>Notifications</h2>
                         <div className="rdb-stat-list">
                             <div><span>Conversations</span><strong>{providerConversations.length}</strong></div>
-                            <div><span>Notifications</span><strong>{providerNotifications.length}</strong></div>
+                            <div><span>Unread Alerts</span><strong>{providerNotificationRows.filter((item) => !item.is_read).length}</strong></div>
                         </div>
                         <div className="rdb-action-list">
+                            <button type="button" className="rdb-inline-link" onClick={() => void refreshNotifications()}>
+                                Refresh
+                            </button>
+                            <button
+                                type="button"
+                                className="rdb-inline-link"
+                                onClick={() => void markAllAsRead()}
+                                disabled={providerNotificationRows.every((item) => item.is_read)}
+                            >
+                                Mark all read
+                            </button>
                             <Link to="/messages" className="rdb-inline-link">Open Message Center</Link>
                         </div>
                     </article>
                     <article className="rdb-panel rdb-panel-wide">
                         <div className="rdb-panel-head">
-                            <h2>Recent Conversations</h2>
-                            <small>{providerConversations.length} records</small>
+                            <h2>Recent Notifications</h2>
+                            <small>{providerNotificationRows.length} records</small>
                         </div>
                         <div className="rdb-list">
-                            {providerConversations.slice(0, 12).map((item) => {
-                                const otherUserId = item.traveler_id === user?.id ? item.provider_id : item.traveler_id;
+                            {providerNotificationRows.slice(0, 12).map((item) => {
+                                const route = getNotificationRoute(item, 'provider');
+                                const rowContent = (
+                                    <>
+                                        <div>
+                                            <p>{item.title || 'Notification'}</p>
+                                            <small>{item.body || item.type || 'No details available'}</small>
+                                        </div>
+                                        <div className="rdb-row-actions">
+                                            {!item.is_read && (
+                                                <button
+                                                    type="button"
+                                                    className="rdb-row-edit-link"
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        void markAsRead(item.id);
+                                                    }}
+                                                >
+                                                    Mark read
+                                                </button>
+                                            )}
+                                            <small>{formatDateTime(item.created_at)}</small>
+                                        </div>
+                                    </>
+                                );
+                                if (!route) {
+                                    return <div key={item.id} className="rdb-list-row">{rowContent}</div>;
+                                }
                                 return (
                                     <Link
                                         key={item.id}
-                                        to={`/messages?conversation=${encodeURIComponent(item.id)}`}
+                                        to={route}
                                         className="rdb-list-row rdb-list-row-link"
                                     >
-                                        <div>
-                                            <p>Conversation {item.id.slice(0, 8)}</p>
-                                            <small>{otherUserId ? `Participant ${otherUserId.slice(0, 8)}` : 'Participant unavailable'}</small>
-                                        </div>
-                                        <small>{formatDate(item.created_at)}</small>
+                                        {rowContent}
                                     </Link>
                                 );
                             })}
-                            {providerConversations.length === 0 && <p className="rdb-empty">No conversations yet. Travelers can contact you only after confirmed purchase.</p>}
+                            {providerNotificationRows.length === 0 && <p className="rdb-empty">No notifications yet.</p>}
                         </div>
                     </article>
                 </section>
@@ -2205,31 +2307,52 @@ export const RoleDashboard: React.FC = () => {
             return (
                 <section className="rdb-content-grid">
                     <article className="rdb-panel">
-                        <h2>Admin Messaging</h2>
+                        <h2>Notifications</h2>
                         <div className="rdb-stat-list">
-                            <div><span>Audit Events</span><strong>{adminAuditLogs.length}</strong></div>
-                            <div><span>Recent Users</span><strong>{adminUserRows.length}</strong></div>
+                            <div><span>Unread</span><strong>{unreadCount}</strong></div>
+                            <div><span>Total Alerts</span><strong>{centerNotifications.length}</strong></div>
                         </div>
                         <div className="rdb-action-list">
-                            <Link to="/messages" className="rdb-inline-link">Open Message Center</Link>
+                            <button type="button" className="rdb-inline-link" onClick={() => void refreshNotifications()}>
+                                Refresh
+                            </button>
+                            <button
+                                type="button"
+                                className="rdb-inline-link"
+                                onClick={() => void markAllAsRead()}
+                                disabled={unreadCount === 0}
+                            >
+                                Mark all read
+                            </button>
                         </div>
                     </article>
                     <article className="rdb-panel rdb-panel-wide">
                         <div className="rdb-panel-head">
-                            <h2>Recent System Notifications</h2>
-                            <small>{adminAuditRows.length} records</small>
+                            <h2>Recent Notifications</h2>
+                            <small>{adminNotificationRows.length} records</small>
                         </div>
                         <div className="rdb-list">
-                            {adminAuditRows.slice(0, 12).map((item) => (
+                            {adminNotificationRows.slice(0, 14).map((item) => (
                                 <div key={item.id} className="rdb-list-row">
                                     <div>
-                                        <p>{item.entity_type} - {item.action}</p>
-                                        <small>{item.entity_id}</small>
+                                        <p>{item.title || 'Notification'}</p>
+                                        <small>{item.body || item.type || 'No details available'}</small>
                                     </div>
-                                    <small>{formatDate(item.created_at)}</small>
+                                    <div className="rdb-row-actions">
+                                        {!item.is_read && (
+                                            <button
+                                                type="button"
+                                                className="rdb-row-edit-link"
+                                                onClick={() => void markAsRead(item.id)}
+                                            >
+                                                Mark read
+                                            </button>
+                                        )}
+                                        <small>{formatDateTime(item.created_at)}</small>
+                                    </div>
                                 </div>
                             ))}
-                            {adminAuditRows.length === 0 && <p className="rdb-empty">No recent system messages.</p>}
+                            {adminNotificationRows.length === 0 && <p className="rdb-empty">No notifications available yet.</p>}
                         </div>
                     </article>
                 </section>
@@ -2688,7 +2811,7 @@ export const RoleDashboard: React.FC = () => {
                                         className="rdb-admin-ctrl-btn"
                                         title="Notifications"
                                         aria-label="Open notifications"
-                                        onClick={() => navigate('/notifications')}
+                                        onClick={() => setActiveSection('messages')}
                                     >
                                         <Bell size={18} />
                                         {unreadCount > 0 && (

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Bell, BellOff, CheckCheck, Loader2, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
+import { useAuth } from '../hooks/useAuth';
 import type { AppNotificationRecord } from '../lib/destinations';
 import './notifications.css';
 
@@ -17,19 +18,21 @@ const formatTime = (iso?: string) => {
     }).format(date);
 };
 
-const resolveRoute = (notification: AppNotificationRecord) => {
+const resolveRoute = (notification: AppNotificationRecord, isAdmin: boolean) => {
     const route = notification.metadata?.route;
+    if (route === '/admin') return '/dashboard/admin?section=moderation';
     if (typeof route === 'string' && route.startsWith('/')) return route;
     if (notification.type === 'message_new' && typeof notification.metadata?.conversation_id === 'string') {
         return `/messages?conversation=${notification.metadata.conversation_id}`;
     }
+    if (notification.type.startsWith('verification_')) return isAdmin ? '/dashboard/admin?section=moderation' : '/profile';
     if (notification.type.startsWith('listing_')) return '/dashboard/provider?section=studio';
-    if (notification.type.startsWith('verification_')) return '/profile';
-    return '/profile';
+    return isAdmin ? '/dashboard/admin' : '/profile';
 };
 
 export const Notifications: React.FC = () => {
     const navigate = useNavigate();
+    const { isAdmin } = useAuth();
     const {
         notifications,
         unreadCount,
@@ -112,7 +115,7 @@ export const Notifications: React.FC = () => {
                                             if (!item.is_read) {
                                                 void markAsRead(item.id);
                                             }
-                                            navigate(resolveRoute(item));
+                                            navigate(resolveRoute(item, isAdmin));
                                         }}
                                     >
                                         {!item.is_read && <span className="ntf-dot" aria-hidden />}
