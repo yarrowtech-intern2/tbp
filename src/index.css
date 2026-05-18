@@ -420,7 +420,7 @@ h4,
   [class*='-banner ']
 ) {
   background: var(--tbp-card-surface);
-  border: 1px solid var(--tbp-card-border);
+  border: none !important;
   border-radius: 30px;
   box-shadow: var(--tbp-card-shadow);
   overflow: hidden;
