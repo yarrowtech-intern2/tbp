@@ -12,6 +12,7 @@ import {
     Home,
     LayoutDashboard,
     Loader2,
+    LogOut,
     Megaphone,
     MessageSquare,
     Menu,
@@ -722,7 +723,7 @@ const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: numb
 };
 
 export const RoleDashboard: React.FC = () => {
-    const { user, profile, profileLoading } = useAuth();
+    const { user, profile, profileLoading, signOut } = useAuth();
     const {
         unreadCount,
         notifications: centerNotifications,
@@ -3294,6 +3295,16 @@ export const RoleDashboard: React.FC = () => {
                         <ChevronLeft size={20} />
                     </button>
 
+                    <button
+                        type="button"
+                        className="rdb-admin-sidebar-logout"
+                        onClick={() => { void signOut(); }}
+                        title="Log out"
+                        aria-label="Log out"
+                    >
+                        <LogOut size={20} />
+                    </button>
+
                     <div className="rdb-profile">
                         <div className="rdb-profile-avatar">{userInitials || '?'}</div>
                         <div className="rdb-profile-info">
@@ -3374,6 +3385,17 @@ export const RoleDashboard: React.FC = () => {
                                         </button>
                                     );
                                 })}
+                                <button
+                                    type="button"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--logout"
+                                    onClick={() => {
+                                        setAdminMobileMenuOpen(false);
+                                        void signOut();
+                                    }}
+                                >
+                                    <span>Log out</span>
+                                    <LogOut size={16} />
+                                </button>
                             </nav>
                         )}
                     </header>

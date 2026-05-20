@@ -1909,8 +1909,23 @@
     transition: transform 0.16s ease, opacity 0.16s ease;
 }
 
+.rdb-admin-sidebar-logout {
+    display: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: color-mix(in srgb, #ff5f56 26%, var(--rdb-admin-chip));
+    color: var(--rdb-admin-text-strong);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
 .rdb-admin-sidebar-theme:hover,
-.rdb-admin-sidebar-back:hover {
+.rdb-admin-sidebar-back:hover,
+.rdb-admin-sidebar-logout:hover {
     transform: scale(1.04);
     opacity: 0.92;
 }
@@ -2529,6 +2544,7 @@
         align-items: center;
         position: sticky;
         top: 0;
+        z-index: 24;
         align-self: stretch;
         max-height: 100%;
         overflow: visible;
@@ -2615,7 +2631,7 @@
             opacity 180ms ease,
             transform 340ms cubic-bezier(0.16, 1, 0.3, 1),
             box-shadow 340ms cubic-bezier(0.16, 1, 0.3, 1);
-        z-index: 8;
+        z-index: 40;
     }
 
     .rdb-shell--admin .rdb-nav-item:hover::after,
@@ -2655,6 +2671,11 @@
     }
 
     .rdb-shell--admin .rdb-admin-sidebar-back {
+        display: flex;
+        margin: 0 auto 8px;
+    }
+
+    .rdb-shell--admin .rdb-admin-sidebar-logout {
         display: flex;
         margin: 0 auto 0;
     }
@@ -2792,6 +2813,11 @@
 
     .rdb-admin-mobile-menu-item.is-active strong {
         color: var(--accent);
+    }
+
+    .rdb-admin-mobile-menu-item--logout {
+        background: color-mix(in srgb, #ff5f56 24%, var(--rdb-admin-card-soft));
+        color: var(--rdb-admin-text-strong);
     }
 
     .rdb-admin-kpi-row {
