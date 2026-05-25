@@ -188,10 +188,34 @@
 
 .dh-hero-greeting {
   margin-bottom: 0.08em;
+  width: fit-content;
+  font-size: 0.58em;
+  line-height: 1.02;
+  background: linear-gradient(105deg, #ff7a1a 0%, #0b0b0f 72%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: dh-greeting-gradient 7s ease-in-out infinite alternate;
+  background-size: 180% 100%;
 }
 
 :root[data-theme='dark'] .dh-hero-title {
   color: #f8fafc;
+}
+
+:root[data-theme='dark'] .dh-hero-greeting {
+  background-image: linear-gradient(105deg, #ff9a3d 0%, #ffffff 72%);
+}
+
+@keyframes dh-greeting-gradient {
+  from {
+    background-position: 0% 50%;
+  }
+
+  to {
+    background-position: 100% 50%;
+  }
 }
 
 .dh-hero-sub {
