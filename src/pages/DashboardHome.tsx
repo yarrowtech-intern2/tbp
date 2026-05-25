@@ -36,6 +36,8 @@ import type { ListingType } from '../lib/platform';
 import { isProviderRole, normalizeRoleValue } from '../lib/platform';
 import { onBookingSync } from '../lib/bookingSync';
 import { DEFAULT_HERO_MESSAGES, getDynamicHeroMessage, getPublicAppContent, type HeroMessagesContent } from '../lib/appContent';
+import { getListingImages } from '../lib/listingImages';
+import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './dashboard-home.css';
 import '../components/listing-card.css';
 
@@ -83,11 +85,6 @@ const TOURIST_MOBILE_NAV_ITEMS: Array<{ key: TouristMobileNavKey; label: string;
   { key: 'bookings', label: 'Bookings', icon: ClipboardList },
   { key: 'profile', label: 'Profile', icon: UserCircle2 },
 ];
-
-const getPostImage = (post: PostRecord): string => {
-  const candidate = post.image_url || post.cover_image_url || post.thumbnail_url;
-  return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate : FALLBACK_IMAGE;
-};
 
 const getPostTitle = (post: PostRecord): string => {
   const candidate = post.title || post.name;
@@ -242,14 +239,27 @@ const ListingCard: React.FC<{
   post: PostRecord;
   isBooked: boolean;
   reviewSummary?: ListingReviewSummary;
-}> = ({ post, isBooked, reviewSummary }) => {
+  cardIndex: number;
+}> = ({ post, isBooked, reviewSummary, cardIndex }) => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const canFavorite = profile?.role === 'tourist';
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [isImagePaused, setIsImagePaused] = useState(false);
 
-  const image = getPostImage(post);
+  const images = useMemo(() => {
+    const uploadedImages = getListingImages(post);
+    return uploadedImages.length > 0 ? uploadedImages : [FALLBACK_IMAGE];
+  }, [post]);
+  const { activeImageIndex, previousImageIndex, setActiveImageIndex, transitionKey } = useStaggeredImageRotation({
+    imageCount: images.length,
+    cardIndex,
+    paused: isImagePaused,
+  });
+  const activeImage = images[activeImageIndex] || images[0] || FALLBACK_IMAGE;
+  const previousImage = images[previousImageIndex] || activeImage;
+  const hasMultipleImages = images.length > 1;
   const title = getPostTitle(post);
   const subtitle = getPostSubtitle(post);
   const type = getPostType(post);
@@ -276,6 +286,10 @@ const ListingCard: React.FC<{
 
     void loadFavorite();
   }, [canFavorite, listingTypeValue, post.id, user]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [post.id, setActiveImageIndex]);
 
   const handleFavoriteToggle = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -310,6 +324,12 @@ const ListingCard: React.FC<{
 
   const openListing = () => navigate(`/listings/${listingTypePath}/${post.id}`);
 
+  const handleImageStep = (event: React.MouseEvent<HTMLButtonElement>, direction: -1 | 1) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveImageIndex((current) => (current + direction + images.length) % images.length);
+  };
+
   const handleCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -324,14 +344,52 @@ const ListingCard: React.FC<{
       tabIndex={0}
       onClick={openListing}
       onKeyDown={handleCardKeyDown}
+      onMouseEnter={() => setIsImagePaused(true)}
+      onMouseLeave={() => setIsImagePaused(false)}
+      onFocus={() => setIsImagePaused(true)}
+      onBlur={() => setIsImagePaused(false)}
       aria-label={`Open ${title}`}
     >
-      <div className={`listing-card-media${image ? '' : ' is-fallback'}`}>
+      <div className={`listing-card-media${activeImage ? '' : ' is-fallback'}`}>
         <div
-          className="listing-card-media-bg"
-          style={{ backgroundImage: `url(${image})` }}
+          key={`listing-prev-${post.id}-${transitionKey}`}
+          className="listing-card-media-bg listing-card-media-bg--previous"
+          style={{ backgroundImage: `url(${previousImage})` }}
+        />
+        <div
+          key={`listing-current-${post.id}-${transitionKey}`}
+          className="listing-card-media-bg listing-card-media-bg--current"
+          style={{ backgroundImage: `url(${activeImage})` }}
         />
         <div className="listing-card-media-overlay" />
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              className="listing-card-gallery-btn listing-card-gallery-btn--prev"
+              aria-label="Previous listing image"
+              onClick={(event) => handleImageStep(event, -1)}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              type="button"
+              className="listing-card-gallery-btn listing-card-gallery-btn--next"
+              aria-label="Next listing image"
+              onClick={(event) => handleImageStep(event, 1)}
+            >
+              <ChevronRight size={14} />
+            </button>
+            <div className="listing-card-gallery-meta" aria-label={`${images.length} listing images`}>
+              <span>{activeImageIndex + 1}/{images.length}</span>
+            </div>
+            <div className="listing-card-gallery-dots" aria-hidden="true">
+              {images.slice(0, 6).map((url, index) => (
+                <span key={`${url}-${index}`} className={index === activeImageIndex ? 'is-active' : ''} />
+              ))}
+            </div>
+          </>
+        )}
         <div className="listing-card-media-top">
           <div className="listing-card-badge-cluster">
             <span className="listing-card-chip">{chipLabel}</span>
@@ -358,7 +416,7 @@ const ListingCard: React.FC<{
           </button>
         </div>
 
-        {!image && (
+        {!activeImage && (
           <div className="listing-card-fallback-text" aria-hidden="true">
             {title.charAt(0).toUpperCase()}
           </div>
@@ -514,6 +572,7 @@ const CarouselRow: React.FC<{
           <Reveal key={post.id} delay={indexOffset * 100 + (index + 1) * 55}>
             <ListingCard
               post={post}
+              cardIndex={index}
               reviewSummary={reviewSummaryByPostId[String(post.id).trim()]}
               isBooked={
                 bookedLookup.byTypeAndId.has(`${toListingTypeValue(getPostType(post))}:${String(post.id).trim()}`)

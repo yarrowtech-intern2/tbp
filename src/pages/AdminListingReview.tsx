@@ -179,7 +179,7 @@ export const AdminListingReview: React.FC = () => {
     return (
         <main className="alr-page">
             <div className="container alr-shell">
-                <button type="button" className="alr-back" onClick={() => navigate('/dashboard/admin')}>
+                <button type="button" className="alr-back" onClick={() => navigate('/dashboard/admin?section=moderation')}>
                     <ArrowLeft size={16} /> Back to Moderation
                 </button>
 

@@ -513,20 +513,19 @@ export const Auth: React.FC = () => {
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}
                                 </button>
 
-                                <div className="auth-signup-social">
-                                    <div className="auth-divider">or</div>
-                                    <button
-                                        type="button"
-                                        className="auth-social-btn"
-                                        disabled={googleLoading || activeRole !== 'tourist'}
-                                        onClick={() => void handleGoogleTouristAuth('signup')}
-                                    >
-                                        {googleLoading ? 'Redirecting to Google...' : 'Sign up with Google'}
-                                    </button>
-                                    {activeRole !== 'tourist' && (
-                                        <p className="auth-role-note">Switch role to Tourist to use Google signup.</p>
-                                    )}
-                                </div>
+                                {activeRole === 'tourist' && (
+                                    <div className="auth-signup-social">
+                                        <div className="auth-divider">or</div>
+                                        <button
+                                            type="button"
+                                            className="auth-social-btn"
+                                            disabled={googleLoading}
+                                            onClick={() => void handleGoogleTouristAuth('signup')}
+                                        >
+                                            {googleLoading ? 'Redirecting to Google...' : 'Sign up with Google'}
+                                        </button>
+                                    </div>
+                                )}
                             </form>
                         </>
                     )}

@@ -104,16 +104,17 @@
 
 .txp-profile-copy h1 {
   font-family: 'Outfit', sans-serif;
-  font-size: 2rem;
-  line-height: 1;
+  font-size: 1.55rem;
+  line-height: 1.16;
   letter-spacing: 0;
 }
 
 .txp-profile-copy p {
-  margin-top: 3px;
+  margin-top: 2px;
   color: #8f8f8f;
-  font-size: 1rem;
+  font-size: 0.82rem;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 :root[data-theme='dark'] .txp-profile-copy p {
@@ -283,6 +284,34 @@
   will-change: transform;
 }
 
+.txp-card-image--current {
+  z-index: 1;
+  animation: txp-card-image-slide-in 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.txp-card-image--previous {
+  z-index: 0;
+  animation: txp-card-image-slide-out 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes txp-card-image-slide-in {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes txp-card-image-slide-out {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 .txp-card--tall .txp-card-media {
   aspect-ratio: 0.72;
 }
@@ -299,6 +328,81 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, rgba(8, 11, 18, 0.05) 0%, rgba(8, 11, 18, 0.18) 48%, rgba(8, 11, 18, 0.42) 100%);
+}
+
+.txp-gallery-btn {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 999px;
+  background: rgba(11, 13, 17, 0.58);
+  color: #ffffff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.18s ease, background 0.18s ease;
+}
+
+.txp-gallery-btn--prev {
+  left: 10px;
+}
+
+.txp-gallery-btn--next {
+  right: 10px;
+}
+
+.txp-card:hover .txp-gallery-btn,
+.txp-card:focus-within .txp-gallery-btn {
+  opacity: 1;
+}
+
+.txp-gallery-btn:hover {
+  background: rgba(11, 13, 17, 0.78);
+}
+
+.txp-gallery-count {
+  position: absolute;
+  z-index: 5;
+  right: 12px;
+  bottom: 12px;
+  min-height: 23px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(11, 13, 17, 0.64);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.txp-gallery-dots {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+
+.txp-gallery-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.txp-gallery-dots span.is-active {
+  width: 13px;
+  background: #ffffff;
 }
 
 .txp-card-content {
@@ -605,11 +709,12 @@
   }
 
   .txp-profile-copy h1 {
-    font-size: 1.45rem;
+    font-size: 1.28rem;
+    line-height: 1.18;
   }
 
   .txp-profile-copy p {
-    font-size: 0.9rem;
+    font-size: 0.78rem;
   }
 
   .txp-filter-chip {
@@ -653,12 +758,13 @@
   }
 
   .txp-profile-copy h1 {
-    font-size: 1.18rem;
+    font-size: 1.05rem;
+    line-height: 1.18;
   }
 
   .txp-profile-copy p {
     margin-top: 2px;
-    font-size: 0.76rem;
+    font-size: 0.7rem;
   }
 
   .txp-icon-btn {
@@ -707,6 +813,23 @@
   .txp-card-content {
     padding: 10px;
     gap: 8px;
+  }
+
+  .txp-gallery-btn {
+    width: 24px;
+    height: 24px;
+    opacity: 0.92;
+  }
+
+  .txp-gallery-count {
+    right: 10px;
+    bottom: 10px;
+    min-height: 20px;
+    font-size: 0.56rem;
+  }
+
+  .txp-gallery-dots {
+    bottom: 11px;
   }
 
   .txp-card-copy h2 {

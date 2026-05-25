@@ -100,6 +100,7 @@ type SidebarKey =
     | 'greetings'
     | 'contact'
     | 'moderation'
+    | 'accepted'
     | 'rejected'
     | 'users'
     | 'map'
@@ -369,6 +370,36 @@ const toListingPathType = (type: string | null | undefined): 'tour' | 'activity'
     if (type === 'guide' || type === 'event') return 'event';
     return 'activity';
 };
+const normalizePostType = (type: string | null | undefined): 'tour' | 'activity' | 'guide' => {
+    if (type === 'tour') return 'tour';
+    if (type === 'guide' || type === 'event') return 'guide';
+    return 'activity';
+};
+const listingTypeLabel = (type: string | null | undefined) => {
+    const normalized = normalizePostType(type);
+    if (normalized === 'tour') return 'Tours';
+    if (normalized === 'guide') return 'Events';
+    return 'Activities';
+};
+const postStatus = (item: PostRecord) => (item.status || '').toLowerCase();
+const isModerationPost = (item: PostRecord) => {
+    const status = postStatus(item);
+    return status === 'pending' || status === 'resubmitted';
+};
+const isAcceptedPost = (item: PostRecord) => {
+    const status = postStatus(item);
+    return status === 'approved' || status === 'live' || status === 'published';
+};
+const dedupePostRows = (rows: PostRecord[]) => {
+    const seen = new Set<string>();
+    return rows.filter((item) => {
+        const id = String(item.id || '').trim();
+        if (!id) return true;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+    });
+};
 
 const parseTouristSection = (value: string | null): SidebarKey | null => {
     if (!value) return null;
@@ -405,6 +436,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'notifications') return 'messages';
     if (normalized === 'revenue') return 'revenue';
     if (normalized === 'moderation') return 'moderation';
+    if (normalized === 'accepted' || normalized === 'approved') return 'accepted';
     if (normalized === 'rejected') return 'rejected';
     if (normalized === 'users') return 'users';
     if (normalized === 'map') return 'map';
@@ -823,6 +855,7 @@ export const RoleDashboard: React.FC = () => {
     const [adminActiveAds, setAdminActiveAds] = useState<PaidAdRecord[]>([]);
     const [salesSettings, setSalesSettings] = useState<SalesSettingsContent>(DEFAULT_SALES_SETTINGS);
     const [selectedModerationId, setSelectedModerationId] = useState<string | null>(null);
+    const [selectedAcceptedId, setSelectedAcceptedId] = useState<string | null>(null);
     const [selectedRejectedId, setSelectedRejectedId] = useState<string | null>(null);
     const [adminRevenueDb, setAdminRevenueDb] = useState(0);
     const [adminMobileMenuOpen, setAdminMobileMenuOpen] = useState(false);
@@ -1153,6 +1186,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'content', label: 'Content', icon: Megaphone },
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
+                { key: 'accepted', label: 'Accepted', icon: CheckCircle2 },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
                 { key: 'users', label: 'Users', icon: Users },
                 { key: 'map', label: 'Map', icon: MapPin },
@@ -1280,9 +1314,10 @@ export const RoleDashboard: React.FC = () => {
             }
         }
 
-        const pendingPosts = adminQueuePosts.filter((item) => item.status === 'pending').length;
+        const allAdminPackageRows = dedupePostRows([...adminPublishedPosts, ...adminQueuePosts]);
+        const pendingPosts = allAdminPackageRows.filter(isModerationPost).length;
         const rejectedPosts = adminQueuePosts.filter((item) => item.status === 'rejected').length;
-        const approvedPosts = adminQueuePosts.filter((item) => item.status === 'approved').length + adminPublishedPosts.length;
+        const approvedPosts = allAdminPackageRows.filter(isAcceptedPost).length;
 
         return {
             totalPackages: packageIds.size,
@@ -1642,11 +1677,17 @@ export const RoleDashboard: React.FC = () => {
         }
     };
 
-    const adminQueueRows = adminQueuePosts
-        .filter((item) => (item.status || '').toLowerCase() !== 'rejected')
+    const allAdminPackageRows = dedupePostRows([...adminPublishedPosts, ...adminQueuePosts]);
+
+    const adminQueueRows = allAdminPackageRows
+        .filter(isModerationPost)
         .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
 
-    const adminRejectedRows = adminQueuePosts
+    const adminAcceptedRows = allAdminPackageRows
+        .filter(isAcceptedPost)
+        .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
+
+    const adminRejectedRows = allAdminPackageRows
         .filter((item) => (item.status || '').toLowerCase() === 'rejected')
         .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
 
@@ -1655,9 +1696,9 @@ export const RoleDashboard: React.FC = () => {
         [adminQueueRows, selectedModerationId],
     );
 
-    const selectedRejectedItem = useMemo(
-        () => adminRejectedRows.find((item) => item.id === selectedRejectedId) || null,
-        [adminRejectedRows, selectedRejectedId],
+    const selectedAcceptedItem = useMemo(
+        () => adminAcceptedRows.find((item) => item.id === selectedAcceptedId) || null,
+        [adminAcceptedRows, selectedAcceptedId],
     );
 
     const adminAuditRows = adminAuditLogs
@@ -1700,6 +1741,20 @@ export const RoleDashboard: React.FC = () => {
         }
     }, [adminRejectedRows, effectiveRole, selectedRejectedId]);
 
+    useEffect(() => {
+        if (effectiveRole !== 'admin') return;
+        if (!adminAcceptedRows.length) {
+            setSelectedAcceptedId(null);
+            return;
+        }
+        const selectedStillVisible = selectedAcceptedId
+            ? adminAcceptedRows.some((item) => item.id === selectedAcceptedId)
+            : false;
+        if (!selectedStillVisible) {
+            setSelectedAcceptedId(adminAcceptedRows[0].id);
+        }
+    }, [adminAcceptedRows, effectiveRole, selectedAcceptedId]);
+
     const getBookingDetailPath = (item: UnifiedBooking): string | null => {
         const listingId = typeof item.listing_id === 'string' ? item.listing_id.trim() : '';
         if (!listingId) return null;
@@ -1740,6 +1795,7 @@ export const RoleDashboard: React.FC = () => {
             revenue: adminRevenueFilteredRows.length,
             messages: adminNotificationRows.length,
             moderation: adminQueueRows.length,
+            accepted: adminAcceptedRows.length,
             rejected: adminRejectedRows.length,
             users: adminUserRows.length,
             map: adminAccountLocations.length,
@@ -1750,6 +1806,7 @@ export const RoleDashboard: React.FC = () => {
         adminAuditRows.length,
         adminRevenueFilteredRows.length,
         adminNotificationRows.length,
+        adminAcceptedRows.length,
         adminQueueRows.length,
         adminRejectedRows.length,
         adminUserRows.length,
@@ -3040,6 +3097,99 @@ export const RoleDashboard: React.FC = () => {
         );
     };
 
+    const renderAdminPackageDetail = (item: PostRecord) => {
+        const image = item.image_url || item.cover_image_url || item.thumbnail_url;
+        return (
+            <div className="rdb-package-expanded">
+                <div className="rdb-moderation-detail">
+                    <div className="rdb-moderation-media-wrap">
+                        <div
+                            className="rdb-moderation-media"
+                            style={image ? { backgroundImage: `url(${image})` } : undefined}
+                        />
+                    </div>
+                    <div className="rdb-moderation-info">
+                        <h3>{titleForPost(item)}</h3>
+                        <p className="rdb-moderation-desc">{item.description || 'No description provided.'}</p>
+                        <div className="rdb-stat-list">
+                            <div><span>Status</span><strong>{item.status || 'pending'}</strong></div>
+                            <div><span>Type</span><strong>{item.type || 'listing'}</strong></div>
+                            <div><span>Location</span><strong>{item.location || 'N/A'}</strong></div>
+                            <div><span>Price</span><strong>{formatCurrency(item.price || 0)}</strong></div>
+                            <div><span>Created</span><strong>{formatDate(item.created_at)}</strong></div>
+                            <div><span>Reviewed</span><strong>{formatDate(item.reviewed_at || null)}</strong></div>
+                            {item.rejection_reason && <div><span>Reason</span><strong>{item.rejection_reason}</strong></div>}
+                        </div>
+                        <div className="rdb-moderation-actions">
+                            <button
+                                type="button"
+                                className="rdb-btn"
+                                onClick={() => navigate(`/admin/review/${encodeURIComponent(item.id)}`)}
+                            >
+                                View More Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderAdminPackageGroups = (
+        rows: PostRecord[],
+        selectedId: string | null,
+        setSelectedId: React.Dispatch<React.SetStateAction<string | null>>,
+        emptyText: string,
+    ) => {
+        const grouped = (['tour', 'activity', 'guide'] as const).map((type) => ({
+            type,
+            label: listingTypeLabel(type),
+            rows: rows.filter((item) => normalizePostType(item.type || null) === type),
+        }));
+
+        if (rows.length === 0) return <p className="rdb-empty">{emptyText}</p>;
+
+        return (
+            <div className="rdb-package-groups">
+                {grouped.map((group) => (
+                    <div key={group.type} className="rdb-package-group">
+                        <div className="rdb-package-group-head">
+                            <h3>{group.label}</h3>
+                            <span>{group.rows.length}</span>
+                        </div>
+                        {group.rows.length === 0 ? (
+                            <p className="rdb-empty rdb-empty-compact">No {group.label.toLowerCase()} in this tab.</p>
+                        ) : (
+                            <div className="rdb-list">
+                                {group.rows.map((item) => {
+                                    const isSelected = selectedId === item.id;
+                                    return (
+                                        <div key={item.id} className="rdb-package-list-item">
+                                            <button
+                                                type="button"
+                                                className={`rdb-list-row rdb-list-row-button${isSelected ? ' is-active' : ''}`}
+                                                onClick={() => setSelectedId(item.id)}
+                                            >
+                                                <div>
+                                                    <p>{titleForPost(item)}</p>
+                                                    <small>{item.type || 'listing'} - {formatDate(item.created_at)}</small>
+                                                </div>
+                                                <span className={`rdb-pill rdb-pill-${(item.status || 'pending').toLowerCase()}`}>
+                                                    {item.status || 'pending'}
+                                                </span>
+                                            </button>
+                                            {isSelected && renderAdminPackageDetail(item)}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     const renderAdminSection = () => {
         if (activeSection === 'content') {
             return <MarketingContentEditor userId={user?.id} mode="contact" />;
@@ -3317,6 +3467,34 @@ export const RoleDashboard: React.FC = () => {
             );
         }
 
+        if (activeSection === 'accepted') {
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <h2>Accepted Summary</h2>
+                        <div className="rdb-stat-list">
+                            <div><span>Accepted Posts</span><strong>{adminAcceptedRows.length}</strong></div>
+                            <div><span>Active Queue</span><strong>{adminQueueRows.length}</strong></div>
+                            <div><span>Total Packages</span><strong>{adminMetrics.totalPackages}</strong></div>
+                            <div><span>Selected</span><strong>{selectedAcceptedItem ? titleForPost(selectedAcceptedItem) : 'N/A'}</strong></div>
+                        </div>
+                    </article>
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Accepted Packages</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${adminAcceptedRows.length} records`}</small>
+                        </div>
+                        {renderAdminPackageGroups(
+                            adminAcceptedRows,
+                            selectedAcceptedId,
+                            setSelectedAcceptedId,
+                            'No accepted listings found.',
+                        )}
+                    </article>
+                </section>
+            );
+        }
+
         if (activeSection === 'rejected') {
             return (
                 <section className="rdb-content-grid">
@@ -3334,70 +3512,11 @@ export const RoleDashboard: React.FC = () => {
                             <h2>Rejected Listings</h2>
                             <small>{query ? `Filtered by "${search}"` : `${adminRejectedRows.length} records`}</small>
                         </div>
-                        <div className="rdb-list">
-                            {adminRejectedRows.slice(0, 16).map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    className={`rdb-list-row rdb-list-row-button${selectedRejectedId === item.id ? ' is-active' : ''}`}
-                                    onClick={() => setSelectedRejectedId(item.id)}
-                                >
-                                    <div>
-                                        <p>{titleForPost(item)}</p>
-                                        <small>{item.type || 'listing'} - {formatDate(item.created_at)}</small>
-                                    </div>
-                                    <span className="rdb-pill rdb-pill-rejected">rejected</span>
-                                </button>
-                            ))}
-                            {adminRejectedRows.length === 0 && <p className="rdb-empty">No rejected listings found.</p>}
-                        </div>
-                    </article>
-
-                    <article className="rdb-panel rdb-panel-wide">
-                        <div className="rdb-panel-head">
-                            <h2>Rejected Listing Details</h2>
-                            <small>{selectedRejectedItem ? `ID: ${selectedRejectedItem.id}` : 'Select a rejected listing'}</small>
-                        </div>
-                        {selectedRejectedItem ? (
-                            <div className="rdb-moderation-detail">
-                                <div className="rdb-moderation-media-wrap">
-                                    <div
-                                        className="rdb-moderation-media"
-                                        style={{
-                                            backgroundImage: (() => {
-                                                const image = selectedRejectedItem.image_url
-                                                    || selectedRejectedItem.cover_image_url
-                                                    || selectedRejectedItem.thumbnail_url;
-                                                return image ? `url(${image})` : undefined;
-                                            })(),
-                                        }}
-                                    />
-                                </div>
-                                <div className="rdb-moderation-info">
-                                    <h3>{titleForPost(selectedRejectedItem)}</h3>
-                                    <p className="rdb-moderation-desc">{selectedRejectedItem.description || 'No description provided.'}</p>
-                                    <div className="rdb-stat-list">
-                                        <div><span>Status</span><strong>{selectedRejectedItem.status || 'rejected'}</strong></div>
-                                        <div><span>Type</span><strong>{selectedRejectedItem.type || 'listing'}</strong></div>
-                                        <div><span>Location</span><strong>{selectedRejectedItem.location || 'N/A'}</strong></div>
-                                        <div><span>Price</span><strong>{formatCurrency(selectedRejectedItem.price || 0)}</strong></div>
-                                        <div><span>Created</span><strong>{formatDate(selectedRejectedItem.created_at)}</strong></div>
-                                        <div><span>Reviewed</span><strong>{formatDate(selectedRejectedItem.reviewed_at || null)}</strong></div>
-                                        <div><span>Reason</span><strong>{selectedRejectedItem.rejection_reason || 'No reason recorded.'}</strong></div>
-                                    </div>
-                                    <div className="rdb-moderation-actions">
-                                        <button
-                                            type="button"
-                                            className="rdb-btn"
-                                            onClick={() => navigate(`/admin/review/${encodeURIComponent(selectedRejectedItem.id)}`)}
-                                        >
-                                            View More Details
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="rdb-empty">Select a rejected listing to inspect why it was removed from the queue.</p>
+                        {renderAdminPackageGroups(
+                            adminRejectedRows,
+                            selectedRejectedId,
+                            setSelectedRejectedId,
+                            'No rejected listings found.',
                         )}
                     </article>
                 </section>

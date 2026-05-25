@@ -74,6 +74,53 @@
   aspect-ratio: 16 / 9;
   background-position: center;
   background-size: cover;
+  position: relative;
+  width: 100%;
+}
+
+.listing-detail-image-count {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(11, 13, 17, 0.64);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.listing-detail-gallery {
+  display: grid;
+  grid-auto-columns: minmax(92px, 112px);
+  grid-auto-flow: column;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px 14px 0;
+  scrollbar-width: thin;
+}
+
+.listing-detail-gallery-thumb {
+  aspect-ratio: 4 / 3;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+  background: var(--surface-muted);
+}
+
+.listing-detail-gallery-thumb.is-active {
+  border-color: var(--accent);
+}
+
+.listing-detail-gallery-thumb img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
   width: 100%;
 }
 

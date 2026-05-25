@@ -36,7 +36,8 @@ import './provider-studio.css';
 
 const LISTING_IMAGE_BUCKET = 'avatars';
 const MAX_LISTING_IMAGE_MB = 8;
-const MIN_LISTING_IMAGES = 5;
+const MIN_LISTING_IMAGES = 3;
+const MAX_LISTING_IMAGES = 10;
 
 const TYPE_META: Record<ListingType, { icon: React.ReactNode; description: string }> = {
     tour: { icon: <Compass size={22} />, description: 'Itinerary-led guided tour' },
@@ -361,7 +362,12 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const addGalleryImage = useCallback((url: string) => {
         const normalized = url.trim();
         if (!normalized) return;
-        applyGallery([...(form.gallery_images || []), normalized]);
+        const currentImages = normalizeImageList(form.gallery_images || []);
+        if (!currentImages.includes(normalized) && currentImages.length >= MAX_LISTING_IMAGES) {
+            setGalleryError(`Add up to ${MAX_LISTING_IMAGES} images only.`);
+            return;
+        }
+        applyGallery([...currentImages, normalized]);
         setGalleryInput('');
         setGalleryError(null);
     }, [applyGallery, form.gallery_images]);
@@ -424,6 +430,10 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         }
         if (normalizedGallery.length < MIN_LISTING_IMAGES) {
             setGalleryError(`Add at least ${MIN_LISTING_IMAGES} images before submitting.`);
+            return;
+        }
+        if (normalizedGallery.length > MAX_LISTING_IMAGES) {
+            setGalleryError(`Add up to ${MAX_LISTING_IMAGES} images only.`);
             return;
         }
         if (!primaryImage || !normalizedGallery.includes(primaryImage)) {
@@ -495,6 +505,10 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
     const handleListingImageUpload = async (file: File) => {
         if (!canAccessStudio || !user) return;
+        if (normalizeImageList(form.gallery_images || []).length >= MAX_LISTING_IMAGES) {
+            setGalleryError(`Add up to ${MAX_LISTING_IMAGES} images only.`);
+            return;
+        }
         if (!file.type.startsWith('image/')) {
             alert('Please select a valid image file.');
             return;
@@ -679,12 +693,12 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                             </div>
 
                             <div className="ps-field">
-                                <span className="ps-field-label"><Image size={13} /> Listing Images ({galleryImages.length}/{MIN_LISTING_IMAGES}+)</span>
+                                <span className="ps-field-label"><Image size={13} /> Listing Images ({galleryImages.length}/{MAX_LISTING_IMAGES})</span>
                                 <div className="ps-image-upload-row">
                                     <button
                                         type="button"
                                         className="ps-upload-btn"
-                                        disabled={!canAccessStudio || uploadingImage}
+                                        disabled={!canAccessStudio || uploadingImage || galleryImages.length >= MAX_LISTING_IMAGES}
                                         onClick={() => imageInputRef.current?.click()}
                                     >
                                         {uploadingImage ? (
@@ -699,7 +713,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                             </>
                                         )}
                                     </button>
-                                    <span className="ps-upload-hint">Need at least {MIN_LISTING_IMAGES}. Set one as primary and one as cover.</span>
+                                    <span className="ps-upload-hint">Add {MIN_LISTING_IMAGES} to {MAX_LISTING_IMAGES} images. Set one as primary and one as cover.</span>
                                 </div>
                                 <input
                                     ref={imageInputRef}
@@ -711,7 +725,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                         if (file) void handleListingImageUpload(file);
                                         e.target.value = '';
                                     }}
-                                    disabled={!canAccessStudio || uploadingImage}
+                                    disabled={!canAccessStudio || uploadingImage || galleryImages.length >= MAX_LISTING_IMAGES}
                                 />
                                 <div className="ps-gallery-add-row">
                                     <input
@@ -722,12 +736,12 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                             setGalleryInput(e.target.value);
                                         }}
                                         placeholder="Paste image URL and click Add"
-                                        disabled={!canAccessStudio}
+                                        disabled={!canAccessStudio || galleryImages.length >= MAX_LISTING_IMAGES}
                                     />
                                     <button
                                         type="button"
                                         className="ps-upload-btn"
-                                        disabled={!canAccessStudio || !galleryInput.trim()}
+                                        disabled={!canAccessStudio || !galleryInput.trim() || galleryImages.length >= MAX_LISTING_IMAGES}
                                         onClick={() => addGalleryImage(galleryInput)}
                                     >
                                         Add URL

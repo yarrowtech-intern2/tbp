@@ -1644,8 +1644,11 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
     const galleryWithCover = normalizedCoverImage && !withPrimary.includes(normalizedCoverImage)
         ? [...withPrimary, normalizedCoverImage]
         : withPrimary;
-    if (galleryWithCover.length < 5) {
-        throw new Error('At least 5 listing images are required.');
+    if (galleryWithCover.length < 3) {
+        throw new Error('At least 3 listing images are required.');
+    }
+    if (galleryWithCover.length > 10) {
+        throw new Error('A maximum of 10 listing images is allowed.');
     }
     const primaryImage = normalizedImage || galleryWithCover[0] || '';
     const coverImageCandidate = normalizedCoverImage || galleryWithCover.find((item) => item !== primaryImage) || '';
@@ -1686,7 +1689,7 @@ export const getContentModerationQueue = async (): Promise<PostRecord[]> => {
     const { data, error } = await supabase
         .from('posts')
         .select('*')
-        .in('status', ['pending', 'approved', 'rejected'])
+        .in('status', ['pending', 'approved', 'rejected', 'resubmitted'])
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -1835,6 +1838,29 @@ export const getListingById = async (
 ): Promise<PostRecord | null> => {
     if (!id) return null;
 
+    const hydrateImagesFromPost = async (listing: PostRecord | null): Promise<PostRecord | null> => {
+        if (!listing) return null;
+        if (Array.isArray(listing.gallery_images) && listing.gallery_images.length > 0) return listing;
+
+        const { data, error } = await supabase
+            .from('posts')
+            .select('image_url, cover_image_url, thumbnail_url, gallery_images')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (error || !data) return listing;
+
+        const postImages = data as Pick<PostRecord, 'image_url' | 'cover_image_url' | 'thumbnail_url' | 'gallery_images'>;
+
+        return {
+            ...listing,
+            image_url: listing.image_url || postImages.image_url,
+            cover_image_url: listing.cover_image_url || postImages.cover_image_url,
+            thumbnail_url: listing.thumbnail_url || postImages.thumbnail_url,
+            gallery_images: postImages.gallery_images || listing.gallery_images,
+        };
+    };
+
     const mapActivity = async () => {
         const { data, error } = await supabase.from('activities').select('*').eq('id', id).maybeSingle();
         if (error || !data) return null;
@@ -1881,9 +1907,9 @@ export const getListingById = async (
 
         if (postData) return postData;
 
-        if (type === 'activity') return mapActivity();
-        if (type === 'tour') return mapTour();
-        return mapGuide();
+        if (type === 'activity') return hydrateImagesFromPost(await mapActivity());
+        if (type === 'tour') return hydrateImagesFromPost(await mapTour());
+        return hydrateImagesFromPost(await mapGuide());
     }
 
     const { data: postData, error: postError } = await supabase
@@ -1895,7 +1921,7 @@ export const getListingById = async (
     if (postData) return postData as PostRecord;
 
     const [activity, tour, guide] = await Promise.all([mapActivity(), mapTour(), mapGuide()]);
-    return activity || tour || guide;
+    return hydrateImagesFromPost(activity || tour || guide);
 };
 
 export const createBooking = async (booking: {
@@ -2365,6 +2391,13 @@ const writePostWithSchemaFallback = async (
             if (missingColumn === 'id' && !listingId) {
                 nextPayload.id = nextPayload.id || crypto.randomUUID();
                 continue;
+            }
+            if (missingColumn === 'gallery_images') {
+                throw {
+                    code: 'POST_GALLERY_SCHEMA_REQUIRED',
+                    message: 'The posts.gallery_images column is missing in Supabase. Run the listing gallery images migration before submitting packages.',
+                    details: result.error.message,
+                };
             }
             delete nextPayload[missingColumn];
             continue;

@@ -23,6 +23,7 @@ import { getLocalBookedLookup, markListingBookedLocally, onBookingSync } from '.
 import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
+import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
 import {
     clearPendingBookingConfirmation,
     getPendingBookingConfirmation,
@@ -60,10 +61,7 @@ const getListingTitle = (listing: PostRecord): string => {
 };
 
 const getListingImage = (listing: PostRecord): string => (
-    listing.image_url
-    || listing.cover_image_url
-    || listing.thumbnail_url
-    || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1200'
+    getPrimaryListingImage(listing, 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1200')
 );
 
 const formatReviewSummary = (average: number | null, count: number): string => {
@@ -100,6 +98,7 @@ export const ListingDetail: React.FC = () => {
     const [reviews, setReviews] = useState<ListingReviewRecord[]>([]);
     const [myReview, setMyReview] = useState<ListingReviewRecord | null>(null);
     const [selectedRating, setSelectedRating] = useState(0);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [checkIn, setCheckIn] = useState('');
     const [guests, setGuests] = useState(1);
     const [platformFeeRate, setPlatformFeeRate] = useState(PLATFORM_FEE_RATE);
@@ -120,6 +119,10 @@ export const ListingDetail: React.FC = () => {
         };
         void load();
     }, [id, listingType]);
+
+    useEffect(() => {
+        setSelectedImageIndex(0);
+    }, [listing?.id]);
 
     useEffect(() => {
         let cancelled = false;
@@ -185,7 +188,9 @@ export const ListingDetail: React.FC = () => {
     }, [id, listing?.id, profile?.role, user?.id]);
 
     const title = listing ? getListingTitle(listing) : '';
-    const image = listing ? getListingImage(listing) : '';
+    const galleryImages = useMemo(() => (listing ? getListingImages(listing) : []), [listing]);
+    const primaryImage = listing ? getListingImage(listing) : '';
+    const image = galleryImages[selectedImageIndex] || primaryImage;
     const description = typeof listing?.description === 'string' ? listing.description : 'No description provided yet.';
     const location = typeof listing?.location === 'string' ? listing.location : 'Location available after booking';
     const providerUnitPrice = typeof listing?.price === 'number' ? listing.price : 0;
@@ -248,7 +253,7 @@ export const ListingDetail: React.FC = () => {
                 listingId,
                 listingType: effectiveType,
                 listingTitle: title,
-                listingImage: image,
+                listingImage: primaryImage || image,
             });
             setBookingSyncTick((value) => value + 1);
         } catch (error) {
@@ -421,7 +426,7 @@ export const ListingDetail: React.FC = () => {
                 listing_type: effectiveType,
                 provider_user_id: normalizeUuidString(ownerUserId),
                 listing_title: title,
-                listing_image: image,
+                listing_image: primaryImage || image,
                 number_of_people: guests,
                 unit_price: pricing.provider_unit_price,
                 total_price: pricing.total_price,
@@ -475,7 +480,7 @@ export const ListingDetail: React.FC = () => {
                     listingId,
                     listingType: effectiveType,
                     listingTitle: title,
-                    listingImage: image,
+                    listingImage: primaryImage || image,
                 });
             }
         } catch (error) {
@@ -490,7 +495,7 @@ export const ListingDetail: React.FC = () => {
                         listingId,
                         listingType: effectiveType,
                         listingTitle: title,
-                        listingImage: image,
+                        listingImage: primaryImage || image,
                     });
                 }
             } else {
@@ -619,7 +624,28 @@ export const ListingDetail: React.FC = () => {
 
                 <div className="listing-detail-grid">
                     <section className="listing-detail-card">
-                        <div className="listing-detail-hero-image" style={{ backgroundImage: `url(${image})` }} />
+                        <div className="listing-detail-hero-image" style={{ backgroundImage: `url(${image})` }}>
+                            {galleryImages.length > 1 && (
+                                <span className="listing-detail-image-count">
+                                    {selectedImageIndex + 1}/{galleryImages.length}
+                                </span>
+                            )}
+                        </div>
+                        {galleryImages.length > 1 && (
+                            <div className="listing-detail-gallery" aria-label="Listing image gallery">
+                                {galleryImages.map((url, index) => (
+                                    <button
+                                        key={`${url}-${index}`}
+                                        type="button"
+                                        className={`listing-detail-gallery-thumb${index === selectedImageIndex ? ' is-active' : ''}`}
+                                        onClick={() => setSelectedImageIndex(index)}
+                                        aria-label={`Show listing image ${index + 1}`}
+                                    >
+                                        <img src={url} alt={`${title} image ${index + 1}`} />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         <div className="listing-detail-content">
                             <div className="listing-detail-meta-row">
                                 <span className="listing-detail-type-pill">{displayType}</span>

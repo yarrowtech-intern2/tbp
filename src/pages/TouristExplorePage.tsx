@@ -1,8 +1,9 @@
 ﻿import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ClipboardList, Home, LayoutDashboard, Search, Star, TrendingUp, UserCircle2, X } from 'lucide-react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, ClipboardList, Home, LayoutDashboard, Search, Star, TrendingUp, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getProfileAvatarUrl } from '../lib/avatar';
+import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
 import {
   getListingReviewSummaryMap,
   getPublicListingsByType,
@@ -12,6 +13,7 @@ import {
 } from '../lib/destinations';
 import { calculatePricingFromProviderUnit } from '../lib/pricing';
 import { isProviderRole, normalizeRoleValue } from '../lib/platform';
+import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './tourist-explore-page.css';
 
 type ExploreFilter = 'all' | 'tours' | 'activities' | 'guides';
@@ -45,8 +47,7 @@ const getExploreType = (post: PostRecord): ExploreFilter => {
 };
 
 const getPostImage = (post: PostRecord): string => {
-  const image = post.image_url || post.cover_image_url || post.thumbnail_url;
-  return typeof image === 'string' && image.trim().length > 0 ? image : FALLBACK_IMAGE;
+  return getPrimaryListingImage(post, FALLBACK_IMAGE);
 };
 
 const getPostTitle = (post: PostRecord): string => {
@@ -80,6 +81,123 @@ const getTypeChipLabel = (post: ExploreCardRecord): string => {
   if (post.exploreType === 'tours') return 'Tour';
   if (post.exploreType === 'guides') return 'Guide';
   return 'Activity';
+};
+
+const ExploreListingCard: React.FC<{
+  post: ExploreCardRecord;
+  size: typeof CARD_SIZE_PATTERN[number];
+  reviewSummary: ListingReviewSummary | undefined;
+  cardIndex: number;
+}> = ({ post, size, reviewSummary, cardIndex }) => {
+  const navigate = useNavigate();
+  const [isImagePaused, setIsImagePaused] = useState(false);
+  const images = useMemo(() => {
+    const uploadedImages = getListingImages(post);
+    return uploadedImages.length > 0 ? uploadedImages : [FALLBACK_IMAGE];
+  }, [post]);
+  const { activeImageIndex, previousImageIndex, setActiveImageIndex, transitionKey } = useStaggeredImageRotation({
+    imageCount: images.length,
+    cardIndex,
+    paused: isImagePaused,
+  });
+  const activeImage = images[activeImageIndex] || getPostImage(post);
+  const previousImage = images[previousImageIndex] || activeImage;
+  const hasMultipleImages = images.length > 1;
+  const href = getListingHref(post);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [post.id, setActiveImageIndex]);
+
+  const openListing = () => navigate(href);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openListing();
+    }
+  };
+
+  const handleImageStep = (event: React.MouseEvent<HTMLButtonElement>, direction: -1 | 1) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveImageIndex((current) => (current + direction + images.length) % images.length);
+  };
+
+  return (
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={openListing}
+      onKeyDown={handleKeyDown}
+      onMouseEnter={() => setIsImagePaused(true)}
+      onMouseLeave={() => setIsImagePaused(false)}
+      onFocus={() => setIsImagePaused(true)}
+      onBlur={() => setIsImagePaused(false)}
+      className={`txp-card txp-card--${size}`}
+      aria-label={`Open ${getPostTitle(post)}`}
+    >
+      <div className="txp-card-media">
+        <div
+          key={`txp-prev-${post.id}-${transitionKey}`}
+          className="txp-card-image txp-card-image--previous"
+          style={{ backgroundImage: `url(${previousImage})` }}
+        />
+        <div
+          key={`txp-current-${post.id}-${transitionKey}`}
+          className="txp-card-image txp-card-image--current"
+          style={{ backgroundImage: `url(${activeImage})` }}
+        />
+        <div className="txp-card-overlay" />
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              className="txp-gallery-btn txp-gallery-btn--prev"
+              aria-label="Previous listing image"
+              onClick={(event) => handleImageStep(event, -1)}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              type="button"
+              className="txp-gallery-btn txp-gallery-btn--next"
+              aria-label="Next listing image"
+              onClick={(event) => handleImageStep(event, 1)}
+            >
+              <ChevronRight size={14} />
+            </button>
+            <div className="txp-gallery-count">{activeImageIndex + 1}/{images.length}</div>
+            <div className="txp-gallery-dots" aria-hidden="true">
+              {images.slice(0, 6).map((url, imageIndex) => (
+                <span key={`${url}-${imageIndex}`} className={imageIndex === activeImageIndex ? 'is-active' : ''} />
+              ))}
+            </div>
+          </>
+        )}
+        <div className="txp-card-content">
+          <div className="txp-card-chips">
+            <span className="txp-card-chip">{getTypeChipLabel(post)}</span>
+            <span className={`txp-card-rating${reviewSummary?.review_count ? '' : ' is-empty'}`}>
+              <Star size={12} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
+              {getReviewLabel(reviewSummary)}
+            </span>
+            {hasActiveBoost(post) && (
+              <span className="txp-card-boosted">
+                <TrendingUp size={12} />
+                Boosted
+              </span>
+            )}
+          </div>
+          <div className="txp-card-copy">
+            <h2>{getPostTitle(post)}</h2>
+            <strong>{formatPrice(post.price)}</strong>
+            <p>{getPostLocation(post)}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
 };
 
 export const TouristExplorePage: React.FC = () => {
@@ -279,36 +397,13 @@ export const TouristExplorePage: React.FC = () => {
               const size = CARD_SIZE_PATTERN[index % CARD_SIZE_PATTERN.length];
               const reviewSummary = reviewSummaryByPostId[String(post.id || '').trim()];
               return (
-                <Link
+                <ExploreListingCard
                   key={`txp-card-${post.id}`}
-                  to={getListingHref(post)}
-                  className={`txp-card txp-card--${size}`}
-                >
-                  <div className="txp-card-media">
-                    <div className="txp-card-image" style={{ backgroundImage: `url(${getPostImage(post)})` }} />
-                    <div className="txp-card-overlay" />
-                    <div className="txp-card-content">
-                      <div className="txp-card-chips">
-                        <span className="txp-card-chip">{getTypeChipLabel(post)}</span>
-                        <span className={`txp-card-rating${reviewSummary?.review_count ? '' : ' is-empty'}`}>
-                          <Star size={12} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
-                          {getReviewLabel(reviewSummary)}
-                        </span>
-                        {hasActiveBoost(post) && (
-                          <span className="txp-card-boosted">
-                            <TrendingUp size={12} />
-                            Boosted
-                          </span>
-                        )}
-                      </div>
-                      <div className="txp-card-copy">
-                        <h2>{getPostTitle(post)}</h2>
-                        <strong>{formatPrice(post.price)}</strong>
-                        <p>{getPostLocation(post)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
+                  post={post}
+                  size={size}
+                  cardIndex={index}
+                  reviewSummary={reviewSummary}
+                />
               );
             })}
           </section>
