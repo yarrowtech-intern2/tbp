@@ -107,6 +107,7 @@ export const Auth: React.FC = () => {
     const [loginPassword, setLoginPassword] = useState('');
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
+    const [acceptTerms, setAcceptTerms] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [formValues, setFormValues] = useState<SignupFormValues>(() => ({
         ...DEFAULT_SIGNUP_VALUES,
@@ -159,6 +160,13 @@ export const Auth: React.FC = () => {
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!acceptTerms) {
+            setError('Accept the Terms & Condition before creating an account.');
+            setInfo(null);
+            return;
+        }
+
         setLoading(true);
         setError(null);
         setInfo(null);
@@ -200,6 +208,7 @@ export const Auth: React.FC = () => {
             );
             clearAuthDraft();
             setFormValues(DEFAULT_SIGNUP_VALUES);
+            setAcceptTerms(false);
             setIsLogin(true);
             setLoginEmail(formValues.email);
             setLoginPassword('');
@@ -213,6 +222,12 @@ export const Auth: React.FC = () => {
     const handleGoogleTouristAuth = async (mode: 'login' | 'signup') => {
         if (mode === 'signup' && activeRole !== 'tourist') {
             setInfo('Google signup is available for Tourist accounts only.');
+            return;
+        }
+
+        if (mode === 'signup' && !acceptTerms) {
+            setError('Accept the Terms & Condition before creating an account.');
+            setInfo(null);
             return;
         }
 
@@ -478,12 +493,21 @@ export const Auth: React.FC = () => {
 
                                 <p className="auth-role-note">Selected role: {ROLE_LABELS[activeRole]}</p>
 
-                                <p className="auth-role-note">
-                                    By creating an account, you agree to the{' '}
+                                <label className="auth-check-row auth-check-row-full auth-terms-check">
+                                    <input
+                                        type="checkbox"
+                                        required
+                                        checked={acceptTerms}
+                                        onChange={(e) => {
+                                            setAcceptTerms(e.target.checked);
+                                            setError(null);
+                                        }}
+                                    />
+                                    <span>I agree to the </span>
                                     <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>
                                         Terms &amp; Condition
                                     </button>
-                                </p>
+                                </label>
 
                                 <button type="submit" className="auth-submit" disabled={loading}>
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}

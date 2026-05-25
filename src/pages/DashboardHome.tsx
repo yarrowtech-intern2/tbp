@@ -41,8 +41,59 @@ import '../components/listing-card.css';
 type RevealProps = { children: React.ReactNode; className?: string; delay?: number };
 type SectionTab = 'tours' | 'activities' | 'events';
 type TouristMobileNavKey = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
+type HeroMessageMood = 'early' | 'morning' | 'afternoon' | 'sunset' | 'evening' | 'night';
 
 const FALLBACK_IMAGE = '/images/home4/forrest.jpg';
+
+const HERO_MESSAGES: Record<HeroMessageMood, string[]> = {
+  early: [
+    'Start softly somewhere new',
+    'Let the day find you',
+    'Chase quiet morning roads',
+  ],
+  morning: [
+    'Wake up to somewhere better',
+    'Your next story starts today',
+    'Find a view worth waking for',
+  ],
+  afternoon: [
+    'Step into a brighter detour',
+    'Make today feel far away',
+    'Follow the sun somewhere',
+  ],
+  sunset: [
+    'Save sunset for somewhere special',
+    'Let golden hour guide you',
+    'Find your evening escape',
+  ],
+  evening: [
+    'Plan tomorrow over tonight',
+    'Turn tonight into a route',
+    'Pick a place for the mood',
+  ],
+  night: [
+    'Dream up the next getaway',
+    'Let midnight map it out',
+    'Your next escape is waiting',
+  ],
+};
+
+const getHeroMessageMood = (hour: number): HeroMessageMood => {
+  if (hour < 6) return 'night';
+  if (hour < 9) return 'early';
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  if (hour < 19) return 'sunset';
+  if (hour < 22) return 'evening';
+  return 'night';
+};
+
+const getDynamicHeroMessage = (date: Date): string => {
+  const mood = getHeroMessageMood(date.getHours());
+  const messages = HERO_MESSAGES[mood];
+  const rotationSeed = date.getDate() + date.getHours() + Math.floor(date.getMinutes() / 10);
+  return messages[rotationSeed % messages.length];
+};
 
 const Reveal: React.FC<RevealProps> = ({ children, className = '', delay = 0 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -675,8 +726,10 @@ export const DashboardHome: React.FC = () => {
   const [suggestedPosts, setSuggestedPosts] = useState<PostRecord[]>([]);
   const [reviewSummaryByPostId, setReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
   const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
+  const [localNow, setLocalNow] = useState(() => new Date());
 
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  const heroTitle = useMemo(() => getDynamicHeroMessage(localNow), [localNow]);
   const activeTab = useMemo<SectionTab | null>(() => {
     const tab = searchParams.get('tab');
     if (tab === 'tours' || tab === 'activities' || tab === 'events') return tab;
@@ -703,10 +756,6 @@ export const DashboardHome: React.FC = () => {
     if (fullName) return fullName.split(' ')[0];
     return user?.email?.split('@')[0] || 'Explorer';
   }, [profile?.full_name, user?.email]);
-  const displayRole = roleLabel?.trim() || 'Tourist';
-
-  const avatarSrc = profile?.profile_image_url
-    || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id || 'explorer'}`;
 
   const searchQueryNormalized = deferredSearchQuery.trim().toLowerCase();
 
@@ -787,6 +836,13 @@ export const DashboardHome: React.FC = () => {
 
     return { byTypeAndId, byId };
   }, [touristBookings]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = window.setInterval(() => setLocalNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -913,18 +969,13 @@ export const DashboardHome: React.FC = () => {
 
               <div className="dh-hero-head">
                 <div className="dh-hero-head-copy">
-                  <h1 className="dh-hero-title">Discover your next experience</h1>
+                  <h1 className="dh-hero-title">
+                    <span className="dh-hero-greeting">Hi {firstName},</span>
+                    <span>{heroTitle}</span>
+                  </h1>
                   {/* <p className="dh-hero-sub">
                     Recommendations first, then curated ads, then live tours, activities, and guides you can browse in rails.
                   </p> */}
-                </div>
-
-                <div className="dh-hero-avatar">
-                  <img src={avatarSrc} alt={firstName} className="dh-hero-avatar-image" />
-                  <div className="dh-hero-avatar-copy">
-                    <span className="dh-hero-avatar-name">{firstName}</span>
-                    <span className="dh-hero-avatar-role">{displayRole}</span>
-                  </div>
                 </div>
               </div>
             </div>
