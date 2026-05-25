@@ -56,6 +56,55 @@ const EMPTY_FORM = (type: ListingType): ListingInput => ({
     status: 'pending',
 });
 
+const PROVIDER_STUDIO_DRAFT_STORAGE_PREFIX = 'tbp:provider-studio-draft:v1:';
+
+type ProviderStudioDraft = {
+    form: ListingInput;
+    galleryInput: string;
+    acceptTerms: boolean;
+    acceptAgreement: boolean;
+};
+
+const getProviderStudioDraftKey = (userId: string) => `${PROVIDER_STUDIO_DRAFT_STORAGE_PREFIX}${userId}`;
+
+const readProviderStudioDraft = (userId: string, allowedTypes: ListingType[]): ProviderStudioDraft | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.sessionStorage.getItem(getProviderStudioDraftKey(userId));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<ProviderStudioDraft>;
+        const rawForm = parsed.form as Partial<ListingInput> | undefined;
+        if (!rawForm || typeof rawForm !== 'object') return null;
+        const fallbackType = allowedTypes[0] || 'tour';
+        const rawType = rawForm.type;
+        const type = rawType && allowedTypes.includes(rawType) ? rawType : fallbackType;
+        return {
+            form: {
+                ...EMPTY_FORM(type),
+                ...rawForm,
+                type,
+                gallery_images: normalizeImageList(rawForm.gallery_images || []),
+                price: typeof rawForm.price === 'number' ? rawForm.price : Number(rawForm.price || 0) || null,
+            },
+            galleryInput: typeof parsed.galleryInput === 'string' ? parsed.galleryInput : '',
+            acceptTerms: parsed.acceptTerms === true,
+            acceptAgreement: parsed.acceptAgreement === true,
+        };
+    } catch {
+        return null;
+    }
+};
+
+const writeProviderStudioDraft = (userId: string, draft: ProviderStudioDraft) => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(getProviderStudioDraftKey(userId), JSON.stringify(draft));
+};
+
+const clearProviderStudioDraft = (userId: string) => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(getProviderStudioDraftKey(userId));
+};
+
 const getStatusDotClass = (status?: string | null) => {
     switch (status) {
         case 'live':
@@ -135,18 +184,20 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [consentError, setConsentError] = useState<string | null>(null);
     const [submissionModal, setSubmissionModal] = useState<SubmissionModalState | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const draftRestoredRef = useRef(false);
 
     const allowedTypes = useMemo(
         () => (['tour', 'activity', 'guide'] as ListingType[]).filter((type) => canRolePublish(profile?.role, type)),
         [profile?.role]
     );
     const canAccessStudio = isProvider && allowedTypes.length > 0;
+    const currentUserId = user?.id || null;
 
-    const loadListings = async () => {
-        if (!user) return;
+    const loadListings = useCallback(async () => {
+        if (!currentUserId) return;
         setLoading(true);
         try {
-            const rows = await getMyPosts(user.id);
+            const rows = await getMyPosts(currentUserId);
             setListings(rows);
             if (allowedTypes.length > 0) {
                 setForm((current) => ({
@@ -157,17 +208,38 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         } finally {
             setLoading(false);
         }
-    };
+    }, [allowedTypes, currentUserId]);
 
     useEffect(() => {
-        if (!user || !isProvider) return;
+        if (!currentUserId || !isProvider) return;
         void loadListings();
-    }, [allowedTypes, isProvider, user]);
+    }, [currentUserId, isProvider, loadListings]);
 
-    if (!user || !isProvider) {
-        if (embedded) return null;
-        return <Navigate to="/dashboard" replace />;
-    }
+    useEffect(() => {
+        if (!currentUserId || allowedTypes.length === 0 || draftRestoredRef.current) return;
+        draftRestoredRef.current = true;
+        const draft = readProviderStudioDraft(currentUserId, allowedTypes);
+        if (!draft) return;
+
+        setEditingListingId(null);
+        setImgError(false);
+        setGalleryError(null);
+        setConsentError(null);
+        setForm(draft.form);
+        setGalleryInput(draft.galleryInput);
+        setAcceptTerms(draft.acceptTerms);
+        setAcceptAgreement(draft.acceptAgreement);
+    }, [allowedTypes, currentUserId]);
+
+    useEffect(() => {
+        if (!currentUserId || !draftRestoredRef.current || editingListingId) return;
+        writeProviderStudioDraft(currentUserId, {
+            form,
+            galleryInput,
+            acceptTerms,
+            acceptAgreement,
+        });
+    }, [acceptAgreement, acceptTerms, currentUserId, editingListingId, form, galleryInput]);
 
     const resetForm = () => {
         setEditingListingId(null);
@@ -178,6 +250,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setAcceptAgreement(false);
         setConsentError(null);
         setForm(EMPTY_FORM(allowedTypes[0] || 'tour'));
+        if (currentUserId) clearProviderStudioDraft(currentUserId);
     };
 
     const beginEdit = useCallback((listing: PostRecord) => {
@@ -196,6 +269,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setAcceptTerms(false);
         setAcceptAgreement(false);
         setConsentError(null);
+        if (currentUserId) clearProviderStudioDraft(currentUserId);
         setForm({
             id: listing.id,
             user_id: listing.user_id,
@@ -213,7 +287,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             starts_at: listing.starts_at || '',
             status: (listing.status as ListingInput['status']) || 'pending',
         });
-    }, [allowedTypes]);
+    }, [allowedTypes, currentUserId]);
 
     useEffect(() => {
         const editId = searchParams.get('edit');
@@ -314,6 +388,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         });
         setGalleryError(null);
     }, []);
+
+    if (!user || !isProvider) {
+        if (embedded) return null;
+        return <Navigate to="/dashboard" replace />;
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

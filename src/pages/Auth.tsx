@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     ArrowLeft,
     Backpack,
@@ -55,18 +55,64 @@ const FIELD_ICONS: Partial<Record<RoleFormField, React.ReactNode>> = {
     city: <MapPin size={15} />,
 };
 
+const AUTH_DRAFT_STORAGE_KEY = 'tbp:auth-draft:v1';
+
+type AuthDraft = {
+    isLogin: boolean;
+    signupValues: Omit<SignupFormValues, 'password'>;
+};
+
+const getSignupValuesForDraft = (values: SignupFormValues): Omit<SignupFormValues, 'password'> => {
+    const { password, ...draftValues } = values;
+    void password;
+    return draftValues;
+};
+
+const readAuthDraft = (): AuthDraft | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.sessionStorage.getItem(AUTH_DRAFT_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<AuthDraft>;
+        if (!parsed || typeof parsed !== 'object' || !parsed.signupValues) return null;
+        return {
+            isLogin: parsed.isLogin === true,
+            signupValues: {
+                ...getSignupValuesForDraft(DEFAULT_SIGNUP_VALUES),
+                ...parsed.signupValues,
+            },
+        };
+    } catch {
+        return null;
+    }
+};
+
+const writeAuthDraft = (draft: AuthDraft) => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(AUTH_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+};
+
+const clearAuthDraft = () => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.removeItem(AUTH_DRAFT_STORAGE_KEY);
+};
+
 export const Auth: React.FC = () => {
+    const initialDraft = useMemo(() => readAuthDraft(), []);
     const [sideImage] = useState(
         () => NATURE_SIDE_IMAGES[Math.floor(Math.random() * NATURE_SIDE_IMAGES.length)]
     );
-    const [isLogin, setIsLogin] = useState(true);
+    const [isLogin, setIsLogin] = useState(() => initialDraft?.isLogin ?? true);
     const [loginEmail, setLoginEmail] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
-    const [loginAgree, setLoginAgree] = useState(true);
     const [googleLoading, setGoogleLoading] = useState(false);
-    const [formValues, setFormValues] = useState<SignupFormValues>(DEFAULT_SIGNUP_VALUES);
+    const [formValues, setFormValues] = useState<SignupFormValues>(() => ({
+        ...DEFAULT_SIGNUP_VALUES,
+        ...(initialDraft?.signupValues || {}),
+        password: '',
+    }));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [info, setInfo] = useState<string | null>(null);
@@ -74,6 +120,13 @@ export const Auth: React.FC = () => {
 
     const activeRole = formValues.role;
     const roleConfig = useMemo(() => ROLE_SIGNUP_CONFIG[activeRole], [activeRole]);
+
+    useEffect(() => {
+        writeAuthDraft({
+            isLogin,
+            signupValues: getSignupValuesForDraft(formValues),
+        });
+    }, [formValues, isLogin]);
 
     const updateField = <K extends keyof SignupFormValues>(key: K, value: SignupFormValues[K]) =>
         setFormValues((current) => ({ ...current, [key]: value }));
@@ -145,6 +198,8 @@ export const Auth: React.FC = () => {
                     ? 'Account created. Check your email verification link, then sign in to submit listings for admin approval.'
                     : 'Account created. Check your email verification link to continue.'
             );
+            clearAuthDraft();
+            setFormValues(DEFAULT_SIGNUP_VALUES);
             setIsLogin(true);
             setLoginEmail(formValues.email);
             setLoginPassword('');
@@ -282,17 +337,6 @@ export const Auth: React.FC = () => {
                                 <button type="submit" className="auth-submit" disabled={loading}>
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Log in'}
                                 </button>
-
-                                <label className="auth-check-row">
-                                    <input
-                                        type="checkbox"
-                                        checked={loginAgree}
-                                        onChange={(e) => setLoginAgree(e.target.checked)}
-                                    />
-                                    <span>
-                                        I agree to the <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>Terms &amp; Condition</button>
-                                    </span>
-                                </label>
 
                                 <div className="auth-divider">or</div>
 

@@ -1,6 +1,14 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+const ACTIVE_ADS_CACHE_KEY = 'edge:get-active-ads:v1';
+const ACTIVE_ADS_CACHE_TTL_SECONDS = 60;
+
+type RedisCommandResponse<T> = {
+    result?: T;
+    error?: string;
+};
+
 const corsHeaders: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,6 +29,64 @@ const ensureEnv = (name: string): string => {
     const value = Deno.env.get(name)?.trim();
     if (!value) throw new Error(`Missing environment variable: ${name}`);
     return value;
+};
+
+const getRedisConfig = () => {
+    const url = Deno.env.get('UPSTASH_REDIS_REST_URL')?.trim();
+    const token = Deno.env.get('UPSTASH_REDIS_REST_TOKEN')?.trim();
+    if (!url || !token) return null;
+    return {
+        url: url.replace(/\/+$/, ''),
+        token,
+    };
+};
+
+const runRedisCommand = async <T,>(command: unknown[]): Promise<T | null> => {
+    const config = getRedisConfig();
+    if (!config) return null;
+
+    try {
+        const response = await fetch(config.url, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${config.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(command),
+        });
+
+        if (!response.ok) {
+            console.warn('Redis cache command failed', response.status, await response.text());
+            return null;
+        }
+
+        const payload = await response.json() as RedisCommandResponse<T>;
+        if (payload.error) {
+            console.warn('Redis cache command returned error', payload.error);
+            return null;
+        }
+
+        return payload.result ?? null;
+    } catch (error) {
+        console.warn('Redis cache unavailable', error instanceof Error ? error.message : error);
+        return null;
+    }
+};
+
+const getJsonCache = async <T,>(key: string): Promise<T | null> => {
+    const cached = await runRedisCommand<string>(['GET', key]);
+    if (!cached) return null;
+
+    try {
+        return JSON.parse(cached) as T;
+    } catch {
+        return null;
+    }
+};
+
+const setJsonCache = async (key: string, value: unknown, ttlSeconds: number): Promise<void> => {
+    if (ttlSeconds <= 0) return;
+    await runRedisCommand(['SETEX', key, ttlSeconds, JSON.stringify(value)]);
 };
 
 const normalizeLooseString = (value: unknown): string => {
@@ -50,6 +116,11 @@ Deno.serve(async (req) => {
     }
 
     try {
+        const cached = await getJsonCache<{ ads: unknown[] }>(ACTIVE_ADS_CACHE_KEY);
+        if (cached) {
+            return jsonResponse(200, cached);
+        }
+
         const supabaseUrl = ensureEnv('SUPABASE_URL');
         const serviceRoleKey = ensureEnv('SUPABASE_SERVICE_ROLE_KEY');
         const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -77,7 +148,9 @@ Deno.serve(async (req) => {
             });
 
         if (activePayments.length === 0) {
-            return jsonResponse(200, { ads: [] });
+            const payload = { ads: [] };
+            await setJsonCache(ACTIVE_ADS_CACHE_KEY, payload, ACTIVE_ADS_CACHE_TTL_SECONDS);
+            return jsonResponse(200, payload);
         }
 
         const adIdSet = new Set(
@@ -143,7 +216,9 @@ Deno.serve(async (req) => {
             })
             .filter(Boolean);
 
-        return jsonResponse(200, { ads });
+        const payload = { ads };
+        await setJsonCache(ACTIVE_ADS_CACHE_KEY, payload, ACTIVE_ADS_CACHE_TTL_SECONDS);
+        return jsonResponse(200, payload);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Internal server error';
         return jsonResponse(500, { error: message });
