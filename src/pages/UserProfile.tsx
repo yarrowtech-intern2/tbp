@@ -17,11 +17,12 @@ import {
     type PostRecord,
     type Profile,
 } from '../lib/destinations';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import { getRoleLabel, getVerificationLabel, isProviderRole } from '../lib/platform';
 import './user-profile.css';
 
 const getAvatar = (profile: Profile) => (
-    profile.profile_image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}`
+    getProfileAvatarUrl(profile.profile_image_url, profile.id, profile.full_name, profile.email)
 );
 
 const getName = (profile: Profile) => profile.full_name || profile.email || 'Member';

@@ -28,6 +28,7 @@ import {
     type VerificationRecord,
 } from '../lib/destinations';
 import { getAccountRoleGroup, type AccountRoleGroup } from '../lib/accountGeo';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import { LISTING_LABELS, getRoleLabel } from '../lib/platform';
 import './admin-console.css';
 
@@ -58,11 +59,6 @@ const statusPillClass = (status?: string | null) => {
 const getListingStatusLabel = (status?: string | null) => {
     if (status === 'published') return 'live';
     return status || 'pending';
-};
-
-const initials = (name?: string | null, email?: string | null) => {
-    const source = name || email || '?';
-    return source.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 };
 
 export const AdminConsole: React.FC = () => {
@@ -612,9 +608,11 @@ export const AdminConsole: React.FC = () => {
                                                             checked={selectedVerificationIds.includes(item.id)}
                                                             onChange={() => toggleVerificationSelection(item.id)}
                                                         />
-                                                        <div className="ac-applicant-avatar">
-                                                            {initials(profile?.full_name, profile?.email)}
-                                                        </div>
+                                                        <img
+                                                            className="ac-applicant-avatar"
+                                                            src={getProfileAvatarUrl(profile?.profile_image_url, item.user_id, profile?.full_name, profile?.email)}
+                                                            alt={profile?.full_name || profile?.email || 'Applicant'}
+                                                        />
                                                         <div>
                                                             <div className="ac-applicant-pills">
                                                                 <span className="ac-pill ac-pill--role">{getRoleLabel(item.role)}</span>

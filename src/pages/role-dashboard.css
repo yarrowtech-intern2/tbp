@@ -182,6 +182,8 @@
     color: var(--accent);
     flex-shrink: 0;
     letter-spacing: 0.02em;
+    object-fit: cover;
+    overflow: hidden;
     text-transform: uppercase;
 }
 
@@ -1184,6 +1186,174 @@
     background: color-mix(in srgb, var(--accent) 14%, var(--surface-main));
     transform: translateX(3px);
     border-color: color-mix(in srgb, var(--accent) 40%, var(--border-light));
+}
+
+.rdb-marketing-content {
+    align-content: start;
+}
+
+.rdb-editor-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    background: color-mix(in srgb, var(--surface-main) 94%, transparent);
+    backdrop-filter: blur(16px);
+}
+
+.rdb-marketing-save {
+    gap: 8px;
+    justify-content: center;
+}
+
+.rdb-marketing-status {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #15803d;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.rdb-marketing-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.rdb-greeting-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.rdb-marketing-field {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.rdb-marketing-field-wide {
+    grid-column: 1 / -1;
+}
+
+.rdb-marketing-field-compact {
+    max-width: 280px;
+}
+
+.rdb-marketing-field span {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.rdb-marketing-field input,
+.rdb-marketing-field textarea {
+    width: 100%;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background: var(--surface-main);
+    color: var(--text-main);
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    outline: none;
+}
+
+.rdb-marketing-field input:focus,
+.rdb-marketing-field textarea:focus {
+    border-color: color-mix(in srgb, var(--accent) 46%, var(--border-light));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.rdb-marketing-field textarea {
+    min-height: 118px;
+    resize: vertical;
+    line-height: 1.45;
+}
+
+.rdb-editor-card {
+    gap: 14px;
+}
+
+.rdb-editor-card-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rdb-editor-card-head h2 {
+    margin: 0;
+}
+
+.rdb-editor-card-head small {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.rdb-editor-add-btn,
+.rdb-editor-icon-btn {
+    appearance: none;
+    border: 1px solid var(--border-light);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface-main));
+    color: var(--text-main);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    transition: all 0.18s ease;
+}
+
+.rdb-editor-add-btn {
+    min-height: 38px;
+    border-radius: 10px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    white-space: nowrap;
+}
+
+.rdb-editor-icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: end;
+    color: #b42318;
+    background: color-mix(in srgb, #b42318 8%, var(--surface-main));
+}
+
+.rdb-editor-add-btn:hover,
+.rdb-editor-icon-btn:hover {
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--border-light));
+    transform: translateY(-1px);
+}
+
+.rdb-editor-row-list {
+    display: grid;
+    gap: 10px;
+}
+
+.rdb-editor-row {
+    display: grid;
+    grid-template-columns: minmax(160px, 0.8fr) minmax(220px, 1.2fr) 40px;
+    gap: 10px;
+    align-items: end;
+    padding: 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface-muted) 32%, var(--surface-main));
+}
+
+.rdb-editor-row--single {
+    grid-template-columns: minmax(0, 1fr) 40px;
 }
 
 /* ─── User split (admin) ─────────────────────────────────── */
@@ -2971,4 +3141,30 @@
     height: 132px;
     margin-top: 6px;
 }
+
+    .rdb-marketing-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rdb-greeting-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rdb-editor-card-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .rdb-editor-add-btn {
+        width: 100%;
+    }
+
+    .rdb-editor-row,
+    .rdb-editor-row--single {
+        grid-template-columns: 1fr;
+    }
+
+    .rdb-editor-icon-btn {
+        width: 100%;
+    }
 }

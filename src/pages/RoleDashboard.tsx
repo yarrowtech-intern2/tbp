@@ -37,11 +37,13 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import {
     getAdminAccountLocations,
     getBookings,
     getContentModerationQueue,
     getConversations,
+    getActivePaidAds,
     getFavoriteListings,
     getListingReviewSummaryMap,
     getListingReviewsForListingIds,
@@ -78,9 +80,11 @@ import {
     isPromotionWindowActive,
     type PromotionPlanKey,
 } from '../lib/promotions';
+import { DEFAULT_SALES_SETTINGS, getPublicAppContent, type SalesSettingsContent } from '../lib/appContent';
+import { MarketingContentEditor, SalesSettingsEditor } from '../components/marketing/MarketingContentEditor';
 import './role-dashboard.css';
 
-type DashboardRole = 'tourist' | 'provider' | 'admin';
+type DashboardRole = 'tourist' | 'provider' | 'admin' | 'marketing';
 
 type SidebarKey =
     | 'overview'
@@ -92,6 +96,9 @@ type SidebarKey =
     | 'advertisements'
     | 'studio'
     | 'messages'
+    | 'content'
+    | 'greetings'
+    | 'contact'
     | 'moderation'
     | 'rejected'
     | 'users'
@@ -114,6 +121,7 @@ type AdminDashboardSnapshot = {
     users: AdminProfileRow[];
     revenue: number;
     revenueRows: AdminRevenueBookingRow[];
+    activeAds: PaidAdRecord[];
 };
 
 type AdminRevenueBookingRow = {
@@ -203,12 +211,14 @@ const normalizeRoleParam = (value?: string): DashboardRole | null => {
     if (v === 'tourist') return 'tourist';
     if (v === 'provider' || v === 'vendor') return 'provider';
     if (v === 'admin') return 'admin';
+    if (v === 'marketing') return 'marketing';
     return null;
 };
 
 const effectiveRoleFromProfile = (role?: string | null): DashboardRole => {
     const normalizedRole = normalizeRoleValue(role);
     if (normalizedRole === 'admin') return 'admin';
+    if (normalizedRole === 'marketing') return 'marketing';
     if (normalizedRole === 'provider' || normalizedRole === 'vendor') return 'provider';
     if (isProviderRole(normalizedRole)) return 'provider';
     return 'tourist';
@@ -390,6 +400,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (!value) return null;
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
+    if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'content';
     if (normalized === 'messages') return 'messages';
     if (normalized === 'notifications') return 'messages';
     if (normalized === 'revenue') return 'revenue';
@@ -398,6 +409,17 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'users') return 'users';
     if (normalized === 'map') return 'map';
     if (normalized === 'audits' || normalized === 'audit') return 'audits';
+    return null;
+};
+
+const parseMarketingSection = (value: string | null): SidebarKey | null => {
+    if (!value) return null;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
+    if (normalized === 'greetings' || normalized === 'edit-greetings' || normalized === 'edit_greetings') return 'greetings';
+    if (normalized === 'contact' || normalized === 'contact-info' || normalized === 'edit-contact-info' || normalized === 'informatics') return 'contact';
+    if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'greetings';
+    if (normalized === 'messages' || normalized === 'notifications') return 'messages';
     return null;
 };
 
@@ -754,6 +776,10 @@ export const RoleDashboard: React.FC = () => {
         () => parseAdminSection(searchParams.get('section')),
         [searchParams],
     );
+    const requestedMarketingSection = useMemo(
+        () => parseMarketingSection(searchParams.get('section')),
+        [searchParams],
+    );
     const metadataRole = typeof user?.user_metadata?.role === 'string' ? user.user_metadata.role : null;
     const effectiveRole = useMemo(
         () => effectiveRoleFromProfile(profile?.role || metadataRole),
@@ -794,6 +820,8 @@ export const RoleDashboard: React.FC = () => {
     const [adminUsers, setAdminUsers] = useState<AdminProfileRow[]>([]);
     const [adminAccountLocations, setAdminAccountLocations] = useState<AdminAccountLocationRecord[]>([]);
     const [adminRevenueRows, setAdminRevenueRows] = useState<AdminRevenueBookingRow[]>([]);
+    const [adminActiveAds, setAdminActiveAds] = useState<PaidAdRecord[]>([]);
+    const [salesSettings, setSalesSettings] = useState<SalesSettingsContent>(DEFAULT_SALES_SETTINGS);
     const [selectedModerationId, setSelectedModerationId] = useState<string | null>(null);
     const [selectedRejectedId, setSelectedRejectedId] = useState<string | null>(null);
     const [adminRevenueDb, setAdminRevenueDb] = useState(0);
@@ -808,7 +836,7 @@ export const RoleDashboard: React.FC = () => {
     const [providerBookingActionId, setProviderBookingActionId] = useState<string | null>(null);
 
     const fetchAdminDashboardSnapshot = useCallback(async (): Promise<AdminDashboardSnapshot> => {
-        const [posts, queuePosts, verifications, audits, usersResult, bookingsResult, revenueResult] = await Promise.all([
+        const [posts, queuePosts, verifications, audits, usersResult, bookingsResult, revenueResult, activeAds] = await Promise.all([
             getPosts(),
             getContentModerationQueue(),
             getVerificationQueue(),
@@ -822,6 +850,7 @@ export const RoleDashboard: React.FC = () => {
                 .select('*')
                 .order('created_at', { ascending: false }),
             supabase.rpc('get_admin_revenue'),
+            getActivePaidAds(),
         ]);
 
         if (bookingsResult.error) {
@@ -893,6 +922,7 @@ export const RoleDashboard: React.FC = () => {
             users: usersResult.error ? [] : (usersResult.data as AdminProfileRow[] || []),
             revenue: sumBookedRevenue(bookingRows, 'admin_platform'),
             revenueRows: detailedRevenueRows,
+            activeAds,
         };
     }, []);
 
@@ -939,8 +969,12 @@ export const RoleDashboard: React.FC = () => {
             setActiveSection(requestedProviderSection || 'overview');
             return;
         }
+        if (effectiveRole === 'marketing') {
+            setActiveSection(requestedMarketingSection || 'overview');
+            return;
+        }
         setActiveSection(requestedTouristSection || 'overview');
-    }, [effectiveRole, requestedAdminSection, requestedProviderSection, requestedTouristSection]);
+    }, [effectiveRole, requestedAdminSection, requestedMarketingSection, requestedProviderSection, requestedTouristSection]);
 
     const loadAdminAccountLocations = async (force = false) => {
         if (effectiveRole !== 'admin') return;
@@ -991,8 +1025,11 @@ export const RoleDashboard: React.FC = () => {
                     setProviderConversations(conversations);
                 }
 
-                if (effectiveRole === 'admin') {
-                    const adminSnapshot = await fetchAdminDashboardSnapshot();
+                if (effectiveRole === 'admin' || effectiveRole === 'marketing') {
+                    const [adminSnapshot, appContent] = await Promise.all([
+                        fetchAdminDashboardSnapshot(),
+                        getPublicAppContent(),
+                    ]);
                     if (cancelled) return;
                     setAdminPublishedPosts(adminSnapshot.posts);
                     setAdminQueuePosts(adminSnapshot.queuePosts);
@@ -1001,6 +1038,8 @@ export const RoleDashboard: React.FC = () => {
                     setAdminUsers(adminSnapshot.users);
                     setAdminRevenueDb(adminSnapshot.revenue);
                     setAdminRevenueRows(adminSnapshot.revenueRows);
+                    setAdminActiveAds(adminSnapshot.activeAds);
+                    setSalesSettings(appContent.salesSettings);
                 }
             } catch (err: unknown) {
                 if (cancelled) return;
@@ -1031,6 +1070,7 @@ export const RoleDashboard: React.FC = () => {
                 setAdminUsers(snapshot.users);
                 setAdminRevenueDb(snapshot.revenue);
                 setAdminRevenueRows(snapshot.revenueRows);
+                setAdminActiveAds(snapshot.activeAds);
             } catch (err) {
                 if (disposed) return;
                 console.error('Failed to refresh admin dashboard live data:', err);
@@ -1110,6 +1150,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'admin') {
             return [
                 { key: 'overview', label: 'Dashboard', icon: FileText },
+                { key: 'content', label: 'Content', icon: Megaphone },
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
@@ -1130,6 +1171,14 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
         }
+        if (effectiveRole === 'marketing') {
+            return [
+                { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+                { key: 'greetings', label: 'Edit Greetings', icon: SquarePen },
+                { key: 'contact', label: 'Edit Contact Info', icon: Megaphone },
+                { key: 'messages', label: 'Messages', icon: MessageSquare },
+            ];
+        }
         return [
             { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
             { key: 'explore', label: 'Explore', icon: Compass },
@@ -1147,6 +1196,10 @@ export const RoleDashboard: React.FC = () => {
                 .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
         }
         if (effectiveRole === 'provider') {
+            return navItems
+                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
+        }
+        if (effectiveRole === 'marketing') {
             return navItems
                 .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
         }
@@ -1201,6 +1254,7 @@ export const RoleDashboard: React.FC = () => {
         let adminCount = 0;
         let providerCount = 0;
         let touristCount = 0;
+        let marketingCount = 0;
         let companyCount = 0;
         let instructorCount = 0;
         let guideCount = 0;
@@ -1208,6 +1262,8 @@ export const RoleDashboard: React.FC = () => {
             const role = normalizeRoleValue(row.role || null);
             if (role === 'admin') {
                 adminCount += 1;
+            } else if (role === 'marketing') {
+                marketingCount += 1;
             } else if (role === 'tour_company') {
                 providerCount += 1;
                 companyCount += 1;
@@ -1232,6 +1288,7 @@ export const RoleDashboard: React.FC = () => {
             totalPackages: packageIds.size,
             totalUsers: adminUsers.length,
             adminCount,
+            marketingCount,
             providerCount,
             touristCount,
             companyCount,
@@ -1284,6 +1341,62 @@ export const RoleDashboard: React.FC = () => {
         });
         return counts;
     }, [adminAuditLogs]);
+
+    const salesMetrics = useMemo(() => {
+        const includedRows = adminRevenueRows.filter((item) => item.included_in_revenue);
+        const totalRevenue = includedRows.reduce((sum, item) => sum + item.total_price, 0);
+        const platformFeeRevenue = includedRows.reduce((sum, item) => sum + item.platform_fee_amount, 0);
+
+        const packageMap = new Map<string, { title: string; count: number; revenue: number }>();
+        adminRevenueRows.forEach((item) => {
+            const title = item.listing_title || 'Untitled package';
+            const existing = packageMap.get(title) || { title, count: 0, revenue: 0 };
+            existing.count += 1;
+            if (item.included_in_revenue) existing.revenue += item.total_price;
+            packageMap.set(title, existing);
+        });
+
+        const packageRows = Array.from(packageMap.values());
+        const topPackages = [...packageRows]
+            .sort((a, b) => b.count - a.count || b.revenue - a.revenue || a.title.localeCompare(b.title))
+            .slice(0, 6);
+        const lowestPackages = [...packageRows]
+            .sort((a, b) => a.count - b.count || a.revenue - b.revenue || a.title.localeCompare(b.title))
+            .slice(0, 6);
+
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const monthly = new Array(12).fill(0);
+        includedRows.forEach((item) => {
+            const sourceDate = item.paid_at || item.booking_date || item.created_at;
+            if (!sourceDate) return;
+            const date = new Date(sourceDate);
+            if (date.getFullYear() === currentYear) {
+                monthly[date.getMonth()] += item.total_price;
+            }
+        });
+        const start = Math.max(0, currentMonth - 4);
+        const monthlySales = months.slice(start, currentMonth + 1).map((month, index) => ({
+            month,
+            count: Math.round(monthly[start + index]),
+            isCurrentMonth: start + index === currentMonth,
+        }));
+
+        return {
+            totalBookings: adminRevenueRows.length,
+            totalRevenue,
+            platformFeeRevenue,
+            activeAds: adminActiveAds.length,
+            topPackages,
+            lowestPackages,
+            monthlySales,
+            recentBookings: [...adminRevenueRows]
+                .sort((a, b) => new Date(b.created_at || b.booking_date || 0).getTime() - new Date(a.created_at || a.booking_date || 0).getTime())
+                .slice(0, 10),
+        };
+    }, [adminActiveAds.length, adminRevenueRows]);
 
     const touristBookingStatusBreakdown = useMemo(() => {
         let pending = 0;
@@ -1594,11 +1707,7 @@ export const RoleDashboard: React.FC = () => {
     };
     const userName = profile?.full_name || user?.email?.split('@')[0] || 'User';
     const userEmail = user?.email || '';
-    const userInitials = userName
-        .split(' ')
-        .slice(0, 2)
-        .map((n) => n[0]?.toUpperCase() ?? '')
-        .join('');
+    const userAvatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user?.id, profile?.full_name, user?.email);
 
     const sectionCounts: Partial<Record<SidebarKey, number>> = useMemo(() => {
         if (effectiveRole === 'tourist') {
@@ -1619,7 +1728,15 @@ export const RoleDashboard: React.FC = () => {
                 messages: providerNotificationRows.length,
             };
         }
+        if (effectiveRole === 'marketing') {
+            return {
+                greetings: 1,
+                contact: 1,
+                messages: centerNotifications.length,
+            };
+        }
         return {
+            content: 2,
             revenue: adminRevenueFilteredRows.length,
             messages: adminNotificationRows.length,
             moderation: adminQueueRows.length,
@@ -1636,6 +1753,7 @@ export const RoleDashboard: React.FC = () => {
         adminQueueRows.length,
         adminRejectedRows.length,
         adminUserRows.length,
+        centerNotifications.length,
         effectiveRole,
         favoriteRows.length,
         providerBookingRows.length,
@@ -2767,7 +2885,166 @@ export const RoleDashboard: React.FC = () => {
         );
     };
 
+    const renderMarketingSection = () => {
+        if (activeSection === 'greetings') {
+            return <MarketingContentEditor userId={user?.id} mode="greetings" />;
+        }
+
+        if (activeSection === 'contact') {
+            return <MarketingContentEditor userId={user?.id} mode="contact" />;
+        }
+
+        if (activeSection === 'messages') {
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Notifications</h2>
+                            <small>{centerNotifications.length} records</small>
+                        </div>
+                        {centerNotifications.length > 0 && (
+                            <button type="button" className="rdb-inline-link" onClick={() => void markAllAsRead()}>
+                                Mark all as read
+                            </button>
+                        )}
+                        <div className="rdb-list">
+                            {centerNotifications.slice(0, 16).map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className="rdb-list-row"
+                                    onClick={() => void markAsRead(item.id)}
+                                >
+                                    <div>
+                                        <strong>{item.title}</strong>
+                                        <small>{item.body || item.type}</small>
+                                    </div>
+                                    <small>{formatDate(item.created_at)}</small>
+                                </button>
+                            ))}
+                            {centerNotifications.length === 0 && <p className="rdb-empty">No notifications available yet.</p>}
+                        </div>
+                    </article>
+                </section>
+            );
+        }
+
+        return (
+            <section className="rdb-content-grid">
+                <div className="rdb-admin-kpi-row">
+                    <article className="rdb-admin-dark-card">
+                        <div className="rdb-admin-dark-card-layout">
+                            <div className="rdb-admin-dark-main">
+                                <p className="rdb-admin-dark-card-title">Total</p>
+                                <h2 className="rdb-admin-dark-card-heading">Bookings</h2>
+                                <strong className="rdb-admin-dark-card-number">{salesMetrics.totalBookings}</strong>
+                            </div>
+                            <div className="rdb-admin-dark-breakdown">
+                                <span>Active ads <strong>{salesMetrics.activeAds}</strong></span>
+                                <span>Platform fee <strong>{Math.round(salesSettings.platformFeeRate * 100)}%</strong></span>
+                            </div>
+                        </div>
+                    </article>
+                    <article className="rdb-admin-light-card rdb-admin-light-card--revenue">
+                        <p className="rdb-admin-light-card-title">Total</p>
+                        <h2 className="rdb-admin-light-card-heading">Revenue</h2>
+                        <strong className="rdb-admin-light-card-number rdb-admin-light-card-number--revenue">{formatRupeeShort(salesMetrics.totalRevenue)}</strong>
+                    </article>
+                    <article className="rdb-admin-light-card rdb-admin-light-card--users">
+                        <p className="rdb-admin-light-card-title">Platform</p>
+                        <h2 className="rdb-admin-light-card-heading">Fee Earned</h2>
+                        <strong className="rdb-admin-light-card-number rdb-admin-light-card-number--revenue">{formatRupeeShort(salesMetrics.platformFeeRevenue)}</strong>
+                    </article>
+                </div>
+
+                <SalesSettingsEditor userId={user?.id} value={salesSettings} onSaved={setSalesSettings} />
+
+                <div className="rdb-admin-charts-row">
+                    <article className="rdb-admin-chart-card">
+                        <h3>Monthly Sales</h3>
+                        <p>Paid booking revenue by month</p>
+                        <AdminBarChart data={salesMetrics.monthlySales} themeKey={theme} />
+                    </article>
+                    <article className="rdb-admin-chart-card">
+                        <h3>Insights</h3>
+                        <div className="rdb-admin-mod-list">
+                            {salesMetrics.topPackages.slice(0, 3).map((item) => (
+                                <button key={`top-${item.title}`} type="button" className="rdb-admin-mod-item">
+                                    {item.title} - {item.count} bookings
+                                </button>
+                            ))}
+                            {salesMetrics.topPackages.length === 0 && <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No booking data yet</p>}
+                        </div>
+                    </article>
+                </div>
+
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <div className="rdb-panel-head">
+                            <h2>Top Packages</h2>
+                            <small>By booking count</small>
+                        </div>
+                        <div className="rdb-list">
+                            {salesMetrics.topPackages.map((item) => (
+                                <div className="rdb-list-row" key={`sales-top-${item.title}`}>
+                                    <div>
+                                        <strong>{item.title}</strong>
+                                        <small>{formatCurrency(item.revenue)} revenue</small>
+                                    </div>
+                                    <span className="rdb-pill rdb-pill-live">{item.count}</span>
+                                </div>
+                            ))}
+                            {salesMetrics.topPackages.length === 0 && <p className="rdb-empty">No packages booked yet.</p>}
+                        </div>
+                    </article>
+
+                    <article className="rdb-panel">
+                        <div className="rdb-panel-head">
+                            <h2>Lowest Packages</h2>
+                            <small>By booking count</small>
+                        </div>
+                        <div className="rdb-list">
+                            {salesMetrics.lowestPackages.map((item) => (
+                                <div className="rdb-list-row" key={`sales-low-${item.title}`}>
+                                    <div>
+                                        <strong>{item.title}</strong>
+                                        <small>{formatCurrency(item.revenue)} revenue</small>
+                                    </div>
+                                    <span className="rdb-pill">{item.count}</span>
+                                </div>
+                            ))}
+                            {salesMetrics.lowestPackages.length === 0 && <p className="rdb-empty">No packages booked yet.</p>}
+                        </div>
+                    </article>
+                </section>
+
+                <article className="rdb-panel rdb-panel-wide">
+                    <div className="rdb-panel-head">
+                        <h2>Recent Bookings</h2>
+                        <small>{salesMetrics.recentBookings.length} latest</small>
+                    </div>
+                    <div className="rdb-list">
+                        {salesMetrics.recentBookings.map((item) => (
+                            <div className="rdb-list-row" key={`sales-booking-${item.id}`}>
+                                <div>
+                                    <strong>{item.listing_title}</strong>
+                                    <small>{item.status} | {item.payment_status} | Platform fee: {formatCurrency(item.platform_fee_amount)}</small>
+                                </div>
+                                <span className="rdb-pill rdb-pill-live">{formatCurrency(item.total_price)}</span>
+                            </div>
+                        ))}
+                        {salesMetrics.recentBookings.length === 0 && <p className="rdb-empty">No bookings yet.</p>}
+                    </div>
+                </article>
+            </section>
+        );
+    };
+
     const renderAdminSection = () => {
+        if (activeSection === 'content') {
+            return <MarketingContentEditor userId={user?.id} mode="contact" />;
+        }
+
         if (activeSection === 'messages') {
             return (
                 <section className="rdb-content-grid">
@@ -2886,6 +3163,7 @@ export const RoleDashboard: React.FC = () => {
                             <div><p>Tourists</p><strong>{adminMetrics.touristCount}</strong></div>
                             <div><p>Providers</p><strong>{adminMetrics.providerCount}</strong></div>
                             <div><p>Admins</p><strong>{adminMetrics.adminCount}</strong></div>
+                            <div><p>Marketing</p><strong>{adminMetrics.marketingCount}</strong></div>
                         </div>
                     </article>
                     <article className="rdb-panel rdb-panel-wide">
@@ -3193,6 +3471,7 @@ export const RoleDashboard: React.FC = () => {
                             <strong className="rdb-admin-light-card-number">{adminMetrics.totalUsers}</strong>
                             <div className="rdb-admin-users-breakdown">
                                 <div>Admin <span>{adminMetrics.adminCount}</span></div>
+                                <div>Marketing <span>{adminMetrics.marketingCount}</span></div>
                                 <div>Tourists <span>{adminMetrics.touristCount}</span></div>
                                 <div>Tour Companies <span>{adminMetrics.companyCount}</span></div>
                                 <div>Instructors <span>{adminMetrics.instructorCount}</span></div>
@@ -3240,7 +3519,13 @@ export const RoleDashboard: React.FC = () => {
     if (!user || profileLoading) return null;
 
     const adminDateStr = new Date().toLocaleDateString('en-GB').split('/').join('.');
-    const dashboardRoleLabel = effectiveRole === 'admin' ? 'Admin' : effectiveRole === 'provider' ? 'Provider' : 'Tourist';
+    const dashboardRoleLabel = effectiveRole === 'admin'
+        ? 'Admin'
+        : effectiveRole === 'provider'
+            ? 'Provider'
+            : effectiveRole === 'marketing'
+                ? 'Sales'
+                : 'Tourist';
     const isDarkTheme = theme === 'dark';
 
     return (
@@ -3306,7 +3591,7 @@ export const RoleDashboard: React.FC = () => {
                     </button>
 
                     <div className="rdb-profile">
-                        <div className="rdb-profile-avatar">{userInitials || '?'}</div>
+                        <img className="rdb-profile-avatar" src={userAvatarSrc} alt={userName} />
                         <div className="rdb-profile-info">
                             <p className="rdb-profile-name">{userName}</p>
                             <p className="rdb-profile-email">{userEmail}</p>
@@ -3319,7 +3604,7 @@ export const RoleDashboard: React.FC = () => {
                         <div className="rdb-admin-topbar-main">
                             <div className="rdb-admin-topbar-title">
                                 <small>{dashboardRoleLabel}</small>
-                                <h1>Dashboard</h1>
+                                <h1>{effectiveRole === 'marketing' ? 'Sales Dashboard' : 'Dashboard'}</h1>
                             </div>
                             <div className="rdb-admin-topbar-controls">
                                 {!isDesktopDashboard && (
@@ -3411,6 +3696,7 @@ export const RoleDashboard: React.FC = () => {
                         <>
                             {effectiveRole === 'tourist' && renderTouristSection()}
                             {effectiveRole === 'provider' && renderProviderSection()}
+                            {effectiveRole === 'marketing' && renderMarketingSection()}
                             {effectiveRole === 'admin' && renderAdminSection()}
                         </>
                     )}

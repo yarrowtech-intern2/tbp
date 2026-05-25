@@ -1,4 +1,4 @@
-export const USER_ROLES = ['tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'admin'] as const;
+export const USER_ROLES = ['tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'admin', 'marketing'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export const PROVIDER_ROLES = ['tour_company', 'tour_instructor', 'tour_guide'] as const;
@@ -25,6 +25,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
     tour_instructor: 'Tour Instructor',
     tour_guide: 'Tour Guide',
     admin: 'Admin',
+    marketing: 'Marketing',
 };
 
 export const normalizeRoleValue = (role?: string | null): string | null => {
@@ -167,6 +168,12 @@ export const ROLE_SIGNUP_CONFIG: Record<UserRole, RoleSignupConfig> = {
     },
     admin: {
         summary: 'Internal role for post moderation and operations.',
+        requiresVerification: false,
+        allowedListingTypes: [],
+        fields: [],
+    },
+    marketing: {
+        summary: 'Internal role for managing public marketing copy and dynamic greetings.',
         requiresVerification: false,
         allowedListingTypes: [],
         fields: [],

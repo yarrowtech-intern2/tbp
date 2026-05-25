@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import { normalizeRoleValue } from '../lib/platform';
 
 type NavTab = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
@@ -111,8 +112,7 @@ export const Navbar: React.FC = () => {
         return `${parts[0]} ${parts[parts.length - 1][0]}`;
     })();
 
-    const avatarSrc = profile?.profile_image_url
-        || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`;
+    const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user?.id, profile?.full_name, user?.email);
 
     useEffect(() => {
         if (!showMenu) return;

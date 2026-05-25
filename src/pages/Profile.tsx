@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import {
     getBookings, getConversations, getFavoriteListings,
     getLatestVerification, getProfileFollowStats, getProviderBookings,
@@ -415,7 +416,7 @@ export const Profile: React.FC = () => {
     };
 
     /* derived */
-    const avatarSrc = localAvatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`;
+    const avatarSrc = getProfileAvatarUrl(localAvatarUrl, user?.id, profile?.full_name, user?.email);
     const effectiveRole = useMemo<DashboardRole>(() => resolveDashboardRole(profile?.role), [profile?.role]);
     const displayBookings = isProvider ? providerBookings : travelerBookings;
     const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Member';

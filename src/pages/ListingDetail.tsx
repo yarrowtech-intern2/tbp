@@ -21,6 +21,8 @@ import type { ListingType } from '../lib/platform';
 import { confirmRazorpayBooking, createRazorpayOrder, openRazorpayCheckout } from '../lib/payments';
 import { getLocalBookedLookup, markListingBookedLocally, onBookingSync } from '../lib/bookingSync';
 import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
+import { getPublicAppContent } from '../lib/appContent';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import {
     clearPendingBookingConfirmation,
     getPendingBookingConfirmation,
@@ -100,6 +102,7 @@ export const ListingDetail: React.FC = () => {
     const [selectedRating, setSelectedRating] = useState(0);
     const [checkIn, setCheckIn] = useState('');
     const [guests, setGuests] = useState(1);
+    const [platformFeeRate, setPlatformFeeRate] = useState(PLATFORM_FEE_RATE);
     const [listing, setListing] = useState<PostRecord | null>(null);
 
     const listingType = toInternalListingType(type);
@@ -117,6 +120,18 @@ export const ListingDetail: React.FC = () => {
         };
         void load();
     }, [id, listingType]);
+
+    useEffect(() => {
+        let cancelled = false;
+        void getPublicAppContent()
+            .then((content) => {
+                if (!cancelled) setPlatformFeeRate(content.salesSettings.platformFeeRate);
+            })
+            .catch(() => undefined);
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
@@ -183,8 +198,8 @@ export const ListingDetail: React.FC = () => {
         : (listingType || 'activity');
     const displayType = effectiveType === 'guide' ? 'event' : effectiveType;
     const pricing = useMemo(
-        () => calculatePricingFromProviderUnit(providerUnitPrice, guests, PLATFORM_FEE_RATE),
-        [providerUnitPrice, guests]
+        () => calculatePricingFromProviderUnit(providerUnitPrice, guests, platformFeeRate),
+        [providerUnitPrice, guests, platformFeeRate]
     );
     const canBook = profile?.role === 'tourist';
     const canFavorite = profile?.role === 'tourist';
@@ -718,7 +733,7 @@ export const ListingDetail: React.FC = () => {
                                 </div>
 
                                 <div className="listing-book-total">
-                                    <span>Includes platform fee ({Math.round(PLATFORM_FEE_RATE * 100)}%)</span>
+                                    <span>Includes platform fee ({Math.round(platformFeeRate * 100)}%)</span>
                                     <strong>Rs {pricing.platform_fee_amount.toLocaleString()}</strong>
                                 </div>
 
@@ -800,11 +815,10 @@ export const ListingDetail: React.FC = () => {
                             reviews.slice(0, 8).map((review) => (
                                 <article key={review.id} className="listing-review-item">
                                     <div className="listing-review-avatar">
-                                        {review.reviewer_avatar_url ? (
-                                            <img src={review.reviewer_avatar_url} alt={review.reviewer_name || 'Traveler'} />
-                                        ) : (
-                                            <span>{(review.reviewer_name || 'T').charAt(0).toUpperCase()}</span>
-                                        )}
+                                        <img
+                                            src={getProfileAvatarUrl(review.reviewer_avatar_url, review.user_id, review.reviewer_name, 'traveler')}
+                                            alt={review.reviewer_name || 'Traveler'}
+                                        />
                                     </div>
                                     <div className="listing-review-copy">
                                         <div className="listing-review-copy-top">

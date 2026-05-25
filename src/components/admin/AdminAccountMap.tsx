@@ -14,7 +14,6 @@ import {
     Info,
     MapPin,
     RotateCcw,
-    UserRound,
     X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -25,6 +24,7 @@ import {
     type AccountRoleGroup,
 } from '../../lib/accountGeo';
 import type { AdminAccountLocationRecord } from '../../lib/destinations';
+import { getProfileAvatarUrl } from '../../lib/avatar';
 import { getRoleLabel } from '../../lib/platform';
 import './admin-account-map.css';
 
@@ -391,14 +391,15 @@ export const AdminAccountMap: React.FC<AdminAccountMapProps> = ({ accounts }) =>
                         <div className="acm-account-card acm-account-card-featured">
                             <div className="acm-account-top">
                                 <div className="acm-account-avatar">
-                                    {selectedPin.account.profile_image_url ? (
-                                        <img
-                                            src={selectedPin.account.profile_image_url}
-                                            alt={selectedPin.account.full_name || selectedPin.account.email || 'User'}
-                                        />
-                                    ) : (
-                                        <UserRound size={18} />
-                                    )}
+                                    <img
+                                        src={getProfileAvatarUrl(
+                                            selectedPin.account.profile_image_url,
+                                            selectedPin.account.id,
+                                            selectedPin.account.full_name,
+                                            selectedPin.account.email,
+                                        )}
+                                        alt={selectedPin.account.full_name || selectedPin.account.email || 'User'}
+                                    />
                                 </div>
                                 <div className="acm-account-copy">
                                     <strong>{selectedPin.account.full_name || selectedPin.account.email || 'Unnamed user'}</strong>

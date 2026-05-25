@@ -450,6 +450,8 @@
     font-size: 1rem;
     color: var(--accent);
     flex-shrink: 0;
+    object-fit: cover;
+    overflow: hidden;
 }
 
 .ac-applicant-pills {

@@ -14,6 +14,7 @@ const parseAuthRole = (value: unknown): UserRole | null => {
         || value === 'tour_instructor'
         || value === 'tour_guide'
         || value === 'admin'
+        || value === 'marketing'
     ) {
         return value;
     }
@@ -146,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const shouldBootstrapGoogleTouristProfile = pendingGoogleTouristSignup
                 && profileData?.role !== 'admin'
+                && profileData?.role !== 'marketing'
                 && !isProviderRole(profileData?.role)
                 && profileRole !== 'tourist';
 

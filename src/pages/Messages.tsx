@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, MessageCircle, Search, Send } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import {
     getConversationMessages,
     getConversations,
@@ -26,11 +27,6 @@ type ConversationListItem = {
 const getDisplayName = (profile: Profile | null, fallbackId: string) => (
     profile?.full_name || profile?.email || `User ${fallbackId.slice(0, 8)}`
 );
-
-const getAvatarLabel = (profile: Profile | null, fallbackId: string) => {
-    const source = profile?.full_name || profile?.email || fallbackId;
-    return source.trim().charAt(0).toUpperCase();
-};
 
 const formatConversationTime = (iso?: string) => {
     if (!iso) return '';
@@ -314,17 +310,11 @@ export const Messages: React.FC = () => {
                                             onClick={() => setSearchParams({ conversation: item.conversation.id })}
                                         >
                                             <div className="msg-avatar-wrap">
-                                                {item.otherProfile?.profile_image_url ? (
-                                                    <img
-                                                        className="msg-avatar"
-                                                        src={item.otherProfile.profile_image_url}
-                                                        alt={getDisplayName(item.otherProfile, item.otherUserId)}
-                                                    />
-                                                ) : (
-                                                    <div className="msg-avatar msg-avatar--fallback">
-                                                        {getAvatarLabel(item.otherProfile, item.otherUserId)}
-                                                    </div>
-                                                )}
+                                                <img
+                                                    className="msg-avatar"
+                                                    src={getProfileAvatarUrl(item.otherProfile?.profile_image_url, item.otherUserId, item.otherProfile?.full_name, item.otherProfile?.email)}
+                                                    alt={getDisplayName(item.otherProfile, item.otherUserId)}
+                                                />
                                             </div>
 
                                             <div className="msg-conversation-main">
@@ -357,17 +347,11 @@ export const Messages: React.FC = () => {
                                     </button>
 
                                     <div className="msg-thread-user">
-                                        {selected.otherProfile?.profile_image_url ? (
-                                            <img
-                                                className="msg-avatar"
-                                                src={selected.otherProfile.profile_image_url}
-                                                alt={getDisplayName(selected.otherProfile, selected.otherUserId)}
-                                            />
-                                        ) : (
-                                            <div className="msg-avatar msg-avatar--fallback">
-                                                {getAvatarLabel(selected.otherProfile, selected.otherUserId)}
-                                            </div>
-                                        )}
+                                        <img
+                                            className="msg-avatar"
+                                            src={getProfileAvatarUrl(selected.otherProfile?.profile_image_url, selected.otherUserId, selected.otherProfile?.full_name, selected.otherProfile?.email)}
+                                            alt={getDisplayName(selected.otherProfile, selected.otherUserId)}
+                                        />
                                         <div>
                                             <strong>{getDisplayName(selected.otherProfile, selected.otherUserId)}</strong>
                                             <span>{selected.otherProfile?.role || 'member'}</span>

@@ -29,6 +29,8 @@ import {
     type PostRecord,
 } from '../lib/destinations';
 import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
+import { getPublicAppContent } from '../lib/appContent';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import { LISTING_LABELS, getRoleLabel, type ListingType, canRolePublish } from '../lib/platform';
 import './provider-studio.css';
 
@@ -176,6 +178,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [uploadingImage, setUploadingImage] = useState(false);
     const [editingListingId, setEditingListingId] = useState<string | null>(null);
     const [form, setForm] = useState<ListingInput>(EMPTY_FORM('tour'));
+    const [platformFeeRate, setPlatformFeeRate] = useState(PLATFORM_FEE_RATE);
     const [imgError, setImgError] = useState(false);
     const [galleryInput, setGalleryInput] = useState('');
     const [galleryError, setGalleryError] = useState<string | null>(null);
@@ -317,13 +320,25 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [submissionModal]);
 
+    useEffect(() => {
+        let cancelled = false;
+        void getPublicAppContent()
+            .then((content) => {
+                if (!cancelled) setPlatformFeeRate(content.salesSettings.platformFeeRate);
+            })
+            .catch(() => undefined);
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const galleryImages = useMemo(
         () => normalizeImageList(form.gallery_images || []),
         [form.gallery_images]
     );
     const pricingPreview = useMemo(
-        () => calculatePricingFromProviderUnit(typeof form.price === 'number' ? form.price : 0, 1, PLATFORM_FEE_RATE),
-        [form.price]
+        () => calculatePricingFromProviderUnit(typeof form.price === 'number' ? form.price : 0, 1, platformFeeRate),
+        [form.price, platformFeeRate]
     );
 
     const applyGallery = useCallback((nextImages: string[]) => {
@@ -508,7 +523,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         }
     };
 
-    const avatarInitial = (profile?.full_name || user.email || 'P')[0].toUpperCase();
+    const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user.id, profile?.full_name, user.email);
 
     return (
         <main className={`ps-page animate-fade${embedded ? ' ps-page--embedded' : ''}`}>
@@ -528,7 +543,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                 {/* Account Status Bar */}
                 <div className="ps-status-bar">
-                    <div className="ps-status-bar-avatar">{avatarInitial}</div>
+                    <img className="ps-status-bar-avatar" src={avatarSrc} alt={profile?.full_name || user.email || 'Provider'} />
                     <div>
                         <p className="ps-status-bar-name">{profile?.full_name || user.email}</p>
                         <p className="ps-status-bar-role">{getRoleLabel(profile?.role)} account</p>
@@ -775,7 +790,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                         required
                                     />
                                     <p className="ps-price-note">
-                                        Tourist price shown in package cards: <strong>Rs {pricingPreview.tourist_unit_price.toLocaleString()}</strong> (includes {Math.round(PLATFORM_FEE_RATE * 100)}% platform fee).
+                                        Tourist price shown in package cards: <strong>Rs {pricingPreview.tourist_unit_price.toLocaleString()}</strong> (includes {Math.round(platformFeeRate * 100)}% platform fee).
                                         You will receive <strong>Rs {pricingPreview.provider_unit_price.toLocaleString()}</strong> per booking.
                                     </p>
                                 </label>
@@ -908,7 +923,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                                     </span>
                                                     {typeof listing.price === 'number' && (
                                                         <span className="ps-price">
-                                                            You receive Rs {listing.price.toLocaleString()} · Tourist sees Rs {calculatePricingFromProviderUnit(listing.price, 1, PLATFORM_FEE_RATE).tourist_unit_price.toLocaleString()}
+                                                            You receive Rs {listing.price.toLocaleString()} · Tourist sees Rs {calculatePricingFromProviderUnit(listing.price, 1, platformFeeRate).tourist_unit_price.toLocaleString()}
                                                         </span>
                                                     )}
                                                 </div>

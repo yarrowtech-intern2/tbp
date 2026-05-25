@@ -2,6 +2,7 @@
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ClipboardList, Home, LayoutDashboard, Search, Star, TrendingUp, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { getProfileAvatarUrl } from '../lib/avatar';
 import {
   getListingReviewSummaryMap,
   getPublicListingsByType,
@@ -117,7 +118,7 @@ export const TouristExplorePage: React.FC = () => {
 
   const fullName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Traveler';
   const displayRole = roleLabel?.trim() || 'Tourist';
-  const avatarSrc = profile?.profile_image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id || 'tourist'}`;
+  const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user?.id, profile?.full_name, user?.email, 'tourist');
   const activeMobileNav: TouristMobileNavKey = 'explore';
 
   useEffect(() => {

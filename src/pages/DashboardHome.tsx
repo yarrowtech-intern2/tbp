@@ -35,65 +35,14 @@ import {
 import type { ListingType } from '../lib/platform';
 import { isProviderRole, normalizeRoleValue } from '../lib/platform';
 import { onBookingSync } from '../lib/bookingSync';
+import { DEFAULT_HERO_MESSAGES, getDynamicHeroMessage, getPublicAppContent, type HeroMessagesContent } from '../lib/appContent';
 import './dashboard-home.css';
 import '../components/listing-card.css';
 
 type RevealProps = { children: React.ReactNode; className?: string; delay?: number };
 type SectionTab = 'tours' | 'activities' | 'events';
 type TouristMobileNavKey = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
-type HeroMessageMood = 'early' | 'morning' | 'afternoon' | 'sunset' | 'evening' | 'night';
-
 const FALLBACK_IMAGE = '/images/home4/forrest.jpg';
-
-const HERO_MESSAGES: Record<HeroMessageMood, string[]> = {
-  early: [
-    'Start softly somewhere new',
-    'Let the day find you',
-    'Chase quiet morning roads',
-  ],
-  morning: [
-    'Wake up to somewhere better',
-    'Your next story starts today',
-    'Find a view worth waking for',
-  ],
-  afternoon: [
-    'Step into a brighter detour',
-    'Make today feel far away',
-    'Follow the sun somewhere',
-  ],
-  sunset: [
-    'Save sunset for somewhere special',
-    'Let golden hour guide you',
-    'Find your evening escape',
-  ],
-  evening: [
-    'Plan tomorrow over tonight',
-    'Turn tonight into a route',
-    'Pick a place for the mood',
-  ],
-  night: [
-    'Dream up the next getaway',
-    'Let midnight map it out',
-    'Your next escape is waiting',
-  ],
-};
-
-const getHeroMessageMood = (hour: number): HeroMessageMood => {
-  if (hour < 6) return 'night';
-  if (hour < 9) return 'early';
-  if (hour < 12) return 'morning';
-  if (hour < 17) return 'afternoon';
-  if (hour < 19) return 'sunset';
-  if (hour < 22) return 'evening';
-  return 'night';
-};
-
-const getDynamicHeroMessage = (date: Date): string => {
-  const mood = getHeroMessageMood(date.getHours());
-  const messages = HERO_MESSAGES[mood];
-  const rotationSeed = date.getDate() + date.getHours() + Math.floor(date.getMinutes() / 10);
-  return messages[rotationSeed % messages.length];
-};
 
 const Reveal: React.FC<RevealProps> = ({ children, className = '', delay = 0 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -727,9 +676,10 @@ export const DashboardHome: React.FC = () => {
   const [reviewSummaryByPostId, setReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
   const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
   const [localNow, setLocalNow] = useState(() => new Date());
+  const [heroMessages, setHeroMessages] = useState<HeroMessagesContent>(DEFAULT_HERO_MESSAGES);
 
   const deferredSearchQuery = useDeferredValue(searchQuery);
-  const heroTitle = useMemo(() => getDynamicHeroMessage(localNow), [localNow]);
+  const heroTitle = useMemo(() => getDynamicHeroMessage(localNow, heroMessages), [heroMessages, localNow]);
   const activeTab = useMemo<SectionTab | null>(() => {
     const tab = searchParams.get('tab');
     if (tab === 'tours' || tab === 'activities' || tab === 'events') return tab;
@@ -750,6 +700,7 @@ export const DashboardHome: React.FC = () => {
     || normalizedRoleLabel === 'vendor';
   const providerAccount = isProvider || isProviderRole(resolvedRole) || resolvedRole === 'provider' || resolvedRole === 'vendor';
   const adminAccount = isAdmin || resolvedRole === 'admin';
+  const marketingAccount = resolvedRole === 'marketing';
 
   const firstName = useMemo(() => {
     const fullName = profile?.full_name?.trim();
@@ -845,6 +796,20 @@ export const DashboardHome: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    void getPublicAppContent()
+      .then((content) => {
+        if (!cancelled) setHeroMessages(content.heroMessages);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
 
     const load = async () => {
@@ -916,8 +881,13 @@ export const DashboardHome: React.FC = () => {
   }, [user]);
 
   if (!user) return null;
-  if (providerAccount || providerByLabel || adminAccount) {
-    return <Navigate to={(providerAccount || providerByLabel) ? '/dashboard/provider' : '/dashboard/admin'} replace />;
+  if (providerAccount || providerByLabel || adminAccount || marketingAccount) {
+    const dashboardPath = (providerAccount || providerByLabel)
+      ? '/dashboard/provider'
+      : marketingAccount
+        ? '/dashboard/marketing'
+        : '/dashboard/admin';
+    return <Navigate to={dashboardPath} replace />;
   }
 
   const showAll = activeTab === null;

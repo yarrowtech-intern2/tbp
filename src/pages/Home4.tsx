@@ -16,6 +16,7 @@ import {
   type LucideIcon,
   Waves,
 } from 'lucide-react';
+import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterLink } from '../lib/appContent';
 import './home4.css';
 
 type RevealBlockProps = {
@@ -70,6 +71,14 @@ const loadOrbitAnimationData = async (): Promise<object | null> => {
 const canRunDecorativeMotion = () => {
   if (typeof window === 'undefined') return false;
   return !window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 768px), (pointer: coarse)').matches;
+};
+
+const isInternalHref = (href?: string | null) => Boolean(href && href.startsWith('/'));
+
+const FooterTextOrLink: React.FC<{ item: FooterLink }> = ({ item }) => {
+  if (!item.href) return <span>{item.label}</span>;
+  if (isInternalHref(item.href)) return <Link to={item.href}>{item.label}</Link>;
+  return <a href={item.href}>{item.label}</a>;
 };
 
 const SLIDES = [
@@ -525,8 +534,8 @@ const OrbitGlyph: React.FC<OrbitGlyphProps> = ({ className = '' }) => {
 
   useEffect(() => {
     if (!motionEnabled) {
-      setAnimationData(null);
-      return;
+      const timeout = window.setTimeout(() => setAnimationData(null), 0);
+      return () => window.clearTimeout(timeout);
     }
 
     let mounted = true;
@@ -631,6 +640,21 @@ export const Home4: React.FC = () => {
   const [navVisible, setNavVisible] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showcaseVisible, setShowcaseVisible] = useState(false);
+  const [footerContent, setFooterContent] = useState(DEFAULT_FOOTER_CONTENT);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void getPublicAppContent()
+      .then((content) => {
+        if (!cancelled) setFooterContent(content.footer);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -1263,35 +1287,36 @@ export const Home4: React.FC = () => {
             <div className="h4-lux-footer-brand">
               <img src="/logo/logo.png" alt="The Better Pass" className="h4-lux-footer-logo" loading="lazy" decoding="async" />
               <p className="h4-lux-footer-text">
-                Modern luxury travel with editorial clarity, refined stays, and calm itinerary design.
+                {footerContent.description}
               </p>
             </div>
-            <div className="h4-lux-footer-col">
-              <h4>Explore</h4>
-              <a href="#h4-hero">Home</a>
-              <a href="#h4-about">Destinations</a>
-              <a href="#h4-contact">Newsletter</a>
-            </div>
-            <div className="h4-lux-footer-col">
-              <h4>Experiences</h4>
-              <span>Beach Escapes</span>
-              <span>Mountain Stays</span>
-              <span>Cultural Routes</span>
-              <span>Luxury Resorts</span>
-            </div>
-            <div className="h4-lux-footer-col">
-              <h4>Contact</h4>
-              <a href="mailto:hello@thebetterpass.com">hello@thebetterpass.com</a>
-              <a href="tel:+911800000000">+91 1800 000 000</a>
-              <Link to="/auth">Member Login</Link>
-            </div>
+            {footerContent.columns.map((column) => (
+              <div className="h4-lux-footer-col" key={column.title}>
+                <h4>{column.title}</h4>
+                {column.links.map((item) => (
+                  <FooterTextOrLink item={item} key={`${column.title}-${item.label}-${item.href || ''}`} />
+                ))}
+              </div>
+            ))}
           </div>
           <div className="h4-lux-footer-bottom">
-            <span>(c) 2026 The Better Pass. All rights reserved.</span>
+            <span>{footerContent.copyright}</span>
             <div className="h4-lux-footer-socials">
-              <a href="#" aria-label="Instagram"><Instagram size={16} /></a>
-              <a href="#" aria-label="Twitter"><Twitter size={16} /></a>
-              <a href="#" aria-label="LinkedIn"><Linkedin size={16} /></a>
+              {footerContent.socials.map((item) => {
+                const normalizedLabel = item.label.trim().toLowerCase();
+                const Icon = normalizedLabel.includes('instagram')
+                  ? Instagram
+                  : normalizedLabel.includes('twitter') || normalizedLabel === 'x'
+                    ? Twitter
+                    : normalizedLabel.includes('linkedin')
+                      ? Linkedin
+                      : ArrowUpRight;
+                return (
+                  <a href={item.href || '#'} aria-label={item.label} key={`${item.label}-${item.href || ''}`}>
+                    <Icon size={16} />
+                  </a>
+                );
+              })}
             </div>
           </div>
         </div>

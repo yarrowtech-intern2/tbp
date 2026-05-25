@@ -43,6 +43,8 @@ const isProviderLabel = (label?: string | null) => {
   return normalized === 'tour company' || normalized === 'tour instructor' || normalized === 'tour guide' || normalized === 'provider' || normalized === 'vendor';
 };
 
+const isMarketingAccount = (role?: string | null) => role === 'marketing';
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, profileLoading } = useAuth();
 
@@ -76,13 +78,14 @@ const HomeRoute: React.FC = () => {
   const role = resolveUserRole(user, profile?.role);
   const providerAccount = isProvider || isProviderAccount(role) || isProviderLabel(roleLabel);
   const isAdminAccount = role === 'admin' || isAdmin;
+  const marketingAccount = isMarketingAccount(role);
 
   if (loading || profileLoading) {
     return null;
   }
 
   if (user) {
-    if (providerAccount || isAdminAccount) {
+    if (providerAccount || isAdminAccount || marketingAccount) {
       return <Navigate to="/dashboard" replace />;
     }
     return <DashboardHome />;
@@ -128,6 +131,7 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
   const role = resolveUserRole(user, profile?.role);
   const providerAccount = isProvider || isProviderAccount(role) || isProviderLabel(roleLabel);
   const isAdminAccount = role === 'admin' || isAdmin;
+  const marketingAccount = isMarketingAccount(role);
 
   if (loading || profileLoading) {
     return null;
@@ -137,7 +141,7 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
     return <Navigate to="/" replace />;
   }
 
-  if (providerAccount || isAdminAccount) {
+  if (providerAccount || isAdminAccount || marketingAccount) {
     return <Navigate to="/dashboard" replace />;
   }
 

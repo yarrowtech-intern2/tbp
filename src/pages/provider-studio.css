@@ -85,6 +85,8 @@
     font-weight: 800;
     font-size: 1rem;
     flex-shrink: 0;
+    object-fit: cover;
+    overflow: hidden;
 }
 
 .ps-status-bar-name {
