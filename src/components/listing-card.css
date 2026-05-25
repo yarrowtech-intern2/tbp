@@ -130,22 +130,6 @@
   background: rgba(11, 13, 17, 0.74);
 }
 
-.listing-card-gallery-meta {
-  position: absolute;
-  z-index: 7;
-  right: 12px;
-  bottom: 12px;
-  display: inline-flex;
-  align-items: center;
-  min-height: 23px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: rgba(11, 13, 17, 0.62);
-  color: #ffffff;
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-
 .listing-card-gallery-dots {
   position: absolute;
   z-index: 7;
@@ -432,14 +416,6 @@
     width: 24px;
     height: 24px;
     opacity: 0.92;
-  }
-
-  .listing-card-gallery-meta {
-    right: 8px;
-    bottom: 8px;
-    min-height: 20px;
-    padding: 0 7px;
-    font-size: 0.56rem;
   }
 
   .listing-card-gallery-dots {

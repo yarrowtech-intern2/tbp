@@ -366,22 +366,6 @@
   background: rgba(11, 13, 17, 0.78);
 }
 
-.txp-gallery-count {
-  position: absolute;
-  z-index: 5;
-  right: 12px;
-  bottom: 12px;
-  min-height: 23px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: rgba(11, 13, 17, 0.64);
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-
 .txp-gallery-dots {
   position: absolute;
   z-index: 5;
@@ -819,13 +803,6 @@
     width: 24px;
     height: 24px;
     opacity: 0.92;
-  }
-
-  .txp-gallery-count {
-    right: 10px;
-    bottom: 10px;
-    min-height: 20px;
-    font-size: 0.56rem;
   }
 
   .txp-gallery-dots {

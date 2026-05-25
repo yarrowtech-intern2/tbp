@@ -167,7 +167,6 @@ const ExploreListingCard: React.FC<{
             >
               <ChevronRight size={14} />
             </button>
-            <div className="txp-gallery-count">{activeImageIndex + 1}/{images.length}</div>
             <div className="txp-gallery-dots" aria-hidden="true">
               {images.slice(0, 6).map((url, imageIndex) => (
                 <span key={`${url}-${imageIndex}`} className={imageIndex === activeImageIndex ? 'is-active' : ''} />

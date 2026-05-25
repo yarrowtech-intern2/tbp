@@ -380,9 +380,6 @@ const ListingCard: React.FC<{
             >
               <ChevronRight size={14} />
             </button>
-            <div className="listing-card-gallery-meta" aria-label={`${images.length} listing images`}>
-              <span>{activeImageIndex + 1}/{images.length}</span>
-            </div>
             <div className="listing-card-gallery-dots" aria-hidden="true">
               {images.slice(0, 6).map((url, index) => (
                 <span key={`${url}-${index}`} className={index === activeImageIndex ? 'is-active' : ''} />
