@@ -270,7 +270,7 @@
 .txp-card-media {
   position: relative;
   overflow: hidden;
-  border-radius: 0;
+  border-radius: 30px;
   background-color: #d9d9d9;
 }
 
@@ -327,7 +327,7 @@
 .txp-card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 11, 18, 0.05) 0%, rgba(8, 11, 18, 0.18) 48%, rgba(8, 11, 18, 0.42) 100%);
+  background: linear-gradient(180deg, rgba(8, 11, 18, 0.04) 0%, rgba(8, 11, 18, 0.1) 38%, rgba(0, 0, 0, 0.48) 74%, rgba(0, 0, 0, 0.9) 100%);
 }
 
 .txp-gallery-btn {
@@ -396,39 +396,16 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px;
+  padding: 18px 24px 16px;
   z-index: 3;
 }
 
 .txp-card-content::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.06) 26%,
-    rgba(0, 0, 0, 0.24) 52%,
-    rgba(0, 0, 0, 0.5) 76%,
-    rgba(0, 0, 0, 0.66) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 .txp-card-content::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 38%,
-    rgba(0, 0, 0, 0.28) 58%,
-    rgba(0, 0, 0, 0.62) 80%,
-    rgba(0, 0, 0, 0.9) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 .txp-card-content > * {
@@ -436,25 +413,34 @@
   z-index: 2;
 }
 
-.txp-card-chips {
+.txp-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.txp-card-badges {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 6px;
+  min-width: 0;
 }
 
-.txp-card-chip {
+.txp-card-chip,
+.txp-card-booked {
   display: inline-flex;
   align-items: center;
   min-height: 26px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(15, 23, 42, 0.16);
-  color: #16181f;
-  font-size: 0.64rem;
+  background: rgba(153, 220, 128, 0.86);
+  border: 1px solid rgba(24, 92, 27, 0.58);
+  color: #185319;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .txp-card-rating {
@@ -480,17 +466,51 @@
 .txp-card-boosted {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  padding: 0 10px;
+  justify-content: center;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: #ffffff;
-  font-size: 0.62rem;
+  background: rgba(118, 215, 87, 0.92);
+  border: none;
+  color: #16611f;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: none;
+  letter-spacing: 0;
+}
+
+.txp-card-save {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #ff6b00;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.txp-card-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.txp-card-save.is-active {
+  background: #ffffff;
+  color: #ff6b00;
+}
+
+.txp-spin {
+  animation: txp-spin 0.8s linear infinite;
+}
+
+@keyframes txp-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .txp-card-copy {
@@ -505,25 +525,55 @@
 
 .txp-card-copy h2 {
   font-family: 'Outfit', 'Inter', sans-serif;
-  font-size: clamp(1.08rem, 1.55vw, 1.45rem);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  font-size: 1.5rem;
+  line-height: 0.98;
+  letter-spacing: 0;
+  font-weight: 800;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .txp-card-copy strong {
   display: block;
-  margin-top: 4px;
-  color: rgba(241, 245, 253, 0.94);
-  font-size: clamp(0.86rem, 1.05vw, 1.04rem);
-  font-weight: 760;
+  color: #b6ffb3;
+  font-size: 1.16rem;
+  font-weight: 850;
   line-height: 1;
 }
 
 .txp-card-copy p {
-  margin-top: 7px;
+  margin-top: 8px;
   color: rgba(230, 236, 248, 0.86);
+  font-size: 0.86rem;
+  line-height: 1.12;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.txp-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.txp-card-book {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin-left: auto;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #ff6b00;
   font-size: 0.8rem;
-  line-height: 1.42;
+  font-weight: 850;
+  text-decoration: none;
 }
 
 :root[data-theme='dark'] .txp-card {
@@ -717,7 +767,7 @@
   }
 
   .txp-card-media {
-    border-radius: 0;
+    border-radius: 24px;
   }
 
   .txp-bottom-nav {
@@ -795,7 +845,7 @@
   }
 
   .txp-card-content {
-    padding: 10px;
+    padding: 14px 16px;
     gap: 8px;
   }
 
@@ -810,16 +860,37 @@
   }
 
   .txp-card-copy h2 {
-    font-size: 1.05rem;
+    font-size: 1.14rem;
   }
 
   .txp-card-copy strong {
-    margin-top: 4px;
-    font-size: 0.88rem;
+    font-size: 0.96rem;
   }
 
   .txp-card-copy p {
     margin-top: 6px;
-    font-size: 0.74rem;
+    font-size: 0.76rem;
+  }
+
+  .txp-card-book {
+    min-height: 34px;
+    padding: 0 14px;
+    font-size: 0.7rem;
+  }
+
+  .txp-card-booked {
+    min-height: 23px;
+    padding: 0 8px;
+    font-size: 0.62rem;
+  }
+
+  .txp-card-boosted {
+    width: 25px;
+    min-height: 25px;
+  }
+
+  .txp-card-save {
+    width: 34px;
+    height: 34px;
   }
 }

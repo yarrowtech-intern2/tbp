@@ -3,18 +3,15 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowRight,
-  CalendarDays,
+  ArrowUpRight,
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Heart,
   Home,
   LayoutDashboard,
   Loader2,
-  MapPin,
   Search,
-  Star,
-  TrendingUp,
   UserCircle2,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -97,9 +94,15 @@ const getPostLocation = (post: PostRecord): string => {
     : 'Location shared after booking';
 };
 
+const limitWords = (value: string, maxWords: number): string => {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return value.trim();
+  return `${words.slice(0, maxWords).join(' ')}...`;
+};
+
 const getPostSubtitle = (post: PostRecord): string => {
   if (typeof post.description === 'string' && post.description.trim().length > 0) {
-    return post.description.trim().slice(0, 96);
+    return limitWords(post.description, 12);
   }
   return 'Curated experience with guided details and booking support.';
 };
@@ -151,30 +154,9 @@ const formatPrice = (price: number | null | undefined): string => {
     return 'Price on request';
   }
 
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(price);
+  return `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(price)}`;
 };
 
-const formatStartDate = (startsAt: string | undefined): string | null => {
-  if (!startsAt) return null;
-  const parsed = new Date(startsAt);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-};
-
-const getReviewLabel = (summary: ListingReviewSummary | undefined): string => {
-  if (!summary || summary.review_count === 0 || summary.average_rating === null) {
-    return 'No reviews yet';
-  }
-  return `${summary.average_rating.toFixed(1)} · ${summary.review_count} ${summary.review_count === 1 ? 'review' : 'reviews'}`;
-};
 
 const getToneClass = (section: SectionTab): string => `dh-tone-${section}`;
 
@@ -240,7 +222,7 @@ const ListingCard: React.FC<{
   isBooked: boolean;
   reviewSummary?: ListingReviewSummary;
   cardIndex: number;
-}> = ({ post, isBooked, reviewSummary, cardIndex }) => {
+}> = ({ post, isBooked, cardIndex }) => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const canFavorite = profile?.role === 'tourist';
@@ -261,17 +243,13 @@ const ListingCard: React.FC<{
   const previousImage = images[previousImageIndex] || activeImage;
   const hasMultipleImages = images.length > 1;
   const title = getPostTitle(post);
+  const displayTitle = limitWords(title, 6);
   const subtitle = getPostSubtitle(post);
   const type = getPostType(post);
   const listingTypePath = toListingTypePath(type);
   const listingTypeValue = toListingTypeValue(type);
-  const location = getPostLocation(post);
-  const startsAt = formatStartDate(typeof post.starts_at === 'string' ? post.starts_at : undefined);
   const priceLabel = formatPrice(post.price);
   const boosted = hasActiveBoost(post);
-  const chipLabel = post.sub_category && post.sub_category.trim().length > 0
-    ? post.sub_category.trim()
-    : getSectionTitle(type).slice(0, -1);
 
   useEffect(() => {
     if (!user || !post.id || !canFavorite) {
@@ -389,26 +367,25 @@ const ListingCard: React.FC<{
         )}
         <div className="listing-card-media-top">
           <div className="listing-card-badge-cluster">
-            <span className="listing-card-chip">{chipLabel}</span>
+            {isBooked && <span className="listing-card-booked-pill">Booked</span>}
             {boosted && (
-              <span className="listing-card-boost-badge">
-                <TrendingUp size={12} />
-                Boosted
+              <span className="listing-card-boost-badge" aria-label="Boosted listing" title="Boosted">
+                <ArrowUpRight size={15} />
               </span>
             )}
-            {isBooked && <span className="listing-card-booked-pill">Booked</span>}
           </div>
           <button
             type="button"
             className={`listing-card-fav-btn${isFavorite ? ' is-active' : ''}`}
             onClick={handleFavoriteToggle}
-            disabled={favoriteLoading || !canFavorite}
-            title={canFavorite ? undefined : 'Only tourist accounts can save favorites'}
+            disabled={favoriteLoading}
+            title={isFavorite ? 'Remove from saved' : 'Save listing'}
+            aria-label={isFavorite ? 'Remove from saved listings' : 'Save listing'}
           >
             {favoriteLoading ? (
               <Loader2 size={16} className="dh-spin" />
             ) : (
-              <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+              <Bookmark size={18} fill={isFavorite ? 'currentColor' : 'none'} />
             )}
           </button>
         </div>
@@ -420,39 +397,18 @@ const ListingCard: React.FC<{
         )}
 
         <div className="listing-card-content-overlay">
-          <h3 className="listing-card-title">{title}</h3>
+          <h3 className="listing-card-title">{displayTitle}</h3>
           <p className="listing-card-sub">{subtitle}</p>
-
-          <div className="listing-card-meta">
-            <span className={`listing-card-meta-item${reviewSummary?.review_count ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
-              <Star size={14} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
-              <span>{getReviewLabel(reviewSummary)}</span>
-            </span>
-            <span className="listing-card-meta-item">
-              <MapPin size={14} />
-              <span>{location}</span>
-            </span>
-            {startsAt && (
-              <span className="listing-card-meta-item">
-                <CalendarDays size={14} />
-                <span>{startsAt}</span>
-              </span>
-            )}
-          </div>
 
           <div className="listing-card-actions">
             <span className="listing-card-price">{priceLabel}</span>
-            {isBooked ? (
-              <span className="listing-btn-booked">Booked</span>
-            ) : (
-              <Link
-                to={`/listings/${listingTypePath}/${post.id}`}
-                className="listing-btn-book"
-                onClick={(event) => event.stopPropagation()}
-              >
-                Book Now
-              </Link>
-            )}
+            <Link
+              to={`/listings/${listingTypePath}/${post.id}`}
+              className="listing-btn-book"
+              onClick={(event) => event.stopPropagation()}
+            >
+              BOOK
+            </Link>
           </div>
         </div>
       </div>

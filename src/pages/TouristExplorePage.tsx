@@ -1,18 +1,24 @@
-﻿import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ClipboardList, Home, LayoutDashboard, Search, Star, TrendingUp, UserCircle2, X } from 'lucide-react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, ClipboardList, Home, LayoutDashboard, Loader2, Search, UserCircle2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
 import {
+  addListingFavorite,
+  getBookings,
   getListingReviewSummaryMap,
   getPublicListingsByType,
   hasActiveBoost,
+  isListingFavorited,
+  removeListingFavorite,
   type ListingReviewSummary,
   type PostRecord,
+  type UnifiedBooking,
 } from '../lib/destinations';
 import { calculatePricingFromProviderUnit } from '../lib/pricing';
-import { isProviderRole, normalizeRoleValue } from '../lib/platform';
+import { isProviderRole, normalizeRoleValue, type ListingType } from '../lib/platform';
+import { onBookingSync } from '../lib/bookingSync';
 import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './tourist-explore-page.css';
 
@@ -55,6 +61,19 @@ const getPostTitle = (post: PostRecord): string => {
   return String(candidate).trim() || 'Untitled';
 };
 
+const limitWords = (value: string, maxWords: number): string => {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return value.trim();
+  return `${words.slice(0, maxWords).join(' ')}...`;
+};
+
+const getPostSubtitle = (post: PostRecord): string => {
+  if (typeof post.description === 'string' && post.description.trim().length > 0) {
+    return limitWords(post.description, 12);
+  }
+  return 'Curated experience with guided details and booking support.';
+};
+
 const getPostLocation = (post: PostRecord): string => {
   return typeof post.location === 'string' && post.location.trim().length > 0
     ? post.location.trim()
@@ -64,7 +83,13 @@ const getPostLocation = (post: PostRecord): string => {
 const formatPrice = (providerPrice: number | null | undefined): string => {
   if (typeof providerPrice !== 'number' || Number.isNaN(providerPrice) || providerPrice <= 0) return 'Custom';
   const touristPrice = calculatePricingFromProviderUnit(providerPrice, 1).tourist_unit_price;
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(touristPrice);
+  return `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(touristPrice)}`;
+};
+
+const getListingTypeValue = (post: ExploreCardRecord): ListingType => {
+  if (post.exploreType === 'tours') return 'tour';
+  if (post.exploreType === 'guides') return 'guide';
+  return 'activity';
 };
 
 const getListingHref = (post: ExploreCardRecord): string => {
@@ -72,24 +97,20 @@ const getListingHref = (post: ExploreCardRecord): string => {
   return `/listings/${type}/${post.id}`;
 };
 
-const getReviewLabel = (summary: ListingReviewSummary | undefined): string => {
-  if (!summary || summary.review_count === 0 || summary.average_rating === null) return 'No reviews yet';
-  return `${summary.average_rating.toFixed(1)} · ${summary.review_count} ${summary.review_count === 1 ? 'review' : 'reviews'}`;
-};
 
-const getTypeChipLabel = (post: ExploreCardRecord): string => {
-  if (post.exploreType === 'tours') return 'Tour';
-  if (post.exploreType === 'guides') return 'Guide';
-  return 'Activity';
-};
 
 const ExploreListingCard: React.FC<{
   post: ExploreCardRecord;
   size: typeof CARD_SIZE_PATTERN[number];
   reviewSummary: ListingReviewSummary | undefined;
   cardIndex: number;
-}> = ({ post, size, reviewSummary, cardIndex }) => {
+  isBooked: boolean;
+}> = ({ post, size, cardIndex, isBooked }) => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const canFavorite = profile?.role === 'tourist';
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [isImagePaused, setIsImagePaused] = useState(false);
   const images = useMemo(() => {
     const uploadedImages = getListingImages(post);
@@ -104,10 +125,29 @@ const ExploreListingCard: React.FC<{
   const previousImage = images[previousImageIndex] || activeImage;
   const hasMultipleImages = images.length > 1;
   const href = getListingHref(post);
+  const listingTypeValue = getListingTypeValue(post);
+  const title = getPostTitle(post);
+  const displayTitle = limitWords(title, 6);
+  const subtitle = getPostSubtitle(post);
+  const boosted = hasActiveBoost(post);
 
   useEffect(() => {
     setActiveImageIndex(0);
   }, [post.id, setActiveImageIndex]);
+
+  useEffect(() => {
+    if (!user || !post.id || !canFavorite) {
+      setIsFavorite(false);
+      return;
+    }
+
+    const loadFavorite = async () => {
+      const favorited = await isListingFavorited(user.id, post.id, listingTypeValue);
+      setIsFavorite(favorited);
+    };
+
+    void loadFavorite();
+  }, [canFavorite, listingTypeValue, post.id, user]);
 
   const openListing = () => navigate(href);
 
@@ -124,6 +164,37 @@ const ExploreListingCard: React.FC<{
     setActiveImageIndex((current) => (current + direction + images.length) % images.length);
   };
 
+  const handleFavoriteToggle = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    if (!canFavorite) {
+      alert('Only tourist accounts can save favorites.');
+      return;
+    }
+
+    setFavoriteLoading(true);
+    try {
+      if (isFavorite) {
+        await removeListingFavorite(user.id, post.id, listingTypeValue);
+        setIsFavorite(false);
+      } else {
+        await addListingFavorite(user.id, post.id, listingTypeValue);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('Favorite update failed:', error);
+      alert('Could not update favorites. Please try again.');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
   return (
     <article
       role="link"
@@ -135,7 +206,7 @@ const ExploreListingCard: React.FC<{
       onFocus={() => setIsImagePaused(true)}
       onBlur={() => setIsImagePaused(false)}
       className={`txp-card txp-card--${size}`}
-      aria-label={`Open ${getPostTitle(post)}`}
+      aria-label={`Open ${title}`}
     >
       <div className="txp-card-media">
         <div
@@ -175,23 +246,39 @@ const ExploreListingCard: React.FC<{
           </>
         )}
         <div className="txp-card-content">
-          <div className="txp-card-chips">
-            <span className="txp-card-chip">{getTypeChipLabel(post)}</span>
-            <span className={`txp-card-rating${reviewSummary?.review_count ? '' : ' is-empty'}`}>
-              <Star size={12} fill={reviewSummary?.review_count ? 'currentColor' : 'none'} />
-              {getReviewLabel(reviewSummary)}
-            </span>
-            {hasActiveBoost(post) && (
-              <span className="txp-card-boosted">
-                <TrendingUp size={12} />
-                Boosted
-              </span>
-            )}
+          <div className="txp-card-top">
+            <div className="txp-card-badges">
+              {isBooked && <span className="txp-card-booked">Booked</span>}
+              {boosted && (
+                <span className="txp-card-boosted" aria-label="Boosted listing" title="Boosted">
+                  <ArrowUpRight size={15} />
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              className={`txp-card-save${isFavorite ? ' is-active' : ''}`}
+              onClick={handleFavoriteToggle}
+              disabled={favoriteLoading}
+              title={isFavorite ? 'Remove from saved' : 'Save listing'}
+              aria-label={isFavorite ? 'Remove from saved listings' : 'Save listing'}
+            >
+              {favoriteLoading ? (
+                <Loader2 size={16} className="txp-spin" />
+              ) : (
+                <Bookmark size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+              )}
+            </button>
           </div>
           <div className="txp-card-copy">
-            <h2>{getPostTitle(post)}</h2>
-            <strong>{formatPrice(post.price)}</strong>
-            <p>{getPostLocation(post)}</p>
+            <h2>{displayTitle}</h2>
+            <p>{subtitle}</p>
+            <div className="txp-card-actions">
+              <strong>{formatPrice(post.price)}</strong>
+              <Link to={href} className="txp-card-book" onClick={(event) => event.stopPropagation()}>
+                BOOK
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -207,6 +294,7 @@ export const TouristExplorePage: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [posts, setPosts] = useState<ExploreCardRecord[]>([]);
+  const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
   const [reviewSummaryByPostId, setReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
 
   const resolvedRole = typeof profile?.role === 'string' && profile.role.trim()
@@ -244,10 +332,11 @@ export const TouristExplorePage: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [tours, activities, guides] = await Promise.all([
+        const [tours, activities, guides, bookings] = await Promise.all([
           getPublicListingsByType('tour'),
           getPublicListingsByType('activity'),
           getPublicListingsByType('guide'),
+          getBookings(user.id),
         ]);
 
         const mapped: ExploreCardRecord[] = [...tours, ...activities, ...guides].map((post) => ({
@@ -256,6 +345,7 @@ export const TouristExplorePage: React.FC = () => {
         }));
 
         setPosts(mapped);
+        setTouristBookings(bookings);
       } catch (error) {
         console.error('Failed loading explore listings:', error);
         setPosts([]);
@@ -292,6 +382,18 @@ export const TouristExplorePage: React.FC = () => {
     };
   }, [posts]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onBookingSync(() => {
+      void getBookings(user.id)
+        .then((rows) => setTouristBookings(rows))
+        .catch(() => undefined);
+    });
+
+    return unsubscribe;
+  }, [user]);
+
   if (!user) return null;
   if (providerAccount || providerByLabel || adminAccount) {
     return <Navigate to={(providerAccount || providerByLabel) ? '/dashboard/provider' : '/dashboard/admin'} replace />;
@@ -304,6 +406,21 @@ export const TouristExplorePage: React.FC = () => {
     const haystack = `${getPostTitle(post)} ${getPostLocation(post)} ${typeof post.description === 'string' ? post.description : ''}`.toLowerCase();
     return haystack.includes(deferredSearchQuery);
   });
+
+  const bookedLookup = touristBookings.reduce(
+    (lookup, booking) => {
+      const status = (booking.status || '').toLowerCase();
+      if (status === 'cancelled' || status === 'canceled') return lookup;
+
+      const listingId = String(booking.listing_id || '').trim();
+      if (!listingId) return lookup;
+
+      lookup.byId.add(listingId);
+      lookup.byTypeAndId.add(`${booking.listing_type}:${listingId}`);
+      return lookup;
+    },
+    { byTypeAndId: new Set<string>(), byId: new Set<string>() }
+  );
 
   const handleFilter = (filter: ExploreFilter) => {
     if (filter === 'all') {
@@ -402,6 +519,10 @@ export const TouristExplorePage: React.FC = () => {
                   size={size}
                   cardIndex={index}
                   reviewSummary={reviewSummary}
+                  isBooked={
+                    bookedLookup.byTypeAndId.has(`${getListingTypeValue(post)}:${String(post.id).trim()}`)
+                    || bookedLookup.byId.has(String(post.id).trim())
+                  }
                 />
               );
             })}

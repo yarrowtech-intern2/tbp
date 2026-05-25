@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, Loader2, MapPin, Star } from 'lucide-react';
+import { ArrowUpRight, Bookmark, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { addListingFavorite, isListingFavorited, removeListingFavorite } from '../lib/destinations';
@@ -18,6 +18,8 @@ interface DestinationProps {
     description?: string;
     category?: string;
     listingType?: ListingType;
+    isBooked?: boolean;
+    isBoosted?: boolean;
 }
 
 const formatPrice = (providerPrice: number | null | undefined): string => {
@@ -26,24 +28,24 @@ const formatPrice = (providerPrice: number | null | undefined): string => {
     }
     const touristPrice = calculatePricingFromProviderUnit(providerPrice, 1).tourist_unit_price;
 
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0,
-    }).format(touristPrice);
+    return `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(touristPrice)}`;
+};
+
+const limitWords = (value: string, maxWords: number): string => {
+    const words = value.trim().split(/\s+/).filter(Boolean);
+    if (words.length <= maxWords) return value.trim();
+    return `${words.slice(0, maxWords).join(' ')}...`;
 };
 
 export const DestinationCard: React.FC<DestinationProps> = ({
     id,
     title,
-    location,
     price,
-    rating,
-    reviewCount = 0,
     image_url,
     description,
-    category,
     listingType = 'activity',
+    isBooked = false,
+    isBoosted = false,
 }) => {
     const navigate = useNavigate();
     const { user, profile } = useAuth();
@@ -51,13 +53,11 @@ export const DestinationCard: React.FC<DestinationProps> = ({
     const [isFavorite, setIsFavorite] = useState(false);
     const [favoriteLoading, setFavoriteLoading] = useState(false);
     const listingPathType = listingType === 'guide' ? 'event' : listingType;
-    const subtitle = description?.trim() || 'Curated listing with complete details available on open.';
-    const locationLabel = location?.split(',')[0]?.trim() || 'Location available after booking';
-    const chipLabel = category?.trim() || listingPathType.toUpperCase();
+    const displayTitle = limitWords(title, 6);
+    const subtitle = description?.trim()
+        ? limitWords(description, 12)
+        : 'Curated listing with complete details available on open.';
     const priceLabel = formatPrice(price);
-    const reviewLabel = typeof rating === 'number' && reviewCount > 0
-        ? `${rating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`
-        : 'No reviews yet';
 
     useEffect(() => {
         if (!user || !id || !canFavorite) {
@@ -126,18 +126,26 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                 <div className="listing-card-media-overlay" />
 
                 <div className="listing-card-media-top">
-                    <span className="listing-card-chip">{chipLabel}</span>
+                    <div className="listing-card-badge-cluster">
+                        {isBooked && <span className="listing-card-booked-pill">Booked</span>}
+                        {isBoosted && (
+                            <span className="listing-card-boost-badge" aria-label="Boosted listing" title="Boosted">
+                                <ArrowUpRight size={15} />
+                            </span>
+                        )}
+                    </div>
                     <button
                         type="button"
                         className={`listing-card-fav-btn${isFavorite ? ' is-active' : ''}`}
                         onClick={handleFavoriteToggle}
-                        disabled={favoriteLoading || !canFavorite}
-                        title={canFavorite ? undefined : 'Only tourist accounts can save favorites'}
+                        disabled={favoriteLoading}
+                        title={isFavorite ? 'Remove from saved' : 'Save listing'}
+                        aria-label={isFavorite ? 'Remove from saved listings' : 'Save listing'}
                     >
                         {favoriteLoading ? (
                             <Loader2 size={16} className="animate-spin" />
                         ) : (
-                            <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+                            <Bookmark size={18} fill={isFavorite ? 'currentColor' : 'none'} />
                         )}
                     </button>
                 </div>
@@ -153,19 +161,8 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                 </div>
 
                 <div className="listing-card-reveal-panel">
-                    <h3 className="listing-card-title">{title}</h3>
+                    <h3 className="listing-card-title">{displayTitle}</h3>
                     <p className="listing-card-sub">{subtitle}</p>
-
-                    <div className="listing-card-meta">
-                        <span className={`listing-card-meta-item${typeof rating === 'number' && reviewCount > 0 ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
-                            <Star size={14} fill={typeof rating === 'number' && reviewCount > 0 ? 'currentColor' : 'none'} />
-                            <span>{reviewLabel}</span>
-                        </span>
-                        <span className="listing-card-meta-item">
-                            <MapPin size={14} />
-                            <span>{locationLabel}</span>
-                        </span>
-                    </div>
 
                     <div className="listing-card-actions">
                         <span className="listing-card-price">{priceLabel}</span>
@@ -174,31 +171,20 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                             className="listing-btn-book"
                             onClick={(event) => event.stopPropagation()}
                         >
-                            Book Now
+                            BOOK
                         </Link>
                     </div>
                 </div>
             </div>
 
             <div className="listing-card-mobile-content">
-                <h3 className="listing-card-title">{title}</h3>
+                <h3 className="listing-card-title">{displayTitle}</h3>
                 <p className="listing-card-sub">{subtitle}</p>
-
-                <div className="listing-card-meta">
-                    <span className={`listing-card-meta-item${typeof rating === 'number' && reviewCount > 0 ? ' listing-card-review-pill' : ' listing-card-review-empty'}`}>
-                        <Star size={14} fill={typeof rating === 'number' && reviewCount > 0 ? 'currentColor' : 'none'} />
-                        <span>{reviewLabel}</span>
-                    </span>
-                    <span className="listing-card-meta-item">
-                        <MapPin size={14} />
-                        <span>{locationLabel}</span>
-                    </span>
-                </div>
 
                 <div className="listing-card-actions">
                     <span className="listing-card-price">{priceLabel}</span>
                     <Link to={`/listings/${listingPathType}/${id}`} className="listing-btn-book" onClick={(event) => event.stopPropagation()}>
-                        Book Now
+                        BOOK
                     </Link>
                 </div>
             </div>

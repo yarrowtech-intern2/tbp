@@ -1,6 +1,6 @@
 .listing-card {
   position: relative;
-  border: 4px solid rgba(255, 255, 255, 0.92);
+  border: none;
   border-radius: 30px;
   overflow: hidden;
   background: transparent;
@@ -10,7 +10,6 @@
 }
 
 :root[data-theme='dark'] .listing-card {
-  border-color: rgba(58, 62, 70, 0.9);
   box-shadow: none;
 }
 
@@ -89,7 +88,8 @@
 .listing-card-media-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 11, 18, 0.06) 0%, rgba(8, 11, 18, 0.16) 46%, rgba(8, 11, 18, 0.44) 100%);
+  background:
+    linear-gradient(180deg, rgba(8, 11, 18, 0.04) 0%, rgba(8, 11, 18, 0.1) 38%, rgba(0, 0, 0, 0.48) 74%, rgba(0, 0, 0, 0.9) 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -168,8 +168,9 @@
 .listing-card-badge-cluster {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .listing-card-chip,
@@ -180,19 +181,23 @@
   min-height: 25px;
   padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.92);
-  color: #10141d;
+  border: 1px solid rgba(24, 92, 27, 0.58);
+  background: rgba(153, 220, 128, 0.86);
+  color: #185319;
   font-family: 'Outfit', sans-serif;
-  font-size: 0.64rem;
+  font-size: 0.72rem;
   font-weight: 780;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
-.listing-card-boost-badge,
-.listing-card-booked-pill {
-  background: rgba(15, 23, 42, 0.62);
-  color: #f6f8fd;
+.listing-card-boost-badge {
+  justify-content: center;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-color: transparent;
+  background: rgba(118, 215, 87, 0.92);
+  color: #16611f;
 }
 
 :root[data-theme='dark'] .listing-card-chip {
@@ -205,9 +210,9 @@
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  background: rgba(11, 13, 17, 0.56);
-  color: #ffffff;
+  border: none;
+  background: rgba(255, 255, 255, 0.96);
+  color: #ff6b00;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -216,8 +221,8 @@
 }
 
 .listing-card-fav-btn.is-active {
-  background: color-mix(in srgb, var(--accent) 80%, #000000 20%);
-  border-color: rgba(255, 255, 255, 0.54);
+  background: #ffffff;
+  color: #ff6b00;
 }
 
 .listing-card-fav-btn:disabled {
@@ -252,39 +257,16 @@
   bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 78px 14px 14px;
+  gap: 9px;
+  padding: 88px 24px 16px;
 }
 
 .listing-card-content-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.06) 26%,
-    rgba(0, 0, 0, 0.24) 52%,
-    rgba(0, 0, 0, 0.5) 76%,
-    rgba(0, 0, 0, 0.66) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 .listing-card-content-overlay::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 38%,
-    rgba(0, 0, 0, 0.28) 58%,
-    rgba(0, 0, 0, 0.62) 80%,
-    rgba(0, 0, 0, 0.9) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 .listing-card-content-overlay > * {
@@ -296,17 +278,21 @@
   margin: 0;
   color: #ffffff;
   font-family: 'Outfit', 'Inter', sans-serif;
-  font-size: clamp(1.08rem, 2vw, 1.38rem);
-  font-weight: 760;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 0.98;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .listing-card-sub {
   margin: 0;
   color: rgba(242, 246, 255, 0.9);
-  font-size: 0.84rem;
-  line-height: 1.4;
+  font-size: 0.86rem;
+  line-height: 1.12;
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -345,15 +331,16 @@
 .listing-card-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 2px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .listing-card-price {
   margin-right: auto;
-  color: rgba(255, 255, 255, 0.96);
-  font-size: 0.84rem;
-  font-weight: 740;
+  color: #b6ffb3;
+  font-size: 1.16rem;
+  font-weight: 850;
+  line-height: 1;
 }
 
 .listing-btn-book,
@@ -362,17 +349,18 @@
   align-items: center;
   justify-content: center;
   min-height: 36px;
-  padding: 0 14px;
+  padding: 0 18px;
   border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 760;
+  font-size: 0.8rem;
+  font-weight: 850;
+  letter-spacing: 0;
   text-decoration: none;
 }
 
 .listing-btn-book {
   background: rgba(255, 255, 255, 0.96);
-  color: #10141d;
-  border: 1px solid rgba(15, 23, 42, 0.18);
+  color: #ff6b00;
+  border: none;
   box-shadow: none;
 }
 
@@ -393,7 +381,6 @@
 @media (max-width: 768px) {
   .listing-card {
     border-radius: 24px;
-    border-width: 3px;
     transform: none !important;
   }
 
@@ -402,7 +389,7 @@
   }
 
   .listing-card-content-overlay {
-    padding: 66px 12px 12px;
+    padding: 72px 16px 14px;
     gap: 7px;
   }
 
@@ -425,7 +412,7 @@
   .listing-card-badge-cluster {
     gap: 5px;
     flex-wrap: nowrap;
-    max-width: calc(100% - 34px);
+    max-width: calc(100% - 42px);
     overflow: hidden;
   }
 
@@ -433,8 +420,8 @@
   .listing-card-booked-pill,
   .listing-card-boost-badge {
     min-height: 19px;
-    padding: 0 6px;
-    font-size: 0.54rem;
+    padding: 0 8px;
+    font-size: 0.62rem;
     max-width: 72px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -443,35 +430,37 @@
   }
 
   .listing-card-boost-badge {
-    gap: 3px;
+    width: 25px;
+    min-height: 25px;
+    padding: 0;
   }
 
   .listing-card-boost-badge svg {
-    width: 9px;
-    height: 9px;
-  }
-
-  .listing-card-boost-badge,
-  .listing-card-booked-pill {
-    display: none;
+    width: 13px;
+    height: 13px;
   }
 
   .listing-card-title {
-    font-size: 0.95rem;
+    font-size: 1.14rem;
   }
 
   .listing-card-sub {
-    display: none;
+    font-size: 0.76rem;
+    -webkit-line-clamp: 2;
   }
 
   .listing-card-meta {
     display: none;
   }
 
+  .listing-card-price {
+    font-size: 0.96rem;
+  }
+
   .listing-btn-book,
   .listing-btn-booked {
-    min-height: 32px;
-    padding: 0 12px;
+    min-height: 34px;
+    padding: 0 14px;
     font-size: 0.7rem;
   }
 }
