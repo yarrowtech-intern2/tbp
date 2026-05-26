@@ -2768,7 +2768,7 @@
         align-items: center;
         position: sticky;
         top: 0;
-        z-index: 24;
+        z-index: 1400;
         align-self: stretch;
         max-height: 100%;
         overflow: visible;
