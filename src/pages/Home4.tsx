@@ -640,6 +640,7 @@ export const Home4: React.FC = () => {
   const [navVisible, setNavVisible] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showcaseVisible, setShowcaseVisible] = useState(false);
+  const [introCurtainClosing, setIntroCurtainClosing] = useState(false);
   const [footerContent, setFooterContent] = useState(DEFAULT_FOOTER_CONTENT);
 
   useEffect(() => {
@@ -787,6 +788,71 @@ export const Home4: React.FC = () => {
     return () => window.clearTimeout(timeout);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash) return;
+    if (window.scrollY > 12) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const startDelayMs = prefersReducedMotion ? 450 : 1800;
+    const curtainLeadMs = prefersReducedMotion ? 0 : 260;
+
+    let cancelled = false;
+    let curtainTimer = 0;
+    let scrollTimer = 0;
+
+    const clearTimers = () => {
+      if (curtainTimer) window.clearTimeout(curtainTimer);
+      if (scrollTimer) window.clearTimeout(scrollTimer);
+    };
+
+    const cancelAutoTransition = () => {
+      if (cancelled) return;
+      cancelled = true;
+      clearTimers();
+    };
+
+    const scrollToShowcase = () => {
+      if (cancelled) return;
+      const target = showcaseRef.current;
+      if (!target) return;
+      window.scrollTo({
+        top: target.offsetTop,
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      });
+    };
+
+    const beginCurtainTransition = () => {
+      if (cancelled) return;
+      setIntroCurtainClosing(true);
+      if (curtainLeadMs === 0) {
+        scrollToShowcase();
+        return;
+      }
+      scrollTimer = window.setTimeout(scrollToShowcase, curtainLeadMs);
+    };
+
+    const onManualInput = () => cancelAutoTransition();
+    const onScroll = () => {
+      if (window.scrollY > 24) cancelAutoTransition();
+    };
+
+    window.addEventListener('wheel', onManualInput, { passive: true });
+    window.addEventListener('touchstart', onManualInput, { passive: true });
+    window.addEventListener('keydown', onManualInput);
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    curtainTimer = window.setTimeout(beginCurtainTransition, startDelayMs);
+
+    return () => {
+      cancelAutoTransition();
+      window.removeEventListener('wheel', onManualInput);
+      window.removeEventListener('touchstart', onManualInput);
+      window.removeEventListener('keydown', onManualInput);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
   const activeSlide = SLIDES[activeSlideIndex];
   const navTheme = showcaseVisible ? 'dark' : 'light';
   const experienceRailA = EXPERIENCE_CATEGORIES;
@@ -795,7 +861,7 @@ export const Home4: React.FC = () => {
   return (
     <div className="h4-page">
       {/* â”€â”€ Hero â”€â”€ */}
-      <section id="h4-hero" className="h4-hero" ref={heroRef}>
+      <section id="h4-hero" className={`h4-hero${introCurtainClosing ? ' is-curtain-up' : ''}`} ref={heroRef}>
         <div className="h4-hero-stage">
           <div className="h4-hero-ambient" />
 

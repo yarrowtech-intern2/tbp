@@ -25,8 +25,10 @@
 .h4-hero {
   position: relative;
   width: 100%;
+  height: 100svh;
   min-height: 100svh;
   background: #000;
+  overflow: hidden;
 }
 
 .h4-hero-stage {
@@ -38,6 +40,22 @@
   overflow: hidden;
   background: #000;
   isolation: isolate;
+  transition:
+    transform 1.18s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.h4-hero.is-curtain-up .h4-hero-stage {
+  transform: translate3d(0, -18svh, 0) scale(0.985);
+  opacity: 0.22;
+  filter: blur(2px) saturate(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .h4-hero-stage {
+    transition: none;
+  }
 }
 
 .h4-hero-logo {
@@ -596,6 +614,7 @@
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
   overflow: visible;
 }
+
 
 .h4-slide-card-text {
   font-size: clamp(1rem, 2vw, 1.05rem);
@@ -3567,8 +3586,6 @@
   height: 100dvh;
 }
 
-.h4-hero,
-.h4-showcase,
 .h4-about,
 .h4-testimonials,
 .h4-contact {
