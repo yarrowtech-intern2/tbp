@@ -178,6 +178,7 @@
   font-weight: 500;
   line-height: 1.08;
   letter-spacing: -0.01em;
+  word-spacing: -0.06em;
   color: #0b0b0f;
   text-wrap: balance;
 }
@@ -192,6 +193,7 @@
   font-size: 0.34em;
   line-height: 1.28;
   letter-spacing: 0;
+  word-spacing: -0.04em;
   background: linear-gradient(105deg, #ff7a1a 0%, #0b0b0f 72%);
   background-clip: text;
   -webkit-background-clip: text;

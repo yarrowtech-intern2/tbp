@@ -1,4 +1,4 @@
-﻿import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Compass,
@@ -17,6 +17,7 @@ import {
   Waves,
 } from 'lucide-react';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterLink } from '../lib/appContent';
+import GallerySection from '../components/GallerySection';
 import './home4.css';
 
 type RevealBlockProps = {
@@ -170,6 +171,28 @@ const FEATURED_DESTINATIONS = [
     description: 'Temple architecture, heritage stays, and cultural routes framed with calm premium planning.',
     image: '/images/jagannath-puri-temple.jpg',
   },
+];
+
+const ORBIT_GALLERY_IMAGES = [
+  'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1539650116574-75c0c6d73f5c?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1501696461415-6bd6660c6742?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1482192597420-481a2f3b4f81?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1500048993953-d23a436266cf?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&fit=crop&w=900&q=80',
 ];
 
 const VISUAL_SHOWCASE: VisualShowcaseItem[] = [
@@ -568,6 +591,17 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => setMenuOpen(false);
+  const handleSectionNav = (sectionId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    closeMenu();
+    const node = document.getElementById(sectionId);
+    if (!node) return;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+    if (window.location.hash) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
+  };
 
   useEffect(() => {
     if (visible || !menuOpen) return;
@@ -590,9 +624,9 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
         decoding="async"
       />
       <div className="h4-slide-nav-links">
-        <a href="#h4-hero" className="h4-slide-nav-link" onClick={closeMenu}>Home</a>
-        <a href="#h4-about" className="h4-slide-nav-link" onClick={closeMenu}>About</a>
-        <a href="#h4-contact" className="h4-slide-nav-link" onClick={closeMenu}>Contact</a>
+        <a href="#h4-showcase" className="h4-slide-nav-link" onClick={handleSectionNav('h4-showcase')}>Home</a>
+        <a href="#h4-about" className="h4-slide-nav-link" onClick={handleSectionNav('h4-about')}>About</a>
+        <a href="#h4-contact" className="h4-slide-nav-link" onClick={handleSectionNav('h4-contact')}>Contact</a>
       </div>
       <Link to="/auth" className="h4-slide-nav-login" onClick={closeMenu}>LOGIN</Link>
       <button
@@ -607,9 +641,9 @@ const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ vis
         <span />
       </button>
       <div className={`h4-slide-nav-mobile${menuOpen ? ' is-open' : ''}`}>
-        <a href="#h4-hero" className="h4-slide-nav-mobile-link" onClick={closeMenu}>Home</a>
-        <a href="#h4-about" className="h4-slide-nav-mobile-link" onClick={closeMenu}>About</a>
-        <a href="#h4-contact" className="h4-slide-nav-mobile-link" onClick={closeMenu}>Contact</a>
+        <a href="#h4-showcase" className="h4-slide-nav-mobile-link" onClick={handleSectionNav('h4-showcase')}>Home</a>
+        <a href="#h4-about" className="h4-slide-nav-mobile-link" onClick={handleSectionNav('h4-about')}>About</a>
+        <a href="#h4-contact" className="h4-slide-nav-mobile-link" onClick={handleSectionNav('h4-contact')}>Contact</a>
         <Link to="/auth" className="h4-slide-nav-mobile-login" onClick={closeMenu}>LOGIN</Link>
       </div>
     </nav>
@@ -634,6 +668,7 @@ const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) =
 export const Home4: React.FC = () => {
   const heroRef       = useRef<HTMLElement>(null);
   const showcaseRef   = useRef<HTMLElement>(null);
+  const orbitStageRef = useRef<HTMLDivElement>(null);
   const sphereRef     = useRef<HTMLDivElement>(null);
   const heroCopyRef   = useRef<HTMLDivElement>(null);
   const heroTitleRef  = useRef<HTMLDivElement>(null);
@@ -641,6 +676,8 @@ export const Home4: React.FC = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showcaseVisible, setShowcaseVisible] = useState(false);
   const [introCurtainClosing, setIntroCurtainClosing] = useState(false);
+  const [introCurtainConsumed, setIntroCurtainConsumed] = useState(false);
+  const [orbitHoverIndex, setOrbitHoverIndex] = useState<number | null>(null);
   const [footerContent, setFooterContent] = useState(DEFAULT_FOOTER_CONTENT);
 
   useEffect(() => {
@@ -779,6 +816,7 @@ export const Home4: React.FC = () => {
 
   useEffect(() => {
     if (window.location.hash !== '#h4-showcase') return;
+    setIntroCurtainConsumed(true);
     const scrollToShowcase = () => {
       const top = heroRef.current?.offsetHeight ?? window.innerHeight;
       window.scrollTo({ top, behavior: 'auto' });
@@ -853,10 +891,133 @@ export const Home4: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (introCurtainConsumed) return;
+
+    const markConsumed = () => {
+      const showcaseTop = showcaseRef.current?.offsetTop ?? window.innerHeight;
+      if (window.scrollY >= showcaseTop - 8) {
+        setIntroCurtainConsumed(true);
+      }
+    };
+
+    markConsumed();
+    window.addEventListener('scroll', markConsumed, { passive: true });
+    window.addEventListener('resize', markConsumed);
+
+    return () => {
+      window.removeEventListener('scroll', markConsumed);
+      window.removeEventListener('resize', markConsumed);
+    };
+  }, [introCurtainConsumed]);
+
+  useEffect(() => {
+    if (!introCurtainConsumed) return;
+
+    const lockCurtainOffscreen = () => {
+      const minTop = showcaseRef.current?.offsetTop ?? window.innerHeight;
+      if (window.scrollY < minTop) {
+        window.scrollTo({ top: minTop, behavior: 'auto' });
+      }
+    };
+
+    lockCurtainOffscreen();
+    window.addEventListener('scroll', lockCurtainOffscreen, { passive: true });
+    window.addEventListener('resize', lockCurtainOffscreen);
+
+    return () => {
+      window.removeEventListener('scroll', lockCurtainOffscreen);
+      window.removeEventListener('resize', lockCurtainOffscreen);
+    };
+  }, [introCurtainConsumed]);
+
   const activeSlide = SLIDES[activeSlideIndex];
   const navTheme = showcaseVisible ? 'dark' : 'light';
   const experienceRailA = EXPERIENCE_CATEGORIES;
   const experienceRailB = [...EXPERIENCE_CATEGORIES].reverse();
+  const orbitBaseNodes = useMemo(() => {
+    const nodes: Array<{ image: string; x: number; y: number; baseScale: number; depth: number; tilt: number }> = [];
+    const points: Array<{ x: number; y: number }> = [{ x: 0, y: 0 }];
+    const yRows = [-38, -24, -10, 4, 18, 32];
+    yRows.forEach((y, rowIndex) => {
+      const xStart = rowIndex % 2 === 0 ? -45 : -39;
+      for (let x = xStart; x <= 45; x += 15) {
+        if (Math.abs(x) < 2 && Math.abs(y) < 2) continue;
+        points.push({ x, y });
+      }
+    });
+
+    points.sort((a, b) => {
+      const da = Math.hypot(a.x, a.y);
+      const db = Math.hypot(b.x, b.y);
+      return da - db;
+    });
+
+    points.slice(0, ORBIT_GALLERY_IMAGES.length).forEach((point, index) => {
+      const image = ORBIT_GALLERY_IMAGES[index % ORBIT_GALLERY_IMAGES.length];
+      const distance = Math.hypot(point.x, point.y);
+      const normalized = Math.min(1, distance / 56);
+      const baseScale = index === 0
+        ? 1.22
+        : Math.max(0.44, 1.03 - normalized * 0.66 + (index % 3) * 0.02);
+      const depth = index === 0
+        ? 260
+        : Math.round(200 - normalized * 120);
+      const tilt = ((index % 2 === 0 ? 1 : -1) * (6 - normalized * 4.5));
+      nodes.push({
+        image,
+        x: point.x,
+        y: point.y,
+        baseScale,
+        depth,
+        tilt,
+      });
+    });
+    return nodes;
+  }, []);
+  const orbitNodes = useMemo(() => {
+    return orbitBaseNodes.map((node, index) => {
+      if (orbitHoverIndex === null) {
+        return {
+          ...node,
+          scale: node.baseScale,
+          zIndex: node.depth,
+        };
+      }
+      if (index === orbitHoverIndex) {
+        return {
+          ...node,
+          scale: Math.max(node.baseScale * 2.1, 1.2),
+          zIndex: 900,
+        };
+      }
+      const hoveredNode = orbitBaseNodes[orbitHoverIndex];
+      const distance = Math.hypot(node.x - hoveredNode.x, node.y - hoveredNode.y);
+      const influence = Math.max(0, 1 - distance / 24);
+      const squish = 0.26 + influence * 0.18;
+      return {
+        ...node,
+        scale: Math.max(0.28, node.baseScale * (1 - squish)),
+        zIndex: Math.max(40, node.depth - Math.round(influence * 90)),
+      };
+    });
+  }, [orbitBaseNodes, orbitHoverIndex]);
+  const handleOrbitPointerMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const node = orbitStageRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const mx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const my = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+    node.style.setProperty('--orbit-mx', `${Math.max(-1, Math.min(1, mx)).toFixed(3)}`);
+    node.style.setProperty('--orbit-my', `${Math.max(-1, Math.min(1, my)).toFixed(3)}`);
+  };
+  const resetOrbitPointer = () => {
+    const node = orbitStageRef.current;
+    if (!node) return;
+    node.style.setProperty('--orbit-mx', '0');
+    node.style.setProperty('--orbit-my', '0');
+  };
 
   return (
     <div className="h4-page">
@@ -968,6 +1129,8 @@ export const Home4: React.FC = () => {
         </div>
       </section>
 
+      <GallerySection />
+
       <section className="h4-story-section h4-story-section-tight h4-experience-section">
         <div className="h4-container">
           <div className="h4-editorial-head h4-editorial-head-center h4-accent-head h4-experience-head-outside">
@@ -1078,10 +1241,10 @@ export const Home4: React.FC = () => {
               </p>
             </RevealBlock>
             <RevealBlock className="h4-intent-tile h4-intent-brand-a" delay={180}>
-              <span aria-hidden="true">Bē</span>
+              <span aria-hidden="true">Be</span>
             </RevealBlock>
             <RevealBlock className="h4-intent-tile h4-intent-brand-b" delay={210}>
-              <span aria-hidden="true">∞</span>
+              <span aria-hidden="true">8</span>
             </RevealBlock>
             <RevealBlock className="h4-intent-tile h4-intent-team h4-reveal-copy" delay={240}>
               <strong className="h4-intent-metric">35</strong>
@@ -1244,7 +1407,7 @@ export const Home4: React.FC = () => {
                           </strong>
                           <p className="h4-world-preview-text">{item.preview.description}</p>
                           <div className="h4-world-preview-meta">
-                            <span>★ {item.preview.rating}</span>
+                            <span>? {item.preview.rating}</span>
                             <span>{item.preview.travelers} travelers</span>
                           </div>
                         </div>
@@ -1390,3 +1553,5 @@ export const Home4: React.FC = () => {
     </div>
   );
 };
+
+

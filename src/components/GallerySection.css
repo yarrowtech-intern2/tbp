@@ -1,0 +1,135 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   GALLERY SECTION  –  3D orbital photo gallery
+   Font: Outfit (matches rest of page)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Section shell ──────────────────────────────────────────────────── */
+
+.gal-section {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 600px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* ─── Tiled "Gallery" background pattern ─────────────────────────────── */
+
+.gal-bg-pattern {
+  position: absolute;
+  /* Oversized so rotation doesn't reveal white edges */
+  inset: -30%;
+  transform: rotate(-14deg);
+  /* SVG tile: "Gallery" in near-white — barely distinguishable from bg */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='112'%3E%3Ctext x='240' y='78' font-family='sans-serif' font-size='56' font-weight='800' fill='%23ececec' text-anchor='middle' letter-spacing='1' word-spacing='32'%3ETBP gallery%3C/text%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 480px 112px;
+  user-select: none;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Parallax wrapper (JS drives transform here) ────────────────────── */
+
+.gal-parallax {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+  z-index: 1;
+}
+
+/* ─── Stage — images are positioned relative to its centre ──────────── */
+
+.gal-stage {
+  position: absolute;
+  inset: 0;
+}
+
+/* ─── Individual image bubble ────────────────────────────────────────── */
+
+.gal-item {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  will-change: transform;
+  /* Subtle depth shadow */
+  box-shadow:
+    0 4px 22px rgba(0, 0, 0, 0.13),
+    0 1px 6px  rgba(0, 0, 0, 0.07);
+  /* White outline separates overlapping bubbles */
+  outline: 2.5px solid rgba(255, 255, 255, 0.88);
+  outline-offset: -1px;
+  transition: box-shadow 0.28s ease;
+}
+
+.gal-item:hover {
+  box-shadow:
+    0 10px 44px rgba(0, 0, 0, 0.22),
+    0 3px  12px rgba(0, 0, 0, 0.10);
+}
+
+/* ─── Image inside bubble ────────────────────────────────────────────── */
+
+.gal-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  pointer-events: none;
+  user-select: none;
+  transition: filter 0.28s ease;
+}
+
+.gal-item:hover .gal-img {
+  filter: brightness(1.07) saturate(1.14);
+}
+
+/* ─── Mobile — scale the whole stage down; disable JS parallax ──────── */
+
+@media (max-width: 768px) {
+  .gal-section {
+    height: 500px;
+    min-height: 500px;
+  }
+
+  /* CSS override wins over inline style — kills parallax on touch */
+  .gal-parallax {
+    transform: none !important;
+  }
+
+  .gal-stage {
+    transform: scale(0.44);
+    transform-origin: center center;
+  }
+}
+
+@media (max-width: 480px) {
+  .gal-section {
+    height: 380px;
+    min-height: 380px;
+  }
+
+  .gal-stage {
+    transform: scale(0.30);
+  }
+}
+
+/* ─── Reduced motion: freeze rotation, keep hover scale ─────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .gal-item {
+    transition: none;
+  }
+
+  .gal-img {
+    transition: none;
+  }
+}
