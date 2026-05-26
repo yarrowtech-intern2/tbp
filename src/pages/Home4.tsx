@@ -1,7 +1,8 @@
-﻿import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Compass,
+  ArrowRight,
   ArrowUpRight,
   Hotel,
   Instagram,
@@ -82,69 +83,17 @@ const FooterTextOrLink: React.FC<{ item: FooterLink }> = ({ item }) => {
   return <a href={item.href}>{item.label}</a>;
 };
 
-const SLIDES = [
-  {
-    image: '/images/home4/beach-1600.jpg',
-    name: 'BEACHES',
-    description:
-      'Private coastlines, salt-air mornings, and resort experiences curated for travelers who want calm, clarity, and cinematic luxury by the sea.',
-    cardTitle: 'Aerial arrival',
-    cardText:
-      'Discover secluded bays, signature dining, and glassy turquoise water with concierge-led stays designed around slow, elegant travel.',
-  },
-  {
-    image: '/images/home4/desert-1920.jpg',
-    name: 'DESERTS',
-    description:
-      'Golden horizons, sculpted dunes, and silence-led retreats for travelers drawn to warm light, open space, and refined remote stays.',
-    cardTitle: 'Sunset camps',
-    cardText:
-      'Move between private desert camps, curated tasting dinners, and sunset drives with every detail managed end to end.',
-  },
-  {
-    image: '/images/home4/forrest-1920.jpg',
-    name: 'FORESTS',
-    description:
-      'Mist, cedar air, and immersive eco-luxury escapes built around slower routes, hidden lodges, and restorative green landscapes.',
-    cardTitle: 'Canopy stays',
-    cardText:
-      'Wake to quiet trails, private decks, and wellness itineraries shaped for modern travelers who value nature without compromise.',
-  },
-  {
-    image: '/images/home4/mopunts-1920.jpg',
-    name: 'MOUNTAINS',
-    description:
-      'Elevated hideaways, cold-air clarity, and iconic ridgelines curated into polished alpine journeys with seamless movement.',
-    cardTitle: 'High-altitude calm',
-    cardText:
-      'From panoramic suites to guided ascent days, each stay is designed for comfort, perspective, and quiet grandeur.',
-  },
-  {
-    image: '/images/home4/city.jpg',
-    name: 'CITIES',
-    description:
-      'Design hotels, private tables, and cultured city energy packaged into precise itineraries for travelers who move with intent.',
-    cardTitle: 'Urban editions',
-    cardText:
-      'Unlock skyline suites, chef-led reservations, and after-dark experiences curated with premium local access.',
-  },
-  {
-    image: '/images/home4/temple-1600.jpg',
-    name: 'TEMPLES',
-    description:
-      'Sacred architecture, slow cultural journeys, and timeless heritage stays arranged with a contemporary luxury lens.',
-    cardTitle: 'Heritage routes',
-    cardText:
-      'Travel through ceremonial landmarks, boutique stays, and deeply considered cultural experiences with calm precision.',
-  },
+const STATS = [
+  { value: 20, suffix: '+', label: 'Restaurants' },
+  { value: 8, suffix: '+', label: 'Services' },
+  { value: 12, suffix: '+', label: 'Brands' },
+  { value: 22, suffix: '+', label: 'Countries' },
 ];
 
-const STATS = [
-  { value: '20+', label: 'Tours' },
-  { value: '8+', label: 'Services' },
-  { value: '12+', label: 'Brands' },
-  { value: '22+', label: 'Countries' },
-];
+const HERO_POSTER_IMAGE = '/images/home4/beach-1600.jpg';
+const HERO_VIDEO_URL = 'https://res.cloudinary.com/dc3qprub3/video/upload/f_auto,q_auto,w_1920/tbp-hero2_gur026.mp4';
+const HERO_CARD_COPY =
+  'Experience unforgettable journeys, breathtaking destinations, and adventures crafted for explorers who seek more than just travel. From snowy mountain escapes to tropical beaches and hidden cultural gems, we help you explore the world with curated experiences, seamless planning, and memories that last forever.';
 
 const FEATURED_DESTINATIONS = [
   {
@@ -173,27 +122,6 @@ const FEATURED_DESTINATIONS = [
   },
 ];
 
-const ORBIT_GALLERY_IMAGES = [
-  'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1539650116574-75c0c6d73f5c?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1501696461415-6bd6660c6742?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1482192597420-481a2f3b4f81?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1500048993953-d23a436266cf?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&fit=crop&w=900&q=80',
-];
 
 const VISUAL_SHOWCASE: VisualShowcaseItem[] = [
   {
@@ -587,97 +515,55 @@ const OrbitGlyph: React.FC<OrbitGlyphProps> = ({ className = '' }) => {
     </div>
   );
 };
-const SlideNav: React.FC<{ visible: boolean; theme: 'dark' | 'light' }> = ({ visible, theme }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
 
-  const closeMenu = () => setMenuOpen(false);
-  const handleSectionNav = (sectionId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    closeMenu();
-    const node = document.getElementById(sectionId);
-    if (!node) return;
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    node.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
-    if (window.location.hash) {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
-    }
-  };
+interface RollingTickerProps {
+  value: number;
+  delay?: number;
+}
+
+const RollingTicker: React.FC<RollingTickerProps> = ({ value, delay = 0 }) => {
+  const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
-    if (visible || !menuOpen) return;
+    const timer = setTimeout(() => {
+      setAnimate(true);
+    }, delay + 150);
+    return () => clearTimeout(timer);
+  }, [delay]);
 
-    const timeout = window.setTimeout(() => {
-      setMenuOpen(false);
-    }, 0);
-
-    return () => window.clearTimeout(timeout);
-  }, [visible, menuOpen]);
+  const digits = String(value).split('');
 
   return (
-    <nav
-      className={`h4-slide-nav h4-showcase-nav h4-showcase-nav-${theme}${visible ? ' is-visible' : ''}`}
-    >
-      <img
-        src={theme === 'light' ? '/logo/logo.png' : '/logo/logo-white.png'}
-        alt="The Better Pass"
-        className="h4-slide-nav-logo"
-        decoding="async"
-      />
-      <div className="h4-slide-nav-links">
-        <a href="#h4-showcase" className="h4-slide-nav-link" onClick={handleSectionNav('h4-showcase')}>Home</a>
-        <a href="#h4-about" className="h4-slide-nav-link" onClick={handleSectionNav('h4-about')}>About</a>
-        <a href="#h4-contact" className="h4-slide-nav-link" onClick={handleSectionNav('h4-contact')}>Contact</a>
-      </div>
-      <Link to="/auth" className="h4-slide-nav-login" onClick={closeMenu}>LOGIN</Link>
-      <button
-        type="button"
-        className={`h4-slide-nav-toggle${menuOpen ? ' is-open' : ''}`}
-        aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((prev) => !prev)}
-      >
-        <span />
-        <span />
-        <span />
-      </button>
-      <div className={`h4-slide-nav-mobile${menuOpen ? ' is-open' : ''}`}>
-        <a href="#h4-showcase" className="h4-slide-nav-mobile-link" onClick={handleSectionNav('h4-showcase')}>Home</a>
-        <a href="#h4-about" className="h4-slide-nav-mobile-link" onClick={handleSectionNav('h4-about')}>About</a>
-        <a href="#h4-contact" className="h4-slide-nav-mobile-link" onClick={handleSectionNav('h4-contact')}>Contact</a>
-        <Link to="/auth" className="h4-slide-nav-mobile-login" onClick={closeMenu}>LOGIN</Link>
-      </div>
-    </nav>
+    <span className="rolling-ticker">
+      {digits.map((digitChar, colIdx) => {
+        const targetDigit = animate ? parseInt(digitChar, 10) : 0;
+        return (
+          <span key={colIdx} className="rolling-ticker-digit-container">
+            <span
+              className="rolling-ticker-digit-column"
+              style={{
+                transform: `translateY(-${targetDigit * 10}%)`,
+              }}
+            >
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                <span key={n} className="rolling-ticker-digit-val">
+                  {n}
+                </span>
+              ))}
+            </span>
+          </span>
+        );
+      })}
+    </span>
   );
 };
 
-const SlideCard: React.FC<{ title: string; text: string }> = ({ title, text }) => {
-  return (
-    <div className="h4-slide-card">
-      <div className="h4-slide-card-copy">
-        <h3 className="h4-slide-card-title">{title}</h3>
-        <p className="h4-slide-card-text">{text}</p>
-      </div>
-      <Link to="/auth" className="h4-slide-card-cta" aria-label="Explore and login">
-        <ArrowUpRight size={28} strokeWidth={2.2} />
-      </Link>
-    </div>
-  );
-};
-
-/* â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Main Component ────────────────────────────────────────────────── */
 export const Home4: React.FC = () => {
   const heroRef       = useRef<HTMLElement>(null);
-  const showcaseRef   = useRef<HTMLElement>(null);
-  const orbitStageRef = useRef<HTMLDivElement>(null);
-  const sphereRef     = useRef<HTMLDivElement>(null);
-  const heroCopyRef   = useRef<HTMLDivElement>(null);
-  const heroTitleRef  = useRef<HTMLDivElement>(null);
-  const [navVisible, setNavVisible] = useState(false);
-  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [showcaseVisible, setShowcaseVisible] = useState(false);
-  const [introCurtainClosing, setIntroCurtainClosing] = useState(false);
-  const [introCurtainConsumed, setIntroCurtainConsumed] = useState(false);
-  const [orbitHoverIndex, setOrbitHoverIndex] = useState<number | null>(null);
+  const showcaseRef   = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [footerContent, setFooterContent] = useState(DEFAULT_FOOTER_CONTENT);
 
   useEffect(() => {
@@ -694,387 +580,131 @@ export const Home4: React.FC = () => {
     };
   }, []);
 
+  // Simple scrolled listener for floating/blur sticky navbar
   useEffect(() => {
-    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-    const lerp = (start: number, end: number, progress: number) => start + (end - start) * progress;
-    const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
-    const easeInOutCubic = (value: number) => (
-      value < 0.5
-        ? 4 * value * value * value
-        : 1 - Math.pow(-2 * value + 2, 3) / 2
-    );
-
-    let frame = 0;
-
-    const updateScene = () => {
-      frame = 0;
-      const vh = window.innerHeight;
-      if (heroRef.current) {
-        const rect = heroRef.current.getBoundingClientRect();
-        // Preserve smooth globe transition even when hero height is exactly one viewport.
-        const heroScrollable = Math.max(vh * 0.38, heroRef.current.offsetHeight - vh);
-        const heroProgress = clamp(-rect.top / heroScrollable, 0, 1);
-        const orbRevealProgress = easeOutCubic(clamp(heroProgress / 0.72, 0, 1));
-        const orbExitProgress = easeInOutCubic(clamp((heroProgress - 0.72) / 0.28, 0, 1));
-
-        if (sphereRef.current) {
-          const risePx = lerp(0, -vh * 0.48, orbRevealProgress) + lerp(0, -vh * 0.16, orbExitProgress);
-          const scale = lerp(1.01, 0.74, orbRevealProgress) * lerp(1, 0.78, orbExitProgress);
-          const rotate = lerp(-2, 0.8, orbRevealProgress);
-          const opacity = heroProgress <= 0.76 ? 1 : 1 - orbExitProgress;
-          const blur = lerp(0, 8, orbExitProgress);
-          const brightness = lerp(1, 1.03, orbRevealProgress);
-          const saturation = lerp(1, 1.08, orbRevealProgress);
-
-          sphereRef.current.style.transform =
-            `translate3d(-50%, ${risePx}px, 0) scale(${scale}) rotate(${rotate}deg)`;
-          sphereRef.current.style.opacity = `${opacity}`;
-          sphereRef.current.style.filter =
-            `blur(${blur}px) brightness(${brightness}) saturate(${saturation})`;
-        }
-
-        if (heroCopyRef.current) {
-          const copyLift = lerp(0, -vh * 0.14, heroProgress);
-          const copyScale = lerp(1, 0.97, heroProgress);
-          const copyOpacity = clamp(1 - heroProgress * 1.2, 0, 1);
-
-          heroCopyRef.current.style.opacity = `${copyOpacity}`;
-          heroCopyRef.current.style.transform =
-            `translate3d(0, ${copyLift}px, 0) scale(${copyScale})`;
-        }
-
-        if (heroTitleRef.current) {
-          const titleLift = lerp(0, -vh * 0.24, orbRevealProgress) + lerp(0, -vh * 0.08, orbExitProgress);
-          const titleScale = lerp(1, 0.94, heroProgress);
-          const titleOpacity = clamp(1 - heroProgress * 0.92, 0, 1);
-
-          heroTitleRef.current.style.opacity = `${titleOpacity}`;
-          heroTitleRef.current.style.transform =
-            `translate3d(0, ${titleLift}px, 0) scale(${titleScale})`;
-        }
-      }
-
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
     };
-
-    const queueUpdate = () => {
-      if (frame) return;
-      frame = window.requestAnimationFrame(updateScene);
-    };
-
-    window.addEventListener('scroll', queueUpdate, { passive: true });
-    window.addEventListener('resize', queueUpdate);
-    queueUpdate();
-
-    return () => {
-      if (frame) {
-        window.cancelAnimationFrame(frame);
-      }
-      window.removeEventListener('scroll', queueUpdate);
-      window.removeEventListener('resize', queueUpdate);
-    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    const node = heroRef.current;
-    if (!node) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setNavVisible(!(entry.isIntersecting && entry.intersectionRatio > 0.01));
-      },
-      { threshold: [0, 0.01, 0.2, 0.6, 1] }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!showcaseVisible) return;
-
-    const interval = window.setInterval(() => {
-      setActiveSlideIndex((prev) => (prev + 1) % SLIDES.length);
-    }, 3500);
-
-    return () => window.clearInterval(interval);
-  }, [showcaseVisible]);
-
-  useEffect(() => {
-    const node = showcaseRef.current;
-    if (!node) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowcaseVisible(entry.isIntersecting && entry.intersectionRatio > 0.2);
-      },
-      { threshold: [0, 0.2, 0.45, 0.7] }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (window.location.hash !== '#h4-showcase') return;
-    setIntroCurtainConsumed(true);
-    const scrollToShowcase = () => {
-      const top = heroRef.current?.offsetHeight ?? window.innerHeight;
-      window.scrollTo({ top, behavior: 'auto' });
-    };
-    window.requestAnimationFrame(scrollToShowcase);
-    const timeout = window.setTimeout(scrollToShowcase, 250);
-    return () => window.clearTimeout(timeout);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.location.hash) return;
-    if (window.scrollY > 12) return;
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const startDelayMs = prefersReducedMotion ? 450 : 1800;
-    const curtainLeadMs = prefersReducedMotion ? 0 : 260;
-
-    let cancelled = false;
-    let curtainTimer = 0;
-    let scrollTimer = 0;
-
-    const clearTimers = () => {
-      if (curtainTimer) window.clearTimeout(curtainTimer);
-      if (scrollTimer) window.clearTimeout(scrollTimer);
-    };
-
-    const cancelAutoTransition = () => {
-      if (cancelled) return;
-      cancelled = true;
-      clearTimers();
-    };
-
-    const scrollToShowcase = () => {
-      if (cancelled) return;
-      const target = showcaseRef.current;
-      if (!target) return;
-      window.scrollTo({
-        top: target.offsetTop,
-        behavior: prefersReducedMotion ? 'auto' : 'smooth',
-      });
-    };
-
-    const beginCurtainTransition = () => {
-      if (cancelled) return;
-      setIntroCurtainClosing(true);
-      if (curtainLeadMs === 0) {
-        scrollToShowcase();
-        return;
-      }
-      scrollTimer = window.setTimeout(scrollToShowcase, curtainLeadMs);
-    };
-
-    const onManualInput = () => cancelAutoTransition();
-    const onScroll = () => {
-      if (window.scrollY > 24) cancelAutoTransition();
-    };
-
-    window.addEventListener('wheel', onManualInput, { passive: true });
-    window.addEventListener('touchstart', onManualInput, { passive: true });
-    window.addEventListener('keydown', onManualInput);
-    window.addEventListener('scroll', onScroll, { passive: true });
-
-    curtainTimer = window.setTimeout(beginCurtainTransition, startDelayMs);
-
-    return () => {
-      cancelAutoTransition();
-      window.removeEventListener('wheel', onManualInput);
-      window.removeEventListener('touchstart', onManualInput);
-      window.removeEventListener('keydown', onManualInput);
-      window.removeEventListener('scroll', onScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (introCurtainConsumed) return;
-
-    const markConsumed = () => {
-      const showcaseTop = showcaseRef.current?.offsetTop ?? window.innerHeight;
-      if (window.scrollY >= showcaseTop - 8) {
-        setIntroCurtainConsumed(true);
-      }
-    };
-
-    markConsumed();
-    window.addEventListener('scroll', markConsumed, { passive: true });
-    window.addEventListener('resize', markConsumed);
-
-    return () => {
-      window.removeEventListener('scroll', markConsumed);
-      window.removeEventListener('resize', markConsumed);
-    };
-  }, [introCurtainConsumed]);
-
-  useEffect(() => {
-    if (!introCurtainConsumed) return;
-
-    const lockCurtainOffscreen = () => {
-      const minTop = showcaseRef.current?.offsetTop ?? window.innerHeight;
-      if (window.scrollY < minTop) {
-        window.scrollTo({ top: minTop, behavior: 'auto' });
-      }
-    };
-
-    lockCurtainOffscreen();
-    window.addEventListener('scroll', lockCurtainOffscreen, { passive: true });
-    window.addEventListener('resize', lockCurtainOffscreen);
-
-    return () => {
-      window.removeEventListener('scroll', lockCurtainOffscreen);
-      window.removeEventListener('resize', lockCurtainOffscreen);
-    };
-  }, [introCurtainConsumed]);
-
-  const activeSlide = SLIDES[activeSlideIndex];
-  const navTheme = showcaseVisible ? 'dark' : 'light';
   const experienceRailA = EXPERIENCE_CATEGORIES;
   const experienceRailB = [...EXPERIENCE_CATEGORIES].reverse();
-  const orbitBaseNodes = useMemo(() => {
-    const nodes: Array<{ image: string; x: number; y: number; baseScale: number; depth: number; tilt: number }> = [];
-    const points: Array<{ x: number; y: number }> = [{ x: 0, y: 0 }];
-    const yRows = [-38, -24, -10, 4, 18, 32];
-    yRows.forEach((y, rowIndex) => {
-      const xStart = rowIndex % 2 === 0 ? -45 : -39;
-      for (let x = xStart; x <= 45; x += 15) {
-        if (Math.abs(x) < 2 && Math.abs(y) < 2) continue;
-        points.push({ x, y });
-      }
-    });
 
-    points.sort((a, b) => {
-      const da = Math.hypot(a.x, a.y);
-      const db = Math.hypot(b.x, b.y);
-      return da - db;
-    });
-
-    points.slice(0, ORBIT_GALLERY_IMAGES.length).forEach((point, index) => {
-      const image = ORBIT_GALLERY_IMAGES[index % ORBIT_GALLERY_IMAGES.length];
-      const distance = Math.hypot(point.x, point.y);
-      const normalized = Math.min(1, distance / 56);
-      const baseScale = index === 0
-        ? 1.22
-        : Math.max(0.44, 1.03 - normalized * 0.66 + (index % 3) * 0.02);
-      const depth = index === 0
-        ? 260
-        : Math.round(200 - normalized * 120);
-      const tilt = ((index % 2 === 0 ? 1 : -1) * (6 - normalized * 4.5));
-      nodes.push({
-        image,
-        x: point.x,
-        y: point.y,
-        baseScale,
-        depth,
-        tilt,
-      });
-    });
-    return nodes;
-  }, []);
-  const orbitNodes = useMemo(() => {
-    return orbitBaseNodes.map((node, index) => {
-      if (orbitHoverIndex === null) {
-        return {
-          ...node,
-          scale: node.baseScale,
-          zIndex: node.depth,
-        };
-      }
-      if (index === orbitHoverIndex) {
-        return {
-          ...node,
-          scale: Math.max(node.baseScale * 2.1, 1.2),
-          zIndex: 900,
-        };
-      }
-      const hoveredNode = orbitBaseNodes[orbitHoverIndex];
-      const distance = Math.hypot(node.x - hoveredNode.x, node.y - hoveredNode.y);
-      const influence = Math.max(0, 1 - distance / 24);
-      const squish = 0.26 + influence * 0.18;
-      return {
-        ...node,
-        scale: Math.max(0.28, node.baseScale * (1 - squish)),
-        zIndex: Math.max(40, node.depth - Math.round(influence * 90)),
-      };
-    });
-  }, [orbitBaseNodes, orbitHoverIndex]);
-  const handleOrbitPointerMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    const node = orbitStageRef.current;
+  // Smooth navigation helper
+  const handleSectionNav = (sectionId: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    setMenuOpen(false);
+    const node = document.getElementById(sectionId);
     if (!node) return;
-    const rect = node.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const mx = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const my = ((event.clientY - rect.top) / rect.height) * 2 - 1;
-    node.style.setProperty('--orbit-mx', `${Math.max(-1, Math.min(1, mx)).toFixed(3)}`);
-    node.style.setProperty('--orbit-my', `${Math.max(-1, Math.min(1, my)).toFixed(3)}`);
-  };
-  const resetOrbitPointer = () => {
-    const node = orbitStageRef.current;
-    if (!node) return;
-    node.style.setProperty('--orbit-mx', '0');
-    node.style.setProperty('--orbit-my', '0');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+    if (window.location.hash) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
   };
 
   return (
     <div className="h4-page">
-      {/* â”€â”€ Hero â”€â”€ */}
-      <section id="h4-hero" className={`h4-hero${introCurtainClosing ? ' is-curtain-up' : ''}`} ref={heroRef}>
-        <div className="h4-hero-stage">
-          <div className="h4-hero-ambient" />
-
-          <div className="h4-hero-copy" ref={heroCopyRef}>
-            <p className="h4-hero-tagline">Luxury journeys shaped by place and pace</p>
-          </div>
-
-          <div className="h4-hero-title-shell" ref={heroTitleRef}>
-            <h1 className="h4-hero-title" aria-label="The Better Pass">
-              <span className="h4-hero-title-line">THE BETTER</span>
-              <span className="h4-hero-title-line">PASS</span>
-            </h1>
-          </div>
-
-          <div className="h4-hero-sphere" ref={sphereRef} aria-hidden="true">
-            <img src="/images/home4/orb2.png" alt="" className="h4-hero-sphere-image" />
-            <div className="h4-hero-sphere-gloss" />
-          </div>
-
-          <span className="h4-hero-scroll">S c r o l l</span>
+      {/* ─── Premium Integrated Beach Hero Redesign ─── */}
+      <section 
+        id="h4-hero" 
+        className="h4-beach-hero" 
+        ref={heroRef}
+      >
+        {/* Showcase Background Layer (dynamic cross-fade carousel) */}
+        <div className="h4-beach-bg-wrap" ref={showcaseRef}>
+          <video
+            className="h4-beach-bg-video"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster={HERO_POSTER_IMAGE}
+          >
+            <source
+              src={HERO_VIDEO_URL}
+              type="video/mp4"
+            />
+          </video>
         </div>
-      </section>
-      <SlideNav visible={navVisible} theme={navTheme} />
-      {/* â”€â”€ Showcase Section (auto-changing background) â”€â”€ */}
-      <section id="h4-showcase" ref={showcaseRef} className="h4-showcase">
-        <div className="h4-showcase-bg-layer-wrap" aria-hidden="true">
-          {SLIDES.map((slide, index) => (
-            <div
-              key={slide.image}
-              className={`h4-showcase-bg-layer${index === activeSlideIndex ? ' is-active' : ''}`}
-            >
+
+        {/* Translucent Capsule Navbar */}
+        <nav className={`h4-custom-navbar ${isScrolled ? 'is-scrolled' : ''}`}>
+          <div className="h4-custom-nav-container">
+            {/* Logo */}
+            <Link to="/" className="h4-custom-nav-logo">
               <img
-                src={slide.image}
-                alt=""
-                className="h4-showcase-bg-image"
-                loading="lazy"
+                src={isScrolled ? '/logo/logo.png' : '/logo/logo-white.png'}
+                alt="The Better PASS"
+                className="h4-custom-nav-logo-image"
+                loading="eager"
                 decoding="async"
               />
+            </Link>
+
+            {/* Links Capsule */}
+            <div className="h4-custom-nav-capsule">
+              <a href="#h4-hero" className="h4-custom-nav-link" onClick={handleSectionNav('h4-hero')}>Home</a>
+              <a href="#h4-about" className="h4-custom-nav-link" onClick={handleSectionNav('h4-about')}>About</a>
+              <a href="#h4-choose-us" className="h4-custom-nav-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
             </div>
-          ))}
-        </div>
-        <div className={`h4-slide h4-showcase-slide${showcaseVisible ? ' is-visible' : ''}`}>
-          <div key={`feature-${activeSlide.name}`} className="h4-slide-feature-row">
-            <SlideCard title={activeSlide.cardTitle} text={activeSlide.cardText} />
-            <p className="h4-slide-desc">{activeSlide.description}</p>
+
+            {/* Login Button */}
+            <Link to="/auth" className="h4-custom-nav-login" aria-label="Login or sign up">
+              <ArrowRight size={22} aria-hidden="true" />
+            </Link>
+            
+            {/* Mobile Menu Toggle Button */}
+            <button
+              type="button"
+              className={`h4-custom-nav-toggle ${menuOpen ? 'is-open' : ''}`}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(prev => !prev)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
           </div>
-          <h2 key={`title-${activeSlide.name}`} className="h4-slide-name">{activeSlide.name}</h2>
-          <div key={`stats-${activeSlide.name}`} className="h4-slide-stats">
-            {STATS.map((s) => (
-              <div key={s.label} className="h4-slide-stat">
-                <span className="h4-slide-stat-value">{s.value}</span>
-                <span className="h4-slide-stat-label">{s.label}</span>
+
+          {/* Mobile Dropdown Panel */}
+          <div className={`h4-custom-nav-mobile-panel ${menuOpen ? 'is-open' : ''}`}>
+            <a href="#h4-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-hero')}>Home</a>
+            <a href="#h4-about" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-about')}>About</a>
+            <a href="#h4-choose-us" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
+            <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>LOGIN</Link>
+          </div>
+        </nav>
+
+        {/* Central Split Layout Content */}
+        <div className="h4-beach-hero-content">
+          <div className="h4-glass-card">
+            <p className="h4-glass-card-text">{HERO_CARD_COPY}</p>
+            <Link to="/auth" className="h4-glass-card-explore-btn" aria-label="Explore">
+              <ArrowUpRight size={36} aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Bottom Title & Stats */}
+        <div className="h4-beach-hero-bottom">
+          <p className="h4-beach-hero-kicker">Discover the World Beyond the</p>
+          <h1 className="h4-beach-hero-title">
+            HORIZON
+          </h1>
+          
+          <div className="h4-beach-hero-stats">
+            {STATS.map((s, idx) => (
+              <div key={s.label} className="h4-beach-hero-stat">
+                <div className="h4-beach-hero-stat-value">
+                  <RollingTicker key={idx} value={s.value} delay={idx * 120} />
+                  <span className="h4-stat-suffix">{s.suffix}</span>
+                </div>
+                <span className="h4-beach-hero-stat-label">{s.label}</span>
               </div>
             ))}
           </div>
@@ -1553,5 +1183,3 @@ export const Home4: React.FC = () => {
     </div>
   );
 };
-
-
