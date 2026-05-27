@@ -84,7 +84,7 @@ const FooterTextOrLink: React.FC<{ item: FooterLink }> = ({ item }) => {
 };
 
 const STATS = [
-  { value: 20, suffix: '+', label: 'Restaurants' },
+  { value: 20, suffix: '+', label: 'Restaurents' },
   { value: 8, suffix: '+', label: 'Services' },
   { value: 12, suffix: '+', label: 'Brands' },
   { value: 22, suffix: '+', label: 'Countries' },
@@ -607,6 +607,49 @@ export const Home4: React.FC = () => {
 
   return (
     <div className="h4-page">
+      {/* Translucent Capsule Navbar */}
+      <nav className={`h4-custom-navbar ${isScrolled ? 'is-scrolled' : ''}`}>
+        <div className="h4-custom-nav-container">
+          <Link to="/" className="h4-custom-nav-logo">
+            <img
+              src={isScrolled ? '/logo/logo.png' : '/logo/logo-white.png'}
+              alt="The Better PASS"
+              className="h4-custom-nav-logo-image"
+              loading="eager"
+              decoding="async"
+            />
+          </Link>
+
+          <div className="h4-custom-nav-capsule">
+            <a href="#h4-hero" className="h4-custom-nav-link" onClick={handleSectionNav('h4-hero')}>Home</a>
+            <a href="#h4-about" className="h4-custom-nav-link" onClick={handleSectionNav('h4-about')}>About</a>
+            <a href="#h4-choose-us" className="h4-custom-nav-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
+          </div>
+
+          <Link to="/auth" className="h4-custom-nav-login" aria-label="Login or sign up">
+            <ArrowRight size={22} aria-hidden="true" />
+          </Link>
+
+          <button
+            type="button"
+            className={`h4-custom-nav-toggle ${menuOpen ? 'is-open' : ''}`}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(prev => !prev)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
+
+        <div className={`h4-custom-nav-mobile-panel ${menuOpen ? 'is-open' : ''}`}>
+          <a href="#h4-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-hero')}>Home</a>
+          <a href="#h4-about" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-about')}>About</a>
+          <a href="#h4-choose-us" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
+          <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>LOGIN</Link>
+        </div>
+      </nav>
       {/* ─── Premium Integrated Beach Hero Redesign ─── */}
       <section 
         id="h4-hero" 
@@ -630,55 +673,6 @@ export const Home4: React.FC = () => {
             />
           </video>
         </div>
-
-        {/* Translucent Capsule Navbar */}
-        <nav className={`h4-custom-navbar ${isScrolled ? 'is-scrolled' : ''}`}>
-          <div className="h4-custom-nav-container">
-            {/* Logo */}
-            <Link to="/" className="h4-custom-nav-logo">
-              <img
-                src={isScrolled ? '/logo/logo.png' : '/logo/logo-white.png'}
-                alt="The Better PASS"
-                className="h4-custom-nav-logo-image"
-                loading="eager"
-                decoding="async"
-              />
-            </Link>
-
-            {/* Links Capsule */}
-            <div className="h4-custom-nav-capsule">
-              <a href="#h4-hero" className="h4-custom-nav-link" onClick={handleSectionNav('h4-hero')}>Home</a>
-              <a href="#h4-about" className="h4-custom-nav-link" onClick={handleSectionNav('h4-about')}>About</a>
-              <a href="#h4-choose-us" className="h4-custom-nav-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
-            </div>
-
-            {/* Login Button */}
-            <Link to="/auth" className="h4-custom-nav-login" aria-label="Login or sign up">
-              <ArrowRight size={22} aria-hidden="true" />
-            </Link>
-            
-            {/* Mobile Menu Toggle Button */}
-            <button
-              type="button"
-              className={`h4-custom-nav-toggle ${menuOpen ? 'is-open' : ''}`}
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(prev => !prev)}
-            >
-              <span />
-              <span />
-              <span />
-            </button>
-          </div>
-
-          {/* Mobile Dropdown Panel */}
-          <div className={`h4-custom-nav-mobile-panel ${menuOpen ? 'is-open' : ''}`}>
-            <a href="#h4-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-hero')}>Home</a>
-            <a href="#h4-about" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-about')}>About</a>
-            <a href="#h4-choose-us" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
-            <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>LOGIN</Link>
-          </div>
-        </nav>
 
         {/* Central Split Layout Content */}
         <div className="h4-beach-hero-content">

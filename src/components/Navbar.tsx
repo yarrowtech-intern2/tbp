@@ -318,7 +318,7 @@ export const Navbar: React.FC = () => {
                 .nbr-link {
                     border-radius: 999px;
                     color: ${navText};
-                    font-family: 'Outfit', sans-serif;
+                    font-family: 'Okine', 'Outfit', sans-serif;
                     font-size: 0.875rem;
                     font-weight: 600;
                     padding: 6px 14px;
@@ -341,6 +341,7 @@ export const Navbar: React.FC = () => {
                 .nbr-join {
                     border-radius: 999px;
                     color: var(--accent);
+                    font-family: 'Okine', 'Outfit', sans-serif;
                     font-size: 0.875rem;
                     font-weight: 700;
                     margin-left: 4px;
@@ -379,11 +380,13 @@ export const Navbar: React.FC = () => {
                 }
                 .nbr-user-name {
                     color: ${isDark ? '#f8fafc' : '#1d1207'};
+                    font-family: 'Azonix', 'Outfit', sans-serif;
                     font-size: 0.82rem;
                     font-weight: 700;
                 }
                 .nbr-user-role {
                     color: ${navText};
+                    font-family: 'Okine', 'Outfit', sans-serif;
                     font-size: 0.68rem;
                     font-weight: 500;
                 }
@@ -459,6 +462,7 @@ export const Navbar: React.FC = () => {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
+                    font-family: 'Okine', 'Outfit', sans-serif;
                     font-size: 0.9rem;
                     font-weight: 600;
                     padding: 10px 14px;
