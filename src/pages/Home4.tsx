@@ -678,6 +678,7 @@ export const Home4: React.FC = () => {
           <div className="h4-glass-card">
             <p className="h4-glass-card-text">{HERO_CARD_COPY}</p>
             <Link to="/auth" className="h4-glass-card-explore-btn" aria-label="Explore">
+              <span className="h4-glass-card-explore-label">Explore</span>
               <ArrowUpRight size={36} aria-hidden="true" />
             </Link>
           </div>
