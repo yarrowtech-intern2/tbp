@@ -564,6 +564,7 @@ export const Home4: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [footerContent, setFooterContent] = useState(DEFAULT_FOOTER_CONTENT);
+  const [showCurtain, setShowCurtain] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -588,6 +589,12 @@ export const Home4: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => setShowCurtain(false), reducedMotion ? 300 : 2300);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const experienceRailA = EXPERIENCE_CATEGORIES;
   const experienceRailB = [...EXPERIENCE_CATEGORIES].reverse();
 
@@ -606,6 +613,12 @@ export const Home4: React.FC = () => {
 
   return (
     <div className="h4-page">
+      {showCurtain && (
+        <div className="h4-curtain-screen" aria-hidden="true">
+          <div className="h4-curtain-ring" />
+        </div>
+      )}
+
       {/* Translucent Capsule Navbar */}
       <nav className={`h4-custom-navbar ${isScrolled ? 'is-scrolled' : ''}`}>
         <div className="h4-custom-nav-container">
