@@ -2,7 +2,6 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Compass,
-  ArrowRight,
   ArrowUpRight,
   Hotel,
   Instagram,
@@ -90,8 +89,8 @@ const STATS = [
   { value: 22, suffix: '+', label: 'Countries' },
 ];
 
-const HERO_POSTER_IMAGE = '/images/home4/beach-1600.jpg';
-const HERO_VIDEO_URL = 'https://res.cloudinary.com/dc3qprub3/video/upload/f_auto,q_auto,w_1920/tbp-hero2_gur026.mp4';
+const HERO_POSTER_IMAGE = 'https://res.cloudinary.com/dc3qprub3/video/upload/f_jpg,q_auto,w_1920/tbp-hero4_dmbfr5.jpg';
+const HERO_VIDEO_URL = 'https://res.cloudinary.com/dc3qprub3/video/upload/f_auto,q_auto,w_1920/tbp-hero4_dmbfr5.mp4';
 const HERO_CARD_COPY =
   'Experience unforgettable journeys, breathtaking destinations, and adventures crafted for explorers who seek more than just travel. From snowy mountain escapes to tropical beaches and hidden cultural gems, we help you explore the world with curated experiences, seamless planning, and memories that last forever.';
 
@@ -626,8 +625,8 @@ export const Home4: React.FC = () => {
             <a href="#h4-choose-us" className="h4-custom-nav-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
           </div>
 
-          <Link to="/auth" className="h4-custom-nav-login" aria-label="Login or sign up">
-            <ArrowRight size={22} aria-hidden="true" />
+          <Link to="/auth" className="h4-custom-nav-login">
+            Login
           </Link>
 
           <button
