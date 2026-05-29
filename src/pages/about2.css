@@ -1,5 +1,5 @@
 .about2-theme.about-page {
-  background: #000;
+  background: transparent !important;
   overflow: hidden;
 }
 
@@ -21,7 +21,13 @@
 
 .about2-theme .about-bento {
   gap: 8px;
-  background: transparent;
+  background: transparent !important;
+}
+
+.about2-theme .about-shell,
+.about2-theme .about-shell.has-active-card,
+.about2-theme .about-shell.has-active-card .about-bento {
+  background: transparent !important;
 }
 
 .about2-theme .about-bento-card {
