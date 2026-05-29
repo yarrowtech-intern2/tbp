@@ -7,6 +7,7 @@ import { SupportChatbot } from './components/SupportChatbot';
 import { normalizeRoleValue } from './lib/platform';
 
 const Home4 = lazy(async () => ({ default: (await import('./pages/Home4')).Home4 }));
+const About2 = lazy(async () => ({ default: (await import('./pages/About2')).About2 }));
 const DashboardHome = lazy(async () => ({ default: (await import('./pages/DashboardHome')).DashboardHome }));
 const TouristExplorePage = lazy(async () => ({ default: (await import('./pages/TouristExplorePage')).TouristExplorePage }));
 const RoleDashboard = lazy(async () => ({ default: (await import('./pages/RoleDashboard')).RoleDashboard }));
@@ -164,6 +165,8 @@ function App() {
             <Route path="/home2" element={<Navigate to="/" replace />} />
             <Route path="/home3" element={<Navigate to="/" replace />} />
             <Route path="/home4" element={<Navigate to="/" replace />} />
+            <Route path="/about" element={<About2 />} />
+            <Route path="/about2" element={<Navigate to="/about" replace />} />
             <Route path="/auth" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
             <Route path="/terms" element={<TermsAndConditions />} />
             <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
@@ -194,7 +197,7 @@ function App() {
   );
 }
 
-const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/terms'];
+const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/terms', '/about', '/about2'];
 
 const AppNavbar: React.FC = () => {
   const { user } = useAuth();
@@ -208,6 +211,7 @@ const AppNavbar: React.FC = () => {
 const AppFooter: React.FC<{ homePath: string; footerLogoSrc: string; user: unknown }> = ({ homePath, footerLogoSrc, user }) => {
   const { pathname } = useLocation();
   const isGuestLanding = !user && pathname === '/';
+  if (HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
   if (isGuestLanding) return null;
   return null;
 

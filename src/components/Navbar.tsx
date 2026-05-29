@@ -6,7 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { normalizeRoleValue } from '../lib/platform';
 
-type NavTab = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
+type NavTab = 'home' | 'about' | 'explore' | 'dashboard' | 'bookings' | 'profile';
 
 export const Navbar: React.FC = () => {
     const { user, profile, profileLoading, signOut, isAdmin, isProvider, roleLabel } = useAuth();
@@ -61,6 +61,7 @@ export const Navbar: React.FC = () => {
     const activeTab: NavTab | null = (() => {
         const tab = new URLSearchParams(location.search).get('tab');
         if (location.pathname === '/profile') return 'profile';
+        if (location.pathname === '/about') return 'about';
         if (!isTourist) return null;
         if (location.pathname === '/') return 'home';
         if (location.pathname === '/explore') return 'explore';
@@ -90,6 +91,7 @@ export const Navbar: React.FC = () => {
             : isTourist
             ? [
                 { key: 'home' as NavTab, label: 'Home', to: '/' },
+                { key: 'about' as NavTab, label: 'About', to: '/about' },
                 { key: 'explore' as NavTab, label: 'Explore', to: touristExplorePath },
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: touristDashboardPath },
                 { key: 'bookings' as NavTab, label: 'Bookings', to: touristBookingsPath },
@@ -97,6 +99,7 @@ export const Navbar: React.FC = () => {
               ]
             : [
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: dashboardPath },
+                { key: 'about' as NavTab, label: 'About', to: '/about' },
                 { key: 'profile' as NavTab, label: 'Profile', to: '/profile' },
               ]),
     ];

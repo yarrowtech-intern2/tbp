@@ -99,6 +99,7 @@ type SidebarKey =
     | 'content'
     | 'greetings'
     | 'contact'
+    | 'about'
     | 'moderation'
     | 'accepted'
     | 'rejected'
@@ -450,6 +451,7 @@ const parseMarketingSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'greetings' || normalized === 'edit-greetings' || normalized === 'edit_greetings') return 'greetings';
     if (normalized === 'contact' || normalized === 'contact-info' || normalized === 'edit-contact-info' || normalized === 'informatics') return 'contact';
+    if (normalized === 'about' || normalized === 'about-us' || normalized === 'about_us' || normalized === 'edit-about') return 'about';
     if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'greetings';
     if (normalized === 'messages' || normalized === 'notifications') return 'messages';
     return null;
@@ -1209,6 +1211,7 @@ export const RoleDashboard: React.FC = () => {
             return [
                 { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                 { key: 'greetings', label: 'Edit Greetings', icon: SquarePen },
+                { key: 'about', label: 'Edit About', icon: FileText },
                 { key: 'contact', label: 'Edit Contact Info', icon: Megaphone },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
@@ -1786,6 +1789,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'marketing') {
             return {
                 greetings: 1,
+                about: 1,
                 contact: 1,
                 messages: centerNotifications.length,
             };
@@ -2949,6 +2953,10 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'contact') {
             return <MarketingContentEditor userId={user?.id} mode="contact" />;
+        }
+
+        if (activeSection === 'about') {
+            return <MarketingContentEditor userId={user?.id} mode="about" />;
         }
 
         if (activeSection === 'messages') {

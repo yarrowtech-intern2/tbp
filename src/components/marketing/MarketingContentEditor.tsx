@@ -2,12 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import {
     APP_CONTENT_KEYS,
+    DEFAULT_ABOUT_PAGE_CONTENT,
     DEFAULT_FOOTER_CONTENT,
     DEFAULT_HERO_MESSAGES,
     HERO_MESSAGE_MOODS,
     getPublicAppContent,
+    normalizeAboutPageContent,
     normalizeSalesSettingsContent,
     saveAppContentValue,
+    type AboutPageCard,
+    type AboutPageContent,
     type FooterContent,
     type FooterLink,
     type HeroMessageMood,
@@ -17,7 +21,7 @@ import {
 
 type MarketingContentEditorProps = {
     userId?: string | null;
-    mode: 'greetings' | 'contact';
+    mode: 'greetings' | 'contact' | 'about';
 };
 
 type SalesSettingsEditorProps = {
@@ -89,6 +93,31 @@ const formToMessages = (form: Record<HeroMessageMood, string[]>): HeroMessagesCo
     acc[mood] = rows.length > 0 ? rows : DEFAULT_HERO_MESSAGES[mood];
     return acc;
 }, {} as HeroMessagesContent);
+
+const aboutToForm = (about: AboutPageContent): AboutPageContent => ({
+    ...about,
+    backgroundImages: about.backgroundImages.length > 0 ? about.backgroundImages : DEFAULT_ABOUT_PAGE_CONTENT.backgroundImages,
+    cards: DEFAULT_ABOUT_PAGE_CONTENT.cards.map((fallback, index) => about.cards[index] || fallback),
+});
+
+const formToAbout = (form: AboutPageContent): AboutPageContent => normalizeAboutPageContent({
+    ...form,
+    backgroundImages: form.backgroundImages.map((item) => item.trim()).filter(Boolean),
+    cards: form.cards.map((card, index) => {
+        const fallback = DEFAULT_ABOUT_PAGE_CONTENT.cards[index] || DEFAULT_ABOUT_PAGE_CONTENT.cards[0];
+        return {
+            ...card,
+            id: card.id || fallback.id,
+            label: card.label || fallback.label,
+            title: card.title || fallback.title,
+            shortText: card.shortText || fallback.shortText,
+            fullText: card.fullText.map((line) => line.trim()).filter(Boolean),
+            cta: card.cta?.label || card.cta?.href
+                ? { label: card.cta?.label || fallback.cta?.label || 'Open', href: card.cta?.href || fallback.cta?.href || '/auth' }
+                : fallback.cta,
+        };
+    }),
+});
 
 const moodLabel = (mood: HeroMessageMood) => {
     switch (mood) {
@@ -162,6 +191,7 @@ export const MarketingContentEditor: React.FC<MarketingContentEditorProps> = ({ 
     const [error, setError] = useState<string | null>(null);
     const [footerForm, setFooterForm] = useState<FooterForm>(() => footerToForm(DEFAULT_FOOTER_CONTENT));
     const [messageForm, setMessageForm] = useState<Record<HeroMessageMood, string[]>>(() => messagesToForm(DEFAULT_HERO_MESSAGES));
+    const [aboutForm, setAboutForm] = useState<AboutPageContent>(() => aboutToForm(DEFAULT_ABOUT_PAGE_CONTENT));
 
     useEffect(() => {
         let cancelled = false;
@@ -174,6 +204,7 @@ export const MarketingContentEditor: React.FC<MarketingContentEditorProps> = ({ 
                 if (cancelled) return;
                 setFooterForm(footerToForm(content.footer));
                 setMessageForm(messagesToForm(content.heroMessages));
+                setAboutForm(aboutToForm(content.aboutPage));
             } catch (err) {
                 if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load sales content.');
             } finally {
@@ -243,6 +274,8 @@ export const MarketingContentEditor: React.FC<MarketingContentEditorProps> = ({ 
         try {
             if (mode === 'greetings') {
                 await saveAppContentValue(APP_CONTENT_KEYS.heroMessages, formToMessages(messageForm), userId);
+            } else if (mode === 'about') {
+                await saveAppContentValue(APP_CONTENT_KEYS.aboutPage, formToAbout(aboutForm), userId);
             } else {
                 await saveAppContentValue(APP_CONTENT_KEYS.footer, formToFooter(footerForm), userId);
             }
@@ -269,8 +302,14 @@ export const MarketingContentEditor: React.FC<MarketingContentEditorProps> = ({ 
             <article className="rdb-panel rdb-panel-wide rdb-editor-toolbar">
                 <div className="rdb-panel-head">
                     <div>
-                        <h2>{mode === 'greetings' ? 'Edit Greetings' : 'Edit Contact Info'}</h2>
-                        <small>{mode === 'greetings' ? `${totalGreetingCount} greeting texts` : 'Footer labels, links, contact, and socials'}</small>
+                        <h2>{mode === 'greetings' ? 'Edit Greetings' : mode === 'about' ? 'Edit About Page' : 'Edit Contact Info'}</h2>
+                        <small>
+                            {mode === 'greetings'
+                                ? `${totalGreetingCount} greeting texts`
+                                : mode === 'about'
+                                    ? `${aboutForm.cards.length} bento cards and ${aboutForm.backgroundImages.length} backgrounds`
+                                    : 'Footer labels, links, contact, and socials'}
+                        </small>
                     </div>
                     <button type="button" className="rdb-inline-link rdb-marketing-save" onClick={() => void save()} disabled={saving}>
                         {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
@@ -425,6 +464,134 @@ export const MarketingContentEditor: React.FC<MarketingContentEditorProps> = ({ 
                         </article>
                     ))}
                 </div>
+            )}
+
+            {mode === 'about' && (
+                <>
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>About Hero</h2>
+                            <small>Shown beside the interactive bento grid</small>
+                        </div>
+                        <div className="rdb-marketing-form-grid">
+                            <label className="rdb-marketing-field">
+                                <span>Eyebrow</span>
+                                <input value={aboutForm.eyebrow} onChange={(e) => setAboutForm((current) => ({ ...current, eyebrow: e.target.value }))} />
+                            </label>
+                            <label className="rdb-marketing-field">
+                                <span>Title</span>
+                                <input value={aboutForm.title} onChange={(e) => setAboutForm((current) => ({ ...current, title: e.target.value }))} />
+                            </label>
+                            <label className="rdb-marketing-field rdb-marketing-field-wide">
+                                <span>Subtitle</span>
+                                <textarea value={aboutForm.subtitle} onChange={(e) => setAboutForm((current) => ({ ...current, subtitle: e.target.value }))} />
+                            </label>
+                            <label className="rdb-marketing-field rdb-marketing-field-wide">
+                                <span>Random background image URLs, one per line</span>
+                                <textarea
+                                    value={aboutForm.backgroundImages.join('\n')}
+                                    onChange={(e) => setAboutForm((current) => ({
+                                        ...current,
+                                        backgroundImages: e.target.value.split('\n'),
+                                    }))}
+                                />
+                            </label>
+                        </div>
+                    </article>
+
+                    {aboutForm.cards.map((card, cardIndex) => (
+                        <article className="rdb-panel rdb-panel-wide rdb-editor-card" key={card.id || cardIndex}>
+                            <div className="rdb-editor-card-head">
+                                <div>
+                                    <h2>{card.title || `Card ${cardIndex + 1}`}</h2>
+                                    <small>Interactive bento tile {cardIndex + 1}</small>
+                                </div>
+                            </div>
+                            <div className="rdb-marketing-form-grid">
+                                <label className="rdb-marketing-field">
+                                    <span>ID</span>
+                                    <input
+                                        value={card.id}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, id: e.target.value } : item),
+                                        }))}
+                                    />
+                                </label>
+                                <label className="rdb-marketing-field">
+                                    <span>Label</span>
+                                    <input
+                                        value={card.label}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, label: e.target.value } : item),
+                                        }))}
+                                    />
+                                </label>
+                                <label className="rdb-marketing-field">
+                                    <span>Title</span>
+                                    <input
+                                        value={card.title}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, title: e.target.value } : item),
+                                        }))}
+                                    />
+                                </label>
+                                <label className="rdb-marketing-field">
+                                    <span>Metric, optional</span>
+                                    <input
+                                        value={card.metric || ''}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, metric: e.target.value } : item),
+                                        }))}
+                                    />
+                                </label>
+                                <label className="rdb-marketing-field rdb-marketing-field-wide">
+                                    <span>Short text</span>
+                                    <textarea
+                                        value={card.shortText}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, shortText: e.target.value } : item),
+                                        }))}
+                                    />
+                                </label>
+                                <label className="rdb-marketing-field rdb-marketing-field-wide">
+                                    <span>Full expanded text, one paragraph per line</span>
+                                    <textarea
+                                        value={card.fullText.join('\n')}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, fullText: e.target.value.split('\n') } : item),
+                                        }))}
+                                    />
+                                </label>
+                                <label className="rdb-marketing-field">
+                                    <span>CTA label</span>
+                                    <input
+                                        value={card.cta?.label || ''}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, cta: { ...(item.cta || {}), label: e.target.value } } as AboutPageCard : item),
+                                        }))}
+                                    />
+                                </label>
+                                <label className="rdb-marketing-field">
+                                    <span>CTA link</span>
+                                    <input
+                                        value={card.cta?.href || ''}
+                                        onChange={(e) => setAboutForm((current) => ({
+                                            ...current,
+                                            cards: current.cards.map((item, index) => index === cardIndex ? { ...item, cta: { ...(item.cta || {}), href: e.target.value } } as AboutPageCard : item),
+                                        }))}
+                                    />
+                                </label>
+                            </div>
+                        </article>
+                    ))}
+                </>
             )}
         </section>
     );

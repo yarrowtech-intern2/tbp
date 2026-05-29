@@ -634,7 +634,7 @@ export const Home4: React.FC = () => {
 
           <div className="h4-custom-nav-capsule">
             <a href="#h4-hero" className="h4-custom-nav-link" onClick={handleSectionNav('h4-hero')}>Home</a>
-            <a href="#h4-about" className="h4-custom-nav-link" onClick={handleSectionNav('h4-about')}>About</a>
+            <Link to="/about" className="h4-custom-nav-link">About</Link>
             <a href="#h4-choose-us" className="h4-custom-nav-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
           </div>
 
@@ -657,7 +657,7 @@ export const Home4: React.FC = () => {
 
         <div className={`h4-custom-nav-mobile-panel ${menuOpen ? 'is-open' : ''}`}>
           <a href="#h4-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-hero')}>Home</a>
-          <a href="#h4-about" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-about')}>About</a>
+          <Link to="/about" className="h4-custom-nav-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
           <a href="#h4-choose-us" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
           <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>LOGIN</Link>
         </div>
