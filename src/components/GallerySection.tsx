@@ -194,8 +194,6 @@ const GallerySection: React.FC = () => {
 
   return (
     <section ref={sectionRef} className="gal-section" aria-label="Photo Gallery">
-      <div className="gal-bg-pattern" aria-hidden="true" />
-
       {/* wrapperRef receives parallax transform from RAF */}
       <div ref={wrapperRef} className="gal-parallax">
         <div className="gal-stage">
