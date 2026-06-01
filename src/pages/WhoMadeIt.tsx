@@ -79,6 +79,8 @@ export const WhoMadeIt: React.FC = () => {
               ))}
             </div>
           ))}
+
+          <p className="whomadeit-thank">Thank you</p>
         </div>
       </section>
     </main>
