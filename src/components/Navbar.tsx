@@ -313,7 +313,9 @@ export const Navbar: React.FC = () => {
                     margin: 0 6px;
                     width: 1px;
                 }
+.
 
+.
                 /* Nav links */
                 .nbr-link {
                     border-radius: 999px;

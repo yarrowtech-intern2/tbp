@@ -25,7 +25,7 @@ const CREDIT_SECTIONS: CreditSection[] = [
   },
   {
     title: 'UI/UX design',
-    names: ['Srijon Karmakar', 'Salini Chowdhury'],
+    names: ['Srijon Karmakar'],
   },
   {
     title: 'Assistant Frontend development',
