@@ -8,6 +8,7 @@ import { normalizeRoleValue } from './lib/platform';
 
 const Home4 = lazy(async () => ({ default: (await import('./pages/Home4')).Home4 }));
 const About2 = lazy(async () => ({ default: (await import('./pages/About2')).About2 }));
+const WhoMadeIt = lazy(async () => ({ default: (await import('./pages/WhoMadeIt')).WhoMadeIt }));
 const DashboardHome = lazy(async () => ({ default: (await import('./pages/DashboardHome')).DashboardHome }));
 const TouristExplorePage = lazy(async () => ({ default: (await import('./pages/TouristExplorePage')).TouristExplorePage }));
 const RoleDashboard = lazy(async () => ({ default: (await import('./pages/RoleDashboard')).RoleDashboard }));
@@ -165,8 +166,9 @@ function App() {
             <Route path="/home2" element={<Navigate to="/" replace />} />
             <Route path="/home3" element={<Navigate to="/" replace />} />
             <Route path="/home4" element={<Navigate to="/" replace />} />
-            <Route path="/about" element={<About2 />} />
+            <Route path="/about" element={<GuestOnlyRoute><About2 /></GuestOnlyRoute>} />
             <Route path="/about2" element={<Navigate to="/about" replace />} />
+            <Route path="/whomadeit" element={<WhoMadeIt />} />
             <Route path="/auth" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
             <Route path="/terms" element={<TermsAndConditions />} />
             <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
@@ -197,7 +199,7 @@ function App() {
   );
 }
 
-const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/terms', '/about', '/about2'];
+const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/terms', '/about', '/about2', '/whomadeit'];
 
 const AppNavbar: React.FC = () => {
   const { user } = useAuth();

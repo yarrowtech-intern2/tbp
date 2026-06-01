@@ -1,0 +1,123 @@
+@font-face {
+  font-family: 'Remachine';
+  src: url('/font/remachine.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+.whomadeit-page {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #090909 0%, #020202 42%, #000000 100%),
+    linear-gradient(180deg, #020202 0%, #000000 100%);
+  color: #f2f2f2;
+}
+
+.whomadeit-vignette {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0.08) 26%, rgba(0, 0, 0, 0.84) 100%);
+}
+
+.whomadeit-credits {
+  position: relative;
+  width: min(92vw, 430px);
+  margin: 0 auto;
+  height: 100vh;
+}
+
+.whomadeit-roll {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  padding: 0 20px 34vh;
+  text-align: center;
+  font-family: 'Okine', 'Outfit', sans-serif;
+  letter-spacing: 0.02em;
+  transform: translateY(0);
+  animation: credits-roll 52s linear 1 forwards;
+}
+
+.whomadeit-intro {
+  margin: 0 0 64px;
+  font-size: clamp(0.53rem, 0.85vw, 0.7rem);
+  line-height: 1.35;
+  color: #f28a24;
+  opacity: 0.86;
+}
+
+.whomadeit-roll h1 {
+  margin: 0 0 10px;
+  font-family: 'Remachine', 'Times New Roman', serif;
+  font-size: clamp(2.1rem, 5vw, 3rem);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.9;
+  color: #f28a24;
+}
+
+.whomadeit-subtitle {
+  margin: 0 0 4px;
+  font-size: clamp(0.57rem, 0.85vw, 0.72rem);
+  line-height: 1.4;
+  color: #f28a24;
+  opacity: 0.9;
+}
+
+.whomadeit-section {
+  margin: 0 0 36px;
+}
+
+.whomadeit-section h2 {
+  margin: 0 0 8px;
+  font-size: clamp(0.62rem, 0.96vw, 0.78rem);
+  line-height: 1.45;
+  text-transform: none;
+  color: #f28a24;
+  letter-spacing: 0.03em;
+}
+
+.whomadeit-section p {
+  margin: 2px 0;
+  font-size: clamp(0.52rem, 0.82vw, 0.68rem);
+  line-height: 1.45;
+  color: #ffffff;
+  opacity: 0.88;
+}
+
+.whomadeit-final {
+  margin: 64px 0 0;
+  font-size: clamp(0.5rem, 0.8vw, 0.66rem);
+  line-height: 1.4;
+  color: #ffffff;
+  opacity: 0.82;
+}
+
+@keyframes credits-roll {
+  0% {
+    transform: translateY(38%);
+    opacity: 1;
+  }
+  92% {
+    transform: translateY(-150%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-162%);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .whomadeit-roll {
+    padding: 0 12px 40vh;
+  }
+
+  .whomadeit-section {
+    margin-bottom: 30px;
+  }
+}
