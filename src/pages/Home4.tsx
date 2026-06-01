@@ -639,7 +639,7 @@ export const Home4: React.FC = () => {
           </div>
 
           <Link to="/auth" className="h4-custom-nav-login">
-            Login
+            Explore
           </Link>
 
           <button
@@ -659,7 +659,7 @@ export const Home4: React.FC = () => {
           <a href="#h4-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-hero')}>Home</a>
           <Link to="/about" className="h4-custom-nav-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
           <a href="#h4-choose-us" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
-          <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>LOGIN</Link>
+          <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>EXPLORE</Link>
         </div>
       </nav>
       {/* ─── Premium Integrated Beach Hero Redesign ─── */}
@@ -690,10 +690,6 @@ export const Home4: React.FC = () => {
         <div className="h4-beach-hero-content">
           <div className="h4-glass-card">
             <p className="h4-glass-card-text">{HERO_CARD_COPY}</p>
-            <Link to="/auth" className="h4-glass-card-explore-btn" aria-label="Explore">
-              <span className="h4-glass-card-explore-label">Explore</span>
-              <ArrowUpRight size={36} aria-hidden="true" />
-            </Link>
           </div>
         </div>
 
