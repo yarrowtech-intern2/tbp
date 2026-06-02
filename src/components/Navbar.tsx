@@ -253,25 +253,29 @@ export const Navbar: React.FC = () => {
                     </div>
                 )}
             </div>
-
             <style>{`
-                /* ── Fixed bar ──────────────────────────────────────── */
+                /* Fixed bar */
                 .nbr-bar {
                     align-items: center;
                     display: flex;
                     justify-content: center;
                     left: 0;
                     padding: 0 32px;
+                    pointer-events: none;
                     position: fixed;
                     right: 0;
                     top: 28px;
                     z-index: 1000;
-                    pointer-events: none;
                 }
 
                 .nbr-bar > * { pointer-events: all; }
 
-                /* ── Glass pill ─────────────────────────────────────── */
+                .nbr-desktop {
+                    display: grid !important;
+                    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+                }
+
+                /* Glass pill */
                 .nbr-pill {
                     align-items: center;
                     animation: fadeInDown 0.5s cubic-bezier(0.23,1,0.32,1) both;
@@ -284,8 +288,11 @@ export const Navbar: React.FC = () => {
                         0 4px 24px rgba(15,23,42,0.10),
                         inset 0 1px 0 ${navInset};
                     display: inline-flex;
-                    gap: 2px;
-                    padding: 7px 10px;
+                    gap: 4px;
+                    grid-column: 2;
+                    justify-self: center;
+                    min-height: 52px;
+                    padding: 8px 12px;
                 }
 
                 @keyframes fadeInDown {
@@ -293,7 +300,6 @@ export const Navbar: React.FC = () => {
                     to   { opacity: 1; transform: translateY(0); }
                 }
 
-                /* Logo */
                 .nbr-logo-wrap {
                     align-items: center;
                     display: inline-flex;
@@ -301,10 +307,20 @@ export const Navbar: React.FC = () => {
                     margin-right: 4px;
                     text-decoration: none;
                 }
-                .nbr-logo     { display: block; height: 34px; max-width: 150px; object-fit: contain; width: auto; }
-                .nbr-logo--sm { height: 28px; max-width: 130px; }
 
-                /* Divider between logo and links */
+                .nbr-logo {
+                    display: block;
+                    height: 34px;
+                    max-width: 150px;
+                    object-fit: contain;
+                    width: auto;
+                }
+
+                .nbr-logo--sm {
+                    height: 28px;
+                    max-width: 130px;
+                }
+
                 .nbr-sep {
                     background: ${navDivider};
                     border-radius: 1px;
@@ -313,45 +329,55 @@ export const Navbar: React.FC = () => {
                     margin: 0 6px;
                     width: 1px;
                 }
-.
 
-.
-                /* Nav links */
                 .nbr-link {
+                    align-items: center;
                     border-radius: 999px;
                     color: ${navText};
+                    display: inline-flex;
                     font-family: 'Okine', 'Outfit', sans-serif;
                     font-size: 0.875rem;
                     font-weight: 600;
-                    padding: 6px 14px;
+                    justify-content: center;
+                    line-height: 1;
+                    min-height: 36px;
+                    padding: 8px 14px;
                     text-decoration: none;
-                    transition: color 0.18s, background 0.18s;
+                    transition: color 0.18s, background 0.18s, transform 0.18s;
                     white-space: nowrap;
                 }
+
                 .nbr-link-inner {
-                    display: inline-flex;
                     align-items: center;
+                    display: inline-flex;
                     gap: 6px;
                 }
-                .nbr-link:hover { color: ${navTextStrong}; }
+
+                .nbr-link:hover {
+                    background: ${navHover};
+                    color: ${navTextStrong};
+                }
+
                 .nbr-link--active {
                     background: ${navActiveBg};
                     color: ${navActiveText};
                 }
 
-                /* Join (guest) */
                 .nbr-join {
+                    align-items: center;
                     border-radius: 999px;
                     color: var(--accent);
+                    display: inline-flex;
                     font-family: 'Okine', 'Outfit', sans-serif;
                     font-size: 0.875rem;
                     font-weight: 700;
+                    justify-content: center;
                     margin-left: 4px;
-                    padding: 6px 16px;
+                    min-height: 36px;
+                    padding: 8px 16px;
                     text-decoration: none;
                 }
 
-                /* ── User chip (right, outside pill) ────────────────── */
                 .nbr-user-chip {
                     align-items: center;
                     animation: fadeInDown 0.5s cubic-bezier(0.23,1,0.32,1) both;
@@ -364,12 +390,14 @@ export const Navbar: React.FC = () => {
                     box-shadow: 0 4px 24px rgba(15,23,42,0.10), inset 0 1px 0 ${navInset};
                     display: inline-flex;
                     gap: 8px;
+                    grid-column: 3;
+                    justify-self: end;
                     padding: 5px 5px 5px 12px;
-                    position: absolute;
-                    right: 32px;
+                    position: static;
                     text-decoration: none;
                     transition: box-shadow 0.2s, transform 0.2s;
                 }
+
                 .nbr-user-chip:hover {
                     box-shadow: 0 6px 20px rgba(15,23,42,0.15);
                     transform: translateY(-1px);
@@ -380,12 +408,14 @@ export const Navbar: React.FC = () => {
                     flex-direction: column;
                     line-height: 1.25;
                 }
+
                 .nbr-user-name {
                     color: ${isDark ? '#f8fafc' : '#1d1207'};
                     font-family: 'Azonix', 'Outfit', sans-serif;
                     font-size: 0.82rem;
                     font-weight: 700;
                 }
+
                 .nbr-user-role {
                     color: ${navText};
                     font-family: 'Okine', 'Outfit', sans-serif;
@@ -401,8 +431,6 @@ export const Navbar: React.FC = () => {
                     width: 30px;
                 }
 
-                /* ── Mobile ─────────────────────────────────────────── */
-                .nbr-desktop { display: flex !important; }
                 .nbr-mobile  { display: none !important; }
 
                 .nbr-mobile-pill {
@@ -420,7 +448,12 @@ export const Navbar: React.FC = () => {
                     overflow: hidden;
                     width: 28px;
                 }
-                .nbr-avatar-sm { height: 100%; object-fit: cover; width: 100%; }
+
+                .nbr-avatar-sm {
+                    height: 100%;
+                    object-fit: cover;
+                    width: 100%;
+                }
 
                 .nbr-hamburger {
                     align-items: center;
@@ -438,9 +471,9 @@ export const Navbar: React.FC = () => {
                     transition: background 0.18s;
                     width: 32px;
                 }
+
                 .nbr-hamburger:hover { background: ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.16)'}; }
 
-                /* ── Dropdown ───────────────────────────────────────── */
                 .nbr-dropdown {
                     animation: fadeInDown 0.18s ease-out;
                     backdrop-filter: blur(22px) saturate(190%);
@@ -459,18 +492,19 @@ export const Navbar: React.FC = () => {
                 }
 
                 .nbr-drop-item {
+                    align-items: center;
                     border-radius: 12px;
                     color: ${navTextStrong};
                     display: flex;
-                    align-items: center;
-                    justify-content: space-between;
                     font-family: 'Okine', 'Outfit', sans-serif;
                     font-size: 0.9rem;
                     font-weight: 600;
+                    justify-content: space-between;
                     padding: 10px 14px;
                     text-decoration: none;
                     transition: background 0.14s;
                 }
+
                 .nbr-drop-item:hover { background: ${navHover}; }
                 .nbr-drop-item--accent { color: var(--accent); font-weight: 800; }
                 .nbr-drop-item--danger { color: var(--danger-text, #e53e3e); }
@@ -523,3 +557,4 @@ export const Navbar: React.FC = () => {
         </>
     );
 };
+
