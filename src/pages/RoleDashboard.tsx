@@ -457,6 +457,20 @@ const parseMarketingSection = (value: string | null): SidebarKey | null => {
     return null;
 };
 
+const getSectionParser = (role: DashboardRole) => {
+    if (role === 'admin') return parseAdminSection;
+    if (role === 'provider') return parseProviderSection;
+    if (role === 'marketing') return parseMarketingSection;
+    return parseTouristSection;
+};
+
+const normalizeSectionForRole = (role: DashboardRole, value: string | null): SidebarKey => {
+    const parser = getSectionParser(role);
+    return parser(value) || 'overview';
+};
+
+const getDashboardSectionStorageKey = (role: DashboardRole) => `tbp.dashboard.active-section.${role}`;
+
 const LazyAdminAccountMap = lazy(async () => {
     const module = await import('../components/admin/AdminAccountMap');
     return { default: module.AdminAccountMap };
@@ -819,6 +833,12 @@ export const RoleDashboard: React.FC = () => {
         () => effectiveRoleFromProfile(profile?.role || metadataRole),
         [metadataRole, profile?.role],
     );
+    const requestedSection = useMemo(() => {
+        if (effectiveRole === 'admin') return requestedAdminSection;
+        if (effectiveRole === 'provider') return requestedProviderSection;
+        if (effectiveRole === 'marketing') return requestedMarketingSection;
+        return requestedTouristSection;
+    }, [effectiveRole, requestedAdminSection, requestedMarketingSection, requestedProviderSection, requestedTouristSection]);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -981,9 +1001,15 @@ export const RoleDashboard: React.FC = () => {
 
     useEffect(() => {
         if (effectiveRole === 'admin' && !isDesktopDashboard && activeSection === 'map') {
+            const nextSearchParams = new URLSearchParams(searchParams);
+            nextSearchParams.set('section', 'overview');
             setActiveSection('overview');
+            navigate(
+                { pathname: `/dashboard/${effectiveRole}`, search: `?${nextSearchParams.toString()}` },
+                { replace: true },
+            );
         }
-    }, [activeSection, effectiveRole, isDesktopDashboard]);
+    }, [activeSection, effectiveRole, isDesktopDashboard, navigate, searchParams]);
 
     useEffect(() => {
         if (isDesktopDashboard) {
@@ -996,20 +1022,53 @@ export const RoleDashboard: React.FC = () => {
     }, [activeSection]);
 
     useEffect(() => {
-        if (effectiveRole === 'admin') {
-            setActiveSection(requestedAdminSection || 'overview');
-            return;
+        if (!routeRole || routeRole !== effectiveRole) return;
+
+        const nextSection = requestedSection
+            || (typeof window === 'undefined'
+                ? null
+                : (() => {
+                    try {
+                        return getSectionParser(effectiveRole)(
+                            window.localStorage.getItem(getDashboardSectionStorageKey(effectiveRole)),
+                        );
+                    } catch {
+                        return null;
+                    }
+                })())
+            || 'overview';
+
+        setActiveSection(nextSection);
+
+        if (!requestedSection) {
+            const nextSearchParams = new URLSearchParams(searchParams);
+            nextSearchParams.set('section', nextSection);
+            navigate(
+                { pathname: `/dashboard/${effectiveRole}`, search: `?${nextSearchParams.toString()}` },
+                { replace: true },
+            );
         }
-        if (effectiveRole === 'provider') {
-            setActiveSection(requestedProviderSection || 'overview');
-            return;
+    }, [effectiveRole, navigate, requestedSection, routeRole, searchParams]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            window.localStorage.setItem(getDashboardSectionStorageKey(effectiveRole), activeSection);
+        } catch {
+            // Ignore storage failures and keep URL-driven navigation working.
         }
-        if (effectiveRole === 'marketing') {
-            setActiveSection(requestedMarketingSection || 'overview');
-            return;
-        }
-        setActiveSection(requestedTouristSection || 'overview');
-    }, [effectiveRole, requestedAdminSection, requestedMarketingSection, requestedProviderSection, requestedTouristSection]);
+    }, [activeSection, effectiveRole]);
+
+    const goToSection = useCallback((section: SidebarKey, replace = true) => {
+        const normalizedSection = normalizeSectionForRole(effectiveRole, section);
+        const nextSearchParams = new URLSearchParams(searchParams);
+        nextSearchParams.set('section', normalizedSection);
+        setActiveSection(normalizedSection);
+        navigate(
+            { pathname: `/dashboard/${effectiveRole}`, search: `?${nextSearchParams.toString()}` },
+            { replace },
+        );
+    }, [effectiveRole, navigate, searchParams]);
 
     const loadAdminAccountLocations = async (force = false) => {
         if (effectiveRole !== 'admin') return;
@@ -2293,7 +2352,7 @@ export const RoleDashboard: React.FC = () => {
                             <button
                                 type="button"
                                 className="rdb-admin-arrow-btn"
-                                onClick={() => setActiveSection('revenue')}
+                                onClick={() => goToSection('revenue')}
                                 title="Open spend breakdown"
                             >
                                 <ExternalLink size={15} />
@@ -2318,7 +2377,7 @@ export const RoleDashboard: React.FC = () => {
                                     key={item.id}
                                     type="button"
                                     className="rdb-admin-mod-item"
-                                    onClick={() => setActiveSection('bookings')}
+                                    onClick={() => goToSection('bookings')}
                                 >
                                     {item.listing_title || 'Package'} • {item.status}
                                 </button>
@@ -2450,7 +2509,7 @@ export const RoleDashboard: React.FC = () => {
                                         <button
                                             type="button"
                                             className="rdb-row-edit-link"
-                                            onClick={() => setActiveSection('messages')}
+                                            onClick={() => goToSection('messages')}
                                         >
                                             Open Messages
                                         </button>
@@ -2702,10 +2761,10 @@ export const RoleDashboard: React.FC = () => {
                     <article className="rdb-panel">
                         <h2>Provider Studio</h2>
                         <div className="rdb-action-list">
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('studio')}>Open Studio</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('studio')}>Create Listing</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('advertisements')}>Open ads panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('listings')}>View listing statuses</button>
+                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('studio')}>Open Studio</button>
+                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('studio')}>Create Listing</button>
+                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('advertisements')}>Open ads panel</button>
+                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('listings')}>View listing statuses</button>
                         </div>
                     </article>
 
@@ -2905,7 +2964,7 @@ export const RoleDashboard: React.FC = () => {
                             <button
                                 type="button"
                                 className="rdb-admin-arrow-btn"
-                                onClick={() => setActiveSection('revenue')}
+                                onClick={() => goToSection('revenue')}
                                 title="Open revenue breakdown"
                             >
                                 <ExternalLink size={15} />
@@ -2930,7 +2989,7 @@ export const RoleDashboard: React.FC = () => {
                                     key={item.id}
                                     type="button"
                                     className="rdb-admin-mod-item"
-                                    onClick={() => setActiveSection('bookings')}
+                                    onClick={() => goToSection('bookings')}
                                 >
                                     {item.listing_title || 'Package'} • {item.status}
                                 </button>
@@ -3275,7 +3334,7 @@ export const RoleDashboard: React.FC = () => {
                             <div><span>Derived Total</span><strong>{formatRupeeShort(derivedRevenue)}</strong></div>
                         </div>
                         <div className="rdb-action-list">
-                            <button type="button" className="rdb-inline-link" onClick={() => setActiveSection('overview')}>
+                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('overview')}>
                                 Back to Dashboard
                             </button>
                         </div>
@@ -3582,7 +3641,7 @@ export const RoleDashboard: React.FC = () => {
                             <button
                                 type="button"
                                 className="rdb-admin-arrow-btn"
-                                onClick={() => setActiveSection('revenue')}
+                                onClick={() => goToSection('revenue')}
                                 title="Open Revenue Breakdown"
                             >
                                 <ExternalLink size={15} />
@@ -3626,7 +3685,7 @@ export const RoleDashboard: React.FC = () => {
                                     className="rdb-admin-mod-item"
                                     onClick={() => {
                                         setSelectedModerationId(item.id);
-                                        setActiveSection('moderation');
+                                        goToSection('moderation');
                                     }}
                                 >
                                     {titleForPost(item)} needs review
@@ -3668,7 +3727,7 @@ export const RoleDashboard: React.FC = () => {
                                     key={item.key}
                                     className={`rdb-nav-item${item.key === activeSection ? ' is-active' : ''}`}
                                     onClick={() => {
-                                        setActiveSection(item.key);
+                                        goToSection(item.key);
                                         if (!isDesktopDashboard) {
                                             setAdminMobileMenuOpen(false);
                                         }
@@ -3752,7 +3811,7 @@ export const RoleDashboard: React.FC = () => {
                                         className="rdb-admin-ctrl-btn"
                                         title="Notifications"
                                         aria-label="Open notifications"
-                                        onClick={() => setActiveSection('messages')}
+                                        onClick={() => goToSection('messages')}
                                     >
                                         <Bell size={18} />
                                         {unreadCount > 0 && (
@@ -3786,7 +3845,7 @@ export const RoleDashboard: React.FC = () => {
                                             key={`mobile-${item.key}`}
                                             className={`rdb-admin-mobile-menu-item${isActive ? ' is-active' : ''}`}
                                             onClick={() => {
-                                                setActiveSection(item.key);
+                                                goToSection(item.key);
                                                 setAdminMobileMenuOpen(false);
                                             }}
                                         >
@@ -3941,7 +4000,7 @@ export const RoleDashboard: React.FC = () => {
                                     className={`rdb-bottom-nav-btn${isActive ? ' is-active' : ''}`}
                                     onClick={() => {
                                         if (item.section) {
-                                            setActiveSection(item.section);
+                                            goToSection(item.section);
                                             setAdminMobileMenuOpen(false);
                                             return;
                                         }
