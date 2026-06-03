@@ -750,9 +750,9 @@ export const Home4: React.FC = () => {
 
         {/* Bottom Title & Stats */}
         <div className="h4-beach-hero-bottom">
-          <p className="h4-beach-hero-kicker">Discover the World Beyond the</p>
+          <p className="h4-beach-hero-kicker">Curated Escapes Begin with a</p>
           <h1 className="h4-beach-hero-title">
-            HORIZON
+            JOURNEY
           </h1>
           
           <div className="h4-beach-hero-stats">
