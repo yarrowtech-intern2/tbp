@@ -476,6 +476,7 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
   }, [focusPin, selectedPin?.id]);
 
   const selectedMeta = useMemo(() => selectedPin ? `${selectedPin.tours} / ${selectedPin.duration}` : '', [selectedPin]);
+  const isCompactGlobe = size.width <= 700;
   const globeOffsetX = size.width > 700 ? -Math.round(size.width * 0.125) : 0;
 
   return (
@@ -505,7 +506,7 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
             globeImageUrl={earthDayUrl}
             bumpImageUrl={earthTopologyUrl}
             globeCurvatureResolution={3}
-            showAtmosphere
+            showAtmosphere={!isCompactGlobe}
             atmosphereColor="#b8d7ff"
             atmosphereAltitude={0.28}
             enablePointerInteraction={isInteractive}
