@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterLink } from '../lib/appContent';
 import GallerySection from '../components/GallerySection';
+import { InteractiveEarthHero } from '../components/home4/InteractiveEarthHero';
 import './home4.css';
 
 type RevealBlockProps = {
@@ -83,10 +84,10 @@ const FooterTextOrLink: React.FC<{ item: FooterLink }> = ({ item }) => {
 };
 
 const STATS = [
-  { value: 20, suffix: '+', label: 'Restaurents' },
-  { value: 8, suffix: '+', label: 'Services' },
-  { value: 12, suffix: '+', label: 'Brands' },
-  { value: 22, suffix: '+', label: 'Countries' },
+  { value: '50', suffix: '+', label: 'Agents' },
+  { value: '10', suffix: '+', label: 'Services' },
+  { value: '150', suffix: '+', label: 'Places' },
+  { value: '24/7', suffix: '', label: 'Customer Service' },
 ];
 
 const HERO_POSTER_IMAGE = 'https://res.cloudinary.com/dc3qprub3/video/upload/f_jpg,q_auto,w_1920/tbp-hero4_dmbfr5.jpg';
@@ -516,7 +517,7 @@ const OrbitGlyph: React.FC<OrbitGlyphProps> = ({ className = '' }) => {
 };
 
 interface RollingTickerProps {
-  value: number;
+  value: number | string;
   delay?: number;
 }
 
@@ -535,6 +536,14 @@ const RollingTicker: React.FC<RollingTickerProps> = ({ value, delay = 0 }) => {
   return (
     <span className="rolling-ticker">
       {digits.map((digitChar, colIdx) => {
+        if (!/\d/.test(digitChar)) {
+          return (
+            <span key={colIdx} className="rolling-ticker-digit-container">
+              <span className="rolling-ticker-digit-val">{digitChar}</span>
+            </span>
+          );
+        }
+
         const targetDigit = animate ? parseInt(digitChar, 10) : 0;
         return (
           <span key={colIdx} className="rolling-ticker-digit-container">
@@ -563,6 +572,8 @@ export const Home4: React.FC = () => {
   const showcaseRef   = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [earthNavHidden, setEarthNavHidden] = useState(true);
+  const [earthUnlocked, setEarthUnlocked] = useState(false);
   const [footerContent, setFooterContent] = useState(DEFAULT_FOOTER_CONTENT);
   const [showCurtain, setShowCurtain] = useState(true);
 
@@ -582,12 +593,43 @@ export const Home4: React.FC = () => {
 
   // Simple scrolled listener for floating/blur sticky navbar
   useEffect(() => {
+    let frame = 0;
     const handleScroll = () => {
+      frame = 0;
+      const earthHero = document.getElementById('h4-earth-hero');
+      const earthBottom = earthHero ? earthHero.getBoundingClientRect().bottom : 0;
       setIsScrolled(window.scrollY > 20);
+      setEarthNavHidden(earthBottom > 72);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    const requestScrollState = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(handleScroll);
+    };
+    requestScrollState();
+    window.addEventListener('scroll', requestScrollState, { passive: true });
+    window.addEventListener('resize', requestScrollState);
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', requestScrollState);
+      window.removeEventListener('resize', requestScrollState);
+    };
   }, []);
+
+  useEffect(() => {
+    if (earthUnlocked) return;
+
+    const bodyOverflow = document.body.style.overflow;
+    const documentOverflow = document.documentElement.style.overflow;
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = documentOverflow;
+    };
+  }, [earthUnlocked]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -611,8 +653,21 @@ export const Home4: React.FC = () => {
     }
   };
 
+  const handleEarthDiscover = () => {
+    setMenuOpen(false);
+    setEarthUnlocked(true);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.requestAnimationFrame(() => {
+      const node = document.getElementById('h4-hero');
+      if (!node) return;
+      node.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+    });
+  };
+
   return (
-    <div className="h4-page">
+    <div className={`h4-page${earthUnlocked ? ' is-earth-unlocked' : ' is-earth-gated'}`}>
+      <InteractiveEarthHero isScrollLocked={!earthUnlocked} onDiscover={handleEarthDiscover} />
+
       {showCurtain && (
         <div className="h4-curtain-screen" aria-hidden="true">
           <div className="h4-curtain-ring" />
@@ -620,7 +675,7 @@ export const Home4: React.FC = () => {
       )}
 
       {/* Translucent Capsule Navbar */}
-      <nav className={`h4-custom-navbar ${isScrolled ? 'is-scrolled' : ''}`}>
+      <nav className={`h4-custom-navbar ${isScrolled ? 'is-scrolled' : ''}${earthNavHidden ? ' is-earth-hidden' : ''}`}>
         <div className="h4-custom-nav-container">
           <Link to="/" className="h4-custom-nav-logo">
             <img
@@ -633,7 +688,7 @@ export const Home4: React.FC = () => {
           </Link>
 
           <div className="h4-custom-nav-capsule">
-            <a href="#h4-hero" className="h4-custom-nav-link" onClick={handleSectionNav('h4-hero')}>Home</a>
+            <a href="#h4-earth-hero" className="h4-custom-nav-link" onClick={handleSectionNav('h4-earth-hero')}>Home</a>
             <Link to="/about" className="h4-custom-nav-link">About</Link>
             <a href="#h4-choose-us" className="h4-custom-nav-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
           </div>
@@ -656,7 +711,7 @@ export const Home4: React.FC = () => {
         </div>
 
         <div className={`h4-custom-nav-mobile-panel ${menuOpen ? 'is-open' : ''}`}>
-          <a href="#h4-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-hero')}>Home</a>
+          <a href="#h4-earth-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-earth-hero')}>Home</a>
           <Link to="/about" className="h4-custom-nav-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
           <a href="#h4-choose-us" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
           <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>EXPLORE</Link>

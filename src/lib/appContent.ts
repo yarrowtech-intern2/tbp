@@ -213,12 +213,12 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
             id: 'impact',
             label: '07',
             title: 'Impact',
-            shortText: '20+ restaurants, 12+ brands, 8+ services, and 22+ countries.',
+            shortText: '50+ agents, 10+ services, 150+ places, and 24/7 customer service.',
             fullText: [
                 'The goal is not just more listings. The goal is a better travel graph where local value becomes easier to find and easier to support.',
                 'As the partner network grows, TBP becomes a stronger bridge between destination demand and local businesses.',
             ],
-            metric: '62+',
+            metric: '24/7',
             cta: { label: 'View ecosystem', href: '/auth' },
         },
         {
