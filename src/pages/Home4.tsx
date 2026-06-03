@@ -633,7 +633,7 @@ export const Home4: React.FC = () => {
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const timer = window.setTimeout(() => setShowCurtain(false), reducedMotion ? 300 : 2300);
+    const timer = window.setTimeout(() => setShowCurtain(false), reducedMotion ? 250 : 1800);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -669,9 +669,7 @@ export const Home4: React.FC = () => {
       <InteractiveEarthHero isScrollLocked={!earthUnlocked} onDiscover={handleEarthDiscover} />
 
       {showCurtain && (
-        <div className="h4-curtain-screen" aria-hidden="true">
-          <div className="h4-curtain-ring" />
-        </div>
+        <div className="h4-curtain-screen" aria-hidden="true" />
       )}
 
       {/* Translucent Capsule Navbar */}
