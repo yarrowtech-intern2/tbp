@@ -11,8 +11,9 @@
 
 .h4-earth-hero {
   --earth-progress: 0;
-  --earth-stage-scale: 1.62;
-  --earth-stage-y: 48svh;
+  --earth-stage-scale: 1.34;
+  --earth-stage-y: 57svh;
+  --earth-globe-offset-x: 0px;
   --earth-copy-opacity: 1;
   --earth-copy-y: 0px;
   --earth-marker-opacity: 0;
@@ -20,11 +21,16 @@
   --earth-panel-opacity: 0;
   position: relative;
   z-index: 3;
-  height: 100svh;
-  min-height: 100svh;
+  height: 230svh;
+  min-height: 230svh;
   background: #000;
   color: #fff;
   isolation: isolate;
+}
+
+.h4-page.is-earth-gated .h4-earth-hero {
+  height: 100svh;
+  min-height: 100svh;
 }
 
 .h4-earth-sticky {
@@ -151,6 +157,8 @@
     brightness(0.98)
     drop-shadow(0 0 24px rgba(142, 198, 255, 0.34))
     drop-shadow(0 0 72px rgba(66, 133, 220, 0.18));
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.72) 1.8%, #000 4.8%, #000 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.72) 1.8%, #000 4.8%, #000 100%);
 }
 
 .h4-earth-glow {
@@ -161,27 +169,27 @@
   width: min(92vw, 860px);
   aspect-ratio: 1;
   border-radius: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(calc(-50% + var(--earth-globe-offset-x)), -50%);
   pointer-events: none;
 }
 
 .h4-earth-glow-a {
-  width: min(96vw, 940px);
+  width: min(82vw, 760px);
   background: radial-gradient(circle, rgba(158, 211, 255, 0.48), rgba(57, 111, 184, 0.22) 36%, transparent 72%);
-  filter: blur(38px);
+  filter: blur(34px);
 }
 
 .h4-earth-glow-b {
-  width: min(112vw, 1120px);
-  background: radial-gradient(circle, transparent 48%, rgba(188, 224, 255, 0.3) 57%, transparent 70%);
-  filter: blur(16px);
-  opacity: 1;
+  width: min(90vw, 860px);
+  background: radial-gradient(circle, transparent 49%, rgba(188, 224, 255, 0.28) 58%, transparent 70%);
+  filter: blur(13px);
+  opacity: 0.92;
 }
 
 .h4-earth-copy {
   position: absolute;
   left: 50%;
-  bottom: clamp(300px, 43svh, 410px);
+  bottom: clamp(238px, 34svh, 326px);
   z-index: 2;
   width: min(94vw, 1560px);
   transform: translate3d(-50%, var(--earth-copy-y), 0);
@@ -472,6 +480,12 @@
 
 @media (max-width: 980px) {
   .h4-earth-hero {
+    height: 220svh;
+    min-height: 220svh;
+  }
+
+  .h4-page.is-earth-gated .h4-earth-hero {
+    height: 100svh;
     min-height: 100svh;
   }
 
@@ -515,6 +529,12 @@
   .h4-earth-hero {
     --earth-stage-scale: 0.98;
     --earth-stage-y: 34svh;
+    height: 210svh;
+    min-height: 210svh;
+  }
+
+  .h4-page.is-earth-gated .h4-earth-hero {
+    height: 100svh;
     min-height: 100svh;
   }
 

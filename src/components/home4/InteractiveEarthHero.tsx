@@ -31,6 +31,10 @@ type InteractiveEarthHeroProps = {
   onDiscover: () => void;
 };
 
+const GLOBE_CAMERA_MIN_DISTANCE = 160;
+const GLOBE_CAMERA_MAX_DISTANCE = 280;
+const GLOBE_ROTATION_SPEED = 0.42;
+
 const TOUR_PINS: TourPin[] = [
   {
     id: 'london',
@@ -189,20 +193,83 @@ const ROUTE_ARCS: TourArc[] = [
   makeArc('tokyo', 'new-york'),
   makeArc('new-york', 'london'),
   makeArc('bangkok', 'singapore'),
+  makeArc('new-york', 'paris'),
+  makeArc('new-york', 'dubai'),
+  makeArc('london', 'dubai'),
+  makeArc('london', 'mumbai'),
+  makeArc('paris', 'mumbai'),
+  makeArc('dubai', 'bangkok'),
+  makeArc('dubai', 'singapore'),
+  makeArc('kolkata', 'singapore'),
+  makeArc('kolkata', 'bangkok'),
+  makeArc('mumbai', 'bangkok'),
+  makeArc('mumbai', 'tokyo'),
+  makeArc('singapore', 'new-york'),
+  makeArc('tokyo', 'london'),
 ].filter((arc): arc is TourArc => Boolean(arc));
 
 const asTourPin = (value: object) => value as TourPin;
+
+type GlobeControls = {
+  enablePan: boolean;
+  enableZoom: boolean;
+  enableRotate: boolean;
+  autoRotate: boolean;
+  autoRotateSpeed: number;
+  enableDamping: boolean;
+  dampingFactor: number;
+  minDistance: number;
+  maxDistance: number;
+  addEventListener?: (type: string, listener: () => void) => void;
+  removeEventListener?: (type: string, listener: () => void) => void;
+  update?: () => void;
+};
+
+type GlobeCamera = {
+  position?: {
+    length?: () => number;
+    setLength?: (length: number) => unknown;
+  };
+};
+
+const tuneGlobeControls = (controls: GlobeControls, selectedPin: TourPin | null) => {
+  controls.enablePan = true;
+  controls.enableZoom = true;
+  controls.enableRotate = true;
+  controls.autoRotate = !selectedPin;
+  controls.autoRotateSpeed = GLOBE_ROTATION_SPEED;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = GLOBE_CAMERA_MIN_DISTANCE;
+  controls.maxDistance = GLOBE_CAMERA_MAX_DISTANCE;
+};
 
 export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isScrollLocked = false, onDiscover }) => {
   const sectionRef = useRef<HTMLElement | null>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const controlsCleanupRef = useRef<(() => void) | null>(null);
   const interactiveRef = useRef(false);
   const introProgressRef = useRef(0);
   const touchYRef = useRef<number | null>(null);
   const [size, setSize] = useState({ width: 1200, height: 760 });
   const [selectedPin, setSelectedPin] = useState<TourPin | null>(null);
   const [isInteractive, setIsInteractive] = useState(false);
+
+  const clampGlobeCamera = useCallback(() => {
+    const globe = globeRef.current as (GlobeMethods & { camera?: () => GlobeCamera }) | undefined;
+    const camera = globe?.camera?.();
+    const position = camera?.position;
+    const distance = position?.length?.();
+
+    if (typeof distance !== 'number' || !Number.isFinite(distance)) return;
+
+    const clampedDistance = Math.min(GLOBE_CAMERA_MAX_DISTANCE, Math.max(GLOBE_CAMERA_MIN_DISTANCE, distance));
+    if (Math.abs(clampedDistance - distance) < 0.1) return;
+
+    position?.setLength?.(clampedDistance);
+    (globe?.controls() as GlobeControls | undefined)?.update?.();
+  }, []);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -226,6 +293,11 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
     };
   }, []);
 
+  useEffect(() => () => {
+    controlsCleanupRef.current?.();
+    controlsCleanupRef.current = null;
+  }, []);
+
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
@@ -246,10 +318,10 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
 
       section.style.setProperty('--earth-progress', progress.toFixed(4));
       const isMobileViewport = window.innerWidth <= 640;
-      const initialScale = isMobileViewport ? 0.98 : 1.62;
+      const initialScale = isMobileViewport ? 0.98 : 1.34;
       const finalScale = isMobileViewport ? 0.64 : 0.72;
-      const initialY = isMobileViewport ? 34 : 48;
-      const yTravel = isMobileViewport ? 38 : 50;
+      const initialY = isMobileViewport ? 34 : 57;
+      const yTravel = isMobileViewport ? 38 : 70;
       section.style.setProperty('--earth-stage-scale', (initialScale - eased * (initialScale - finalScale)).toFixed(4));
       section.style.setProperty('--earth-stage-y', `${(initialY - eased * yTravel).toFixed(2)}svh`);
       section.style.setProperty('--earth-copy-opacity', copyOpacity.toFixed(4));
@@ -333,28 +405,24 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
   }, []);
 
   useEffect(() => {
-    const controls = globeRef.current?.controls();
+    const controls = globeRef.current?.controls() as GlobeControls | undefined;
     if (!controls) return;
 
-    controls.autoRotate = !selectedPin;
-    controls.autoRotateSpeed = 0.18;
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-  }, [selectedPin]);
+    tuneGlobeControls(controls, selectedPin);
+    clampGlobeCamera();
+  }, [clampGlobeCamera, selectedPin]);
 
   const handleGlobeReady = useCallback(() => {
     const globe = globeRef.current;
     if (!globe) return;
 
-    const controls = globe.controls();
-    controls.enablePan = true;
-    controls.enableZoom = true;
-    controls.enableRotate = true;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.18;
-    controls.minDistance = 130;
-    controls.maxDistance = 540;
+    const controls = globe.controls() as GlobeControls;
+    tuneGlobeControls(controls, null);
+    controlsCleanupRef.current?.();
+    controls.addEventListener?.('change', clampGlobeCamera);
+    controlsCleanupRef.current = () => controls.removeEventListener?.('change', clampGlobeCamera);
     globe.pointOfView({ lat: 8, lng: -32, altitude: 1.8 }, 0);
+    window.requestAnimationFrame(clampGlobeCamera);
 
     const tuneRenderQuality = () => {
       const renderer = globe.renderer() as {
@@ -390,7 +458,7 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
 
     tuneRenderQuality();
     window.setTimeout(tuneRenderQuality, 700);
-  }, []);
+  }, [clampGlobeCamera]);
 
   const createHtmlPin = useCallback((item: object) => {
     const pin = asTourPin(item);
@@ -408,6 +476,7 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
   }, [focusPin, selectedPin?.id]);
 
   const selectedMeta = useMemo(() => selectedPin ? `${selectedPin.tours} / ${selectedPin.duration}` : '', [selectedPin]);
+  const globeOffsetX = size.width > 700 ? -Math.round(size.width * 0.125) : 0;
 
   return (
     <section
@@ -420,14 +489,18 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
         <div className="h4-earth-space" aria-hidden="true" />
         <div className="h4-earth-brand-ghost" aria-hidden="true">THEBETTERPASS</div>
 
-        <div className="h4-earth-stage" ref={stageRef}>
+        <div
+          className="h4-earth-stage"
+          ref={stageRef}
+          style={{ '--earth-globe-offset-x': `${globeOffsetX}px` } as React.CSSProperties}
+        >
           <div className="h4-earth-glow h4-earth-glow-a" aria-hidden="true" />
           <div className="h4-earth-glow h4-earth-glow-b" aria-hidden="true" />
           <Globe
             ref={globeRef}
             width={size.width}
             height={size.height}
-            globeOffset={size.width > 700 ? [-Math.round(size.width * 0.18), 0] : [0, 0]}
+            globeOffset={[globeOffsetX, 0]}
             backgroundColor="rgba(0,0,0,0)"
             globeImageUrl={earthDayUrl}
             bumpImageUrl={earthTopologyUrl}
@@ -456,10 +529,10 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
             arcEndLat="endLat"
             arcEndLng="endLng"
             arcColor={() => ['rgba(255,119,32,0.0)', 'rgba(255,119,32,0.95)', 'rgba(255,190,104,0.1)']}
-            arcStroke={0.62}
-            arcDashLength={0.34}
-            arcDashGap={1.12}
-            arcDashAnimateTime={2800}
+            arcStroke={0.72}
+            arcDashLength={0.32}
+            arcDashGap={0.92}
+            arcDashAnimateTime={2300}
             htmlElementsData={isInteractive ? TOUR_PINS : []}
             htmlLat="lat"
             htmlLng="lng"
