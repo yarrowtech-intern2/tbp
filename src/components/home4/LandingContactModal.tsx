@@ -28,6 +28,8 @@ const INITIAL_FORM: ContactFormState = {
     message: '',
 };
 
+const hasValidPhone = (value: string) => value.replace(/[^\d]/g, '').length >= 5;
+
 export const LandingContactModal: React.FC<LandingContactModalProps> = ({ footerContent, open, onClose }) => {
     const [form, setForm] = useState<ContactFormState>(INITIAL_FORM);
     const [submitting, setSubmitting] = useState(false);
@@ -66,6 +68,10 @@ export const LandingContactModal: React.FC<LandingContactModalProps> = ({ footer
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (!hasValidPhone(form.phone)) {
+            setSubmitError('Enter a valid phone number with at least 5 digits.');
+            return;
+        }
         setSubmitting(true);
         setSubmitError(null);
         try {
@@ -85,7 +91,7 @@ export const LandingContactModal: React.FC<LandingContactModalProps> = ({ footer
     return (
         <div className="h4-contact-modal-backdrop" onClick={onClose} role="presentation">
             <div
-                className="h4-contact-modal"
+                className={`h4-contact-modal${submitted ? ' is-success' : ''}`}
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
@@ -98,9 +104,11 @@ export const LandingContactModal: React.FC<LandingContactModalProps> = ({ footer
                 <div className="h4-contact-modal-shell">
                     {submitted ? (
                         <div className="h4-contact-modal-success">
-                            <CheckCircle2 size={30} />
-                            <h2 id="landing-contact-modal-title">CONTACT US</h2>
-                            <p>Your request was saved. Admin and marketing can now review it from the dashboard.</p>
+                            <span className="h4-contact-success-badge" aria-hidden="true">
+                                <CheckCircle2 size={34} />
+                            </span>
+                            <h2 id="landing-contact-modal-title">thanks for messaging,</h2>
+                            <p>we shall get back to you soon</p>
                             <button type="button" className="h4-contact-modal-close-cta" onClick={onClose}>
                                 Close
                             </button>
@@ -150,6 +158,8 @@ export const LandingContactModal: React.FC<LandingContactModalProps> = ({ footer
                                             value={form.phone}
                                             onChange={(event) => updateField('phone', event.target.value)}
                                             placeholder="Phone"
+                                            inputMode="tel"
+                                            minLength={5}
                                             required
                                         />
                                     </label>
