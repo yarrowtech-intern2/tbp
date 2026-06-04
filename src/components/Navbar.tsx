@@ -307,7 +307,7 @@ export const Navbar: React.FC = () => {
                     margin-right: 4px;
                     text-decoration: none;
                 }
-0
+
                 .nbr-logo {
                     display: block;
                     height: 34px;
@@ -557,4 +557,3 @@ export const Navbar: React.FC = () => {
         </>
     );
 };
-
