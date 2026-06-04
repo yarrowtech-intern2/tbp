@@ -686,7 +686,7 @@
   }
 
   .h4-earth-stage {
-    inset: 96px -8vw 152px;
+    inset: 96px 0 152px;
   }
 
   .h4-earth-stage canvas {

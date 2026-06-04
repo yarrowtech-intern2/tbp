@@ -33,6 +33,7 @@ type InteractiveEarthHeroProps = {
 
 const GLOBE_CAMERA_MIN_DISTANCE = 160;
 const GLOBE_CAMERA_MAX_DISTANCE = 280;
+const GLOBE_CAMERA_MAX_DISTANCE_COMPACT = 420;
 const GLOBE_ROTATION_SPEED = 0.56;
 
 const TOUR_PINS: TourPin[] = [
@@ -232,7 +233,7 @@ type GlobeCamera = {
   };
 };
 
-const tuneGlobeControls = (controls: GlobeControls, selectedPin: TourPin | null) => {
+const tuneGlobeControls = (controls: GlobeControls, selectedPin: TourPin | null, maxDistance = GLOBE_CAMERA_MAX_DISTANCE) => {
   controls.enablePan = true;
   controls.enableZoom = true;
   controls.enableRotate = true;
@@ -241,7 +242,7 @@ const tuneGlobeControls = (controls: GlobeControls, selectedPin: TourPin | null)
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.minDistance = GLOBE_CAMERA_MIN_DISTANCE;
-  controls.maxDistance = GLOBE_CAMERA_MAX_DISTANCE;
+  controls.maxDistance = maxDistance;
 };
 
 export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isScrollLocked = false, onDiscover }) => {
@@ -256,6 +257,11 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
   const [selectedPin, setSelectedPin] = useState<TourPin | null>(null);
   const [isInteractive, setIsInteractive] = useState(false);
 
+  const isCompactStage = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return (stageRef.current?.getBoundingClientRect().width ?? window.innerWidth) <= 700;
+  }, []);
+
   const clampGlobeCamera = useCallback(() => {
     const globe = globeRef.current as (GlobeMethods & { camera?: () => GlobeCamera }) | undefined;
     const camera = globe?.camera?.();
@@ -264,12 +270,13 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
 
     if (typeof distance !== 'number' || !Number.isFinite(distance)) return;
 
-    const clampedDistance = Math.min(GLOBE_CAMERA_MAX_DISTANCE, Math.max(GLOBE_CAMERA_MIN_DISTANCE, distance));
+    const maxDistance = isCompactStage() ? GLOBE_CAMERA_MAX_DISTANCE_COMPACT : GLOBE_CAMERA_MAX_DISTANCE;
+    const clampedDistance = Math.min(maxDistance, Math.max(GLOBE_CAMERA_MIN_DISTANCE, distance));
     if (Math.abs(clampedDistance - distance) < 0.1) return;
 
     position?.setLength?.(clampedDistance);
     (globe?.controls() as GlobeControls | undefined)?.update?.();
-  }, []);
+  }, [isCompactStage]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -391,9 +398,10 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
   }, [isScrollLocked]);
 
   const focusPin = useCallback((pin: TourPin) => {
+    const compact = isCompactStage();
     setSelectedPin(pin);
-    globeRef.current?.pointOfView({ lat: pin.lat, lng: pin.lng, altitude: 1.28 }, 900);
-  }, []);
+    globeRef.current?.pointOfView({ lat: pin.lat, lng: pin.lng, altitude: compact ? 2.05 : 1.28 }, 900);
+  }, [isCompactStage]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -408,20 +416,25 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
     const controls = globeRef.current?.controls() as GlobeControls | undefined;
     if (!controls) return;
 
-    tuneGlobeControls(controls, selectedPin);
+    tuneGlobeControls(
+      controls,
+      selectedPin,
+      isCompactStage() ? GLOBE_CAMERA_MAX_DISTANCE_COMPACT : GLOBE_CAMERA_MAX_DISTANCE
+    );
     clampGlobeCamera();
-  }, [clampGlobeCamera, selectedPin]);
+  }, [clampGlobeCamera, isCompactStage, selectedPin]);
 
   const handleGlobeReady = useCallback(() => {
     const globe = globeRef.current;
     if (!globe) return;
 
     const controls = globe.controls() as GlobeControls;
-    tuneGlobeControls(controls, null);
+    const compact = isCompactStage();
+    tuneGlobeControls(controls, null, compact ? GLOBE_CAMERA_MAX_DISTANCE_COMPACT : GLOBE_CAMERA_MAX_DISTANCE);
     controlsCleanupRef.current?.();
     controls.addEventListener?.('change', clampGlobeCamera);
     controlsCleanupRef.current = () => controls.removeEventListener?.('change', clampGlobeCamera);
-    globe.pointOfView({ lat: 8, lng: -32, altitude: 1.8 }, 0);
+    globe.pointOfView({ lat: 8, lng: -32, altitude: compact ? 2.55 : 1.8 }, 0);
     window.requestAnimationFrame(clampGlobeCamera);
 
     const tuneRenderQuality = () => {
@@ -458,7 +471,7 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
 
     tuneRenderQuality();
     window.setTimeout(tuneRenderQuality, 700);
-  }, [clampGlobeCamera]);
+  }, [clampGlobeCamera, isCompactStage]);
 
   const createHtmlPin = useCallback((item: object) => {
     const pin = asTourPin(item);
