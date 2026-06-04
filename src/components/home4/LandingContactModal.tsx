@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, Loader2, Mail, MapPin, Phone, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Loader2, Mail, Phone, X } from 'lucide-react';
 import {
     getFooterContactDetails,
     type FooterContent,
@@ -95,69 +95,47 @@ export const LandingContactModal: React.FC<LandingContactModalProps> = ({ footer
                     <X size={18} />
                 </button>
 
-                <div className="h4-contact-modal-grid">
-                    <div className="h4-contact-modal-copy">
-                        <span className="h4-contact-modal-kicker">Contact</span>
-                        <h2 id="landing-contact-modal-title">Tell us where you want to go next.</h2>
-                        <p>
-                            Send your details and the team can review your request from the dashboard.
-                            The company contact details below are pulled from the marketing-managed footer settings.
-                        </p>
-
-                        <div className="h4-contact-details">
-                            {contactDetails.email && (
-                                <a className="h4-contact-detail-card" href={contactDetails.email.href || undefined}>
-                                    <span className="h4-contact-detail-icon"><Mail size={16} /></span>
-                                    <span className="h4-contact-detail-content">
-                                        <span className="h4-contact-detail-label">Company Email</span>
-                                        <span className="h4-contact-detail-value">{contactDetails.email.label}</span>
-                                    </span>
-                                </a>
-                            )}
-                            {contactDetails.phone && (
-                                <a className="h4-contact-detail-card" href={contactDetails.phone.href || undefined}>
-                                    <span className="h4-contact-detail-icon"><Phone size={16} /></span>
-                                    <span className="h4-contact-detail-content">
-                                        <span className="h4-contact-detail-label">Contact Number</span>
-                                        <span className="h4-contact-detail-value">{contactDetails.phone.label}</span>
-                                    </span>
-                                </a>
-                            )}
+                <div className="h4-contact-modal-shell">
+                    {submitted ? (
+                        <div className="h4-contact-modal-success">
+                            <CheckCircle2 size={30} />
+                            <h2 id="landing-contact-modal-title">CONTACT US</h2>
+                            <p>Your request was saved. Admin and marketing can now review it from the dashboard.</p>
+                            <button type="button" className="h4-contact-modal-close-cta" onClick={onClose}>
+                                Close
+                            </button>
                         </div>
-                    </div>
-
-                    <div className="h4-contact-modal-form-wrap">
-                        {submitted ? (
-                            <div className="h4-contact-modal-success">
-                                <CheckCircle2 size={28} />
-                                <h3>Submission received</h3>
-                                <p>Your contact request is now stored in Supabase for admin and marketing review.</p>
-                                <button type="button" className="h4-form-submit" onClick={onClose}>
-                                    Close
-                                </button>
+                    ) : (
+                        <>
+                            <div className="h4-contact-modal-copy">
+                                <h2 id="landing-contact-modal-title">
+                                    <span>CONTACT</span>
+                                    <span>US</span>
+                                </h2>
+                                <p>Tell us your agenda</p>
                             </div>
-                        ) : (
+
                             <form className="h4-contact-form" onSubmit={(event) => void handleSubmit(event)}>
                                 <div className="h4-form-row">
                                     <label className="h4-form-field">
-                                        <span className="h4-form-label">Name</span>
+                                        <span className="h4-form-label sr-only">Name</span>
                                         <input
                                             className="h4-form-input"
                                             type="text"
                                             value={form.name}
                                             onChange={(event) => updateField('name', event.target.value)}
-                                            placeholder="Your full name"
+                                            placeholder="Name"
                                             required
                                         />
                                     </label>
                                     <label className="h4-form-field">
-                                        <span className="h4-form-label">Email</span>
+                                        <span className="h4-form-label sr-only">Location</span>
                                         <input
                                             className="h4-form-input"
-                                            type="email"
-                                            value={form.email}
-                                            onChange={(event) => updateField('email', event.target.value)}
-                                            placeholder="you@example.com"
+                                            type="text"
+                                            value={form.location}
+                                            onChange={(event) => updateField('location', event.target.value)}
+                                            placeholder="Location"
                                             required
                                         />
                                     </label>
@@ -165,52 +143,78 @@ export const LandingContactModal: React.FC<LandingContactModalProps> = ({ footer
 
                                 <div className="h4-form-row">
                                     <label className="h4-form-field">
-                                        <span className="h4-form-label">Phone</span>
+                                        <span className="h4-form-label sr-only">Phone</span>
                                         <input
                                             className="h4-form-input"
                                             type="tel"
                                             value={form.phone}
                                             onChange={(event) => updateField('phone', event.target.value)}
-                                            placeholder="+91 98765 43210"
+                                            placeholder="Phone"
                                             required
                                         />
                                     </label>
                                     <label className="h4-form-field">
-                                        <span className="h4-form-label">Location</span>
-                                        <div className="h4-form-input-wrap">
-                                            <span className="h4-form-input-icon"><MapPin size={16} /></span>
-                                            <input
-                                                className="h4-form-input h4-form-input-with-icon"
-                                                type="text"
-                                                value={form.location}
-                                                onChange={(event) => updateField('location', event.target.value)}
-                                                placeholder="City, state, or country"
-                                                required
-                                            />
-                                        </div>
+                                        <span className="h4-form-label sr-only">Email</span>
+                                        <input
+                                            className="h4-form-input"
+                                            type="email"
+                                            value={form.email}
+                                            onChange={(event) => updateField('email', event.target.value)}
+                                            placeholder="Email"
+                                            required
+                                        />
                                     </label>
                                 </div>
 
-                                <label className="h4-form-field">
-                                    <span className="h4-form-label">Message</span>
-                                    <textarea
-                                        className="h4-form-input h4-form-textarea"
-                                        value={form.message}
-                                        onChange={(event) => updateField('message', event.target.value)}
-                                        placeholder="Tell us what kind of trip or help you need"
-                                        required
-                                    />
-                                </label>
+                                <div className="h4-form-submit-row">
+                                    <label className="h4-form-field h4-form-field-message">
+                                        <span className="h4-form-label sr-only">Message</span>
+                                        <textarea
+                                            className="h4-form-input h4-form-textarea h4-form-textarea-compact"
+                                            value={form.message}
+                                            onChange={(event) => updateField('message', event.target.value)}
+                                            placeholder="Message"
+                                            required
+                                        />
+                                    </label>
+
+                                    <button type="submit" className="h4-form-submit h4-form-submit-icon" disabled={submitting} aria-label="Send request">
+                                        {submitting ? <Loader2 size={20} className="animate-spin" /> : <ArrowRight size={24} />}
+                                    </button>
+                                </div>
 
                                 {submitError && <p className="h4-form-error">{submitError}</p>}
-
-                                <button type="submit" className="h4-form-submit" disabled={submitting}>
-                                    {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
-                                    {submitting ? 'Submitting...' : 'Send Request'}
-                                </button>
                             </form>
-                        )}
-                    </div>
+
+                            <div className="h4-contact-modal-actions">
+                                {contactDetails.email && (
+                                    <a
+                                        className="h4-contact-action"
+                                        href={contactDetails.email.href || undefined}
+                                        aria-label={`Email ${contactDetails.email.label}`}
+                                        title={contactDetails.email.label}
+                                    >
+                                        <Mail size={18} />
+                                    </a>
+                                )}
+                                {contactDetails.phone && (
+                                    <a
+                                        className="h4-contact-action"
+                                        href={contactDetails.phone.href || undefined}
+                                        aria-label={`Call ${contactDetails.phone.label}`}
+                                        title={contactDetails.phone.label}
+                                    >
+                                        <Phone size={18} />
+                                    </a>
+                                )}
+                            </div>
+
+                            <div className="h4-contact-modal-meta" aria-hidden="true">
+                                {contactDetails.email ? <span>{contactDetails.email.label}</span> : null}
+                                {contactDetails.phone ? <span>{contactDetails.phone.label}</span> : null}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

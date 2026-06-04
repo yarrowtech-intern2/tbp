@@ -87,15 +87,13 @@ export const submitContactSubmission = async (input: ContactSubmissionInput): Pr
         source_page: input.sourcePage?.trim() || 'landing_page',
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('contact_submissions')
-        .insert(payload)
-        .select('id')
-        .single();
+        .insert(payload);
 
     if (error) throw new Error(toContactSubmissionErrorMessage(error, 'insert'));
 
-    return normalizeText(data?.id);
+    return '';
 };
 
 export const getContactSubmissions = async (): Promise<ContactSubmissionRecord[]> => {
