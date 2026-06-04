@@ -633,7 +633,7 @@ export const Home4: React.FC = () => {
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const timer = window.setTimeout(() => setShowCurtain(false), reducedMotion ? 250 : 1800);
+    const timer = window.setTimeout(() => setShowCurtain(false), reducedMotion ? 250 : 2200);
     return () => window.clearTimeout(timer);
   }, []);
 

@@ -801,20 +801,29 @@
   border-radius: 0;
   clip-path: none;
   mask: none;
-  animation: h4-curtain-black-fade 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: h4-curtain-black-fade 2.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, filter;
 }
 
 @keyframes h4-curtain-black-fade {
   0% {
     opacity: 1;
+    filter: blur(0);
   }
 
-  18% {
+  34% {
     opacity: 1;
+    filter: blur(0);
+  }
+
+  72% {
+    opacity: 0.38;
+    filter: blur(2px);
   }
 
   100% {
     opacity: 0;
+    filter: blur(4px);
     visibility: hidden;
   }
 }
@@ -1531,8 +1540,9 @@
 
   .h4-beach-hero-title {
     width: 100%;
-    max-width: 100%;
-    font-size: 4.95rem;
+    max-width: calc(100vw - 36px);
+    font-size: clamp(3.45rem, 16vw, 4.2rem);
+    letter-spacing: -0.06em;
     line-height: 0.86;
     white-space: nowrap;
     overflow-wrap: normal;
@@ -1564,7 +1574,7 @@
   }
 
   .h4-beach-hero-title {
-    font-size: 4.5rem;
+    font-size: clamp(3.2rem, 15vw, 3.75rem);
   }
 
   .h4-beach-hero-stat-value {

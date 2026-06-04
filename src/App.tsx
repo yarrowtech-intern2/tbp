@@ -1,7 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
-import { RouteTransitionOverlay } from './components/RouteTransitionOverlay';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
@@ -160,7 +159,6 @@ function App() {
   return (
     <Router>
       <div className="app">
-        <RouteTransitionOverlay />
         <AppNavbar />
         <Suspense fallback={null}>
           <Routes>
