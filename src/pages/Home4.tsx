@@ -19,6 +19,7 @@ import {
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterLink } from '../lib/appContent';
 import GallerySection from '../components/GallerySection';
 import { InteractiveEarthHero } from '../components/home4/InteractiveEarthHero';
+import { LandingContactModal } from '../components/home4/LandingContactModal';
 import './home4.css';
 
 type RevealBlockProps = {
@@ -571,6 +572,7 @@ export const Home4: React.FC = () => {
   const heroRef       = useRef<HTMLElement>(null);
   const showcaseRef   = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [earthNavHidden, setEarthNavHidden] = useState(true);
   const [earthUnlocked, setEarthUnlocked] = useState(false);
@@ -664,6 +666,11 @@ export const Home4: React.FC = () => {
     });
   };
 
+  const openContactModal = () => {
+    setMenuOpen(false);
+    setContactModalOpen(true);
+  };
+
   return (
     <div className={`h4-page${earthUnlocked ? ' is-earth-unlocked' : ' is-earth-gated'}`}>
       <InteractiveEarthHero isScrollLocked={!earthUnlocked} onDiscover={handleEarthDiscover} />
@@ -688,7 +695,7 @@ export const Home4: React.FC = () => {
           <div className="h4-custom-nav-capsule">
             <a href="#h4-earth-hero" className="h4-custom-nav-link" onClick={handleSectionNav('h4-earth-hero')}>Home</a>
             <Link to="/about" className="h4-custom-nav-link">About</Link>
-            <a href="#h4-choose-us" className="h4-custom-nav-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
+            <button type="button" className="h4-custom-nav-link h4-custom-nav-link-button" onClick={openContactModal}>Contact</button>
           </div>
 
           <Link to="/auth" className="h4-custom-nav-login">
@@ -711,7 +718,7 @@ export const Home4: React.FC = () => {
         <div className={`h4-custom-nav-mobile-panel ${menuOpen ? 'is-open' : ''}`}>
           <a href="#h4-earth-hero" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-earth-hero')}>Home</a>
           <Link to="/about" className="h4-custom-nav-mobile-link" onClick={() => setMenuOpen(false)}>About</Link>
-          <a href="#h4-choose-us" className="h4-custom-nav-mobile-link" onClick={handleSectionNav('h4-choose-us')}>Contact</a>
+          <button type="button" className="h4-custom-nav-mobile-link h4-custom-nav-mobile-link-button" onClick={openContactModal}>Contact</button>
           <Link to="/auth" className="h4-custom-nav-mobile-login" onClick={() => setMenuOpen(false)}>EXPLORE</Link>
         </div>
       </nav>
@@ -1236,6 +1243,7 @@ export const Home4: React.FC = () => {
           </div>
         </div>
       </footer>
+      <LandingContactModal footerContent={footerContent} open={contactModalOpen} onClose={() => setContactModalOpen(false)} />
     </div>
   );
 };

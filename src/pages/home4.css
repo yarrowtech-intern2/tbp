@@ -1057,6 +1057,13 @@
     0 0 22px rgba(255, 106, 10, 0.18);
 }
 
+.h4-custom-nav-mobile-link-button {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+
 .h4-beach-hero-content {
   position: absolute;
   top: 36.2%;
@@ -1265,6 +1272,13 @@
 
   .h4-custom-nav-link:hover {
     background: rgba(255, 255, 255, 0.14);
+  }
+
+  .h4-custom-nav-link-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
   }
 
   .h4-custom-nav-login {
@@ -2597,6 +2611,170 @@
 .h4-form-submit:hover {
   background: #a33509;
   transform: scale(1.03);
+}
+
+.h4-contact-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 10, 18, 0.58);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.h4-contact-modal {
+  position: relative;
+  width: min(1040px, 100%);
+  max-height: min(90vh, 860px);
+  overflow: auto;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 129, 55, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(255, 248, 240, 0.98), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 32px 80px rgba(10, 15, 23, 0.24);
+}
+
+.h4-contact-modal-close {
+  position: sticky;
+  top: 18px;
+  left: calc(100% - 66px);
+  z-index: 1;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(17, 17, 17, 0.08);
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.h4-contact-modal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 36px;
+  padding: 24px 32px 34px;
+}
+
+.h4-contact-modal-copy {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.h4-contact-modal-kicker {
+  display: inline-flex;
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(193, 68, 14, 0.12);
+  color: #b34011;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.h4-contact-modal-copy h2 {
+  margin: 0;
+  color: #111;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 0.98;
+}
+
+.h4-contact-modal-copy p {
+  margin: 0;
+  color: #5f646d;
+  line-height: 1.8;
+}
+
+.h4-contact-detail-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  color: inherit;
+  text-decoration: none;
+}
+
+.h4-contact-detail-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(193, 68, 14, 0.12);
+  color: #b34011;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.h4-contact-detail-content {
+  display: grid;
+  gap: 4px;
+}
+
+.h4-contact-modal-form-wrap {
+  padding: 26px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.h4-contact-modal-success {
+  min-height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 12px;
+  color: #111;
+}
+
+.h4-contact-modal-success svg {
+  color: #c1440e;
+}
+
+.h4-contact-modal-success h3,
+.h4-contact-modal-success p {
+  margin: 0;
+}
+
+.h4-form-input-wrap {
+  position: relative;
+}
+
+.h4-form-input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8b9098;
+  pointer-events: none;
+}
+
+.h4-form-input-with-icon {
+  padding-left: 44px;
+}
+
+.h4-form-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.h4-form-submit:disabled {
+  cursor: wait;
+  opacity: 0.8;
 }
 
 /* ── FOOTER ─────────────────────────────────────────────────────────────── */
@@ -5146,6 +5324,10 @@
     gap: 48px;
   }
 
+  .h4-contact-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
   .h4-footer-top {
     grid-template-columns: 1fr 1fr;
     gap: 36px;
@@ -5167,6 +5349,31 @@
 
   .h4-contact {
     padding: 80px 0;
+  }
+
+  .h4-contact-modal-backdrop {
+    padding: 16px;
+  }
+
+  .h4-contact-modal {
+    border-radius: 24px;
+  }
+
+  .h4-contact-modal-grid {
+    padding: 18px 18px 24px;
+    gap: 24px;
+  }
+
+  .h4-contact-modal-form-wrap {
+    padding: 18px;
+  }
+
+  .h4-contact-modal-copy h2 {
+    font-size: 1.8rem;
+  }
+
+  .h4-form-row {
+    grid-template-columns: 1fr;
   }
 
   .h4-testimonials-grid {

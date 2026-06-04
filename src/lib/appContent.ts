@@ -18,6 +18,11 @@ export type FooterContent = {
     socials: FooterLink[];
 };
 
+export type FooterContactDetails = {
+    email: FooterLink | null;
+    phone: FooterLink | null;
+};
+
 export type HeroMessagesContent = Record<HeroMessageMood, string[]>;
 
 export type AppContentConfig = {
@@ -260,6 +265,24 @@ const normalizeFooterLink = (value: unknown): FooterLink | null => {
     return { label, href };
 };
 
+const looksLikeEmail = (value: string) => value.includes('@');
+
+const looksLikePhone = (value: string) => value.replace(/[^\d]/g, '').length >= 7;
+
+const withEmailHref = (link: FooterLink): FooterLink => ({
+    label: link.label,
+    href: link.href?.startsWith('mailto:') ? link.href : `mailto:${link.label.trim()}`,
+});
+
+const withPhoneHref = (link: FooterLink): FooterLink => {
+    if (link.href?.startsWith('tel:')) return link;
+    const normalized = link.label.replace(/[^\d+]/g, '');
+    return {
+        label: link.label,
+        href: normalized ? `tel:${normalized}` : link.href || null,
+    };
+};
+
 export const normalizeFooterContent = (value: unknown): FooterContent => {
     if (!isRecord(value)) return DEFAULT_FOOTER_CONTENT;
 
@@ -286,6 +309,24 @@ export const normalizeFooterContent = (value: unknown): FooterContent => {
         columns: columns.length > 0 ? columns : DEFAULT_FOOTER_CONTENT.columns,
         copyright: normalizeText(value.copyright, DEFAULT_FOOTER_CONTENT.copyright),
         socials: socials.length > 0 ? socials : DEFAULT_FOOTER_CONTENT.socials,
+    };
+};
+
+export const getFooterContactDetails = (footer: FooterContent): FooterContactDetails => {
+    const contactColumns = footer.columns.filter((column) => column.title.trim().toLowerCase().includes('contact'));
+    const otherColumns = footer.columns.filter((column) => !column.title.trim().toLowerCase().includes('contact'));
+    const prioritizedLinks = [...contactColumns, ...otherColumns].flatMap((column) => column.links);
+
+    const email = prioritizedLinks.find((link) => (
+        (typeof link.href === 'string' && link.href.startsWith('mailto:')) || looksLikeEmail(link.label)
+    ));
+    const phone = prioritizedLinks.find((link) => (
+        (typeof link.href === 'string' && link.href.startsWith('tel:')) || looksLikePhone(link.label)
+    ));
+
+    return {
+        email: email ? withEmailHref(email) : null,
+        phone: phone ? withPhoneHref(phone) : null,
     };
 };
 

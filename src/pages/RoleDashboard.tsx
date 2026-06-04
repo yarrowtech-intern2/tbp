@@ -13,6 +13,7 @@ import {
     LayoutDashboard,
     Loader2,
     LogOut,
+    Mail,
     Megaphone,
     MessageSquare,
     Menu,
@@ -81,6 +82,7 @@ import {
     type PromotionPlanKey,
 } from '../lib/promotions';
 import { DEFAULT_SALES_SETTINGS, getPublicAppContent, type SalesSettingsContent } from '../lib/appContent';
+import { ContactSubmissionsPanel } from '../components/contact/ContactSubmissionsPanel';
 import { MarketingContentEditor, SalesSettingsEditor } from '../components/marketing/MarketingContentEditor';
 import './role-dashboard.css';
 
@@ -99,6 +101,7 @@ type SidebarKey =
     | 'content'
     | 'greetings'
     | 'contact'
+    | 'inquiries'
     | 'about'
     | 'moderation'
     | 'accepted'
@@ -433,6 +436,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'content';
+    if (normalized === 'inquiries' || normalized === 'leads' || normalized === 'contact-leads' || normalized === 'contact-submissions') return 'inquiries';
     if (normalized === 'messages') return 'messages';
     if (normalized === 'notifications') return 'messages';
     if (normalized === 'revenue') return 'revenue';
@@ -451,6 +455,7 @@ const parseMarketingSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'greetings' || normalized === 'edit-greetings' || normalized === 'edit_greetings') return 'greetings';
     if (normalized === 'contact' || normalized === 'contact-info' || normalized === 'edit-contact-info' || normalized === 'informatics') return 'contact';
+    if (normalized === 'inquiries' || normalized === 'leads' || normalized === 'contact-leads' || normalized === 'contact-submissions') return 'inquiries';
     if (normalized === 'about' || normalized === 'about-us' || normalized === 'about_us' || normalized === 'edit-about') return 'about';
     if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'greetings';
     if (normalized === 'messages' || normalized === 'notifications') return 'messages';
@@ -1245,6 +1250,7 @@ export const RoleDashboard: React.FC = () => {
             return [
                 { key: 'overview', label: 'Dashboard', icon: FileText },
                 { key: 'content', label: 'Content', icon: Megaphone },
+                { key: 'inquiries', label: 'Contact Leads', icon: Mail },
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
                 { key: 'accepted', label: 'Accepted', icon: CheckCircle2 },
@@ -1272,6 +1278,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'greetings', label: 'Edit Greetings', icon: SquarePen },
                 { key: 'about', label: 'Edit About', icon: FileText },
                 { key: 'contact', label: 'Edit Contact Info', icon: Megaphone },
+                { key: 'inquiries', label: 'Contact Leads', icon: Mail },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
         }
@@ -3014,6 +3021,10 @@ export const RoleDashboard: React.FC = () => {
             return <MarketingContentEditor userId={user?.id} mode="contact" />;
         }
 
+        if (activeSection === 'inquiries') {
+            return <ContactSubmissionsPanel />;
+        }
+
         if (activeSection === 'about') {
             return <MarketingContentEditor userId={user?.id} mode="about" />;
         }
@@ -3260,6 +3271,10 @@ export const RoleDashboard: React.FC = () => {
     const renderAdminSection = () => {
         if (activeSection === 'content') {
             return <MarketingContentEditor userId={user?.id} mode="contact" />;
+        }
+
+        if (activeSection === 'inquiries') {
+            return <ContactSubmissionsPanel />;
         }
 
         if (activeSection === 'messages') {
