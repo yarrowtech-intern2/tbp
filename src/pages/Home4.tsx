@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   Compass,
   ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
   Hotel,
   Instagram,
   Landmark,
@@ -571,6 +573,7 @@ const RollingTicker: React.FC<RollingTickerProps> = ({ value, delay = 0 }) => {
 export const Home4: React.FC = () => {
   const heroRef       = useRef<HTMLElement>(null);
   const showcaseRef   = useRef<HTMLDivElement>(null);
+  const featuredCarouselRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -663,6 +666,21 @@ export const Home4: React.FC = () => {
       const node = document.getElementById('h4-hero');
       if (!node) return;
       node.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+    });
+  };
+
+  const scrollFeaturedCarousel = (direction: -1 | 1) => {
+    const carousel = featuredCarouselRef.current;
+    if (!carousel) return;
+    const slide = carousel.querySelector<HTMLElement>('.h4-featured-slide');
+    const slideWidth = slide?.getBoundingClientRect().width ?? carousel.clientWidth * 0.75;
+    const styles = window.getComputedStyle(carousel);
+    const gap = parseFloat(styles.columnGap || styles.gap || '0') || 0;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    carousel.scrollBy({
+      left: direction * (slideWidth + gap),
+      behavior: reducedMotion ? 'auto' : 'smooth',
     });
   };
 
@@ -796,28 +814,53 @@ export const Home4: React.FC = () => {
                 Handpicked routes with a balance of nature, heritage, and luxury pacing.
               </p>
             </div>
+            <div className="h4-featured-controls" aria-label="Featured destination carousel controls">
+              <button
+                type="button"
+                className="h4-featured-control"
+                aria-label="Previous destination"
+                onClick={() => scrollFeaturedCarousel(-1)}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                type="button"
+                className="h4-featured-control"
+                aria-label="Next destination"
+                onClick={() => scrollFeaturedCarousel(1)}
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
           </div>
-          <div className="h4-featured-grid">
-            {FEATURED_DESTINATIONS.map((item, index) => (
-              <RevealBlock key={item.title} delay={index * 80}>
-                <article className="h4-destination-card">
-                  <div className="h4-destination-media">
-                    <img
-                      src={item.image}
-                      alt=""
-                      className="h4-card-image"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </div>
-                  <div className="h4-destination-body h4-reveal-copy">
-                    <h3 className="h4-destination-title">{item.title}</h3>
-                    <span className="h4-destination-subtitle">{item.location}</span>
-                    <p className="h4-destination-text">{item.description}</p>
-                  </div>
-                </article>
-              </RevealBlock>
-            ))}
+          <div className="h4-featured-carousel-shell">
+            <div
+              className="h4-featured-grid h4-featured-carousel"
+              ref={featuredCarouselRef}
+              role="region"
+              aria-label="Featured destination carousel"
+            >
+              {FEATURED_DESTINATIONS.map((item, index) => (
+                <RevealBlock key={item.title} delay={index * 80} className="h4-featured-slide">
+                  <article className="h4-destination-card">
+                    <div className="h4-destination-media">
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="h4-card-image"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                    <div className="h4-destination-body h4-reveal-copy">
+                      <h3 className="h4-destination-title">{item.title}</h3>
+                      <span className="h4-destination-subtitle">{item.location}</span>
+                      <p className="h4-destination-text">{item.description}</p>
+                    </div>
+                  </article>
+                </RevealBlock>
+              ))}
+            </div>
           </div>
         </div>
       </section>
