@@ -109,20 +109,37 @@
   }
 }
 
+@keyframes h4-earth-stage-load-rise {
+  0%,
+  12% {
+    transform: translate3d(0, 128svh, 0) scale(var(--earth-stage-scale));
+  }
+
+  56% {
+    transform: translate3d(0, calc(var(--earth-stage-y) + 18svh), 0) scale(var(--earth-stage-scale));
+  }
+
+  100% {
+    transform: translate3d(0, var(--earth-stage-y), 0) scale(var(--earth-stage-scale));
+  }
+}
+
 .h4-earth-brand-ghost {
   position: absolute;
-  top: clamp(-18px, -2vw, -6px);
+  top: clamp(8px, 1.3vw, 22px);
   left: 50%;
   z-index: 1;
   width: max-content;
+  max-width: calc(100vw - 28px);
   transform: translateX(-50%) scaleX(0.92);
   transform-origin: 50% 50%;
   color: rgba(255, 255, 255, 0.065);
   font-family: 'Azonix', 'Outfit', sans-serif;
-  font-size: clamp(4rem, 10.8vw, 13.5rem);
+  font-size: clamp(2.3rem, 8vw, 12.5rem);
   font-weight: 400;
   line-height: 0.82;
-  letter-spacing: -0.08em;
+  letter-spacing: clamp(0.005em, 0.18vw, 0.025em);
+  word-spacing: clamp(0.08em, 1.1vw, 0.22em);
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
@@ -139,6 +156,10 @@
   transition: filter 0.18s ease;
   will-change: transform;
   pointer-events: none;
+}
+
+.h4-page.is-curtain-loading .h4-earth-stage {
+  animation: h4-earth-stage-load-rise 3.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .h4-earth-hero.is-interactive .h4-earth-stage {
@@ -606,9 +627,11 @@
   }
 
   .h4-earth-brand-ghost {
-    top: 18px;
-    font-size: clamp(2.25rem, 11.5vw, 5.25rem);
-    letter-spacing: -0.08em;
+    top: clamp(14px, 3.2vw, 22px);
+    max-width: calc(100vw - 20px);
+    font-size: clamp(1.7rem, 7.8vw, 4.6rem);
+    letter-spacing: 0.005em;
+    word-spacing: 0.08em;
     transform: translateX(-50%) scaleX(0.92);
   }
 
@@ -777,6 +800,10 @@
     animation: none;
   }
 
+  .h4-page.is-curtain-loading .h4-earth-stage {
+    animation: none;
+  }
+
   .h4-earth-discover::before,
   .h4-earth-discover::after {
     animation: none;
@@ -794,43 +821,34 @@
   inset: 0;
   z-index: 20000;
   display: block;
-  background-color: #000;
-  background-image: none;
+  background: #000;
   pointer-events: all;
   overflow: hidden;
   border-radius: 0;
   clip-path: none;
   mask: none;
-  animation: h4-curtain-black-fade 2.2s cubic-bezier(0.22, 1, 0.36, 1) both;
-  will-change: opacity, filter;
-}
-
-@keyframes h4-curtain-black-fade {
-  0% {
-    opacity: 1;
-    filter: blur(0);
-  }
-
-  34% {
-    opacity: 1;
-    filter: blur(0);
-  }
-
-  72% {
-    opacity: 0.38;
-    filter: blur(2px);
-  }
-
-  100% {
-    opacity: 0;
-    filter: blur(4px);
-    visibility: hidden;
-  }
+  animation: h4-curtain-black-fade 3.25s ease-in-out both;
+  will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .h4-curtain-screen {
     animation-duration: 0.25s;
+  }
+}
+
+@keyframes h4-curtain-black-fade {
+  0% {
+    opacity: 1;
+  }
+
+  28% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
   }
 }
 

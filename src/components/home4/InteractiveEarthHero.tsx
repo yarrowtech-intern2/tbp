@@ -33,7 +33,7 @@ type InteractiveEarthHeroProps = {
 
 const GLOBE_CAMERA_MIN_DISTANCE = 160;
 const GLOBE_CAMERA_MAX_DISTANCE = 280;
-const GLOBE_ROTATION_SPEED = 0.42;
+const GLOBE_ROTATION_SPEED = 0.56;
 
 const TOUR_PINS: TourPin[] = [
   {
@@ -488,7 +488,7 @@ export const InteractiveEarthHero: React.FC<InteractiveEarthHeroProps> = ({ isSc
     >
       <div className="h4-earth-sticky">
         <div className="h4-earth-space" aria-hidden="true" />
-        <div className="h4-earth-brand-ghost" aria-hidden="true">THEBETTERPASS</div>
+        <div className="h4-earth-brand-ghost" aria-hidden="true">The Better Pass</div>
 
         <div
           className="h4-earth-stage"

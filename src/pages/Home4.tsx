@@ -635,7 +635,7 @@ export const Home4: React.FC = () => {
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const timer = window.setTimeout(() => setShowCurtain(false), reducedMotion ? 250 : 2200);
+    const timer = window.setTimeout(() => setShowCurtain(false), reducedMotion ? 260 : 3300);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -672,7 +672,7 @@ export const Home4: React.FC = () => {
   };
 
   return (
-    <div className={`h4-page${earthUnlocked ? ' is-earth-unlocked' : ' is-earth-gated'}`}>
+    <div className={`h4-page${earthUnlocked ? ' is-earth-unlocked' : ' is-earth-gated'}${showCurtain ? ' is-curtain-loading' : ''}`}>
       <InteractiveEarthHero isScrollLocked={!earthUnlocked} onDiscover={handleEarthDiscover} />
 
       {showCurtain && (
@@ -755,9 +755,9 @@ export const Home4: React.FC = () => {
 
         {/* Bottom Title & Stats */}
         <div className="h4-beach-hero-bottom">
-          <p className="h4-beach-hero-kicker">Curated Escapes Begin with a</p>
+          <p className="h4-beach-hero-kicker">Step into your next </p>
           <h1 className="h4-beach-hero-title">
-            JOURNEY
+            GATEWAY
           </h1>
           
           <div className="h4-beach-hero-stats">
