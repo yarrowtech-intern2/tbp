@@ -1,0 +1,211 @@
+.home5-page {
+  background: #ffffff;
+  color: #121212;
+}
+
+.home5-hero {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.035), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(255, 130, 28, 0.08), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%);
+}
+
+.home5-hero-shell {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.home5-copy {
+  position: relative;
+  display: flex;
+  width: min(100%, 34rem);
+  margin: 0 auto;
+  min-height: 39dvh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: max(54px, env(safe-area-inset-top) + 28px) 16px 0;
+  text-align: center;
+}
+
+.home5-title {
+  margin: 0;
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  margin-inline: auto;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.9rem, 7vw, 2.4rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  word-spacing: 0.18em;
+  color: transparent;
+  background: linear-gradient(180deg, #ff7b29 0%, rgba(255, 123, 41, 0.44) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.home5-subtitle {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  margin-inline: auto;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(4.3rem, 14.6vw, 5.9rem);
+  font-weight: 700;
+  line-height: 0.83;
+  letter-spacing: -0.035em;
+  word-spacing: 0.08em;
+  text-transform: lowercase;
+  color: transparent;
+  background: linear-gradient(180deg, #111111 0%, rgba(17, 17, 17, 0.2) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  opacity: 0.45;
+  text-wrap: balance;
+}
+
+.home5-subtitle span {
+  display: block;
+}
+
+.home5-globe-stage {
+  position: relative;
+  z-index: 2;
+  width: 100vw;
+  min-height: 0;
+  margin-top: clamp(-54px, -9vw, -18px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  overflow: visible;
+}
+
+.home5-globe-ground {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  width: min(118vw, 32rem);
+  aspect-ratio: 2.4 / 0.42;
+  border-radius: 999px;
+  background: radial-gradient(circle at center, rgba(255, 132, 31, 0.22) 0%, rgba(255, 132, 31, 0.08) 42%, rgba(255, 132, 31, 0) 74%);
+  transform: translateX(-50%);
+  filter: blur(18px);
+}
+
+.home5-globe {
+  position: relative;
+  z-index: 2;
+  width: min(118vw, 32rem);
+  max-width: 32rem;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+}
+
+.home5-globe-fade {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 80%, rgba(255, 123, 41, 0.12), rgba(255, 255, 255, 0) 34%);
+}
+
+@media (min-width: 641px) {
+  .home5-hero-shell {
+    grid-template-rows: auto 1fr;
+  }
+
+  .home5-copy {
+    width: min(100%, 72rem);
+    min-height: 34dvh;
+    gap: 10px;
+    padding: clamp(72px, 9vh, 112px) 32px 0;
+  }
+
+  .home5-title {
+    font-size: clamp(2.3rem, 4vw, 3.6rem);
+    word-spacing: 0.22em;
+  }
+
+  .home5-subtitle {
+    font-size: clamp(5rem, 8.8vw, 7.8rem);
+    line-height: 0.88;
+    letter-spacing: -0.025em;
+    word-spacing: 0.16em;
+  }
+
+  .home5-subtitle span {
+    display: inline;
+  }
+
+  .home5-subtitle span + span::before {
+    content: ' ';
+  }
+
+  .home5-globe-stage {
+    margin-top: clamp(-86px, -6vw, -30px);
+    padding-bottom: 18px;
+  }
+
+  .home5-globe-ground {
+    width: min(82vw, 58rem);
+    bottom: 2%;
+  }
+
+  .home5-globe {
+    width: min(74vw, 56rem);
+    max-width: 56rem;
+  }
+}
+
+@media (min-width: 901px) {
+  .home5-subtitle {
+    font-size: clamp(5.8rem, 8vw, 8.6rem);
+  }
+
+  .home5-globe-stage {
+    margin-top: clamp(-104px, -7vw, -42px);
+  }
+
+  .home5-globe-ground {
+    width: min(76vw, 62rem);
+  }
+
+  .home5-globe {
+    width: min(66vw, 60rem);
+    max-width: 60rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .home5-copy {
+    width: min(100%, 22rem);
+    min-height: 41dvh;
+  }
+}
+
+@media (max-width: 420px) {
+  .home5-title {
+    font-size: clamp(1.7rem, 7vw, 2.1rem);
+  }
+
+  .home5-subtitle {
+    font-size: clamp(3.8rem, 14vw, 5rem);
+  }
+}

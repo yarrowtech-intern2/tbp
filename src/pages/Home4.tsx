@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Hotel,
   Instagram,
   Landmark,
@@ -13,12 +14,15 @@ import {
   MapPinned,
   Mountain,
   Smartphone,
+  Star,
   Trees,
   Twitter,
   type LucideIcon,
   Waves,
 } from 'lucide-react';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterLink } from '../lib/appContent';
+import { getPosts, type PostRecord } from '../lib/destinations';
+import { getPrimaryListingImage } from '../lib/listingImages';
 import GallerySection from '../components/GallerySection';
 import { InteractiveEarthHero } from '../components/home4/InteractiveEarthHero';
 import { LandingContactModal } from '../components/home4/LandingContactModal';
@@ -44,6 +48,14 @@ type VisualShowcaseItem = {
   mediaTag?: string;
   className?: string;
   aspectRatio?: string;
+};
+
+type FeaturedTripCard = {
+  id: string;
+  title: string;
+  image: string;
+  duration: string;
+  rating: string;
 };
 
 const LottiePlayer = lazy(() => import('lottie-react'));
@@ -98,33 +110,100 @@ const HERO_VIDEO_URL = 'https://res.cloudinary.com/dc3qprub3/video/upload/f_auto
 const HERO_CARD_COPY =
   'Experience unforgettable journeys, breathtaking destinations, and adventures crafted for explorers who seek more than just travel. From snowy mountain escapes to tropical beaches and hidden cultural gems, we help you explore the world with curated experiences, seamless planning, and memories that last forever.';
 
-const FEATURED_DESTINATIONS = [
+const FALLBACK_FEATURED_TRIPS: FeaturedTripCard[] = [
   {
+    id: 'fallback-mandarmoni',
     title: 'Mandarmoni Coast',
-    location: 'West Bengal, India',
-    description: 'Private shoreline stays, clean sea light, and relaxed coastal pacing for weekend reset itineraries.',
-    image: '/images/mandarmoni2.jpg',
+    image: '/images/mandarmoni2.webp',
+    duration: '2 days',
+    rating: '4.7/5',
   },
   {
+    id: 'fallback-sikkim',
     title: 'Sikkim Highlands',
-    location: 'Eastern Himalayas',
-    description: 'Layered mountain air, curated ridge drives, and alpine stays designed around clarity and quiet.',
-    image: '/images/sikkim2.jpg',
+    image: '/images/sikkim2.webp',
+    duration: '4 days',
+    rating: '4.8/5',
   },
   {
+    id: 'fallback-kerala',
     title: 'Kerala Backwaters',
-    location: 'Kerala, India',
-    description: 'Lagoon-facing suites, slow water routes, and wellness-led days with soft transitions throughout.',
-    image: '/images/kerala1.jpg',
+    image: '/images/kerala1.webp',
+    duration: '3 days',
+    rating: '4.9/5',
   },
   {
+    id: 'fallback-puri',
     title: 'Puri Heritage',
-    location: 'Odisha, India',
-    description: 'Temple architecture, heritage stays, and cultural routes framed with calm premium planning.',
-    image: '/images/jagannath-puri-temple.jpg',
+    image: '/images/jagannath-puri-temple.webp',
+    duration: '2 days',
+    rating: '4.8/5',
   },
 ];
 
+const getUnknownString = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+const getUnknownNumber = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+};
+
+const getTripDurationLabel = (listing: PostRecord, index: number) => {
+  const durationText =
+    getUnknownString(listing.duration)
+    || getUnknownString(listing.duration_label)
+    || getUnknownString(listing.trip_duration);
+  if (durationText) return durationText;
+
+  const dayCount =
+    getUnknownNumber(listing.duration_days)
+    ?? getUnknownNumber(listing.days)
+    ?? getUnknownNumber(listing.day_count);
+  if (dayCount && dayCount > 0) return `${Math.round(dayCount)} ${Math.round(dayCount) === 1 ? 'day' : 'days'}`;
+
+  return FALLBACK_FEATURED_TRIPS[index % FALLBACK_FEATURED_TRIPS.length]?.duration || '2 days';
+};
+
+const getTripRatingLabel = (listing: PostRecord, index: number) => {
+  const rating =
+    getUnknownNumber(listing.rating)
+    ?? getUnknownNumber(listing.average_rating)
+    ?? getUnknownNumber(listing.review_rating);
+  if (rating && rating > 0) return `${Math.min(rating, 5).toFixed(1)}/5`;
+
+  return FALLBACK_FEATURED_TRIPS[index % FALLBACK_FEATURED_TRIPS.length]?.rating || '4.8/5';
+};
+
+const mapPostsToFeaturedTrips = (posts: PostRecord[]): FeaturedTripCard[] => (
+  posts
+    .map((listing, index) => {
+      const fallback = FALLBACK_FEATURED_TRIPS[index % FALLBACK_FEATURED_TRIPS.length];
+      const title = getUnknownString(listing.title) || getUnknownString(listing.name) || fallback.title;
+      const image = getPrimaryListingImage(listing, fallback.image);
+
+      return {
+        id: listing.id || `featured-${index}`,
+        title,
+        image,
+        duration: getTripDurationLabel(listing, index),
+        rating: getTripRatingLabel(listing, index),
+      };
+    })
+    .filter((item) => item.title && item.image)
+    .slice(0, 10)
+);
+
+const getCoverflowOffset = (index: number, activeIndex: number, total: number) => {
+  if (total <= 0) return 0;
+  let offset = index - activeIndex;
+  if (offset > total / 2) offset -= total;
+  if (offset < -total / 2) offset += total;
+  return offset;
+};
 
 const VISUAL_SHOWCASE: VisualShowcaseItem[] = [
   {
@@ -200,39 +279,39 @@ const EXPERIENCE_CATEGORIES: Array<{
   {
     title: 'Beaches',
     description: 'Slow mornings, private shoreline stays, and warm-water itineraries designed for calm.',
-    image: '/images/home4/beach-1600.jpg',
+    image: '/images/home4/beach-1600.webp',
     icon: Waves,
     className: 'is-large',
   },
   {
     title: 'Mountains',
     description: 'Elevated escapes with panoramic suites, alpine dining, and quiet high-altitude routes.',
-    image: '/images/home4/mopunts-1920.jpg',
+    image: '/images/home4/mopunts-1920.webp',
     icon: Mountain,
   },
   {
     title: 'Adventure',
     description: 'Curated motion with paragliding, off-grid days, and seamless support around every transfer.',
-    image: '/images/activities/paragliding.jpg',
+    image: '/images/activities/paragliding.webp',
     icon: Compass,
   },
   {
     title: 'Luxury Resorts',
     description: 'Design-led stays that bring together architecture, wellness, and concierge hospitality.',
-    image: '/images/mandarmoni.jpg',
+    image: '/images/mandarmoni.webp',
     icon: Hotel,
   },
   {
     title: 'Cultural Tours',
     description: 'Heritage routes, landmark access, and immersive stories told through place and craft.',
-    image: '/images/temple2.jpg',
+    image: '/images/temple2.webp',
     icon: Landmark,
     className: 'is-wide',
   },
   {
     title: 'Wildlife',
     description: 'Soft expedition luxury with protected landscapes, local guides, and slow observation.',
-    image: '/images/nature2.jpg',
+    image: '/images/nature2.webp',
     icon: Trees,
   },
 ];
@@ -266,7 +345,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Nature Escape',
       description: 'Coastline forests, alpine viewpoints, and private-lodge routes.',
-      image: '/images/nature1.jpg',
+      image: '/images/nature1.webp',
       rating: '4.8',
       travelers: '2.1k',
     },
@@ -283,7 +362,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Mountain Road',
       description: 'Editorial drives, glacier valleys, and premium ridge lodges.',
-      image: '/images/sikkim2.jpg',
+      image: '/images/sikkim2.webp',
       rating: '4.9',
       travelers: '1.7k',
     },
@@ -300,7 +379,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'City Icons',
       description: 'Museum districts, heritage boulevards, and polished boutique stays.',
-      image: '/images/home4/city.jpg',
+      image: '/images/home4/city.webp',
       rating: '4.7',
       travelers: '2.3k',
     },
@@ -317,7 +396,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Desert Oasis',
       description: 'Golden horizons, private camps, and sunset culinary rituals.',
-      image: '/images/rajsthan1.jpg',
+      image: '/images/rajsthan1.webp',
       rating: '4.8',
       travelers: '2.8k',
     },
@@ -334,7 +413,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Tropical Beach',
       description: 'Palm-shaded waters, lagoon villas, and calm wellness itineraries.',
-      image: '/images/kerala1.jpg',
+      image: '/images/kerala1.webp',
       rating: '5.0',
       travelers: '4.4k',
     },
@@ -351,7 +430,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Luxury Resort',
       description: 'Cliffside suites, spa sanctuaries, and curated ocean dining.',
-      image: '/images/mandarmoni2.jpg',
+      image: '/images/mandarmoni2.webp',
       rating: '4.9',
       travelers: '3.2k',
     },
@@ -368,7 +447,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Temple Routes',
       description: 'Lantern-lit lanes, heritage temples, and seasonal cultural journeys.',
-      image: '/images/temple2.jpg',
+      image: '/images/temple2.webp',
       rating: '4.8',
       travelers: '2.0k',
     },
@@ -385,7 +464,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Coastal Drive',
       description: 'Ocean roads, skyline bays, and private resort weekends by the sea.',
-      image: '/images/mandarmoni.jpg',
+      image: '/images/mandarmoni.webp',
       rating: '4.7',
       travelers: '1.6k',
     },
@@ -402,7 +481,7 @@ const WORLD_MAP_POINTS: Array<{
     preview: {
       title: 'Desert Heritage',
       description: 'Courtyard riads, medina craft routes, and atlas-view stays.',
-      image: '/images/rajsthan1.jpg',
+      image: '/images/rajsthan1.webp',
       rating: '4.6',
       travelers: '1.4k',
     },
@@ -573,7 +652,8 @@ const RollingTicker: React.FC<RollingTickerProps> = ({ value, delay = 0 }) => {
 export const Home4: React.FC = () => {
   const heroRef       = useRef<HTMLElement>(null);
   const showcaseRef   = useRef<HTMLDivElement>(null);
-  const featuredCarouselRef = useRef<HTMLDivElement>(null);
+  const featuredDragStartXRef = useRef<number | null>(null);
+  const featuredDragPointerIdRef = useRef<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -581,6 +661,9 @@ export const Home4: React.FC = () => {
   const [earthUnlocked, setEarthUnlocked] = useState(false);
   const [footerContent, setFooterContent] = useState(DEFAULT_FOOTER_CONTENT);
   const [showCurtain, setShowCurtain] = useState(true);
+  const [featuredTrips, setFeaturedTrips] = useState<FeaturedTripCard[]>(FALLBACK_FEATURED_TRIPS);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [activeFeaturedIndex, setActiveFeaturedIndex] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -642,6 +725,29 @@ export const Home4: React.FC = () => {
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void getPosts()
+      .then((posts) => {
+        if (cancelled) return;
+        const nextTrips = mapPostsToFeaturedTrips(posts);
+        setFeaturedTrips(nextTrips.length >= 4 ? nextTrips : FALLBACK_FEATURED_TRIPS);
+        setActiveFeaturedIndex(nextTrips.length >= 4 ? Math.min(1, nextTrips.length - 1) : 1);
+      })
+      .catch((error) => {
+        console.error('Could not load landing featured trips:', error);
+        if (!cancelled) setFeaturedTrips(FALLBACK_FEATURED_TRIPS);
+      })
+      .finally(() => {
+        if (!cancelled) setFeaturedLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const experienceRailA = EXPERIENCE_CATEGORIES;
   const experienceRailB = [...EXPERIENCE_CATEGORIES].reverse();
 
@@ -669,19 +775,45 @@ export const Home4: React.FC = () => {
     });
   };
 
-  const scrollFeaturedCarousel = (direction: -1 | 1) => {
-    const carousel = featuredCarouselRef.current;
-    if (!carousel) return;
-    const slide = carousel.querySelector<HTMLElement>('.h4-featured-slide');
-    const slideWidth = slide?.getBoundingClientRect().width ?? carousel.clientWidth * 0.75;
-    const styles = window.getComputedStyle(carousel);
-    const gap = parseFloat(styles.columnGap || styles.gap || '0') || 0;
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    carousel.scrollBy({
-      left: direction * (slideWidth + gap),
-      behavior: reducedMotion ? 'auto' : 'smooth',
+  const moveFeaturedCards = (direction: -1 | 1) => {
+    setActiveFeaturedIndex((current) => {
+      const total = featuredTrips.length;
+      if (total <= 1) return 0;
+      return (current + direction + total) % total;
     });
+  };
+
+  const handleFeaturedPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    featuredDragStartXRef.current = event.clientX;
+    featuredDragPointerIdRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const finishFeaturedSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+    const startX = featuredDragStartXRef.current;
+    const pointerId = featuredDragPointerIdRef.current;
+    featuredDragStartXRef.current = null;
+    featuredDragPointerIdRef.current = null;
+
+    if (pointerId !== null && event.currentTarget.hasPointerCapture(pointerId)) {
+      event.currentTarget.releasePointerCapture(pointerId);
+    }
+    if (startX === null) return;
+
+    const deltaX = event.clientX - startX;
+    if (Math.abs(deltaX) < 42) return;
+    moveFeaturedCards(deltaX < 0 ? 1 : -1);
+  };
+
+  const handleFeaturedKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      moveFeaturedCards(-1);
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      moveFeaturedCards(1);
+    }
   };
 
   const openContactModal = () => {
@@ -702,7 +834,7 @@ export const Home4: React.FC = () => {
         <div className="h4-custom-nav-container">
           <Link to="/" className="h4-custom-nav-logo">
             <img
-              src={isScrolled ? '/logo/logo.png' : '/logo/logo-white.png'}
+              src={isScrolled ? '/logo/logo.webp' : '/logo/logo-white.webp'}
               alt="The Better PASS"
               className="h4-custom-nav-logo-image"
               loading="eager"
@@ -807,60 +939,96 @@ export const Home4: React.FC = () => {
               Explore a refined edit of coastlines, mountain retreats, heritage routes, and slow escapes selected for visual beauty and seamless experience.
             </p>
           </div>
-          <div className="h4-featured-rail-head">
-            <div className="h4-featured-rail-copy">
-              <h3 className="h4-featured-rail-title">Top Picks This Season</h3>
-              <p className="h4-featured-rail-subtitle">
-                Handpicked routes with a balance of nature, heritage, and luxury pacing.
-              </p>
-            </div>
-            <div className="h4-featured-controls" aria-label="Featured destination carousel controls">
-              <button
-                type="button"
-                className="h4-featured-control"
-                aria-label="Previous destination"
-                onClick={() => scrollFeaturedCarousel(-1)}
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                type="button"
-                className="h4-featured-control"
-                aria-label="Next destination"
-                onClick={() => scrollFeaturedCarousel(1)}
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
+          <div className="h4-featured-card-head">
+            <h3>Top Picks This Season</h3>
+            <p>Handpicked routes with a balance of nature, heritage, and luxury pacing.</p>
           </div>
-          <div className="h4-featured-carousel-shell">
-            <div
-              className="h4-featured-grid h4-featured-carousel"
-              ref={featuredCarouselRef}
-              role="region"
-              aria-label="Featured destination carousel"
+
+          <div
+            className="h4-featured-coverflow"
+            role="region"
+            aria-label="Top picked destination carousel"
+            tabIndex={0}
+            onKeyDown={handleFeaturedKeyDown}
+            onPointerDown={handleFeaturedPointerDown}
+            onPointerUp={finishFeaturedSwipe}
+            onPointerCancel={finishFeaturedSwipe}
+          >
+            <button
+              type="button"
+              className="h4-featured-coverflow-control h4-featured-coverflow-prev"
+              aria-label="Previous featured trip"
+              onClick={() => moveFeaturedCards(-1)}
             >
-              {FEATURED_DESTINATIONS.map((item, index) => (
-                <RevealBlock key={item.title} delay={index * 80} className="h4-featured-slide">
-                  <article className="h4-destination-card">
-                    <div className="h4-destination-media">
-                      <img
-                        src={item.image}
-                        alt=""
-                        className="h4-card-image"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </div>
-                    <div className="h4-destination-body h4-reveal-copy">
-                      <h3 className="h4-destination-title">{item.title}</h3>
-                      <span className="h4-destination-subtitle">{item.location}</span>
-                      <p className="h4-destination-text">{item.description}</p>
+              <ChevronLeft size={20} />
+            </button>
+
+            <div className="h4-featured-coverflow-stage">
+              {featuredTrips.map((item, index) => {
+                const offset = getCoverflowOffset(index, activeFeaturedIndex, featuredTrips.length);
+                const absOffset = Math.abs(offset);
+                const visible = absOffset <= 2;
+                const transform = [
+                  `translateX(${offset * 58}%)`,
+                  `translateZ(${-absOffset * 90}px)`,
+                  `rotateY(${offset * -13}deg)`,
+                  `scale(${1 - Math.min(absOffset, 2) * 0.08})`,
+                ].join(' ');
+
+                return (
+                  <article
+                    className={`h4-featured-image-card${offset === 0 ? ' is-active' : ''}`}
+                    key={item.id}
+                    aria-hidden={offset !== 0}
+                    style={{
+                      transform,
+                      opacity: visible ? 1 : 0,
+                      zIndex: 20 - absOffset,
+                      pointerEvents: visible ? 'auto' : 'none',
+                    }}
+                  >
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="h4-featured-image-card-img"
+                      loading={absOffset <= 1 ? 'eager' : 'lazy'}
+                      decoding="async"
+                    />
+                    <div className="h4-featured-image-card-copy">
+                      <h3>{item.title}</h3>
+                      <div className="h4-featured-image-card-meta" aria-label={`${item.duration}, rated ${item.rating}`}>
+                        <span><Clock size={18} aria-hidden="true" /> {item.duration}</span>
+                        <span><Star size={19} aria-hidden="true" fill="currentColor" /> {item.rating}</span>
+                      </div>
                     </div>
                   </article>
-                </RevealBlock>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              className="h4-featured-coverflow-control h4-featured-coverflow-next"
+              aria-label="Next featured trip"
+              onClick={() => moveFeaturedCards(1)}
+            >
+              <ChevronRight size={20} />
+            </button>
+
+            <div className="h4-featured-coverflow-dots" aria-label="Featured trip position">
+              {featuredTrips.map((item, index) => (
+                <button
+                  type="button"
+                  key={`${item.id}-dot`}
+                  className={index === activeFeaturedIndex ? 'is-active' : ''}
+                  aria-label={`Show ${item.title}`}
+                  aria-current={index === activeFeaturedIndex}
+                  onClick={() => setActiveFeaturedIndex(index)}
+                />
               ))}
             </div>
+
+            {featuredLoading ? <span className="sr-only">Loading featured trips</span> : null}
           </div>
         </div>
       </section>
@@ -1092,7 +1260,7 @@ export const Home4: React.FC = () => {
               <div className="h4-world-grid" aria-hidden="true" />
               <div className="h4-world-paper-grain" aria-hidden="true" />
               <div className="h4-world-map-art" aria-hidden="true">
-                <img src="/images/home4/tbp-map.png" alt="" loading="lazy" decoding="async" />
+                <img src="/images/home4/tbp-map.webp" alt="" loading="lazy" decoding="async" />
               </div>
 
               <svg
@@ -1178,7 +1346,7 @@ export const Home4: React.FC = () => {
             </div>
             <div className="h4-app-device-wrap" aria-hidden="true">
               <img
-                src="/UI/image.png"
+                src="/UI/image.webp"
                 alt="TBP app interface"
                 className="h4-app-ui-image"
                 loading="lazy"
@@ -1250,7 +1418,7 @@ export const Home4: React.FC = () => {
         <div className="h4-container">
           <div className="h4-lux-footer-top">
             <div className="h4-lux-footer-brand">
-              <img src="/logo/logo.png" alt="The Better Pass" className="h4-lux-footer-logo" loading="lazy" decoding="async" />
+              <img src="/logo/logo.webp" alt="The Better Pass" className="h4-lux-footer-logo" loading="lazy" decoding="async" />
               <p className="h4-lux-footer-text">
                 {footerContent.description}
               </p>
