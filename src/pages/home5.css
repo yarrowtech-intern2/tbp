@@ -198,7 +198,6 @@
   border-radius: 32px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 22px 58px rgba(17, 17, 17, 0.08);
   border: 1px solid rgba(17, 17, 17, 0.06);
 }
 
@@ -235,7 +234,6 @@
   border-radius: 30px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 24px 60px rgba(17, 17, 17, 0.1);
   transition:
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -605,6 +603,202 @@
   filter: blur(0);
 }
 
+.home5-book-section {
+  position: relative;
+  padding: 124px 0 138px;
+  overflow: clip;
+  background: #ffffff;
+}
+
+.home5-book-shell {
+  display: grid;
+  gap: 18px;
+  align-items: end;
+  margin: 0 auto 44px;
+  max-width: 70rem;
+}
+
+.home5-book-eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #ff7b29;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.home5-book-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
+  gap: 28px;
+  align-items: end;
+}
+
+.home5-book-title {
+  margin: 0;
+  max-width: 10ch;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(2.6rem, 5vw, 4.8rem);
+  font-weight: 700;
+  line-height: 0.94;
+  letter-spacing: -0.06em;
+}
+
+.home5-book-copy {
+  margin: 0;
+  max-width: 33ch;
+  color: rgba(17, 17, 17, 0.72);
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  line-height: 1.5;
+}
+
+.home5-book-carousel {
+  display: grid;
+  gap: 18px;
+}
+
+.home5-book-carousel-stage {
+  position: relative;
+  width: min(100%, 76rem);
+  margin: 0 auto;
+  padding-inline: clamp(3.75rem, 7vw, 5.25rem);
+  box-sizing: border-box;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.home5-book-carousel-stack {
+  position: relative;
+  width: 100%;
+  height: clamp(26rem, 46vw, 35rem);
+  perspective: 1600px;
+  cursor: grab;
+  user-select: none;
+}
+
+.home5-book-carousel-stack:active {
+  cursor: grabbing;
+}
+
+.home5-book-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: stretch;
+  border-radius: 30px;
+  overflow: hidden;
+  background: #d9d3cc;
+  transition:
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity, filter;
+}
+
+.home5-book-card img {
+  display: block;
+  height: clamp(26rem, 46vw, 35rem);
+  width: auto;
+  max-width: none;
+}
+
+.home5-book-card.is-active {
+  z-index: 3;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  filter: none;
+}
+
+.home5-book-card.is-prev {
+  z-index: 2;
+  opacity: 0.82;
+  transform: translate(calc(-50% - min(25rem, 28vw)), -50%) scale(0.78);
+  filter: saturate(0.88) brightness(0.92);
+}
+
+.home5-book-card.is-next {
+  z-index: 2;
+  opacity: 0.82;
+  transform: translate(calc(-50% + min(25rem, 28vw)), -50%) scale(0.78);
+  filter: saturate(0.88) brightness(0.92);
+}
+
+.home5-book-card.is-hidden {
+  z-index: 1;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.68);
+  pointer-events: none;
+}
+
+.home5-book-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 14px 34px rgba(17, 17, 17, 0.12);
+  color: rgba(17, 17, 17, 0.72);
+  transform: translateY(-50%);
+  backdrop-filter: blur(12px);
+}
+
+.home5-book-carousel-arrow-left {
+  left: clamp(6px, 1.2vw, 18px);
+}
+
+.home5-book-carousel-arrow-right {
+  right: clamp(6px, 1.2vw, 18px);
+}
+
+.home5-book-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.home5-book-carousel-dot {
+  width: 20px;
+  height: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.16);
+}
+
+.home5-book-carousel-dot.is-active {
+  width: 34px;
+  background: rgba(17, 17, 17, 0.72);
+}
+
+.home5-trip-card {
+  margin-top: 26px;
+}
+
+.home5-trip-picture {
+  display: block;
+  width: 100%;
+}
+
+.home5-trip-picture img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 34px;
+}
+
 @media (min-width: 641px) {
   .home5-hero-shell {
     grid-template-rows: auto 1fr;
@@ -730,6 +924,80 @@
     min-height: 440dvh;
   }
 
+  .home5-book-section {
+    padding: 92px 0 104px;
+  }
+
+  .home5-book-shell {
+    gap: 14px;
+    margin-bottom: 30px;
+  }
+
+  .home5-book-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .home5-book-title {
+    max-width: 9ch;
+    font-size: clamp(2rem, 9vw, 3rem);
+  }
+
+  .home5-book-copy {
+    max-width: 29ch;
+    font-size: 0.96rem;
+  }
+
+  .home5-book-carousel {
+    gap: 14px;
+  }
+
+  .home5-book-carousel-stage {
+    width: min(100%, 26rem);
+    padding-inline: 2.9rem;
+  }
+
+  .home5-book-carousel-stack {
+    height: 26rem;
+  }
+
+  .home5-book-card {
+    border-radius: 24px;
+  }
+
+  .home5-book-card img {
+    height: 26rem;
+  }
+
+  .home5-book-card.is-prev {
+    transform: translate(calc(-50% - min(12rem, 34vw)), -50%) scale(0.72);
+  }
+
+  .home5-book-card.is-next {
+    transform: translate(calc(-50% + min(12rem, 34vw)), -50%) scale(0.72);
+  }
+
+  .home5-book-carousel-arrow {
+    width: 2.9rem;
+    height: 2.9rem;
+  }
+
+  .home5-book-carousel-arrow-left {
+    left: 10px;
+  }
+
+  .home5-book-carousel-arrow-right {
+    right: 10px;
+  }
+
+  .home5-trip-card {
+    margin-top: 18px;
+  }
+
+  .home5-trip-picture img {
+    border-radius: 28px;
+  }
+
   .home5-how-shell {
     gap: 14px;
   }
@@ -841,6 +1109,31 @@
 
   .home5-how-eyebrow {
     font-size: 0.82rem;
+  }
+
+  .home5-book-eyebrow {
+    font-size: 0.68rem;
+  }
+
+  .home5-book-carousel-stage {
+    width: min(100%, 23rem);
+    padding-inline: 2.45rem;
+  }
+
+  .home5-book-carousel-stack {
+    height: 22rem;
+  }
+
+  .home5-book-card img {
+    height: 22rem;
+  }
+
+  .home5-book-card.is-prev {
+    transform: translate(calc(-50% - min(10rem, 31vw)), -50%) scale(0.66);
+  }
+
+  .home5-book-card.is-next {
+    transform: translate(calc(-50% + min(10rem, 31vw)), -50%) scale(0.66);
   }
 
   .home5-flow-stage {

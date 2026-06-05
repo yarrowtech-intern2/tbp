@@ -80,6 +80,41 @@ const FLOW_STEPS = [
   },
 ] as const;
 
+const BOOKING_CATEGORIES = [
+  {
+    id: 'stays',
+    kicker: 'Stay',
+    title: 'Boutique stays and handpicked rooms',
+    description: 'Compare location, mood, inclusions, and price without splitting the plan across tabs.',
+    meta: 'Hotels, camps, villas',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/f_auto,q_auto/trip-card4_cbbvay',
+  },
+  {
+    id: 'experiences',
+    kicker: 'Experience',
+    title: 'Activities that shape the trip',
+    description: 'Add safaris, walking tours, food trails, and day plans that match the pace you want.',
+    meta: 'Tours, tickets, day plans',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/f_auto,q_auto/trip-card2_jte8y0',
+  },
+  {
+    id: 'guides',
+    kicker: 'Guide',
+    title: 'Local people who know the route',
+    description: 'Book trusted hosts and guides when the trip needs context, coordination, or deeper access.',
+    meta: 'Hosts, drivers, local experts',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/f_auto,q_auto/trip-card1_wynjds',
+  },
+  {
+    id: 'support',
+    kicker: 'Support',
+    title: 'Trip details that keep it smooth',
+    description: 'Keep transfers, timing, help, and day-of coordination in the same booking path.',
+    meta: 'Transport, timing, assistance',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/f_auto,q_auto/trip-card3_puj8eh',
+  },
+] as const;
+
 const getCarouselOffset = (index: number, activeIndex: number, total: number) => {
   let offset = index - activeIndex;
   if (offset > total / 2) offset -= total;
@@ -91,9 +126,12 @@ const clampValue = (value: number, min: number, max: number) => Math.min(max, Ma
 
 export const Home5: React.FC = () => {
   const [activeCard, setActiveCard] = useState(0);
+  const [activeBookingCard, setActiveBookingCard] = useState(0);
   const [howProgress, setHowProgress] = useState(0);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
+  const bookingDragStartXRef = useRef<number | null>(null);
+  const bookingDragDeltaXRef = useRef(0);
   const howSectionRef = useRef<HTMLElement | null>(null);
 
   const goToCard = (index: number) => {
@@ -107,6 +145,19 @@ export const Home5: React.FC = () => {
 
   const goToPrevCard = () => {
     goToCard(activeCard - 1);
+  };
+
+  const goToBookingCard = (index: number) => {
+    const total = BOOKING_CATEGORIES.length;
+    setActiveBookingCard(((index % total) + total) % total);
+  };
+
+  const goToNextBookingCard = () => {
+    goToBookingCard(activeBookingCard + 1);
+  };
+
+  const goToPrevBookingCard = () => {
+    goToBookingCard(activeBookingCard - 1);
   };
 
   const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -126,6 +177,29 @@ export const Home5: React.FC = () => {
     if (touchDeltaXRef.current >= 36) goToPrevCard();
     touchStartXRef.current = null;
     touchDeltaXRef.current = 0;
+  };
+
+  const handleBookingPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    bookingDragStartXRef.current = event.clientX;
+    bookingDragDeltaXRef.current = 0;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleBookingPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (bookingDragStartXRef.current === null) return;
+    bookingDragDeltaXRef.current = event.clientX - bookingDragStartXRef.current;
+  };
+
+  const handleBookingPointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (bookingDragStartXRef.current === null) return;
+    if (bookingDragDeltaXRef.current <= -40) goToNextBookingCard();
+    if (bookingDragDeltaXRef.current >= 40) goToPrevBookingCard();
+    bookingDragStartXRef.current = null;
+    bookingDragDeltaXRef.current = 0;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   };
 
   useEffect(() => {
@@ -347,6 +421,101 @@ export const Home5: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="home5-book-section">
+        <div className="container">
+          <ScrollReveal className="home5-book-shell">
+            <span className="home5-book-eyebrow">What you can book</span>
+            <div className="home5-book-heading">
+              <h2 className="home5-book-title">Build the trip, not just one booking</h2>
+              <p className="home5-book-copy">
+                Betterpass brings the stay, experience, guide, and support layer into one trip-building flow.
+              </p>
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal className="home5-book-carousel" delay={70}>
+            <div className="home5-book-carousel-stage">
+              <button
+                type="button"
+                className="home5-book-carousel-arrow home5-book-carousel-arrow-left"
+                aria-label="Previous booking card"
+                onClick={goToPrevBookingCard}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <ChevronLeft size={24} />
+              </button>
+
+              <div
+                className="home5-book-carousel-stack"
+                onPointerDown={handleBookingPointerDown}
+                onPointerMove={handleBookingPointerMove}
+                onPointerUp={handleBookingPointerEnd}
+                onPointerCancel={handleBookingPointerEnd}
+              >
+                {BOOKING_CATEGORIES.map((item, index) => {
+                  const offset = getCarouselOffset(index, activeBookingCard, BOOKING_CATEGORIES.length);
+                  const positionClass = offset === 0
+                    ? 'is-active'
+                    : offset === -1
+                      ? 'is-prev'
+                      : offset === 1
+                        ? 'is-next'
+                        : 'is-hidden';
+
+                  return (
+                    <article
+                      key={item.id}
+                      className={`home5-book-card ${positionClass}`}
+                      aria-hidden={offset !== 0}
+                    >
+                      <img src={item.image} alt={item.title} loading="lazy" decoding="async" />
+                    </article>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                className="home5-book-carousel-arrow home5-book-carousel-arrow-right"
+                aria-label="Next booking card"
+                onClick={goToNextBookingCard}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <ChevronRight size={24} />
+              </button>
+            </div>
+
+            <div className="home5-book-carousel-dots" aria-label="Booking card navigation">
+              {BOOKING_CATEGORIES.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`home5-book-carousel-dot${index === activeBookingCard ? ' is-active' : ''}`}
+                  aria-label={`Go to ${item.kicker}`}
+                  aria-pressed={index === activeBookingCard}
+                  onClick={() => goToBookingCard(index)}
+                />
+              ))}
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal className="home5-trip-card" delay={120}>
+            <picture className="home5-trip-picture">
+              <source
+                media="(max-width: 640px)"
+                srcSet="https://res.cloudinary.com/dc3qprub3/image/upload/e_opacity_threshold:255/f_auto,q_auto/wide-card-mobile_ykdljd"
+              />
+              <img
+                src="https://res.cloudinary.com/dc3qprub3/image/upload/e_opacity_threshold:255/f_auto,q_auto/wide-card_zvtgez"
+                alt="Sample trip build overview"
+                loading="lazy"
+                decoding="async"
+              />
+            </picture>
+          </ScrollReveal>
         </div>
       </section>
     </main>
