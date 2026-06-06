@@ -506,10 +506,10 @@ export const Home5: React.FC = () => {
             <picture className="home5-trip-picture">
               <source
                 media="(max-width: 640px)"
-                srcSet="https://res.cloudinary.com/dc3qprub3/image/upload/e_opacity_threshold:255/f_auto,q_auto/wide-card-mobile_ykdljd"
+                srcSet="https://res.cloudinary.com/dc3qprub3/image/upload/e_opacity_threshold:100/f_auto,q_auto/wide-card-mobile_ykdljd"
               />
               <img
-                src="https://res.cloudinary.com/dc3qprub3/image/upload/e_opacity_threshold:255/f_auto,q_auto/wide-card_zvtgez"
+                src="https://res.cloudinary.com/dc3qprub3/image/upload/e_opacity_threshold:100/f_auto,q_auto/wide-card_zvtgez"
                 alt="Sample trip build overview"
                 loading="lazy"
                 decoding="async"
