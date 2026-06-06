@@ -695,11 +695,11 @@
   border-radius: 30px;
   overflow: hidden;
   background: #d9d3cc;
+  box-shadow: none;
   transition:
     transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 560ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 560ms cubic-bezier(0.22, 1, 0.36, 1);
+    filter 560ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform, opacity, filter;
 }
 
@@ -708,6 +708,7 @@
   height: clamp(26rem, 46vw, 35rem);
   width: auto;
   max-width: none;
+  box-shadow: none;
 }
 
 .home5-book-card.is-active {
@@ -736,6 +737,15 @@
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.68);
   pointer-events: none;
+}
+
+.home5-book-card:hover,
+.home5-book-card:hover img,
+.home5-book-card.is-active,
+.home5-book-card.is-prev,
+.home5-book-card.is-next,
+.home5-book-card.is-hidden {
+  box-shadow: none;
 }
 
 .home5-book-carousel-arrow {
@@ -784,19 +794,137 @@
 }
 
 .home5-trip-card {
-  margin-top: 26px;
+  margin-top: 206px;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+  transition: none;
 }
 
 .home5-trip-picture {
   display: block;
   width: 100%;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+  transition: none;
 }
 
 .home5-trip-picture img {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 34px;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+  transition: none;
+}
+
+.home5-trip-card:hover,
+.home5-trip-card:hover .home5-trip-picture,
+.home5-trip-card:hover .home5-trip-picture img {
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.home5-trust-section {
+  position: relative;
+  padding: 128px 0 148px;
+  overflow-x: clip;
+  background: #ffffff;
+}
+
+.home5-trust-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(22rem, 0.92fr);
+  gap: clamp(48px, 8vw, 112px);
+  align-items: start;
+}
+
+.home5-trust-intro {
+  position: sticky;
+  top: 104px;
+  display: grid;
+  gap: 22px;
+}
+
+.home5-trust-eyebrow {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #ff6a00;
+}
+
+.home5-trust-title {
+  margin: 0;
+  max-width: 9ch;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(3.5rem, 7.2vw, 7.4rem);
+  font-weight: 700;
+  line-height: 0.88;
+  letter-spacing: 0;
+  color: #111111;
+}
+
+.home5-trust-reveal {
+  max-width: 31rem;
+  font-size: clamp(1.1rem, 1.45vw, 1.42rem);
+  line-height: 1.35;
+  color: rgba(17, 17, 17, 0.58);
+}
+
+.home5-trust-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.home5-trust-item {
+  display: grid;
+  gap: 12px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.home5-trust-label {
+  display: block;
+  min-height: 1.15em;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1rem, 1.35vw, 1.28rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+  color: #111111;
+  text-align: center;
+}
+
+.home5-trust-item:nth-child(1) .home5-trust-label {
+  color: #ff7a00;
+}
+
+.home5-trust-item:nth-child(2) .home5-trust-label {
+  color: #6f6be6;
+}
+
+.home5-trust-item:nth-child(3) .home5-trust-label {
+  color: #6e6e6e;
+}
+
+.home5-trust-item:nth-child(4) .home5-trust-label {
+  color: #2f91f5;
+}
+
+.home5-trust-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  box-shadow: none;
 }
 
 @media (min-width: 641px) {
@@ -996,6 +1124,51 @@
 
   .home5-trip-picture img {
     border-radius: 28px;
+  }
+
+  .home5-trust-section {
+    padding: 92px 0 104px;
+  }
+
+  .home5-trust-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 42px;
+  }
+
+  .home5-trust-intro {
+    position: relative;
+    top: auto;
+    gap: 16px;
+  }
+
+  .home5-trust-title {
+    max-width: 8.5ch;
+    font-size: clamp(2.9rem, 14vw, 4.5rem);
+    line-height: 0.9;
+  }
+
+  .home5-trust-reveal {
+    max-width: none;
+    font-size: clamp(1rem, 4vw, 1.18rem);
+  }
+
+  .home5-trust-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .home5-trust-item {
+    gap: 8px;
+    border-radius: 14px;
+  }
+
+  .home5-trust-label {
+    font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+    line-height: 1.12;
+  }
+
+  .home5-trust-item img {
+    width: 100%;
   }
 
   .home5-how-shell {

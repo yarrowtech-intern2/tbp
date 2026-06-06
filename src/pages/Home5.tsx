@@ -115,6 +115,29 @@ const BOOKING_CATEGORIES = [
   },
 ] as const;
 
+const TRUST_ITEMS = [
+  {
+    id: 'verified',
+    title: 'Verified providers',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/v1780727230/trust-card1_h3it4f.png',
+  },
+  {
+    id: 'details',
+    title: 'Clear detailed trips',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/v1780727230/trust-card2_vl0ezr.png',
+  },
+  {
+    id: 'support',
+    title: 'Customer service',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/v1780727230/trust-card3_cxhqoj.png',
+  },
+  {
+    id: 'payments',
+    title: 'Secured payments',
+    image: 'https://res.cloudinary.com/dc3qprub3/image/upload/v1780727230/trust-card4_kgblwi.png',
+  },
+] as const;
+
 const getCarouselOffset = (index: number, activeIndex: number, total: number) => {
   let offset = index - activeIndex;
   if (offset > total / 2) offset -= total;
@@ -516,6 +539,33 @@ export const Home5: React.FC = () => {
               />
             </picture>
           </ScrollReveal>
+        </div>
+      </section>
+
+      <section className="home5-trust-section">
+        <div className="container">
+          <div className="home5-trust-layout">
+            <ScrollReveal className="home5-trust-intro">
+              <span className="home5-trust-eyebrow">Why trust Betterpass</span>
+              <h2 className="home5-trust-title">Book with people and plans you can trust</h2>
+              <TextReveal className="home5-trust-reveal">
+                Confidence comes from verified providers, clear details, connected support, and payment visibility in one place.
+              </TextReveal>
+            </ScrollReveal>
+
+            <div className="home5-trust-list" aria-label="Betterpass trust points">
+              {TRUST_ITEMS.map((item, index) => (
+                <ScrollReveal
+                  key={item.id}
+                  className="home5-trust-item"
+                  delay={80 + (index * 70)}
+                >
+                  <span className="home5-trust-label">{item.title}</span>
+                  <img src={item.image} alt={item.title} loading="lazy" decoding="async" />
+                </ScrollReveal>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </main>
