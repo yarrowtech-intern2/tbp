@@ -97,12 +97,30 @@ const clearAuthDraft = () => {
     window.sessionStorage.removeItem(AUTH_DRAFT_STORAGE_KEY);
 };
 
+const readAuthQueryIntent = (): { isLogin?: boolean; role?: UserRole } => {
+    if (typeof window === 'undefined') return {};
+
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode')?.trim().toLowerCase();
+    const rawRole = params.get('role')?.trim().toLowerCase();
+    const requestedRole = rawRole === 'provider' ? 'tour_company' : rawRole;
+    const role = requestedRole && requestedRole in ROLE_SIGNUP_CONFIG
+        ? requestedRole as UserRole
+        : undefined;
+
+    return {
+        isLogin: mode === 'login' ? true : mode === 'signup' ? false : undefined,
+        role,
+    };
+};
+
 export const Auth: React.FC = () => {
     const initialDraft = useMemo(() => readAuthDraft(), []);
+    const initialQueryIntent = useMemo(() => readAuthQueryIntent(), []);
     const [sideImage] = useState(
         () => NATURE_SIDE_IMAGES[Math.floor(Math.random() * NATURE_SIDE_IMAGES.length)]
     );
-    const [isLogin, setIsLogin] = useState(() => initialDraft?.isLogin ?? true);
+    const [isLogin, setIsLogin] = useState(() => initialQueryIntent.isLogin ?? initialDraft?.isLogin ?? true);
     const [loginEmail, setLoginEmail] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -112,6 +130,7 @@ export const Auth: React.FC = () => {
     const [formValues, setFormValues] = useState<SignupFormValues>(() => ({
         ...DEFAULT_SIGNUP_VALUES,
         ...(initialDraft?.signupValues || {}),
+        role: initialQueryIntent.role ?? initialDraft?.signupValues.role ?? DEFAULT_SIGNUP_VALUES.role,
         password: '',
     }));
     const [loading, setLoading] = useState(false);

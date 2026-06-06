@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Globe } from '../components/ui/globe';
 import { TextReveal } from '../components/ui/text-reveal';
@@ -138,6 +139,8 @@ const TRUST_ITEMS = [
   },
 ] as const;
 
+const FINAL_CTA_COPY = 'Betterpass brings trusted stays, guided experiences, local experts, and secure booking into one clear travel path, so you can stop juggling scattered plans and start choosing trips with confidence.';
+
 const getCarouselOffset = (index: number, activeIndex: number, total: number) => {
   let offset = index - activeIndex;
   if (offset > total / 2) offset -= total;
@@ -151,11 +154,13 @@ export const Home5: React.FC = () => {
   const [activeCard, setActiveCard] = useState(0);
   const [activeBookingCard, setActiveBookingCard] = useState(0);
   const [howProgress, setHowProgress] = useState(0);
+  const [finalRevealProgress, setFinalRevealProgress] = useState(0);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
   const bookingDragStartXRef = useRef<number | null>(null);
   const bookingDragDeltaXRef = useRef(0);
   const howSectionRef = useRef<HTMLElement | null>(null);
+  const finalSectionRef = useRef<HTMLElement | null>(null);
 
   const goToCard = (index: number) => {
     const total = VALUE_IMAGE_CARDS.length;
@@ -257,6 +262,40 @@ export const Home5: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let frame = 0;
+
+    const updateFinalProgress = () => {
+      frame = 0;
+      const node = finalSectionRef.current;
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || 1;
+      const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
+      const nextProgress = clampValue((-rect.top) / scrollableDistance, 0, 1);
+
+      setFinalRevealProgress((current) => (
+        Math.abs(current - nextProgress) > 0.001 ? nextProgress : current
+      ));
+    };
+
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateFinalProgress);
+    };
+
+    updateFinalProgress();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, []);
+
   const introProgress = clampValue(howProgress / 0.18, 0, 1);
   const discoverProgress = clampValue((howProgress - 0.18) / 0.2, 0, 1);
   const compareProgress = clampValue((howProgress - 0.42) / 0.2, 0, 1);
@@ -275,6 +314,7 @@ export const Home5: React.FC = () => {
     opacity: 0.22 + (introProgress * 0.78),
     transform: `translateY(${(1 - introProgress) * 30}px)`,
   } satisfies React.CSSProperties;
+  const finalWords = FINAL_CTA_COPY.split(/\s+/);
 
   return (
     <main className="home5-page">
@@ -564,6 +604,50 @@ export const Home5: React.FC = () => {
                   <img src={item.image} alt={item.title} loading="lazy" decoding="async" />
                 </ScrollReveal>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section ref={finalSectionRef} className="home5-final-section">
+        <div className="container">
+          <div className="home5-final-sticky">
+            <div className="home5-final-layout">
+              <div className="home5-final-content">
+                <span className="home5-final-eyebrow">Ready when you are</span>
+                <h2 className="home5-final-title">Start exploring with Betterpass</h2>
+                <p className="home5-final-reveal" aria-label={FINAL_CTA_COPY}>
+                  {finalWords.map((word, index) => {
+                    const wordStart = (index / finalWords.length) * 0.82;
+                    const wordProgress = clampValue((finalRevealProgress - wordStart) / 0.16, 0, 1);
+                    const opacity = 0.16 + (wordProgress * 0.84);
+
+                    return (
+                      <span
+                        key={`${word}-${index}`}
+                        className="home5-final-word"
+                        style={{ opacity }}
+                        aria-hidden="true"
+                      >
+                        {word}
+                        {index < finalWords.length - 1 ? '\u00A0' : ''}
+                      </span>
+                    );
+                  })}
+                </p>
+                <div className="home5-final-actions">
+                  <Link className="home5-final-btn home5-final-btn-primary" to="/auth?mode=signup&role=tourist">
+                    Explore
+                  </Link>
+                  <Link className="home5-final-btn home5-final-btn-secondary" to="/auth?mode=signup&role=tour_company">
+                    Become a provider
+                  </Link>
+                </div>
+              </div>
+              <div className="home5-final-visual-slot" aria-hidden="true">
+                <div className="home5-final-globe-ground" />
+                <Globe className="home5-final-globe" />
+              </div>
             </div>
           </div>
         </div>
