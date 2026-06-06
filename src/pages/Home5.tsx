@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import { Globe } from '../components/ui/globe';
 import { TextReveal } from '../components/ui/text-reveal';
+import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterContent, type FooterLink } from '../lib/appContent';
+import { submitContactSubmission } from '../lib/contactSubmissions';
 import './home5.css';
 
 type ScrollRevealProps = {
@@ -141,6 +143,26 @@ const TRUST_ITEMS = [
 
 const FINAL_CTA_COPY = 'Betterpass brings trusted stays, guided experiences, local experts, and secure booking into one clear travel path, so you can stop juggling scattered plans and start choosing trips with confidence.';
 
+const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
+
+const isInternalHref = (href: string) => href.startsWith('/') || href.startsWith('#');
+
+type ContactFormState = {
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  message: string;
+};
+
+const EMPTY_CONTACT_FORM: ContactFormState = {
+  name: '',
+  email: '',
+  phone: '',
+  location: '',
+  message: '',
+};
+
 const getCarouselOffset = (index: number, activeIndex: number, total: number) => {
   let offset = index - activeIndex;
   if (offset > total / 2) offset -= total;
@@ -155,12 +177,50 @@ export const Home5: React.FC = () => {
   const [activeBookingCard, setActiveBookingCard] = useState(0);
   const [howProgress, setHowProgress] = useState(0);
   const [finalRevealProgress, setFinalRevealProgress] = useState(0);
+  const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactForm, setContactForm] = useState<ContactFormState>(EMPTY_CONTACT_FORM);
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactStatus, setContactStatus] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
   const bookingDragStartXRef = useRef<number | null>(null);
   const bookingDragDeltaXRef = useRef(0);
   const howSectionRef = useRef<HTMLElement | null>(null);
   const finalSectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getPublicAppContent()
+      .then((content) => {
+        if (!cancelled) setFooterContent(content.footer);
+      })
+      .catch((error) => {
+        console.error('Failed to load landing footer content:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!contactModalOpen) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContactModalOpen(false);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [contactModalOpen]);
 
   const goToCard = (index: number) => {
     const total = VALUE_IMAGE_CARDS.length;
@@ -227,6 +287,30 @@ export const Home5: React.FC = () => {
     bookingDragDeltaXRef.current = 0;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const updateContactField = <K extends keyof ContactFormState>(key: K, value: ContactFormState[K]) => {
+    setContactForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleContactSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setContactSubmitting(true);
+    setContactStatus(null);
+    setContactError(null);
+
+    try {
+      await submitContactSubmission({
+        ...contactForm,
+        sourcePage: 'home_landing_footer',
+      });
+      setContactStatus('Thanks. We received your message and will get back to you soon.');
+      setContactForm(EMPTY_CONTACT_FORM);
+    } catch (error) {
+      setContactError(error instanceof Error ? error.message : 'Failed to submit your message.');
+    } finally {
+      setContactSubmitting(false);
     }
   };
 
@@ -652,6 +736,113 @@ export const Home5: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <footer className="home5-footer" id="contact">
+        <div className="home5-footer-inner">
+          <div className="home5-footer-watermark" aria-hidden="true">Betterpass</div>
+
+          <div className="home5-footer-top">
+            <div className="home5-footer-brand">
+              <span className="home5-footer-eyebrow">The Betterpass</span>
+              <p>{footerContent.description}</p>
+              <button type="button" className="home5-footer-contact-btn" onClick={() => setContactModalOpen(true)}>
+                Contact us
+              </button>
+            </div>
+
+            <nav className="home5-footer-columns" aria-label="Footer navigation">
+              {footerContent.columns.map((column) => (
+                <div className="home5-footer-column" key={column.title}>
+                  <h2>{column.title}</h2>
+                  <ul>
+                    {column.links.map((link, index) => {
+                      const href = getFooterHref(link);
+                      return (
+                        <li key={`${column.title}-${link.label}-${index}`}>
+                          {isInternalHref(href) ? (
+                            <Link to={href}>{link.label}</Link>
+                          ) : (
+                            <a href={href} target={href.startsWith('mailto:') || href.startsWith('tel:') ? undefined : '_blank'} rel="noreferrer">
+                              {link.label}
+                            </a>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </nav>
+          </div>
+
+          <div className="home5-footer-bottom">
+            <p>{footerContent.copyright}</p>
+            <div className="home5-footer-socials" aria-label="Social links">
+              {footerContent.socials.map((link, index) => {
+                const href = getFooterHref(link);
+                return (
+                  <a
+                    key={`${link.label}-${index}`}
+                    href={href}
+                    target={href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('#') ? undefined : '_blank'}
+                    rel="noreferrer"
+                  >
+                    {link.label}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {contactModalOpen && (
+        <div className="home5-contact-modal" role="dialog" aria-modal="true" aria-labelledby="home5-contact-title">
+          <button type="button" className="home5-contact-backdrop" aria-label="Close contact form" onClick={() => setContactModalOpen(false)} />
+          <div className="home5-contact-panel">
+            <div className="home5-contact-head">
+              <div>
+                <span>Contact</span>
+                <h2 id="home5-contact-title">Tell us what you need</h2>
+              </div>
+              <button type="button" className="home5-contact-close" onClick={() => setContactModalOpen(false)} aria-label="Close contact form">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form className="home5-contact-form" onSubmit={(event) => void handleContactSubmit(event)}>
+              <label>
+                <span>Name</span>
+                <input value={contactForm.name} onChange={(event) => updateContactField('name', event.target.value)} required />
+              </label>
+              <label>
+                <span>Email</span>
+                <input type="email" value={contactForm.email} onChange={(event) => updateContactField('email', event.target.value)} required />
+              </label>
+              <label>
+                <span>Phone</span>
+                <input value={contactForm.phone} onChange={(event) => updateContactField('phone', event.target.value)} />
+              </label>
+              <label>
+                <span>Location</span>
+                <input value={contactForm.location} onChange={(event) => updateContactField('location', event.target.value)} />
+              </label>
+              <label className="home5-contact-wide">
+                <span>Message</span>
+                <textarea value={contactForm.message} onChange={(event) => updateContactField('message', event.target.value)} required />
+              </label>
+
+              {contactStatus && <p className="home5-contact-status"><CheckCircle2 size={16} />{contactStatus}</p>}
+              {contactError && <p className="home5-contact-error">{contactError}</p>}
+
+              <button type="submit" className="home5-contact-submit" disabled={contactSubmitting}>
+                {contactSubmitting ? <Loader2 size={17} className="home5-spin" /> : null}
+                Send message
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
