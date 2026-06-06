@@ -6,7 +6,6 @@ import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
 import { normalizeRoleValue } from './lib/platform';
 
-const Home4 = lazy(async () => ({ default: (await import('./pages/Home4')).Home4 }));
 const Home5 = lazy(async () => ({ default: (await import('./pages/Home5')).Home5 }));
 const About2 = lazy(async () => ({ default: (await import('./pages/About2')).About2 }));
 const WhoMadeIt = lazy(async () => ({ default: (await import('./pages/WhoMadeIt')).WhoMadeIt }));
@@ -94,7 +93,7 @@ const HomeRoute: React.FC = () => {
     return <DashboardHome />;
   }
 
-  return <Home4 />;
+  return <Home5 />;
 };
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -167,7 +166,7 @@ function App() {
             <Route path="/home2" element={<Navigate to="/" replace />} />
             <Route path="/home3" element={<Navigate to="/" replace />} />
             <Route path="/home4" element={<Navigate to="/" replace />} />
-            <Route path="/home5" element={<Home5 />} />
+            <Route path="/home5" element={<Navigate to="/" replace />} />
             <Route path="/about" element={<GuestOnlyRoute><About2 /></GuestOnlyRoute>} />
             <Route path="/about2" element={<Navigate to="/about" replace />} />
             <Route path="/whomadeit" element={<WhoMadeIt />} />
