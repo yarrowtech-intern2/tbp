@@ -97,7 +97,7 @@ export const DEFAULT_HERO_MESSAGES: HeroMessagesContent = {
 };
 
 export const DEFAULT_FOOTER_CONTENT: FooterContent = {
-    description: 'Modern luxury travel with editorial clarity, refined stays, and calm itinerary design.',
+    description: 'Travel beautifully, hassle frree\nwith betterpass',
     columns: [
         {
             title: 'Explore',

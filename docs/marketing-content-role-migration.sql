@@ -109,7 +109,7 @@ values
 (
     'landing_footer',
     '{
-        "description": "Modern luxury travel with editorial clarity, refined stays, and calm itinerary design.",
+        "description": "Travel beautifully, hassle frree\nwith betterpass",
         "columns": [
             {
                 "title": "Explore",

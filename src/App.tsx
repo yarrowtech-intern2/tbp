@@ -8,6 +8,7 @@ import { normalizeRoleValue } from './lib/platform';
 
 const Home5 = lazy(async () => ({ default: (await import('./pages/Home5')).Home5 }));
 const About2 = lazy(async () => ({ default: (await import('./pages/About2')).About2 }));
+const AboutFinal = lazy(async () => ({ default: (await import('./pages/AboutFinal')).AboutFinal }));
 const WhoMadeIt = lazy(async () => ({ default: (await import('./pages/WhoMadeIt')).WhoMadeIt }));
 const DashboardHome = lazy(async () => ({ default: (await import('./pages/DashboardHome')).DashboardHome }));
 const TouristExplorePage = lazy(async () => ({ default: (await import('./pages/TouristExplorePage')).TouristExplorePage }));
@@ -169,6 +170,7 @@ function App() {
             <Route path="/home5" element={<Navigate to="/" replace />} />
             <Route path="/about" element={<GuestOnlyRoute><About2 /></GuestOnlyRoute>} />
             <Route path="/about2" element={<Navigate to="/about" replace />} />
+            <Route path="/about-final" element={<AboutFinal />} />
             <Route path="/whomadeit" element={<WhoMadeIt />} />
             <Route path="/auth" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
             <Route path="/terms" element={<TermsAndConditions />} />
@@ -200,7 +202,7 @@ function App() {
   );
 }
 
-const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/home5', '/terms', '/about', '/about2', '/whomadeit'];
+const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/home5', '/terms', '/about', '/about2', '/about-final', '/whomadeit'];
 
 const AppNavbar: React.FC = () => {
   const { user } = useAuth();

@@ -142,6 +142,9 @@ const TRUST_ITEMS = [
 ] as const;
 
 const FINAL_CTA_COPY = 'Betterpass brings trusted stays, guided experiences, local experts, and secure booking into one clear travel path, so you can stop juggling scattered plans and start choosing trips with confidence.';
+const FINAL_CTA_WORDS = FINAL_CTA_COPY.split(/\s+/);
+
+const HOME5_FOOTER_TITLE = 'Travel beautifully, hassle free\nwith The Betterpass';
 
 const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
 
@@ -176,9 +179,10 @@ export const Home5: React.FC = () => {
   const [activeCard, setActiveCard] = useState(0);
   const [activeBookingCard, setActiveBookingCard] = useState(0);
   const [howProgress, setHowProgress] = useState(0);
-  const [finalRevealProgress, setFinalRevealProgress] = useState(0);
+  const [finalRevealWordIndex, setFinalRevealWordIndex] = useState(0);
   const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [heroMenuOpen, setHeroMenuOpen] = useState(false);
   const [contactForm, setContactForm] = useState<ContactFormState>(EMPTY_CONTACT_FORM);
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactStatus, setContactStatus] = useState<string | null>(null);
@@ -221,6 +225,27 @@ export const Home5: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [contactModalOpen]);
+
+  useEffect(() => {
+    if (!heroMenuOpen) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setHeroMenuOpen(false);
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest('.home5-hero-menu')) setHeroMenuOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [heroMenuOpen]);
 
   const goToCard = (index: number) => {
     const total = VALUE_IMAGE_CARDS.length;
@@ -358,10 +383,12 @@ export const Home5: React.FC = () => {
       const viewportHeight = window.innerHeight || 1;
       const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
       const nextProgress = clampValue((-rect.top) / scrollableDistance, 0, 1);
+      const nextWordIndex = Math.min(
+        FINAL_CTA_WORDS.length,
+        Math.floor(nextProgress * (FINAL_CTA_WORDS.length + 1)),
+      );
 
-      setFinalRevealProgress((current) => (
-        Math.abs(current - nextProgress) > 0.001 ? nextProgress : current
-      ));
+      setFinalRevealWordIndex((current) => (current !== nextWordIndex ? nextWordIndex : current));
     };
 
     const handleScroll = () => {
@@ -398,11 +425,39 @@ export const Home5: React.FC = () => {
     opacity: 0.22 + (introProgress * 0.78),
     transform: `translateY(${(1 - introProgress) * 30}px)`,
   } satisfies React.CSSProperties;
-  const finalWords = FINAL_CTA_COPY.split(/\s+/);
-
   return (
     <main className="home5-page">
       <section className="home5-hero">
+        <div className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}`}>
+          <button
+            type="button"
+            className="home5-hero-menu-toggle"
+            aria-label={heroMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={heroMenuOpen}
+            aria-controls="home5-hero-menu-panel"
+            onClick={() => setHeroMenuOpen((current) => !current)}
+          >
+            <span className="home5-hero-menu-line" />
+            <span className="home5-hero-menu-line" />
+            <span className="home5-hero-menu-line" />
+          </button>
+
+          <nav id="home5-hero-menu-panel" className="home5-hero-menu-panel" aria-label="Landing navigation">
+            <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
+            <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
+            <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Login</Link>
+            <button
+              type="button"
+              onClick={() => {
+                setHeroMenuOpen(false);
+                setContactModalOpen(true);
+              }}
+            >
+              Contact
+            </button>
+          </nav>
+        </div>
+
         <div className="home5-hero-shell">
           <div className="home5-copy">
             <h1 className="home5-title">The Betterpass</h1>
@@ -701,36 +756,36 @@ export const Home5: React.FC = () => {
                 <span className="home5-final-eyebrow">Ready when you are</span>
                 <h2 className="home5-final-title">Start exploring with Betterpass</h2>
                 <p className="home5-final-reveal" aria-label={FINAL_CTA_COPY}>
-                  {finalWords.map((word, index) => {
-                    const wordStart = (index / finalWords.length) * 0.82;
-                    const wordProgress = clampValue((finalRevealProgress - wordStart) / 0.16, 0, 1);
-                    const opacity = 0.16 + (wordProgress * 0.84);
-
+                  {FINAL_CTA_WORDS.map((word, index) => {
+                    const revealState = index < finalRevealWordIndex
+                      ? 'is-complete'
+                      : index === finalRevealWordIndex
+                        ? 'is-next'
+                        : 'is-pending';
                     return (
                       <span
                         key={`${word}-${index}`}
-                        className="home5-final-word"
-                        style={{ opacity }}
+                        className={`home5-final-word ${revealState}`}
                         aria-hidden="true"
                       >
                         {word}
-                        {index < finalWords.length - 1 ? '\u00A0' : ''}
+                        {index < FINAL_CTA_WORDS.length - 1 ? '\u00A0' : ''}
                       </span>
                     );
                   })}
                 </p>
-                <div className="home5-final-actions">
-                  <Link className="home5-final-btn home5-final-btn-primary" to="/auth?mode=signup&role=tourist">
-                    Explore
-                  </Link>
-                  <Link className="home5-final-btn home5-final-btn-secondary" to="/auth?mode=signup&role=tour_company">
-                    Become a provider
-                  </Link>
-                </div>
               </div>
-              <div className="home5-final-visual-slot" aria-hidden="true">
-                <div className="home5-final-globe-ground" />
-                <Globe className="home5-final-globe" />
+              <div className="home5-final-visual-slot">
+                <div className="home5-final-cta-field" aria-hidden="true">
+                  <span className="home5-final-cta-ripple home5-final-cta-ripple-1" />
+                  <span className="home5-final-cta-ripple home5-final-cta-ripple-2" />
+                  <span className="home5-final-cta-ripple home5-final-cta-ripple-3" />
+                </div>
+                <Link className="home5-final-orb-cta" to="/auth" aria-label="Login to explore">
+                  <span>Explore</span>
+                </Link>
+                <div className="home5-final-globe-ground" aria-hidden="true" />
+                <Globe className="home5-final-globe" aria-hidden="true" />
               </div>
             </div>
           </div>
@@ -744,7 +799,7 @@ export const Home5: React.FC = () => {
           <div className="home5-footer-top">
             <div className="home5-footer-brand">
               <span className="home5-footer-eyebrow">The Betterpass</span>
-              <p>{footerContent.description}</p>
+              <p>{HOME5_FOOTER_TITLE}</p>
               <button type="button" className="home5-footer-contact-btn" onClick={() => setContactModalOpen(true)}>
                 Contact us
               </button>
