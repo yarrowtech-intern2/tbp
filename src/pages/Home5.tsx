@@ -222,6 +222,7 @@ export const Home5: React.FC = () => {
   const bookingDragStartXRef = useRef<number | null>(null);
   const bookingDragDeltaXRef = useRef(0);
   const valueSectionRef = useRef<HTMLElement | null>(null);
+  const logoActivatedRef = useRef(false);
   const howSectionRef = useRef<HTMLElement | null>(null);
   const finalSectionRef = useRef<HTMLElement | null>(null);
 
@@ -279,27 +280,29 @@ export const Home5: React.FC = () => {
   }, [heroMenuOpen]);
 
   useEffect(() => {
-    const node = valueSectionRef.current;
-    if (!node || stickyLogoVisible) return undefined;
+    const updateStickyLogo = () => {
+      if (logoActivatedRef.current) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return;
+      const node = valueSectionRef.current;
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      const triggerPoint = window.innerHeight * 0.82;
+      if (rect.top <= triggerPoint) {
+        logoActivatedRef.current = true;
         setStickyLogoVisible(true);
-        observer.disconnect();
-      },
-      {
-        threshold: 0.2,
-        rootMargin: '-6% 0px -72% 0px',
-      },
-    );
+      }
+    };
 
-    observer.observe(node);
+    updateStickyLogo();
+    window.addEventListener('scroll', updateStickyLogo, { passive: true });
+    window.addEventListener('resize', updateStickyLogo);
 
     return () => {
-      observer.disconnect();
+      window.removeEventListener('scroll', updateStickyLogo);
+      window.removeEventListener('resize', updateStickyLogo);
     };
-  }, [stickyLogoVisible]);
+  }, []);
 
   const goToCard = (index: number) => {
     const total = VALUE_IMAGE_CARDS.length;
