@@ -1,16 +1,56 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Home } from 'lucide-react';
 import './about-final.css';
 
-const ABOUT_FINAL_TITLE = 'About Betterpass';
-const ABOUT_FINAL_COPY = 'Betterpass exists to make travel feel clear before it becomes memorable. We bring trusted stays, guided experiences, local providers, and secure booking into one calm path, so every trip starts with confidence instead of scattered planning.';
-const ABOUT_FINAL_WORDS = ABOUT_FINAL_COPY.split(/\s+/);
+const ABOUT_STORY_SECTIONS = [
+  {
+    id: 'intro',
+    eyebrow: 'The Betterpass story',
+    title: 'About Betterpass',
+    copy: 'Betterpass exists to make travel feel clear before it becomes memorable. We bring trusted stays, guided experiences, local providers, and secure booking into one calm path, so every trip starts with confidence instead of scattered planning.',
+    image: undefined,
+    imageAlt: undefined,
+  },
+  {
+    id: 'why',
+    eyebrow: 'Why Betterpass exists',
+    title: 'Travel should feel clear before it feels memorable',
+    copy: 'Betterpass exists because planning a trip should not mean juggling scattered tabs, uncertain providers, vague details, and last minute doubt. We bring stays, guided experiences, local experts, and booking decisions into one calm path so travelers can move from curiosity to confidence faster.',
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80',
+    imageAlt: 'Quiet beach shoreline used as a travel planning placeholder',
+  },
+  {
+    id: 'safer',
+    eyebrow: 'How we make travel safer',
+    title: 'Trust is designed into every step',
+    copy: 'Safer travel starts before checkout. Betterpass helps travelers compare clearer listings, understand who is hosting the experience, see what is included, and choose providers with stronger signals. The goal is simple: fewer surprises, better decisions, and a booking path that feels transparent.',
+    image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&w=1400&q=80',
+    imageAlt: 'Traveler looking across a mountain landscape used as a safety placeholder',
+  },
+  {
+    id: 'community',
+    eyebrow: 'Community',
+    title: 'Better trips are built with local people',
+    copy: 'The Betterpass community connects travelers with hosts, guides, tour operators, and local businesses who shape the real texture of a place. We believe memorable travel comes from context, care, timing, and people who know the route beyond the surface.',
+    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80',
+    imageAlt: 'People gathered near a warm travel setting used as a community placeholder',
+  },
+] as const;
 
 const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-export const AboutFinal: React.FC = () => {
+type AboutStorySectionProps = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  copy: string;
+  image?: string;
+  imageAlt?: string;
+};
+
+const AboutStorySection: React.FC<AboutStorySectionProps> = ({ id, eyebrow, title, copy, image, imageAlt }) => {
   const sectionRef = useRef<HTMLElement | null>(null);
+  const words = useRef(copy.split(/\s+/)).current;
   const [activeWordIndex, setActiveWordIndex] = useState(0);
 
   useEffect(() => {
@@ -25,10 +65,7 @@ export const AboutFinal: React.FC = () => {
       const viewportHeight = window.innerHeight || 1;
       const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
       const progress = clampValue((-rect.top) / scrollableDistance, 0, 1);
-      const nextWordIndex = Math.min(
-        ABOUT_FINAL_WORDS.length,
-        Math.floor(progress * (ABOUT_FINAL_WORDS.length + 1)),
-      );
+      const nextWordIndex = Math.min(words.length, Math.floor(progress * (words.length + 1)));
 
       setActiveWordIndex((current) => (current !== nextWordIndex ? nextWordIndex : current));
     };
@@ -47,22 +84,17 @@ export const AboutFinal: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
     };
-  }, []);
+  }, [words]);
 
   return (
-    <main className="about-final-page">
-      <Link to="/" className="about-final-home" aria-label="Go home">
-        <Home size={18} />
-        <span>Home</span>
-      </Link>
-
-      <section ref={sectionRef} className="about-final-section" aria-labelledby="about-final-title">
-        <div className="about-final-sticky">
-          <div className="about-final-shell">
-            <span className="about-final-eyebrow">The Betterpass story</span>
-            <h1 id="about-final-title" className="about-final-title">{ABOUT_FINAL_TITLE}</h1>
-            <p className="about-final-reveal" aria-label={ABOUT_FINAL_COPY}>
-              {ABOUT_FINAL_WORDS.map((word, index) => {
+    <section ref={sectionRef} className={`about-final-section about-final-section-${id}`} aria-labelledby={`about-final-${id}`}>
+      <div className="about-final-sticky">
+        <div className="about-final-shell">
+          <div className="about-final-copy">
+            <span className="about-final-eyebrow">{eyebrow}</span>
+            <h1 id={`about-final-${id}`} className="about-final-title">{title}</h1>
+            <p className="about-final-reveal" aria-label={copy}>
+              {words.map((word, index) => {
                 const revealState = index < activeWordIndex
                   ? 'is-complete'
                   : index === activeWordIndex
@@ -76,14 +108,83 @@ export const AboutFinal: React.FC = () => {
                     aria-hidden="true"
                   >
                     {word}
-                    {index < ABOUT_FINAL_WORDS.length - 1 ? '\u00A0' : ''}
+                    {index < words.length - 1 ? '\u00A0' : ''}
                   </span>
                 );
               })}
             </p>
           </div>
+
+          {image ? (
+            <figure className="about-final-image-wrap">
+              <img src={image} alt={imageAlt || ''} loading="lazy" decoding="async" />
+            </figure>
+          ) : null}
         </div>
-      </section>
+      </div>
+    </section>
+  );
+};
+
+export const AboutFinal: React.FC = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest('.about-final-menu')) setMenuOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [menuOpen]);
+
+  return (
+    <main className="about-final-page">
+      <div className={`about-final-menu${menuOpen ? ' is-open' : ''}`}>
+        <button
+          type="button"
+          className="about-final-menu-toggle"
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          aria-controls="about-final-menu-panel"
+          onClick={() => setMenuOpen((current) => !current)}
+        >
+          <span className="about-final-menu-line" />
+          <span className="about-final-menu-line" />
+          <span className="about-final-menu-line" />
+        </button>
+
+        <nav id="about-final-menu-panel" className="about-final-menu-panel" aria-label="About page navigation">
+          <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link to="/about-final" onClick={() => setMenuOpen(false)}>About us</Link>
+          <Link to="/auth" onClick={() => setMenuOpen(false)}>Login</Link>
+          <Link to="/#contact" onClick={() => setMenuOpen(false)}>Contact</Link>
+        </nav>
+      </div>
+
+      {ABOUT_STORY_SECTIONS.map((section) => (
+        <AboutStorySection
+          key={section.id}
+          id={section.id}
+          eyebrow={section.eyebrow}
+          title={section.title}
+          copy={section.copy}
+          image={section.image}
+          imageAlt={section.imageAlt}
+        />
+      ))}
     </main>
   );
 };
