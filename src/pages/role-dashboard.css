@@ -1070,6 +1070,77 @@
     color: var(--text-muted);
 }
 
+.rdb-refund-panel {
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface-main) 82%, transparent);
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+}
+
+.rdb-refund-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.rdb-refund-panel-head strong {
+    font-size: 0.82rem;
+    color: var(--text-main);
+}
+
+.rdb-refund-note {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.rdb-refund-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.rdb-refund-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.rdb-refund-field-wide {
+    grid-column: 1 / -1;
+}
+
+.rdb-refund-field span {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.rdb-refund-input,
+.rdb-refund-textarea {
+    width: 100%;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface-main) 86%, transparent);
+    color: var(--text-main);
+    padding: 10px 12px;
+    font: inherit;
+    resize: vertical;
+}
+
+.rdb-refund-input:focus,
+.rdb-refund-textarea:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--accent) 70%, var(--border-light));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .rdb-provider-booking-filters {
     display: grid;
     gap: 8px;
@@ -1116,14 +1187,16 @@
 }
 
 .rdb-pill-pending,
-.rdb-pill-confirmed {
+.rdb-pill-confirmed,
+.rdb-pill-processing {
     background: color-mix(in srgb, #f59e0b 16%, var(--surface-main));
     color: #92400e;
     border-color: color-mix(in srgb, #f59e0b 28%, transparent);
 }
 
 :root[data-theme='dark'] .rdb-pill-pending,
-:root[data-theme='dark'] .rdb-pill-confirmed {
+:root[data-theme='dark'] .rdb-pill-confirmed,
+:root[data-theme='dark'] .rdb-pill-processing {
     background: color-mix(in srgb, #f59e0b 16%, #111);
     color: #fbbf24;
     border-color: color-mix(in srgb, #f59e0b 24%, transparent);
@@ -1949,6 +2022,10 @@
     .rdb-provider-booking-meta {
         grid-template-columns: 1fr;
     }
+
+    .rdb-refund-form-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ─── Desktop (≥1024px) ──────────────────────────────────── */
@@ -2200,6 +2277,59 @@
     flex: 1;
     min-width: 0;
     justify-content: flex-end;
+}
+
+.rdb-admin-topbar-shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.rdb-admin-shortcut {
+    min-height: 38px;
+    border: 1px solid color-mix(in srgb, var(--rdb-admin-icon) 18%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--rdb-admin-card-soft) 82%, var(--rdb-admin-card));
+    color: var(--rdb-admin-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    cursor: pointer;
+    transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.rdb-admin-shortcut:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--rdb-admin-card-soft) 68%, var(--rdb-admin-card));
+}
+
+.rdb-admin-shortcut span {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: inherit;
+}
+
+.rdb-admin-shortcut strong {
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.rdb-admin-shortcut.is-active {
+    background: color-mix(in srgb, var(--accent) 18%, var(--rdb-admin-card));
+    border-color: color-mix(in srgb, var(--accent) 44%, transparent);
+    color: var(--rdb-admin-text-strong);
 }
 
 .rdb-admin-topbar-search {
@@ -2713,6 +2843,98 @@
     font-size: 0.9rem;
 }
 
+.rdb-settings-group {
+    display: grid;
+    gap: 12px;
+}
+
+.rdb-settings-field {
+    display: grid;
+    gap: 6px;
+}
+
+.rdb-settings-field span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--rdb-admin-text-muted);
+}
+
+.rdb-settings-field select {
+    border: none;
+    border-radius: 12px;
+    background: var(--rdb-admin-card-soft);
+    color: var(--rdb-admin-text-strong);
+    padding: 12px 14px;
+    font: inherit;
+    outline: none;
+}
+
+.rdb-settings-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border-radius: 14px;
+    background: var(--rdb-admin-card-soft);
+    padding: 12px 14px;
+}
+
+.rdb-settings-toggle input {
+    margin-top: 2px;
+}
+
+.rdb-settings-toggle strong {
+    display: block;
+    font-size: 0.92rem;
+    color: var(--rdb-admin-text-strong);
+}
+
+.rdb-settings-toggle small {
+    display: block;
+    margin-top: 4px;
+    color: var(--rdb-admin-text-muted);
+    line-height: 1.45;
+}
+
+.rdb-settings-action {
+    border: none;
+    border-radius: 14px;
+    background: var(--rdb-admin-card-soft);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: left;
+    cursor: pointer;
+    color: var(--rdb-admin-text);
+}
+
+.rdb-settings-action strong {
+    display: block;
+    font-size: 0.92rem;
+    color: var(--rdb-admin-text-strong);
+}
+
+.rdb-settings-action small {
+    display: block;
+    margin-top: 4px;
+    color: var(--rdb-admin-text-muted);
+    line-height: 1.45;
+}
+
+.rdb-settings-action span {
+    flex-shrink: 0;
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.rdb-settings-action.is-active {
+    background: color-mix(in srgb, var(--accent) 14%, var(--rdb-admin-card-soft));
+}
+
 .rdb-shell--admin .rdb-inline-link,
 .rdb-shell--admin .rdb-row-edit-link,
 .rdb-shell--admin .rdb-btn {
@@ -2997,6 +3219,10 @@
     .rdb-admin-topbar.is-mobile .rdb-admin-ctrl-btn {
         width: 48px;
         height: 48px;
+    }
+
+    .rdb-admin-topbar-shortcuts {
+        display: none;
     }
 
     .rdb-admin-mobile-menu {

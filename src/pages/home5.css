@@ -1373,6 +1373,7 @@
   border-radius: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  cursor: pointer;
   transition: box-shadow 0.2s ease;
 }
 
@@ -1408,7 +1409,9 @@
   height: 20px;
 }
 
-.home5-faq-icon span {
+.home5-faq-icon::before,
+.home5-faq-icon::after {
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1417,32 +1420,24 @@
   background: #111111;
   border-radius: 1px;
   transition: transform 0.25s ease;
-}
-
-.home5-faq-icon span:first-child {
   transform: translate(-50%, -50%);
 }
 
-.home5-faq-icon span:last-child {
+.home5-faq-icon::after {
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
-.home5-faq-card.is-open .home5-faq-icon span:last-child {
+.home5-faq-card.is-open .home5-faq-icon::after {
   transform: translate(-50%, -50%) rotate(0deg);
 }
 
 .home5-faq-body {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
-}
-
-.home5-faq-card.is-open .home5-faq-body {
-  grid-template-rows: 1fr;
-}
-
-.home5-faq-body > p {
+  max-height: 0;
   overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+
+.home5-faq-body p {
   margin: 0;
   padding: 0 clamp(1.2rem, 2.5vw, 1.6rem) clamp(1rem, 2vw, 1.35rem);
   font-family: 'Outfit', sans-serif;
@@ -1921,9 +1916,10 @@
   }
 
   .home5-value-reveal {
-    max-width: none;
+    max-width: 28ch;
     font-size: clamp(0.82rem, 3.25vw, 0.98rem);
-    white-space: nowrap;
+    white-space: normal;
+    text-wrap: balance;
   }
 
   .home5-value-grid-desktop {

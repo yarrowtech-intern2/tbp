@@ -45,6 +45,7 @@ import {
     getContentModerationQueue,
     getConversations,
     getActivePaidAds,
+    getAdminBookings,
     getFavoriteListings,
     getListingReviewSummaryMap,
     getListingReviewsForListingIds,
@@ -54,6 +55,8 @@ import {
     getPosts,
     getProviderBookings,
     respondToBookingRequest,
+    submitRefundRequest,
+    updateRefundRequest,
     getVerificationQueue,
     hasActiveBoost,
     type AdminAccountLocationRecord,
@@ -124,6 +127,7 @@ type AdminDashboardSnapshot = {
     verifications: VerificationRecord[];
     audits: ModerationAuditLogRecord[];
     users: AdminProfileRow[];
+    bookings: UnifiedBooking[];
     revenue: number;
     revenueRows: AdminRevenueBookingRow[];
     activeAds: PaidAdRecord[];
@@ -194,6 +198,41 @@ type MobileNavItem = {
     countKey?: SidebarKey;
     to?: string;
 };
+
+const ADMIN_PRIMARY_NAV_KEYS: SidebarKey[] = [
+    'overview',
+    'content',
+    'bookings',
+    'revenue',
+    'moderation',
+    'messages',
+];
+
+const ADMIN_TOPBAR_NAV_KEYS: SidebarKey[] = [
+    'inquiries',
+    'accepted',
+    'rejected',
+    'users',
+    'map',
+    'audits',
+];
+
+const ADMIN_DEFAULT_SECTION_OPTIONS: SidebarKey[] = [
+    'overview',
+    'bookings',
+    'revenue',
+    'moderation',
+    'messages',
+    'content',
+    'inquiries',
+];
+
+const ADMIN_REFRESH_INTERVAL_OPTIONS = [
+    { label: '15 seconds', value: 15000 },
+    { label: '30 seconds', value: 30000 },
+    { label: '1 minute', value: 60000 },
+    { label: '2 minutes', value: 120000 },
+] as const;
 
 type BoostDialogState = {
     postId: string;
@@ -405,6 +444,33 @@ const dedupePostRows = (rows: PostRecord[]) => {
     });
 };
 
+const normalizeRefundStatus = (value: string | null | undefined) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'completed' || normalized === 'refunded') return 'completed';
+    if (normalized === 'processing' || normalized === 'in_progress' || normalized === 'in-progress') return 'processing';
+    if (normalized === 'pending' || normalized === 'requested') return 'pending';
+    return '';
+};
+
+const hasPaidSignalForBooking = (item: UnifiedBooking) => {
+    const paymentStatus = String(item.payment_status || '').trim().toLowerCase();
+    return paymentStatus === 'paid' || Boolean(item.paid_at) || Boolean(item.payment_id);
+};
+
+const canBookingRequestRefund = (item: UnifiedBooking) => {
+    const bookingStatus = String(item.status || '').trim().toLowerCase();
+    const paymentStatus = String(item.payment_status || '').trim().toLowerCase();
+    const refundStatus = normalizeRefundStatus(item.refund_status);
+    const cancelledOrRejected = bookingStatus === 'rejected' || bookingStatus === 'cancelled';
+    return cancelledOrRejected
+        && hasPaidSignalForBooking(item)
+        && paymentStatus !== 'refunded'
+        && refundStatus !== 'pending'
+        && refundStatus !== 'processing'
+        && refundStatus !== 'completed'
+        && !item.refund_requested_at;
+};
+
 const parseTouristSection = (value: string | null): SidebarKey | null => {
     if (!value) return null;
     const normalized = value.trim().toLowerCase();
@@ -435,6 +501,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (!value) return null;
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
+    if (normalized === 'bookings' || normalized === 'refunds' || normalized === 'refund') return 'bookings';
     if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'content';
     if (normalized === 'inquiries' || normalized === 'leads' || normalized === 'contact-leads' || normalized === 'contact-submissions') return 'inquiries';
     if (normalized === 'messages') return 'messages';
@@ -475,6 +542,9 @@ const normalizeSectionForRole = (role: DashboardRole, value: string | null): Sid
 };
 
 const getDashboardSectionStorageKey = (role: DashboardRole) => `tbp.dashboard.active-section.${role}`;
+const ADMIN_DEFAULT_SECTION_STORAGE_KEY = 'tbp.dashboard.admin.default-section';
+const ADMIN_REFRESH_INTERVAL_STORAGE_KEY = 'tbp.dashboard.admin.refresh-interval-ms';
+const ADMIN_COMPACT_NAV_STORAGE_KEY = 'tbp.dashboard.admin.compact-nav';
 
 const LazyAdminAccountMap = lazy(async () => {
     const module = await import('../components/admin/AdminAccountMap');
@@ -877,6 +947,7 @@ export const RoleDashboard: React.FC = () => {
     const [adminVerifications, setAdminVerifications] = useState<VerificationRecord[]>([]);
     const [adminAuditLogs, setAdminAuditLogs] = useState<ModerationAuditLogRecord[]>([]);
     const [adminUsers, setAdminUsers] = useState<AdminProfileRow[]>([]);
+    const [adminBookings, setAdminBookings] = useState<UnifiedBooking[]>([]);
     const [adminAccountLocations, setAdminAccountLocations] = useState<AdminAccountLocationRecord[]>([]);
     const [adminRevenueRows, setAdminRevenueRows] = useState<AdminRevenueBookingRow[]>([]);
     const [adminActiveAds, setAdminActiveAds] = useState<PaidAdRecord[]>([]);
@@ -894,9 +965,41 @@ export const RoleDashboard: React.FC = () => {
     const [providerBookingDateFrom, setProviderBookingDateFrom] = useState('');
     const [providerBookingDateTo, setProviderBookingDateTo] = useState('');
     const [providerBookingActionId, setProviderBookingActionId] = useState<string | null>(null);
+    const [touristRefundActionId, setTouristRefundActionId] = useState<string | null>(null);
+    const [touristRefundReasonByBookingId, setTouristRefundReasonByBookingId] = useState<Record<string, string>>({});
+    const [adminRefundActionId, setAdminRefundActionId] = useState<string | null>(null);
+    const [adminRefundNoteByBookingId, setAdminRefundNoteByBookingId] = useState<Record<string, string>>({});
+    const [adminRefundReferenceByBookingId, setAdminRefundReferenceByBookingId] = useState<Record<string, string>>({});
+    const [adminDefaultSection, setAdminDefaultSection] = useState<SidebarKey>(() => {
+        if (typeof window === 'undefined') return 'overview';
+        try {
+            return parseAdminSection(window.localStorage.getItem(ADMIN_DEFAULT_SECTION_STORAGE_KEY)) || 'overview';
+        } catch {
+            return 'overview';
+        }
+    });
+    const [adminRefreshIntervalMs, setAdminRefreshIntervalMs] = useState<number>(() => {
+        if (typeof window === 'undefined') return 30000;
+        try {
+            const raw = Number(window.localStorage.getItem(ADMIN_REFRESH_INTERVAL_STORAGE_KEY));
+            return ADMIN_REFRESH_INTERVAL_OPTIONS.some((item) => item.value === raw) ? raw : 30000;
+        } catch {
+            return 30000;
+        }
+    });
+    const [adminCompactNav, setAdminCompactNav] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return true;
+        try {
+            const raw = window.localStorage.getItem(ADMIN_COMPACT_NAV_STORAGE_KEY);
+            return raw === null ? true : raw === 'true';
+        } catch {
+            return true;
+        }
+    });
+    const [showAdminRecentActivity, setShowAdminRecentActivity] = useState(false);
 
     const fetchAdminDashboardSnapshot = useCallback(async (): Promise<AdminDashboardSnapshot> => {
-        const [posts, queuePosts, verifications, audits, usersResult, bookingsResult, revenueResult, activeAds] = await Promise.all([
+        const [posts, queuePosts, verifications, audits, usersResult, bookingsResult, revenueResult, activeAds, adminBookings] = await Promise.all([
             getPosts(),
             getContentModerationQueue(),
             getVerificationQueue(),
@@ -911,6 +1014,7 @@ export const RoleDashboard: React.FC = () => {
                 .order('created_at', { ascending: false }),
             supabase.rpc('get_admin_revenue'),
             getActivePaidAds(),
+            getAdminBookings(),
         ]);
 
         if (bookingsResult.error) {
@@ -980,6 +1084,7 @@ export const RoleDashboard: React.FC = () => {
             verifications,
             audits,
             users: usersResult.error ? [] : (usersResult.data as AdminProfileRow[] || []),
+            bookings: adminBookings,
             revenue: sumBookedRevenue(bookingRows, 'admin_platform'),
             revenueRows: detailedRevenueRows,
             activeAds,
@@ -1027,6 +1132,33 @@ export const RoleDashboard: React.FC = () => {
     }, [activeSection]);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            window.localStorage.setItem(ADMIN_DEFAULT_SECTION_STORAGE_KEY, adminDefaultSection);
+        } catch {
+            // Ignore storage failures.
+        }
+    }, [adminDefaultSection]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            window.localStorage.setItem(ADMIN_REFRESH_INTERVAL_STORAGE_KEY, String(adminRefreshIntervalMs));
+        } catch {
+            // Ignore storage failures.
+        }
+    }, [adminRefreshIntervalMs]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            window.localStorage.setItem(ADMIN_COMPACT_NAV_STORAGE_KEY, String(adminCompactNav));
+        } catch {
+            // Ignore storage failures.
+        }
+    }, [adminCompactNav]);
+
+    useEffect(() => {
         if (!routeRole || routeRole !== effectiveRole) return;
 
         const nextSection = requestedSection
@@ -1041,7 +1173,7 @@ export const RoleDashboard: React.FC = () => {
                         return null;
                     }
                 })())
-            || 'overview';
+            || (effectiveRole === 'admin' ? adminDefaultSection : 'overview');
 
         setActiveSection(nextSection);
 
@@ -1053,7 +1185,7 @@ export const RoleDashboard: React.FC = () => {
                 { replace: true },
             );
         }
-    }, [effectiveRole, navigate, requestedSection, routeRole, searchParams]);
+    }, [adminDefaultSection, effectiveRole, navigate, requestedSection, routeRole, searchParams]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -1135,6 +1267,7 @@ export const RoleDashboard: React.FC = () => {
                     setAdminVerifications(adminSnapshot.verifications);
                     setAdminAuditLogs(adminSnapshot.audits);
                     setAdminUsers(adminSnapshot.users);
+                    setAdminBookings(adminSnapshot.bookings);
                     setAdminRevenueDb(adminSnapshot.revenue);
                     setAdminRevenueRows(adminSnapshot.revenueRows);
                     setAdminActiveAds(adminSnapshot.activeAds);
@@ -1167,6 +1300,7 @@ export const RoleDashboard: React.FC = () => {
                 setAdminVerifications(snapshot.verifications);
                 setAdminAuditLogs(snapshot.audits);
                 setAdminUsers(snapshot.users);
+                setAdminBookings(snapshot.bookings);
                 setAdminRevenueDb(snapshot.revenue);
                 setAdminRevenueRows(snapshot.revenueRows);
                 setAdminActiveAds(snapshot.activeAds);
@@ -1191,14 +1325,14 @@ export const RoleDashboard: React.FC = () => {
 
         const refreshInterval = window.setInterval(() => {
             void refreshAdminLiveData();
-        }, 30000);
+        }, adminRefreshIntervalMs);
 
         return () => {
             disposed = true;
             window.clearInterval(refreshInterval);
             void supabase.removeChannel(channel);
         };
-    }, [effectiveRole, fetchAdminDashboardSnapshot, profileLoading, user]);
+    }, [adminRefreshIntervalMs, effectiveRole, fetchAdminDashboardSnapshot, profileLoading, user]);
 
     useEffect(() => {
         if (effectiveRole !== 'admin' || activeSection !== 'map') return;
@@ -1251,6 +1385,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'overview', label: 'Dashboard', icon: FileText },
                 { key: 'content', label: 'Content', icon: Megaphone },
                 { key: 'inquiries', label: 'Contact Leads', icon: Mail },
+                { key: 'bookings', label: 'Refunds', icon: ClipboardList },
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
                 { key: 'accepted', label: 'Accepted', icon: CheckCircle2 },
@@ -1315,6 +1450,17 @@ export const RoleDashboard: React.FC = () => {
             { id: 'profile', label: 'Profile', icon: UserCircle2, to: '/profile' },
         ];
     }, [effectiveRole, navItems]);
+
+    const adminSidebarNavItems = useMemo(() => {
+        if (effectiveRole !== 'admin') return navItems;
+        if (!adminCompactNav) return navItems;
+        return navItems.filter((item) => ADMIN_PRIMARY_NAV_KEYS.includes(item.key));
+    }, [adminCompactNav, effectiveRole, navItems]);
+
+    const adminTopbarNavItems = useMemo(() => {
+        if (effectiveRole !== 'admin' || !adminCompactNav) return [];
+        return navItems.filter((item) => ADMIN_TOPBAR_NAV_KEYS.includes(item.key));
+    }, [adminCompactNav, effectiveRole, navItems]);
 
     const query = search.trim().toLowerCase();
 
@@ -1578,7 +1724,7 @@ export const RoleDashboard: React.FC = () => {
     );
 
     const touristRows = touristBookings
-        .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''}`.toLowerCase().includes(query));
+        .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''} ${item.payment_status || ''} ${item.refund_status || ''} ${item.refund_request_reason || ''}`.toLowerCase().includes(query));
 
     const touristRevenueRows = touristBookings.map((item) => buildAccountRevenueRow(item, 'tourist'));
     const touristRevenueFilteredRows = touristRevenueRows
@@ -1746,6 +1892,76 @@ export const RoleDashboard: React.FC = () => {
         }
     };
 
+    const handleTouristRefundRequest = async (booking: UnifiedBooking) => {
+        if (!user?.id) return;
+
+        const bookingId = String(booking.id || '').trim();
+        if (!bookingId) {
+            alert('Booking id is missing.');
+            return;
+        }
+
+        const reason = (touristRefundReasonByBookingId[bookingId] || '').trim();
+        if (!reason) {
+            alert('Please add a refund reason before submitting.');
+            return;
+        }
+
+        setTouristRefundActionId(bookingId);
+        try {
+            const updated = await submitRefundRequest({
+                bookingId,
+                travelerUserId: user.id,
+                reason,
+            });
+
+            setTouristBookings((current) => current.map((item) => (
+                item.id === bookingId ? updated : item
+            )));
+            setTouristRefundReasonByBookingId((current) => ({ ...current, [bookingId]: '' }));
+            await refreshNotifications();
+        } catch (error) {
+            console.error('Refund request submission failed:', error);
+            alert(error instanceof Error ? error.message : 'Could not submit refund request.');
+        } finally {
+            setTouristRefundActionId(null);
+        }
+    };
+
+    const handleAdminRefundUpdate = async (
+        booking: UnifiedBooking,
+        status: 'processing' | 'completed'
+    ) => {
+        if (!user?.id) return;
+
+        const bookingId = String(booking.id || '').trim();
+        if (!bookingId) {
+            alert('Booking id is missing.');
+            return;
+        }
+
+        setAdminRefundActionId(bookingId);
+        try {
+            const updated = await updateRefundRequest({
+                bookingId,
+                adminUserId: user.id,
+                status,
+                adminNote: adminRefundNoteByBookingId[bookingId] ?? booking.refund_admin_note ?? '',
+                refundReference: adminRefundReferenceByBookingId[bookingId] ?? booking.refund_reference ?? '',
+            });
+
+            setAdminBookings((current) => current.map((item) => (
+                item.id === bookingId ? updated : item
+            )));
+            await refreshNotifications();
+        } catch (error) {
+            console.error('Refund update failed:', error);
+            alert(error instanceof Error ? error.message : 'Could not update refund status.');
+        } finally {
+            setAdminRefundActionId(null);
+        }
+    };
+
     const allAdminPackageRows = dedupePostRows([...adminPublishedPosts, ...adminQueuePosts]);
 
     const adminQueueRows = allAdminPackageRows
@@ -1781,6 +1997,24 @@ export const RoleDashboard: React.FC = () => {
 
     const adminUserRows = adminUsers
         .filter((item) => !query || `${item.full_name || ''} ${item.email || ''} ${item.role || ''}`.toLowerCase().includes(query));
+
+    const adminBookingRows = adminBookings
+        .filter((item) => !query || `${item.id || ''} ${item.listing_title || ''} ${item.status || ''} ${item.payment_status || ''} ${item.refund_status || ''} ${item.traveler_name || ''} ${item.traveler_email || ''} ${item.refund_request_reason || ''}`.toLowerCase().includes(query));
+
+    const adminRefundRows = adminBookingRows
+        .filter((item) => {
+            const refundStatus = normalizeRefundStatus(item.refund_status);
+            const paymentStatus = String(item.payment_status || '').trim().toLowerCase();
+            return Boolean(refundStatus || item.refund_requested_at || paymentStatus === 'refunded');
+        });
+
+    const adminRefundPendingCount = adminRefundRows.filter((item) => normalizeRefundStatus(item.refund_status) === 'pending').length;
+    const adminRefundProcessingCount = adminRefundRows.filter((item) => normalizeRefundStatus(item.refund_status) === 'processing').length;
+    const adminRefundCompletedCount = adminRefundRows.filter((item) => {
+        const refundStatus = normalizeRefundStatus(item.refund_status);
+        const paymentStatus = String(item.payment_status || '').trim().toLowerCase();
+        return refundStatus === 'completed' || paymentStatus === 'refunded';
+    }).length;
 
     useEffect(() => {
         if (effectiveRole !== 'admin') return;
@@ -1862,6 +2096,7 @@ export const RoleDashboard: React.FC = () => {
         }
         return {
             content: 2,
+            bookings: adminRefundRows.length,
             revenue: adminRevenueFilteredRows.length,
             messages: adminNotificationRows.length,
             moderation: adminQueueRows.length,
@@ -1874,6 +2109,7 @@ export const RoleDashboard: React.FC = () => {
     }, [
         adminAccountLocations.length,
         adminAuditRows.length,
+        adminRefundRows.length,
         adminRevenueFilteredRows.length,
         adminNotificationRows.length,
         adminAcceptedRows.length,
@@ -2113,27 +2349,105 @@ export const RoleDashboard: React.FC = () => {
                         <h2>Bookings</h2>
                         <small>{query ? `Filtered by "${search}"` : `${touristRows.length} records`}</small>
                     </div>
-                    <div className="rdb-list">
+                    <div className="rdb-provider-bookings-grid">
                         {touristRows.slice(0, 16).map((item) => {
                             const bookingPath = getBookingDetailPath(item);
-                            const rowContent = (
-                                <>
-                                    <div>
-                                        <p>{item.listing_title || 'Package'}</p>
-                                        <small>{formatDate(item.booking_date || item.created_at)}</small>
-                                    </div>
-                                    <span className={`rdb-pill rdb-pill-${item.status}`}>{item.status}</span>
-                                </>
-                            );
-
-                            if (!bookingPath) {
-                                return <div key={item.id} className="rdb-list-row">{rowContent}</div>;
-                            }
+                            const bookingStatus = String(item.status || 'pending').toLowerCase();
+                            const paymentStatus = String(item.payment_status || 'pending').toLowerCase();
+                            const refundStatus = normalizeRefundStatus(item.refund_status) || (paymentStatus === 'refunded' ? 'completed' : '');
+                            const refundPillTone = refundStatus === 'completed' ? 'refunded' : refundStatus === 'processing' ? 'pending' : refundStatus;
+                            const canRequestRefund = canBookingRequestRefund(item);
+                            const refundActionLoading = touristRefundActionId === item.id;
 
                             return (
-                                <Link key={item.id} to={bookingPath} className="rdb-list-row rdb-list-row-link">
-                                    {rowContent}
-                                </Link>
+                                <article key={item.id} className="rdb-provider-booking-card">
+                                    <div className="rdb-provider-booking-head">
+                                        <div>
+                                            <p>{item.listing_title || 'Package'}</p>
+                                            <small>Booked on {formatDate(item.created_at)}</small>
+                                        </div>
+                                        <div className="rdb-provider-booking-pills">
+                                            <span className={`rdb-pill rdb-pill-${bookingStatus}`}>{bookingStatus}</span>
+                                            <span className={`rdb-pill rdb-pill-${paymentStatus}`}>{paymentStatus}</span>
+                                            {refundStatus && (
+                                                <span className={`rdb-pill rdb-pill-${refundPillTone}`}>
+                                                    refund {refundStatus}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="rdb-provider-booking-meta">
+                                        <div><span>Date</span><strong>{formatDate(item.booking_date || item.created_at)}</strong></div>
+                                        <div><span>Travelers</span><strong>{item.number_of_people || 0}</strong></div>
+                                        <div><span>Total Paid</span><strong>{formatCurrency(item.total_price || 0)}</strong></div>
+                                        <div><span>Booking ID</span><strong>{item.id || 'N/A'}</strong></div>
+                                        <div><span>Order ID</span><strong>{item.payment_order_id || 'N/A'}</strong></div>
+                                        <div><span>Payment ID</span><strong>{item.payment_id || 'N/A'}</strong></div>
+                                        {item.rejection_reason && <div><span>Rejection Reason</span><strong>{item.rejection_reason}</strong></div>}
+                                        {item.refund_request_reason && <div><span>Refund Reason</span><strong>{item.refund_request_reason}</strong></div>}
+                                        {item.refund_admin_note && <div><span>Admin Note</span><strong>{item.refund_admin_note}</strong></div>}
+                                        {item.refund_reference && <div><span>Refund Ref</span><strong>{item.refund_reference}</strong></div>}
+                                    </div>
+
+                                    <div className="rdb-provider-booking-actions">
+                                        {bookingPath && (
+                                            <Link to={bookingPath} className="rdb-row-edit-link">
+                                                View Package
+                                            </Link>
+                                        )}
+                                        <button
+                                            type="button"
+                                            className="rdb-row-edit-link"
+                                            onClick={() => goToSection('messages')}
+                                        >
+                                            Open Messages
+                                        </button>
+                                    </div>
+
+                                    {(canRequestRefund || refundStatus) && (
+                                        <div className="rdb-refund-panel">
+                                            <div className="rdb-refund-panel-head">
+                                                <strong>Refund</strong>
+                                                {refundStatus && <span className={`rdb-pill rdb-pill-${refundPillTone}`}>{refundStatus}</span>}
+                                            </div>
+                                            {canRequestRefund ? (
+                                                <>
+                                                    <textarea
+                                                        className="rdb-refund-textarea"
+                                                        rows={3}
+                                                        placeholder="Reason for requesting the refund"
+                                                        value={touristRefundReasonByBookingId[item.id] || ''}
+                                                        onChange={(event) => setTouristRefundReasonByBookingId((current) => ({
+                                                            ...current,
+                                                            [item.id]: event.target.value,
+                                                        }))}
+                                                    />
+                                                    <div className="rdb-provider-booking-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="rdb-row-edit-link rdb-row-edit-link--approve"
+                                                            onClick={() => void handleTouristRefundRequest(item)}
+                                                            disabled={refundActionLoading}
+                                                        >
+                                                            {refundActionLoading ? <Loader2 size={14} className="animate-spin" /> : 'Submit Refund Request'}
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <p className="rdb-refund-note">
+                                                    {refundStatus === 'completed'
+                                                        ? 'The refund has already been completed.'
+                                                        : refundStatus === 'processing'
+                                                            ? 'Admin is processing this refund manually.'
+                                                            : refundStatus === 'pending'
+                                                                ? 'Your refund request is pending admin review.'
+                                                                : 'Refund requests become available after a rejected or cancelled paid booking.'}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </article>
                             );
                         })}
                         {touristRows.length === 0 && <p className="rdb-empty">No matching bookings.</p>}
@@ -3092,8 +3406,6 @@ export const RoleDashboard: React.FC = () => {
                     </article>
                 </div>
 
-                <SalesSettingsEditor userId={user?.id} value={salesSettings} onSaved={setSalesSettings} />
-
                 <div className="rdb-admin-charts-row">
                     <article className="rdb-admin-chart-card">
                         <h3>Monthly Sales</h3>
@@ -3275,6 +3587,134 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'inquiries') {
             return <ContactSubmissionsPanel />;
+        }
+
+        if (activeSection === 'bookings') {
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <h2>Refund Queue</h2>
+                        <div className="rdb-stat-list">
+                            <div><span>Requests</span><strong>{adminRefundRows.length}</strong></div>
+                            <div><span>Pending</span><strong>{adminRefundPendingCount}</strong></div>
+                            <div><span>Processing</span><strong>{adminRefundProcessingCount}</strong></div>
+                            <div><span>Completed</span><strong>{adminRefundCompletedCount}</strong></div>
+                        </div>
+                    </article>
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Refund Requests</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${adminRefundRows.length} records`}</small>
+                        </div>
+                        <div className="rdb-provider-bookings-grid">
+                            {adminRefundRows.slice(0, 24).map((item) => {
+                                const bookingStatus = String(item.status || 'pending').toLowerCase();
+                                const paymentStatus = String(item.payment_status || 'pending').toLowerCase();
+                                const refundStatus = normalizeRefundStatus(item.refund_status) || (paymentStatus === 'refunded' ? 'completed' : '');
+                                const refundPillTone = refundStatus === 'completed' ? 'refunded' : refundStatus === 'processing' ? 'pending' : refundStatus || 'pending';
+                                const travelerId = typeof item.user_id === 'string' ? item.user_id.trim() : '';
+                                const refundActionLoading = adminRefundActionId === item.id;
+
+                                return (
+                                    <article key={item.id} className="rdb-provider-booking-card">
+                                        <div className="rdb-provider-booking-head">
+                                            <div>
+                                                <p>{item.listing_title || 'Package'}</p>
+                                                <small>Refund requested on {formatDateTime(item.refund_requested_at || item.created_at)}</small>
+                                            </div>
+                                            <div className="rdb-provider-booking-pills">
+                                                <span className={`rdb-pill rdb-pill-${bookingStatus}`}>{bookingStatus}</span>
+                                                <span className={`rdb-pill rdb-pill-${paymentStatus}`}>{paymentStatus}</span>
+                                                <span className={`rdb-pill rdb-pill-${refundPillTone}`}>refund {refundStatus || 'pending'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="rdb-provider-booking-meta">
+                                            <div><span>Traveler</span><strong>{item.traveler_name || 'N/A'}</strong></div>
+                                            <div><span>Email</span><strong>{item.traveler_email || 'N/A'}</strong></div>
+                                            <div><span>Phone</span><strong>{item.traveler_phone || 'N/A'}</strong></div>
+                                            <div><span>Total Paid</span><strong>{formatCurrency(item.total_price || 0)}</strong></div>
+                                            <div><span>Booking ID</span><strong>{item.id || 'N/A'}</strong></div>
+                                            <div><span>Payment ID</span><strong>{item.payment_id || 'N/A'}</strong></div>
+                                            <div><span>Request Reason</span><strong>{item.refund_request_reason || 'N/A'}</strong></div>
+                                            <div><span>Rejected Reason</span><strong>{item.rejection_reason || 'N/A'}</strong></div>
+                                            <div><span>Processed At</span><strong>{formatDateTime(item.refund_processed_at || null)}</strong></div>
+                                            <div><span>Refund Ref</span><strong>{item.refund_reference || 'N/A'}</strong></div>
+                                        </div>
+
+                                        <div className="rdb-refund-panel">
+                                            <div className="rdb-refund-form-grid">
+                                                <label className="rdb-refund-field">
+                                                    <span>Manual Refund Reference</span>
+                                                    <input
+                                                        type="text"
+                                                        className="rdb-refund-input"
+                                                        placeholder="Bank UTR / transaction id"
+                                                        value={adminRefundReferenceByBookingId[item.id] ?? item.refund_reference ?? ''}
+                                                        onChange={(event) => setAdminRefundReferenceByBookingId((current) => ({
+                                                            ...current,
+                                                            [item.id]: event.target.value,
+                                                        }))}
+                                                    />
+                                                </label>
+                                                <label className="rdb-refund-field rdb-refund-field-wide">
+                                                    <span>Admin Note</span>
+                                                    <textarea
+                                                        className="rdb-refund-textarea"
+                                                        rows={3}
+                                                        placeholder="Internal note or traveler-facing summary"
+                                                        value={adminRefundNoteByBookingId[item.id] ?? item.refund_admin_note ?? ''}
+                                                        onChange={(event) => setAdminRefundNoteByBookingId((current) => ({
+                                                            ...current,
+                                                            [item.id]: event.target.value,
+                                                        }))}
+                                                    />
+                                                </label>
+                                            </div>
+
+                                            <div className="rdb-provider-booking-actions">
+                                                {travelerId ? (
+                                                    <Link
+                                                        to={`/messages?user=${encodeURIComponent(travelerId)}`}
+                                                        className="rdb-row-edit-link"
+                                                    >
+                                                        Message Traveler
+                                                    </Link>
+                                                ) : (
+                                                    <button type="button" className="rdb-row-edit-link" disabled>
+                                                        Message Traveler
+                                                    </button>
+                                                )}
+                                                {refundStatus !== 'completed' && (
+                                                    <button
+                                                        type="button"
+                                                        className="rdb-row-edit-link"
+                                                        onClick={() => void handleAdminRefundUpdate(item, 'processing')}
+                                                        disabled={refundActionLoading}
+                                                    >
+                                                        {refundActionLoading ? <Loader2 size={14} className="animate-spin" /> : 'Mark In Progress'}
+                                                    </button>
+                                                )}
+                                                {refundStatus !== 'completed' && (
+                                                    <button
+                                                        type="button"
+                                                        className="rdb-row-edit-link rdb-row-edit-link--approve"
+                                                        onClick={() => void handleAdminRefundUpdate(item, 'completed')}
+                                                        disabled={refundActionLoading}
+                                                    >
+                                                        {refundActionLoading ? <Loader2 size={14} className="animate-spin" /> : 'Mark Refunded'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                            {adminRefundRows.length === 0 && <p className="rdb-empty">No refund requests yet.</p>}
+                        </div>
+                    </article>
+                </section>
+            );
         }
 
         if (activeSection === 'messages') {
@@ -3607,23 +4047,90 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'audits') {
             return (
-                <section className="rdb-panel rdb-panel-wide">
-                    <div className="rdb-panel-head">
-                        <h2>Recent Audit Events</h2>
-                        <small>{query ? `Filtered by "${search}"` : `${adminAuditRows.length} records`}</small>
-                    </div>
-                    <div className="rdb-list">
-                        {adminAuditRows.slice(0, 18).map((item) => (
-                            <div key={item.id} className="rdb-list-row">
-                                <div>
-                                    <p>{item.entity_type} - {item.action}</p>
-                                    <small>{item.entity_id}</small>
-                                </div>
-                                <small>{formatDate(item.created_at)}</small>
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <div className="rdb-panel-head">
+                            <div>
+                                <h2>Workspace Settings</h2>
+                                <small>Controls that affect real admin dashboard behavior</small>
                             </div>
-                        ))}
-                        {adminAuditRows.length === 0 && <p className="rdb-empty">No matching audit events.</p>}
-                    </div>
+                        </div>
+
+                        <div className="rdb-settings-group">
+                            <label className="rdb-settings-field">
+                                <span>Default admin landing section</span>
+                                <select
+                                    value={adminDefaultSection}
+                                    onChange={(event) => setAdminDefaultSection(normalizeSectionForRole('admin', event.target.value))}
+                                >
+                                    {ADMIN_DEFAULT_SECTION_OPTIONS.map((item) => (
+                                        <option key={item} value={item}>
+                                            {navItems.find((navItem) => navItem.key === item)?.label || item}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <label className="rdb-settings-field">
+                                <span>Live data refresh interval</span>
+                                <select
+                                    value={String(adminRefreshIntervalMs)}
+                                    onChange={(event) => setAdminRefreshIntervalMs(Number(event.target.value))}
+                                >
+                                    {ADMIN_REFRESH_INTERVAL_OPTIONS.map((item) => (
+                                        <option key={item.value} value={item.value}>{item.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            <label className="rdb-settings-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={adminCompactNav}
+                                    onChange={(event) => setAdminCompactNav(event.target.checked)}
+                                />
+                                <div>
+                                    <strong>Compact navigation</strong>
+                                    <small>Keep only primary sections in the sidebar and move secondary admin views into the topbar.</small>
+                                </div>
+                            </label>
+
+                            <button
+                                type="button"
+                                className={`rdb-settings-action${showAdminRecentActivity ? ' is-active' : ''}`}
+                                onClick={() => setShowAdminRecentActivity((current) => !current)}
+                            >
+                                <div>
+                                    <strong>Recent Activity</strong>
+                                    <small>Open the full platform activity log inside settings.</small>
+                                </div>
+                                <span>{showAdminRecentActivity ? 'Hide' : `${adminAuditRows.length} events`}</span>
+                            </button>
+                        </div>
+                    </article>
+
+                    <SalesSettingsEditor userId={user?.id} value={salesSettings} onSaved={setSalesSettings} />
+
+                    {showAdminRecentActivity && (
+                        <article className="rdb-panel rdb-panel-wide">
+                            <div className="rdb-panel-head">
+                                <h2>Recent Activity</h2>
+                                <small>{query ? `Filtered by "${search}"` : `${adminAuditRows.length} records`}</small>
+                            </div>
+                            <div className="rdb-list">
+                                {adminAuditRows.map((item) => (
+                                    <div key={item.id} className="rdb-list-row">
+                                        <div>
+                                            <p>{item.entity_type} - {item.action}</p>
+                                            <small>{item.entity_id}</small>
+                                        </div>
+                                        <small>{formatDate(item.created_at)}</small>
+                                    </div>
+                                ))}
+                                {adminAuditRows.length === 0 && <p className="rdb-empty">No matching activity yet.</p>}
+                            </div>
+                        </article>
+                    )}
                 </section>
             );
         }
@@ -3734,7 +4241,7 @@ export const RoleDashboard: React.FC = () => {
             <div className="container rdb-shell rdb-shell--admin">
                 <aside className="rdb-sidebar">
                     <nav className="rdb-nav" aria-label="Dashboard menu">
-                        {navItems.map((item) => {
+                        {(effectiveRole === 'admin' ? adminSidebarNavItems : navItems).map((item) => {
                             const Icon = item.icon;
                             return (
                                 <button
@@ -3849,6 +4356,30 @@ export const RoleDashboard: React.FC = () => {
                                 )}
                             </div>
                         </div>
+
+                        {effectiveRole === 'admin' && isDesktopDashboard && adminTopbarNavItems.length > 0 && (
+                            <div className="rdb-admin-topbar-shortcuts" aria-label="Admin shortcuts">
+                                {adminTopbarNavItems.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = item.key === activeSection;
+                                    const count = sectionCounts[item.key];
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={`topbar-${item.key}`}
+                                            className={`rdb-admin-shortcut${isActive ? ' is-active' : ''}`}
+                                            onClick={() => goToSection(item.key)}
+                                        >
+                                            <Icon size={15} />
+                                            <span>{item.label}</span>
+                                            {typeof count === 'number' && (
+                                                <strong>{count}</strong>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {!isDesktopDashboard && adminMobileMenuOpen && (
                             <nav id="rdb-admin-mobile-menu" className="rdb-admin-mobile-menu" aria-label="Dashboard sections">

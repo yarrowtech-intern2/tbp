@@ -170,7 +170,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Can I message providers before booking?',
-    answer: 'Yes. Betterpass has built-in messaging so you can chat directly with providers to ask questions, clarify details, or coordinate plans before you confirm a booking.',
+    answer: 'No, once your booking gets confirmed, U can directly message the provider.',
   },
 ] as const;
 
@@ -840,15 +840,19 @@ export const Home5: React.FC = () => {
                     <button
                       type="button"
                       className="home5-faq-trigger"
-                      onClick={() => setOpenFaqIndex(isOpen ? null : index)}
                       aria-expanded={isOpen}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenFaqIndex(isOpen ? null : index);
+                      }}
                     >
                       <span className="home5-faq-question">{item.question}</span>
-                      <span className="home5-faq-icon" aria-hidden="true">
-                        <span /><span />
-                      </span>
+                      <span className="home5-faq-icon" aria-hidden="true" />
                     </button>
-                    <div className="home5-faq-body">
+                    <div
+                      className="home5-faq-body"
+                      style={{ maxHeight: isOpen ? '300px' : '0px' }}
+                    >
                       <p>{item.answer}</p>
                     </div>
                   </div>

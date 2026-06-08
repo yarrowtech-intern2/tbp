@@ -263,6 +263,8 @@ export type AppNotificationType =
     | 'booking_completed'
     | 'payment_paid'
     | 'payment_refunded'
+    | 'refund_requested'
+    | 'refund_updated'
     | 'payment_failed'
     | 'verification_submitted'
     | 'verification_resubmitted'
@@ -374,6 +376,14 @@ export interface UnifiedBooking {
     traveler_email?: string | null;
     traveler_phone?: string | null;
     rejection_reason?: string | null;
+    refund_requested_at?: string | null;
+    refund_requested_by?: string | null;
+    refund_request_reason?: string | null;
+    refund_status?: string | null;
+    refund_processed_at?: string | null;
+    refund_processed_by?: string | null;
+    refund_admin_note?: string | null;
+    refund_reference?: string | null;
     provider_decision_at?: string | null;
     created_at: string;
 }
@@ -1053,6 +1063,14 @@ const mapUnifiedBooking = (row: Record<string, unknown>): UnifiedBooking => ({
     paid_at: typeof row.paid_at === 'string' ? row.paid_at : null,
     booking_date: typeof row.booking_date === 'string' ? row.booking_date : null,
     rejection_reason: typeof row.rejection_reason === 'string' ? row.rejection_reason : null,
+    refund_requested_at: typeof row.refund_requested_at === 'string' ? row.refund_requested_at : null,
+    refund_requested_by: typeof row.refund_requested_by === 'string' ? row.refund_requested_by : null,
+    refund_request_reason: typeof row.refund_request_reason === 'string' ? row.refund_request_reason : null,
+    refund_status: typeof row.refund_status === 'string' ? row.refund_status : null,
+    refund_processed_at: typeof row.refund_processed_at === 'string' ? row.refund_processed_at : null,
+    refund_processed_by: typeof row.refund_processed_by === 'string' ? row.refund_processed_by : null,
+    refund_admin_note: typeof row.refund_admin_note === 'string' ? row.refund_admin_note : null,
+    refund_reference: typeof row.refund_reference === 'string' ? row.refund_reference : null,
     provider_decision_at: typeof row.provider_decision_at === 'string' ? row.provider_decision_at : null,
     created_at: typeof row.created_at === 'string' ? row.created_at : new Date().toISOString(),
 });
@@ -2862,6 +2880,294 @@ export const getProviderBookings = async (userId: string): Promise<UnifiedBookin
     });
 };
 
+export const getAdminBookings = async (): Promise<UnifiedBooking[]> => {
+    const withTraveler = await supabase
+        .from('bookings')
+        .select('*, traveler_profile:user_id(full_name, email, phone)')
+        .order('created_at', { ascending: false });
+
+    if (!withTraveler.error) {
+        return safeArray(withTraveler.data as Record<string, unknown>[]).map(mapUnifiedBooking);
+    }
+
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching admin bookings:', error);
+        return [];
+    }
+
+    return safeArray(data as Record<string, unknown>[]).map(mapUnifiedBooking);
+};
+
+const isRefundWorkflowColumn = (columnName: string | null | undefined) => (
+    typeof columnName === 'string'
+    && (
+        columnName === 'payment_status'
+        || columnName.startsWith('refund_')
+    )
+);
+
+const throwRefundWorkflowSchemaError = (): never => {
+    throw new Error('Refund workflow schema is not ready. Run supabase/migrations/202606080001_add_booking_refund_workflow.sql and retry.');
+};
+
+const hasRefundablePaymentSignal = (booking: Record<string, unknown>) => {
+    const paymentStatus = String(booking.payment_status || '').trim().toLowerCase();
+    return paymentStatus === 'paid'
+        || (typeof booking.paid_at === 'string' && booking.paid_at.trim().length > 0)
+        || (typeof booking.payment_id === 'string' && booking.payment_id.trim().length > 0);
+};
+
+export const submitRefundRequest = async (args: {
+    bookingId: string;
+    travelerUserId: string;
+    reason: string;
+}): Promise<UnifiedBooking> => {
+    const bookingId = args.bookingId.trim();
+    const travelerUserId = args.travelerUserId.trim();
+    const reason = args.reason.trim();
+
+    if (!bookingId || !travelerUserId) {
+        throw new Error('Booking id or traveler id is missing.');
+    }
+    if (!reason) {
+        throw new Error('Please provide a short refund reason.');
+    }
+
+    const bookingResult = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .maybeSingle();
+
+    if (bookingResult.error) throw bookingResult.error;
+    if (!bookingResult.data) throw new Error('Booking not found.');
+
+    const rawBooking = bookingResult.data as Record<string, unknown>;
+    const bookingTravelerId = typeof rawBooking.user_id === 'string' ? rawBooking.user_id.trim() : '';
+    if (!bookingTravelerId || bookingTravelerId !== travelerUserId) {
+        throw new Error('You are not allowed to request a refund for this booking.');
+    }
+
+    const bookingStatus = normalizeBookingStatus(typeof rawBooking.status === 'string' ? rawBooking.status : undefined);
+    if (bookingStatus !== 'rejected' && bookingStatus !== 'cancelled') {
+        throw new Error('Refund requests are available only after a booking is rejected or cancelled.');
+    }
+
+    if (!hasRefundablePaymentSignal(rawBooking)) {
+        throw new Error('This booking does not have a settled payment to refund.');
+    }
+
+    const paymentStatus = String(rawBooking.payment_status || '').trim().toLowerCase();
+    if (paymentStatus === 'refunded') {
+        throw new Error('This booking is already marked as refunded.');
+    }
+
+    const currentRefundStatus = String(rawBooking.refund_status || '').trim().toLowerCase();
+    if (
+        currentRefundStatus === 'pending'
+        || currentRefundStatus === 'processing'
+        || currentRefundStatus === 'completed'
+        || (typeof rawBooking.refund_requested_at === 'string' && rawBooking.refund_requested_at.trim().length > 0)
+    ) {
+        throw new Error('A refund request already exists for this booking.');
+    }
+
+    const now = new Date().toISOString();
+    const updatePayload: Record<string, unknown> = {
+        refund_requested_at: now,
+        refund_requested_by: travelerUserId,
+        refund_request_reason: reason,
+        refund_status: 'pending',
+        refund_processed_at: null,
+        refund_processed_by: null,
+        refund_admin_note: null,
+        refund_reference: null,
+    };
+
+    while (Object.keys(updatePayload).length > 0) {
+        const result = await supabase
+            .from('bookings')
+            .update(updatePayload)
+            .eq('id', bookingId)
+            .eq('user_id', travelerUserId)
+            .select('*')
+            .maybeSingle();
+
+        if (!result.error && result.data) {
+            const updated = mapUnifiedBooking(result.data as Record<string, unknown>);
+            const listingTitle = typeof rawBooking.listing_title === 'string' && rawBooking.listing_title.trim()
+                ? rawBooking.listing_title.trim()
+                : 'your booking';
+            const providerUserId = typeof rawBooking.provider_user_id === 'string' ? rawBooking.provider_user_id : null;
+
+            await createNotifications([
+                {
+                    userId: travelerUserId,
+                    actorUserId: travelerUserId,
+                    type: 'refund_requested',
+                    title: 'Refund request submitted',
+                    body: `Your refund request for ${listingTitle} is now pending admin review.`,
+                    metadata: { booking_id: bookingId, route: '/dashboard/tourist?section=bookings' },
+                },
+            ]);
+
+            await notifyAdmins({
+                actorUserId: travelerUserId,
+                type: 'refund_requested',
+                title: 'Refund request pending',
+                body: `${updated.traveler_name || 'A traveler'} requested a refund for ${listingTitle}.`,
+                metadata: {
+                    booking_id: bookingId,
+                    traveler_user_id: travelerUserId,
+                    provider_user_id: providerUserId,
+                    listing_title: listingTitle,
+                    traveler_email: updated.traveler_email || null,
+                    traveler_phone: updated.traveler_phone || null,
+                    refund_request_reason: reason,
+                    route: '/dashboard/admin?section=bookings',
+                },
+            });
+
+            return updated;
+        }
+
+        if (result.error) {
+            if (isMissingLegacyBookingTriggerColumnError(result.error)) {
+                throw new Error('Database trigger is using legacy booking columns. Run docs/bookings-legacy-trigger-compat.sql and retry.');
+            }
+
+            if (isMissingColumnError(result.error)) {
+                const missingColumn = extractMissingColumnName(result.error.message);
+                if (isRefundWorkflowColumn(missingColumn)) {
+                    throwRefundWorkflowSchemaError();
+                }
+                if (missingColumn && missingColumn in updatePayload) {
+                    delete updatePayload[missingColumn];
+                    continue;
+                }
+            }
+
+            throw result.error;
+        }
+    }
+
+    throw new Error('Refund workflow schema is not ready. Run supabase/migrations/202606080001_add_booking_refund_workflow.sql and retry.');
+};
+
+export const updateRefundRequest = async (args: {
+    bookingId: string;
+    adminUserId: string;
+    status: 'processing' | 'completed';
+    adminNote?: string | null;
+    refundReference?: string | null;
+}): Promise<UnifiedBooking> => {
+    const bookingId = args.bookingId.trim();
+    const adminUserId = args.adminUserId.trim();
+
+    if (!bookingId || !adminUserId) {
+        throw new Error('Booking id or admin id is missing.');
+    }
+
+    const bookingResult = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .maybeSingle();
+
+    if (bookingResult.error) throw bookingResult.error;
+    if (!bookingResult.data) throw new Error('Booking not found.');
+
+    const rawBooking = bookingResult.data as Record<string, unknown>;
+    const currentRefundStatus = String(rawBooking.refund_status || '').trim().toLowerCase();
+    if (!currentRefundStatus && !(typeof rawBooking.refund_requested_at === 'string' && rawBooking.refund_requested_at.trim().length > 0)) {
+        throw new Error('This booking does not have a refund request yet.');
+    }
+    if (currentRefundStatus === 'completed' && args.status === 'completed') {
+        throw new Error('This refund is already marked as completed.');
+    }
+
+    const now = new Date().toISOString();
+    const normalizedNote = typeof args.adminNote === 'string' ? args.adminNote.trim() : '';
+    const normalizedReference = typeof args.refundReference === 'string' ? args.refundReference.trim() : '';
+
+    const updatePayload: Record<string, unknown> = {
+        refund_status: args.status,
+        refund_admin_note: normalizedNote || null,
+        refund_reference: normalizedReference || null,
+        refund_processed_at: now,
+        refund_processed_by: adminUserId,
+    };
+
+    if (args.status === 'completed') {
+        updatePayload.payment_status = 'refunded';
+    }
+
+    while (Object.keys(updatePayload).length > 0) {
+        const result = await supabase
+            .from('bookings')
+            .update(updatePayload)
+            .eq('id', bookingId)
+            .select('*')
+            .maybeSingle();
+
+        if (!result.error && result.data) {
+            const updated = mapUnifiedBooking(result.data as Record<string, unknown>);
+            const listingTitle = typeof rawBooking.listing_title === 'string' && rawBooking.listing_title.trim()
+                ? rawBooking.listing_title.trim()
+                : 'your booking';
+            const travelerUserId = typeof rawBooking.user_id === 'string' ? rawBooking.user_id : '';
+
+            if (travelerUserId) {
+                await createNotifications([
+                    {
+                        userId: travelerUserId,
+                        actorUserId: adminUserId,
+                        type: args.status === 'completed' ? 'payment_refunded' : 'refund_updated',
+                        title: args.status === 'completed' ? 'Refund completed' : 'Refund in progress',
+                        body: args.status === 'completed'
+                            ? `Your refund for ${listingTitle} has been processed manually by the admin team.`
+                            : `Your refund request for ${listingTitle} is now being processed by admin.`,
+                        metadata: {
+                            booking_id: bookingId,
+                            refund_reference: normalizedReference || null,
+                            refund_admin_note: normalizedNote || null,
+                            route: '/dashboard/tourist?section=bookings',
+                        },
+                    },
+                ]);
+            }
+
+            return updated;
+        }
+
+        if (result.error) {
+            if (isMissingLegacyBookingTriggerColumnError(result.error)) {
+                throw new Error('Database trigger is using legacy booking columns. Run docs/bookings-legacy-trigger-compat.sql and retry.');
+            }
+
+            if (isMissingColumnError(result.error)) {
+                const missingColumn = extractMissingColumnName(result.error.message);
+                if (isRefundWorkflowColumn(missingColumn)) {
+                    throwRefundWorkflowSchemaError();
+                }
+                if (missingColumn && missingColumn in updatePayload) {
+                    delete updatePayload[missingColumn];
+                    continue;
+                }
+            }
+
+            throw result.error;
+        }
+    }
+
+    throw new Error('Refund workflow schema is not ready. Run supabase/migrations/202606080001_add_booking_refund_workflow.sql and retry.');
+};
+
 export const respondToBookingRequest = async (args: {
     bookingId: string;
     providerUserId: string;
@@ -3008,7 +3314,7 @@ export const respondToBookingRequest = async (args: {
                     actorUserId: providerUserId,
                     type: 'booking_cancelled',
                     title: 'Booking rejected',
-                    body: `${listingTitle} was rejected by the provider. Refund will be handled manually by the admin team.`,
+                    body: `${listingTitle} was rejected by the provider. You can request a refund from your bookings dashboard.`,
                     metadata: {
                         booking_id: bookingId,
                         route: '/dashboard/tourist?section=bookings',
@@ -3018,9 +3324,9 @@ export const respondToBookingRequest = async (args: {
                 {
                     userId: travelerId,
                     actorUserId: providerUserId,
-                    type: 'payment_refunded',
-                    title: 'Refund initiated',
-                    body: `Your refund request for ${listingTitle} has been sent to admin for manual processing.`,
+                    type: 'refund_requested',
+                    title: 'Refund available',
+                    body: `Submit a refund request for ${listingTitle} from your bookings dashboard if you want the admin team to process it.`,
                     metadata: { booking_id: bookingId, route: '/dashboard/tourist?section=bookings' },
                 },
                 {
@@ -3032,23 +3338,6 @@ export const respondToBookingRequest = async (args: {
                     metadata: { booking_id: bookingId, route: '/dashboard/provider?section=bookings' },
                 },
             ]);
-
-            await notifyAdmins({
-                actorUserId: providerUserId,
-                type: 'payment_refunded',
-                title: 'Manual refund required',
-                body: `Booking ${bookingId} was rejected. Process manual refund for traveler ${updated.traveler_name || travelerId}.`,
-                metadata: {
-                    booking_id: bookingId,
-                    traveler_user_id: travelerId,
-                    provider_user_id: providerUserId,
-                    listing_title: listingTitle,
-                    traveler_email: updated.traveler_email || null,
-                    traveler_phone: updated.traveler_phone || null,
-                    rejection_reason: rejectionReason,
-                    route: '/dashboard/admin',
-                },
-            });
         }
     }
 
