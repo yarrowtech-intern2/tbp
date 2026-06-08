@@ -1333,6 +1333,133 @@
   }
 }
 
+/* ── FAQ Section ── */
+
+.home5-faq-section {
+  position: relative;
+  padding: clamp(5rem, 10vw, 8rem) 0;
+  background: #ffffff;
+}
+
+.home5-faq-section .container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home5-faq-title {
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(2rem, 4.5vw, 3.4rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-align: center;
+  color: #111111;
+}
+
+.home5-faq-grid {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home5-faq-card {
+  background: #f8f8f8;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.home5-faq-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+.home5-faq-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1rem, 2vw, 1.35rem) clamp(1.2rem, 2.5vw, 1.6rem);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.home5-faq-question {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.3;
+}
+
+.home5-faq-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.home5-faq-icon span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 2px;
+  background: #111111;
+  border-radius: 1px;
+  transition: transform 0.25s ease;
+}
+
+.home5-faq-icon span:first-child {
+  transform: translate(-50%, -50%);
+}
+
+.home5-faq-icon span:last-child {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.home5-faq-card.is-open .home5-faq-icon span:last-child {
+  transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.home5-faq-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.home5-faq-card.is-open .home5-faq-body {
+  grid-template-rows: 1fr;
+}
+
+.home5-faq-body > p {
+  overflow: hidden;
+  margin: 0;
+  padding: 0 clamp(1.2rem, 2.5vw, 1.6rem) clamp(1rem, 2vw, 1.35rem);
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(0.88rem, 1.3vw, 1rem);
+  font-weight: 400;
+  line-height: 1.6;
+  color: rgba(17, 17, 17, 0.65);
+}
+
+@media (max-width: 768px) {
+  .home5-faq-section {
+    padding: clamp(3rem, 8vw, 5rem) 0;
+  }
+}
+
+/* ── Footer ── */
+
 .home5-footer {
   position: relative;
   min-height: 100vh;

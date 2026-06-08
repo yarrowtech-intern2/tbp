@@ -147,6 +147,33 @@ const FINAL_CTA_WORDS = FINAL_CTA_COPY.split(/\s+/);
 
 const HOME5_FOOTER_TITLE = 'Travel beautifully, hassle free\nwith The Betterpass';
 
+const FAQ_ITEMS = [
+  {
+    question: 'What is Betterpass?',
+    answer: 'Betterpass is a travel discovery and booking platform that brings stays, guided experiences, local experts, and secure booking into one place — so you can plan and book your entire trip without juggling tabs or scattered services.',
+  },
+  {
+    question: 'How does booking work?',
+    answer: 'It follows three simple steps: Discover listings for stays, tours, activities, and guides. Compare options side by side with clear pricing and inclusions. Then Book and pay securely — all in one flow.',
+  },
+  {
+    question: 'Are the providers verified?',
+    answer: 'Yes. Every provider on Betterpass goes through an admin review and approval process before their listings go live. This ensures you only see trusted, vetted stays, guides, and experiences.',
+  },
+  {
+    question: 'What can I book on Betterpass?',
+    answer: 'You can book across four categories: Stays (hotels, camps, villas), Experiences (safaris, walking tours, food trails, day plans), Guides (local hosts, drivers, experts), and Support (transfers, timing, day-of coordination).',
+  },
+  {
+    question: 'Is my payment secure?',
+    answer: 'Absolutely. All payments are processed through Razorpay, a trusted and secure payment gateway. Your financial information is never stored on our servers.',
+  },
+  {
+    question: 'Can I message providers before booking?',
+    answer: 'Yes. Betterpass has built-in messaging so you can chat directly with providers to ask questions, clarify details, or coordinate plans before you confirm a booking.',
+  },
+] as const;
+
 const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
 
 const isInternalHref = (href: string) => href.startsWith('/') || href.startsWith('#');
@@ -188,6 +215,7 @@ export const Home5: React.FC = () => {
   const [contactSubmitting, setContactSubmitting] = useState(false);
   const [contactStatus, setContactStatus] = useState<string | null>(null);
   const [contactError, setContactError] = useState<string | null>(null);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
   const bookingDragStartXRef = useRef<number | null>(null);
@@ -791,6 +819,42 @@ export const Home5: React.FC = () => {
                 <Globe className="home5-final-globe" aria-hidden="true" />
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="home5-faq-section">
+        <div className="container">
+          <ScrollReveal>
+            <span className="home5-section-eyebrow">Support</span>
+          </ScrollReveal>
+          <ScrollReveal delay={80}>
+            <h2 className="home5-faq-title">Frequently asked questions</h2>
+          </ScrollReveal>
+          <div className="home5-faq-grid">
+            {FAQ_ITEMS.map((item, index) => {
+              const isOpen = openFaqIndex === index;
+              return (
+                <ScrollReveal key={item.question} delay={100 + index * 60}>
+                  <div className={`home5-faq-card${isOpen ? ' is-open' : ''}`}>
+                    <button
+                      type="button"
+                      className="home5-faq-trigger"
+                      onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="home5-faq-question">{item.question}</span>
+                      <span className="home5-faq-icon" aria-hidden="true">
+                        <span /><span />
+                      </span>
+                    </button>
+                    <div className="home5-faq-body">
+                      <p>{item.answer}</p>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              );
+            })}
           </div>
         </div>
       </section>
