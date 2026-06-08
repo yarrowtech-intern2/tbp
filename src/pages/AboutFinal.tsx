@@ -1,5 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  DEFAULT_FOOTER_CONTENT,
+  getFooterContactDetails,
+  getPublicAppContent,
+  type FooterContent,
+  type FooterLink,
+} from '../lib/appContent';
 import './about-final.css';
 
 const ABOUT_STORY_SECTIONS = [
@@ -43,6 +50,15 @@ const ABOUT_STORY_SECTIONS = [
 
 const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
+
+const shouldOpenInNewTab = (href: string) => (
+  !href.startsWith('mailto:')
+  && !href.startsWith('tel:')
+  && !href.startsWith('#')
+  && !href.startsWith('/')
+);
+
 type AboutStorySectionProps = {
   id: string;
   eyebrow: string;
@@ -55,7 +71,7 @@ type AboutStorySectionProps = {
 
 const AboutStorySection: React.FC<AboutStorySectionProps> = ({ id, eyebrow, title, copy, image, video, mediaAlt }) => {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const words = useRef(copy.split(/\s+/)).current;
+  const words = useMemo(() => copy.split(/\s+/), [copy]);
   const [activeWordIndex, setActiveWordIndex] = useState(0);
 
   useEffect(() => {
@@ -143,8 +159,82 @@ const AboutStorySection: React.FC<AboutStorySectionProps> = ({ id, eyebrow, titl
   );
 };
 
+const AboutFinalContactSection: React.FC<{ footerContent: FooterContent }> = ({ footerContent }) => {
+  const contactDetails = getFooterContactDetails(footerContent);
+  const contactLinks = [
+    contactDetails.phone ? { ...contactDetails.phone, type: 'Phone' } : null,
+    contactDetails.email ? { ...contactDetails.email, type: 'Email' } : null,
+  ].filter((item): item is FooterLink & { type: string } => Boolean(item));
+
+  return (
+    <section className="about-final-contact-section" aria-labelledby="about-final-contact-title">
+      <div className="about-final-contact-shell">
+        <div className="about-final-contact-copy">
+          <span className="about-final-eyebrow">Where was BetterPass born?</span>
+          <h2 id="about-final-contact-title" className="about-final-contact-title">Kolkata, India</h2>
+
+          <div className="about-final-contact-links" aria-label="BetterPass contact details">
+            {contactLinks.map((link) => {
+              const href = getFooterHref(link);
+              return (
+                <a
+                  className="about-final-contact-link"
+                  key={`${link.type}-${link.label}`}
+                  href={href}
+                >
+                  <span>{link.type}</span>
+                  <strong>{link.label}</strong>
+                </a>
+              );
+            })}
+          </div>
+
+          {footerContent.socials.length > 0 ? (
+            <div className="about-final-contact-socials" aria-label="Social links">
+              {footerContent.socials.map((link, index) => {
+                const href = getFooterHref(link);
+                return (
+                  <a
+                    key={`${link.label}-${index}`}
+                    href={href}
+                    target={shouldOpenInNewTab(href) ? '_blank' : undefined}
+                    rel={shouldOpenInNewTab(href) ? 'noreferrer' : undefined}
+                  >
+                    {link.label}
+                  </a>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
+        <figure className="about-final-map-wrap" aria-label="Kolkata map">
+          <img src="/map/kolkata-map.svg" alt="Kolkata map showing the BetterPass address" loading="lazy" decoding="async" />
+        </figure>
+      </div>
+    </section>
+  );
+};
+
 export const AboutFinal: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getPublicAppContent()
+      .then((content) => {
+        if (!cancelled) setFooterContent(content.footer);
+      })
+      .catch((error) => {
+        console.error('Failed to load about contact footer content:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -203,6 +293,8 @@ export const AboutFinal: React.FC = () => {
           mediaAlt={section.mediaAlt}
         />
       ))}
+
+      <AboutFinalContactSection footerContent={footerContent} />
     </main>
   );
 };

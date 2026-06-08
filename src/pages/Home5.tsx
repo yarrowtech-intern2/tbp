@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import { Globe } from '../components/ui/globe';
+import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterContent, type FooterLink } from '../lib/appContent';
 import { submitContactSubmission } from '../lib/contactSubmissions';
@@ -747,6 +748,8 @@ export const Home5: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <MacbookScrollDemo />
 
       <section ref={finalSectionRef} className="home5-final-section">
         <div className="container">

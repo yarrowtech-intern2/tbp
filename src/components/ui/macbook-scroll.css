@@ -1,0 +1,414 @@
+.macbook-scroll-section {
+  position: relative;
+  min-height: 235vh;
+  min-height: 235dvh;
+  overflow: clip;
+  /* background:
+    radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.035), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(255, 130, 28, 0.08), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%); */
+    background: white;
+  color: #111111;
+}
+
+.macbook-scroll-sticky {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  align-items: center;
+  overflow: clip;
+}
+
+.macbook-scroll-shell {
+  width: min(100% - 40px, 1280px);
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: max(56px, env(safe-area-inset-top) + 24px) 0 max(24px, env(safe-area-inset-bottom) + 16px);
+  display: grid;
+  align-content: center;
+  gap: clamp(18px, 3vw, 30px);
+  justify-items: center;
+  box-sizing: border-box;
+}
+
+.macbook-scroll-title {
+  max-width: 18ch;
+  margin: 0;
+  padding-bottom: clamp(1rem, 2.5vw, 2rem);
+  text-align: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(2rem, 5vw, 4.4rem);
+  font-weight: 700;
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  color: #111111;
+  transform: translateY(var(--macbook-text-offset, 0px));
+  opacity: var(--macbook-text-opacity, 1);
+  transition: transform 160ms linear, opacity 160ms linear;
+}
+
+.macbook-scroll-device-wrap {
+  position: relative;
+  width: min(100%, 980px);
+  min-height: clamp(28rem, 62vh, 42rem);
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  perspective: 1800px;
+}
+
+.macbook-scroll-device {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  transform: translateY(var(--macbook-device-offset, 0px));
+  transition: transform 160ms linear;
+}
+
+.macbook-scroll-lid-shell {
+  position: relative;
+  width: clamp(18rem, 62vw, 36rem);
+  height: clamp(13rem, 40vw, 21rem);
+  perspective: 1800px;
+  transform: translateY(var(--macbook-screen-lift, 0px)) scale(var(--macbook-screen-scale, 1)) translateZ(0);
+  transition: transform 160ms linear;
+}
+
+.macbook-scroll-lid-back {
+  position: absolute;
+  inset: auto 0 0;
+  height: 75%;
+  border-radius: 1.7rem 1.7rem 0.9rem 0.9rem;
+  background: linear-gradient(180deg, #08080b 0%, #010102 100%);
+  transform: perspective(1800px) rotateX(-25deg);
+  transform-origin: bottom center;
+  opacity: var(--macbook-chassis-opacity, 1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.42);
+  transition: opacity 160ms linear;
+}
+
+.macbook-scroll-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.94);
+  transform: translate(-50%, -42%);
+}
+
+.macbook-scroll-lid {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.7rem;
+  transform-origin: top center;
+  transform-style: preserve-3d;
+  transform:
+    scaleX(var(--macbook-scale-x, 1))
+    scaleY(var(--macbook-scale-y, 1))
+    rotateX(var(--macbook-lid-rotate, -28deg))
+    translateY(var(--macbook-lid-offset, 0px));
+  box-shadow: 0 24px 54px rgba(0, 0, 0, calc(0.34 * var(--macbook-bezel-opacity, 1)));
+  transition: transform 160ms linear;
+}
+
+.macbook-scroll-lid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.7rem;
+  background: #010102;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  opacity: var(--macbook-bezel-opacity, 1);
+  transition: opacity 160ms linear;
+}
+
+.macbook-scroll-screen {
+  position: absolute;
+  inset: clamp(8px, 1vw, 10px);
+  overflow: hidden;
+  border-radius: var(--macbook-screen-radius, 20px);
+  background: #111318;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  z-index: 1;
+  transition: border-radius 160ms linear;
+}
+
+.macbook-scroll-screen img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+}
+
+.macbook-scroll-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 24%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0) 28%);
+  pointer-events: none;
+}
+
+.macbook-scroll-image-wrap {
+  position: relative;
+  width: clamp(18rem, 62vw, 36rem);
+  padding: clamp(4px, 0.5vw, 6px);
+  padding-top: clamp(10px, 1.2vw, 14px);
+  background: linear-gradient(180deg, #1a1a1f 0%, #0a0a0e 100%);
+  border-radius: 1.2rem 1.2rem 0 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 24px 54px rgba(0, 0, 0, 0.4);
+  transform-origin: bottom center;
+  transform:
+    perspective(1200px)
+    rotateX(var(--macbook-lid-rotate, -8deg))
+    translateY(var(--macbook-screen-lift, 0px))
+    scale(var(--macbook-screen-scale, 1));
+  transition: transform 160ms linear;
+}
+
+.macbook-scroll-image-wrap::before {
+  content: '';
+  position: absolute;
+  top: clamp(2px, 0.4vw, 5px);
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #2a2a30;
+  transform: translateX(-50%);
+}
+
+.macbook-scroll-hero-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.macbook-scroll-base {
+  position: relative;
+  z-index: 2;
+  width: clamp(18rem, 62vw, 36rem);
+  min-height: clamp(11rem, 31vw, 15rem);
+  margin-top: calc(clamp(8rem, 22vw, 11rem) * -0.14);
+  border-radius: 1.35rem 1.35rem 1rem 1rem;
+  background: linear-gradient(180deg, #3a3a3f 0%, #2a2a2e 38%, #242427 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 26px 60px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+  opacity: var(--macbook-chassis-opacity, 1);
+  transition: opacity 160ms linear;
+}
+
+.macbook-scroll-hinge {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 74%;
+  height: 0.7rem;
+  background: #09090b;
+  transform: translateX(-50%);
+}
+
+.macbook-scroll-deck {
+  display: grid;
+  grid-template-columns: minmax(1.9rem, 10%) minmax(0, 1fr) minmax(1.9rem, 10%);
+  gap: clamp(8px, 1.5vw, 14px);
+  padding: 1.2rem 1.05rem 0.75rem;
+}
+
+.macbook-scroll-speaker {
+  min-height: clamp(8rem, 22vw, 11rem);
+  border-radius: 0.6rem;
+  background-image: radial-gradient(circle, rgba(12, 12, 14, 0.92) 0.7px, transparent 0.7px);
+  background-size: 4px 4px;
+  background-position: center;
+  opacity: 0.95;
+}
+
+.macbook-scroll-keyboard {
+  display: grid;
+  gap: 2px;
+  padding: 0.35rem;
+  border-radius: 0.8rem;
+  background: #0b0b0e;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 20px 38px rgba(255, 255, 255, 0.06);
+}
+
+.macbook-scroll-key-row {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.macbook-scroll-key {
+  min-height: clamp(0.95rem, 2.2vw, 1.4rem);
+  border-radius: 0.3rem;
+  background: linear-gradient(180deg, #17171c 0%, #09090d 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: clamp(0.34rem, 0.7vw, 0.5rem);
+  font-weight: 600;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  text-transform: lowercase;
+}
+
+.macbook-scroll-key.is-space {
+  grid-column: span 4;
+}
+
+.macbook-scroll-key.is-wide {
+  grid-column: span 2;
+}
+
+.macbook-scroll-key.is-arrow {
+  font-size: clamp(0.46rem, 0.9vw, 0.62rem);
+}
+
+.macbook-scroll-trackpad {
+  width: 38%;
+  height: clamp(4.1rem, 12vw, 6.6rem);
+  margin: 0 auto 0.9rem;
+  border-radius: 0.9rem;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.1));
+}
+
+.macbook-scroll-notch {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 18%;
+  height: 0.45rem;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(180deg, #1d1d21 0%, #0c0c0d 100%);
+  transform: translateX(-50%);
+}
+
+.macbook-scroll-badge {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 3;
+  opacity: var(--macbook-chassis-opacity, 1);
+  transition: opacity 160ms linear;
+}
+
+.macbook-demo-badge {
+  width: 2.5rem;
+  height: 2.5rem;
+  transform: rotate(-12deg);
+}
+
+.macbook-scroll-badge a,
+.macbook-scroll-badge button {
+  display: inline-flex;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.macbook-scroll-floor {
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  width: min(76vw, 34rem);
+  height: 3.8rem;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at center, rgba(255, 137, 41, 0.34) 0%, rgba(255, 137, 41, 0.12) 38%, rgba(255, 137, 41, 0) 72%);
+  filter: blur(24px);
+  pointer-events: none;
+  opacity: calc(0.9 * var(--macbook-chassis-opacity, 1));
+  transition: opacity 160ms linear;
+}
+
+.macbook-scroll-gradient {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 8rem;
+  background: linear-gradient(180deg, rgba(6, 6, 8, 0), rgba(6, 6, 8, 0.92));
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .macbook-scroll-section {
+    min-height: 210vh;
+    min-height: 210dvh;
+  }
+
+  .macbook-scroll-shell {
+    width: min(100% - 28px, 1280px);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: max(48px, env(safe-area-inset-top) + 16px);
+  }
+
+  .macbook-scroll-title {
+    max-width: 13ch;
+    font-size: clamp(1.6rem, 8vw, 2.35rem);
+    line-height: 0.98;
+  }
+
+  .macbook-scroll-device-wrap {
+    min-height: clamp(22rem, 54vh, 31rem);
+  }
+
+  .macbook-scroll-base,
+  .macbook-scroll-lid-shell,
+  .macbook-scroll-image-wrap {
+    width: min(88vw, 24rem);
+  }
+
+  .macbook-scroll-base {
+    min-height: clamp(9.5rem, 42vw, 11.5rem);
+  }
+
+  .macbook-scroll-key {
+    border-radius: 0.24rem;
+    font-size: clamp(0.26rem, 1vw, 0.38rem);
+  }
+
+  .macbook-scroll-badge {
+    left: 0.75rem;
+    bottom: 0.75rem;
+  }
+
+  .macbook-scroll-floor {
+    bottom: 10%;
+    width: min(74vw, 20rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .macbook-scroll-title,
+  .macbook-scroll-device,
+  .macbook-scroll-lid,
+  .macbook-scroll-lid-shell,
+  .macbook-scroll-lid-back,
+  .macbook-scroll-base,
+  .macbook-scroll-badge,
+  .macbook-scroll-floor {
+    transition: none;
+  }
+}
