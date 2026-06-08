@@ -216,10 +216,12 @@ export const Home5: React.FC = () => {
   const [contactStatus, setContactStatus] = useState<string | null>(null);
   const [contactError, setContactError] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [stickyLogoVisible, setStickyLogoVisible] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
   const bookingDragStartXRef = useRef<number | null>(null);
   const bookingDragDeltaXRef = useRef(0);
+  const valueSectionRef = useRef<HTMLElement | null>(null);
   const howSectionRef = useRef<HTMLElement | null>(null);
   const finalSectionRef = useRef<HTMLElement | null>(null);
 
@@ -275,6 +277,29 @@ export const Home5: React.FC = () => {
       window.removeEventListener('pointerdown', handlePointerDown);
     };
   }, [heroMenuOpen]);
+
+  useEffect(() => {
+    const node = valueSectionRef.current;
+    if (!node || stickyLogoVisible) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setStickyLogoVisible(true);
+        observer.disconnect();
+      },
+      {
+        threshold: 0.2,
+        rootMargin: '-6% 0px -72% 0px',
+      },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [stickyLogoVisible]);
 
   const goToCard = (index: number) => {
     const total = VALUE_IMAGE_CARDS.length;
@@ -456,6 +481,14 @@ export const Home5: React.FC = () => {
   } satisfies React.CSSProperties;
   return (
     <main className="home5-page">
+      <Link
+        to="/"
+        className={`home5-sticky-logo${stickyLogoVisible ? ' is-visible' : ''}`}
+        aria-label="The Betterpass home"
+      >
+        <img src="/logo/final-logo.png" alt="The Betterpass" />
+      </Link>
+
       <section className="home5-hero">
         <div className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}`}>
           <button
@@ -504,7 +537,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <section className="home5-value-section">
+      <section ref={valueSectionRef} className="home5-value-section">
         <div className="container">
           <ScrollReveal className="home5-value-shell">
             <span className="home5-section-eyebrow">Why The Betterpass</span>
