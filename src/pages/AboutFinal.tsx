@@ -9,31 +9,35 @@ const ABOUT_STORY_SECTIONS = [
     title: 'About Betterpass',
     copy: 'Betterpass exists to make travel feel clear before it becomes memorable. We bring trusted stays, guided experiences, local providers, and secure booking into one calm path, so every trip starts with confidence instead of scattered planning.',
     image: undefined,
-    imageAlt: undefined,
+    video: undefined,
+    mediaAlt: undefined,
   },
   {
     id: 'why',
     eyebrow: 'Why Betterpass exists',
     title: 'Travel should feel clear before it feels memorable',
     copy: 'Betterpass exists because planning a trip should not mean juggling scattered tabs, uncertain providers, vague details, and last minute doubt. We bring stays, guided experiences, local experts, and booking decisions into one calm path so travelers can move from curiosity to confidence faster.',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80',
-    imageAlt: 'Quiet beach shoreline used as a travel planning placeholder',
+    image: undefined,
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1780904026/3_pcoth2.mp4',
+    mediaAlt: 'Travel planning video placeholder for why Betterpass exists',
   },
   {
     id: 'safer',
     eyebrow: 'How we make travel safer',
     title: 'Trust is designed into every step',
     copy: 'Safer travel starts before checkout. Betterpass helps travelers compare clearer listings, understand who is hosting the experience, see what is included, and choose providers with stronger signals. The goal is simple: fewer surprises, better decisions, and a booking path that feels transparent.',
-    image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&w=1400&q=80',
-    imageAlt: 'Traveler looking across a mountain landscape used as a safety placeholder',
+    image: undefined,
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1780904026/1_zldhdr.mp4',
+    mediaAlt: 'Travel safety video placeholder for Betterpass trust',
   },
   {
     id: 'community',
     eyebrow: 'Community',
     title: 'Better trips are built with local people',
     copy: 'The Betterpass community connects travelers with hosts, guides, tour operators, and local businesses who shape the real texture of a place. We believe memorable travel comes from context, care, timing, and people who know the route beyond the surface.',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80',
-    imageAlt: 'People gathered near a warm travel setting used as a community placeholder',
+    image: undefined,
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1780904026/2_raucel.mp4',
+    mediaAlt: 'Community travel video placeholder for local people',
   },
 ] as const;
 
@@ -45,10 +49,11 @@ type AboutStorySectionProps = {
   title: string;
   copy: string;
   image?: string;
-  imageAlt?: string;
+  video?: string;
+  mediaAlt?: string;
 };
 
-const AboutStorySection: React.FC<AboutStorySectionProps> = ({ id, eyebrow, title, copy, image, imageAlt }) => {
+const AboutStorySection: React.FC<AboutStorySectionProps> = ({ id, eyebrow, title, copy, image, video, mediaAlt }) => {
   const sectionRef = useRef<HTMLElement | null>(null);
   const words = useRef(copy.split(/\s+/)).current;
   const [activeWordIndex, setActiveWordIndex] = useState(0);
@@ -115,9 +120,21 @@ const AboutStorySection: React.FC<AboutStorySectionProps> = ({ id, eyebrow, titl
             </p>
           </div>
 
-          {image ? (
-            <figure className="about-final-image-wrap">
-              <img src={image} alt={imageAlt || ''} loading="lazy" decoding="async" />
+          {image || video ? (
+            <figure className="about-final-media-wrap" aria-label={mediaAlt}>
+              {video ? (
+                <video
+                  src={video}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  aria-label={mediaAlt}
+                />
+              ) : (
+                <img src={image} alt={mediaAlt || ''} loading="lazy" decoding="async" />
+              )}
             </figure>
           ) : null}
         </div>
@@ -182,7 +199,8 @@ export const AboutFinal: React.FC = () => {
           title={section.title}
           copy={section.copy}
           image={section.image}
-          imageAlt={section.imageAlt}
+          video={section.video}
+          mediaAlt={section.mediaAlt}
         />
       ))}
     </main>
