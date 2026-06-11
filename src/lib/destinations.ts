@@ -1521,7 +1521,7 @@ export const saveListingReview = async (input: {
 
     if (existingReview) {
         for (const ratingColumn of getOrderedReviewRatingColumns()) {
-            let payload: Record<string, unknown> = {
+            const payload: Record<string, unknown> = {
                 [ratingColumn]: rating,
                 updated_at: now,
             };
@@ -1564,7 +1564,7 @@ export const saveListingReview = async (input: {
     for (const listingIdColumn of getOrderedReviewListingIdColumns()) {
         for (const userColumn of getOrderedReviewUserIdColumns()) {
             for (const ratingColumn of getOrderedReviewRatingColumns()) {
-                let payload: Record<string, unknown> = {
+                const payload: Record<string, unknown> = {
                     [listingIdColumn]: listingId,
                     [userColumn]: userId,
                     [ratingColumn]: rating,
@@ -3168,6 +3168,19 @@ export const updateRefundRequest = async (args: {
     throw new Error('Refund workflow schema is not ready. Run supabase/migrations/202606080001_add_booking_refund_workflow.sql and retry.');
 };
 
+const triggerProviderPayout = async (bookingId: string): Promise<void> => {
+    try {
+        const { error } = await supabase.functions.invoke('process-provider-payout', {
+            body: { booking_id: bookingId },
+        });
+        if (error) {
+            console.warn('Provider payout processor did not complete:', error.message);
+        }
+    } catch (error) {
+        console.warn('Provider payout processor is unavailable:', error);
+    }
+};
+
 export const respondToBookingRequest = async (args: {
     bookingId: string;
     providerUserId: string;
@@ -3286,6 +3299,10 @@ export const respondToBookingRequest = async (args: {
     const listingTitle = typeof rawBooking.listing_title === 'string' && rawBooking.listing_title.trim()
         ? rawBooking.listing_title.trim()
         : 'your booking';
+
+    if (args.decision === 'accept') {
+        await triggerProviderPayout(bookingId);
+    }
 
     if (travelerId) {
         if (args.decision === 'accept') {

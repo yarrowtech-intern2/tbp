@@ -109,12 +109,14 @@ Functions added:
 
 - `create-razorpay-order`
 - `confirm-razorpay-booking`
+- `process-provider-payout`
 
 Deploy:
 
 ```bash
 supabase functions deploy create-razorpay-order
 supabase functions deploy confirm-razorpay-booking
+supabase functions deploy process-provider-payout
 ```
 
 ### 3) Configure Supabase function secrets
@@ -124,6 +126,8 @@ Use placeholders first if needed:
 ```bash
 supabase secrets set RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
 supabase secrets set RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxx
+supabase secrets set PAYOUT_PROCESSOR_SECRET=replace-with-a-long-random-secret
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` is required by `confirm-razorpay-booking` and is normally available in Supabase function runtime.
+`process-provider-payout` also requires Razorpay Route to be enabled and each provider to have a `provider_payout_onboarding.razorpay_account_id`.
