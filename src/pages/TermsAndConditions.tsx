@@ -36,7 +36,7 @@ export const TermsAndConditions: React.FC = () => (
     <main className="terms-page">
         <header className="terms-header">
             <Link to="/" className="terms-logo" aria-label="The Better Pass home">
-                <img src="/logo/logo.png" alt="The Better Pass" />
+                <img src="/logo/final-logo.png" alt="The Better Pass" />
             </Link>
         </header>
 

@@ -155,7 +155,7 @@ function App() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const homePath = user ? APP_HOME_PATH : '/';
-  const footerLogoSrc = theme === 'dark' ? '/logo/logo-white.png' : '/logo/logo.png';
+  const footerLogoSrc = theme === 'dark' ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
 
   return (
     <Router>
