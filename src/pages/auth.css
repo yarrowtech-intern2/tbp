@@ -79,17 +79,13 @@
     z-index: 1;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    color: #ffffff;
-    font-family: 'Outfit', 'Segoe UI', sans-serif;
-    font-size: 1.02rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
 }
 
 .auth-visual-brand img {
-    width: 32px;
-    height: 32px;
+    width: auto;
+    height: 36px;
+    display: block;
+    object-fit: contain;
 }
 
 .auth-panel {

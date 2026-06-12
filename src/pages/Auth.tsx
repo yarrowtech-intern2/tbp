@@ -310,8 +310,7 @@ export const Auth: React.FC = () => {
                     <img src={sideImage} alt="Nature travel" className="auth-visual-image" />
                     <div className="auth-visual-overlay" />
                     <div className="auth-visual-brand">
-                        <img src="/logo/icon.png" alt="The Better Pass" />
-                        <span>The Better Pass</span>
+                        <img src="/logo/final-logo-white.png" alt="The Better Pass" />
                     </div>
                 </aside>
 
