@@ -865,7 +865,9 @@
 .home5-value-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 14px;
+  width: min(100%, 70rem);
+  margin: 0 auto;
 }
 
 .home5-value-grid-mobile-fallback,
@@ -875,7 +877,9 @@
 
 .home5-value-image-card {
   min-height: 100%;
-  border-radius: 32px;
+  max-width: 22rem;
+  margin: 0 auto;
+  border-radius: 26px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(17, 17, 17, 0.06);
