@@ -174,6 +174,57 @@ const FAQ_ITEMS = [
   },
 ] as const;
 
+type HeroHeroLayer = {
+  id: 'default' | 'beaches' | 'mountains' | 'deserts' | 'cities' | 'forests';
+  title: string;
+  poster?: string;
+  video?: string;
+  kind: 'white' | 'video';
+};
+
+const HERO_HERO_LAYERS: readonly HeroHeroLayer[] = [
+  {
+    id: 'default',
+    title: 'Default',
+    kind: 'white',
+  },
+  {
+    id: 'beaches',
+    title: 'Beaches',
+    kind: 'video',
+    poster: '/images/home4/beach-1600.jpg',
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1779877968/tbp-hero4_dmbfr5.mp4',
+  },
+  {
+    id: 'forests',
+    title: 'Forests',
+    kind: 'video',
+    poster: '/images/home4/forrest-1920.jpg',
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246935/forrest_ho0dak.mp4',
+  },
+  {
+    id: 'mountains',
+    title: 'Mountains',
+    kind: 'video',
+    poster: '/images/home5/mountain.png',
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246933/mountains_hbuxhy.mp4',
+  },
+  {
+    id: 'cities',
+    title: 'Cities',
+    kind: 'video',
+    poster: '/images/home4/city-1600.jpg',
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246934/cities_sg61vy.mp4',
+  },
+  {
+    id: 'deserts',
+    title: 'Deserts',
+    kind: 'video',
+    poster: '/images/home4/desert-1920.jpg',
+    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246931/desert_b5tdn9.mp4',
+  },
+] as const;
+
 const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
 
 const isInternalHref = (href: string) => href.startsWith('/') || href.startsWith('#');
@@ -206,6 +257,11 @@ const clampValue = (value: number, min: number, max: number) => Math.min(max, Ma
 export const Home5: React.FC = () => {
   const [activeCard, setActiveCard] = useState(0);
   const [activeBookingCard, setActiveBookingCard] = useState(0);
+  const [heroVideoIndex, setHeroVideoIndex] = useState(0);
+  const [heroRevealIndex, setHeroRevealIndex] = useState<number | null>(null);
+  const [heroVideoTransitioning, setHeroVideoTransitioning] = useState(false);
+  const [heroTouchMode, setHeroTouchMode] = useState(false);
+  const [heroCursorVisible, setHeroCursorVisible] = useState(false);
   const [howProgress, setHowProgress] = useState(0);
   const [finalRevealWordIndex, setFinalRevealWordIndex] = useState(0);
   const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
@@ -221,10 +277,23 @@ export const Home5: React.FC = () => {
   const touchDeltaXRef = useRef(0);
   const bookingDragStartXRef = useRef<number | null>(null);
   const bookingDragDeltaXRef = useRef(0);
+  const heroSectionRef = useRef<HTMLElement | null>(null);
+  const heroCursorFrameRef = useRef<number | null>(null);
+  const heroTransitionTimerRef = useRef<number | null>(null);
+  const heroCursorPointRef = useRef({ x: 0, y: 0 });
+  const heroCursorTargetRef = useRef({ x: 0, y: 0 });
   const valueSectionRef = useRef<HTMLElement | null>(null);
   const logoActivatedRef = useRef(false);
   const howSectionRef = useRef<HTMLElement | null>(null);
   const finalSectionRef = useRef<HTMLElement | null>(null);
+  const activeHeroLayer = HERO_HERO_LAYERS[heroVideoIndex] ?? HERO_HERO_LAYERS[0];
+  const nextHeroVideoIndex = (heroVideoIndex + 1) % HERO_HERO_LAYERS.length;
+  const previewHeroLayer = HERO_HERO_LAYERS[nextHeroVideoIndex] ?? HERO_HERO_LAYERS[0];
+  const revealHeroLayer = heroRevealIndex !== null
+    ? (HERO_HERO_LAYERS[heroRevealIndex] ?? previewHeroLayer)
+    : previewHeroLayer;
+  const heroSubtitleOnDark = activeHeroLayer.kind === 'video'
+    || (heroVideoTransitioning && revealHeroLayer.kind === 'video');
 
   useEffect(() => {
     let cancelled = false;
@@ -303,6 +372,159 @@ export const Home5: React.FC = () => {
       window.removeEventListener('resize', updateStickyLogo);
     };
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const updateMode = () => {
+      const isFinePointer = media.matches;
+      setHeroTouchMode(!isFinePointer);
+      setHeroCursorVisible(!isFinePointer);
+    };
+
+    updateMode();
+    media.addEventListener('change', updateMode);
+
+    return () => {
+      media.removeEventListener('change', updateMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncHeroCursorDefaults = () => {
+      const node = heroSectionRef.current;
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      const fallbackPoint = {
+        x: rect.width * (heroTouchMode ? 0.82 : 0.26),
+        y: rect.height * 0.52,
+      };
+
+      heroCursorPointRef.current = fallbackPoint;
+      heroCursorTargetRef.current = fallbackPoint;
+      node.style.setProperty('--home5-hero-cursor-x', `${fallbackPoint.x}px`);
+      node.style.setProperty('--home5-hero-cursor-y', `${fallbackPoint.y}px`);
+      node.style.setProperty('--home5-hero-reveal-x', `${fallbackPoint.x}px`);
+      node.style.setProperty('--home5-hero-reveal-y', `${fallbackPoint.y}px`);
+      node.style.setProperty('--home5-hero-reveal-radius', '0px');
+    };
+
+    syncHeroCursorDefaults();
+    window.addEventListener('resize', syncHeroCursorDefaults);
+
+    return () => {
+      window.removeEventListener('resize', syncHeroCursorDefaults);
+    };
+  }, [heroTouchMode]);
+
+  useEffect(() => () => {
+    if (heroCursorFrameRef.current !== null) {
+      window.cancelAnimationFrame(heroCursorFrameRef.current);
+    }
+    if (heroTransitionTimerRef.current !== null) {
+      window.clearTimeout(heroTransitionTimerRef.current);
+    }
+  }, []);
+
+  const flushHeroCursorPosition = () => {
+    heroCursorFrameRef.current = null;
+    const node = heroSectionRef.current;
+    if (!node) return;
+
+    const point = heroCursorTargetRef.current;
+    heroCursorPointRef.current = point;
+    node.style.setProperty('--home5-hero-cursor-x', `${point.x}px`);
+    node.style.setProperty('--home5-hero-cursor-y', `${point.y}px`);
+  };
+
+  const updateHeroCursorPosition = (clientX: number, clientY: number) => {
+    const node = heroSectionRef.current;
+    if (!node) return;
+
+    const rect = node.getBoundingClientRect();
+    heroCursorTargetRef.current = {
+      x: clampValue(clientX - rect.left, 0, rect.width),
+      y: clampValue(clientY - rect.top, 0, rect.height),
+    };
+
+    if (heroCursorFrameRef.current === null) {
+      heroCursorFrameRef.current = window.requestAnimationFrame(flushHeroCursorPosition);
+    }
+  };
+
+  const triggerHeroVideoReveal = () => {
+    const node = heroSectionRef.current;
+    if (!node || heroVideoTransitioning) return;
+
+    const rect = node.getBoundingClientRect();
+    const origin = heroCursorPointRef.current.x || heroCursorPointRef.current.y
+      ? heroCursorPointRef.current
+      : { x: rect.width * 0.5, y: rect.height * 0.5 };
+    const nextIndex = (heroVideoIndex + 1) % HERO_HERO_LAYERS.length;
+    const maxRadius = Math.max(
+      Math.hypot(origin.x, origin.y),
+      Math.hypot(rect.width - origin.x, origin.y),
+      Math.hypot(origin.x, rect.height - origin.y),
+      Math.hypot(rect.width - origin.x, rect.height - origin.y),
+    );
+
+    if (heroTransitionTimerRef.current !== null) {
+      window.clearTimeout(heroTransitionTimerRef.current);
+    }
+
+    node.style.setProperty('--home5-hero-reveal-x', `${origin.x}px`);
+    node.style.setProperty('--home5-hero-reveal-y', `${origin.y}px`);
+    node.style.setProperty('--home5-hero-reveal-radius', '0px');
+    setHeroRevealIndex(nextIndex);
+    setHeroVideoTransitioning(true);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        node.style.setProperty('--home5-hero-reveal-radius', `${maxRadius}px`);
+      });
+    });
+
+    heroTransitionTimerRef.current = window.setTimeout(() => {
+      setHeroVideoIndex(nextIndex);
+      setHeroRevealIndex(null);
+      setHeroVideoTransitioning(false);
+      node.style.setProperty('--home5-hero-reveal-radius', '0px');
+    }, 920);
+  };
+
+  const handleHeroPointerEnter = (event: React.PointerEvent<HTMLElement>) => {
+    if (heroTouchMode) return;
+    setHeroCursorVisible(true);
+    updateHeroCursorPosition(event.clientX, event.clientY);
+  };
+
+  const handleHeroPointerMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
+      setHeroCursorVisible(true);
+    }
+    updateHeroCursorPosition(event.clientX, event.clientY);
+  };
+
+  const handleHeroPointerLeave = () => {
+    if (!heroTouchMode) {
+      setHeroCursorVisible(false);
+    }
+  };
+
+  const handleHeroPointerDown = (event: React.PointerEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.home5-hero-menu')) return;
+    updateHeroCursorPosition(event.clientX, event.clientY);
+    if (event.pointerType === 'touch') {
+      setHeroCursorVisible(true);
+    }
+  };
+
+  const handleHeroClick = (event: React.MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.home5-hero-menu')) return;
+    triggerHeroVideoReveal();
+  };
 
   const goToCard = (index: number) => {
     const total = VALUE_IMAGE_CARDS.length;
@@ -492,7 +714,55 @@ export const Home5: React.FC = () => {
         <img src="/logo/final-logo.png" alt="The Betterpass" />
       </Link>
 
-      <section className="home5-hero">
+      <section
+        ref={heroSectionRef}
+        className={`home5-hero${heroVideoTransitioning ? ' is-video-transitioning' : ''}${activeHeroLayer.kind === 'white' ? ' is-default-hero-layer' : ''}`}
+        onPointerEnter={handleHeroPointerEnter}
+        onPointerMove={handleHeroPointerMove}
+        onPointerLeave={handleHeroPointerLeave}
+        onPointerDown={handleHeroPointerDown}
+        onClick={handleHeroClick}
+      >
+        <div className="home5-hero-media-stack" aria-hidden="true">
+          {activeHeroLayer.kind === 'white' ? (
+            <div className="home5-hero-bg-white home5-hero-bg-white-base" />
+          ) : (
+            <video
+              key={`hero-base-${activeHeroLayer.id}`}
+              className="home5-hero-bg-video home5-hero-bg-video-base"
+              src={activeHeroLayer.video}
+              poster={activeHeroLayer.poster}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+            />
+          )}
+          {revealHeroLayer.kind === 'white' ? (
+            <div
+              className={`home5-hero-bg-white home5-hero-bg-white-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
+            />
+          ) : (
+            <video
+              key={`hero-preview-${revealHeroLayer.id}-${heroRevealIndex ?? nextHeroVideoIndex}`}
+              className={`home5-hero-bg-video home5-hero-bg-video-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
+              src={revealHeroLayer.video}
+              poster={revealHeroLayer.poster}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              disablePictureInPicture
+            />
+          )}
+          <div className={`home5-hero-video-cursor${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`} />
+          <div className="home5-hero-media-vignette" />
+          <div className="home5-hero-media-noise" />
+        </div>
+
         <div className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}`}>
           <button
             type="button"
@@ -526,7 +796,7 @@ export const Home5: React.FC = () => {
         <div className="home5-hero-shell">
           <div className="home5-copy">
             <h1 className="home5-title">The Betterpass</h1>
-            <h2 className="home5-subtitle">
+            <h2 className={`home5-subtitle${heroSubtitleOnDark ? ' is-light' : ''}`}>
               <span>travel made</span>
               <span>simple</span>
             </h2>
@@ -540,7 +810,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <section ref={valueSectionRef} className="home5-value-section">
+      <section ref={valueSectionRef} className="home5-value-section" id="home5-discover">
         <div className="container">
           <ScrollReveal className="home5-value-shell">
             <span className="home5-section-eyebrow">Why The Betterpass</span>
@@ -640,7 +910,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <section ref={howSectionRef} className="home5-how-section">
+      <section ref={howSectionRef} className="home5-how-section" id="home5-flow">
         <div className="home5-how-track">
           <div className="home5-how-sticky">
             <div className="container">
@@ -691,7 +961,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <section className="home5-book-section">
+      <section className="home5-book-section" id="home5-book">
         <div className="container">
           <ScrollReveal className="home5-book-shell">
             <span className="home5-book-eyebrow">What you can book</span>
@@ -786,7 +1056,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <section className="home5-trust-section">
+      <section className="home5-trust-section" id="home5-trust">
         <div className="container">
           <div className="home5-trust-layout">
             <ScrollReveal className="home5-trust-intro">
@@ -859,7 +1129,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <section className="home5-faq-section">
+      <section className="home5-faq-section" id="home5-faq">
         <div className="container">
           <ScrollReveal>
             <span className="home5-section-eyebrow">Support</span>
