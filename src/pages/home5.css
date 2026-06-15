@@ -2613,6 +2613,8 @@
 
   .home5-hero-immersive-cta {
     min-height: 3.15rem;
+    width: fit-content;
+    justify-self: start;
     padding-left: 1.1rem;
     font-size: 0.9rem;
   }

@@ -236,7 +236,12 @@ type VideoHeroContent = {
   ctaLabel: string;
 };
 
-const HERO_VIDEO_CONTENT: Record<Exclude<HeroHeroLayer['id'], 'default'>, VideoHeroContent> = {
+type VideoHeroLayerId = Exclude<HeroHeroLayer['id'], 'default'>;
+type VideoHeroStat = VideoHeroContent['stats'][number];
+
+const isVideoHeroLayerId = (id: HeroHeroLayer['id']): id is VideoHeroLayerId => id !== 'default';
+
+const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
   beaches: {
     eyebrow: 'Beach escapes',
     title: 'COAST',
@@ -372,7 +377,9 @@ export const Home5: React.FC = () => {
   const heroSubtitleOnDark = activeHeroLayer.kind === 'video'
     || (heroVideoTransitioning && revealHeroLayer.kind === 'video');
   const heroPreviewActive = heroInView && (heroCursorVisible || heroVideoTransitioning);
-  const activeVideoHeroContent = activeHeroLayer.kind === 'video' ? HERO_VIDEO_CONTENT[activeHeroLayer.id] : null;
+  const activeVideoHeroContent = activeHeroLayer.kind === 'video' && isVideoHeroLayerId(activeHeroLayer.id)
+    ? HERO_VIDEO_CONTENT[activeHeroLayer.id]
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -1053,7 +1060,7 @@ export const Home5: React.FC = () => {
 
               <div className="home5-hero-immersive-bottom">
                 <div className="home5-hero-immersive-stats" aria-label={`${activeVideoHeroContent.eyebrow} highlights`}>
-                  {activeVideoHeroContent.stats.map((stat) => (
+                  {activeVideoHeroContent.stats.map((stat: VideoHeroStat) => (
                     <div className="home5-hero-immersive-stat" key={`${activeVideoHeroContent.title}-${stat.label}`}>
                       <strong>{stat.value}</strong>
                       <span>{stat.label}</span>
