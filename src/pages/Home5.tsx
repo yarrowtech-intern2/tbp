@@ -225,6 +225,75 @@ const HERO_HERO_LAYERS: readonly HeroHeroLayer[] = [
   },
 ] as const;
 
+type VideoHeroContent = {
+  eyebrow: string;
+  title: string;
+  stats: readonly {
+    value: string;
+    label: string;
+  }[];
+  description: string;
+  ctaLabel: string;
+};
+
+const HERO_VIDEO_CONTENT: Record<Exclude<HeroHeroLayer['id'], 'default'>, VideoHeroContent> = {
+  beaches: {
+    eyebrow: 'Beach escapes',
+    title: 'COAST',
+    stats: [
+      { value: '18K+', label: 'Ocean travellers' },
+      { value: '1.4K+', label: 'Coastal stays' },
+      { value: '320+', label: 'Island routes' },
+    ],
+    description: 'Book sea-facing stays, boat days, and slow coastal plans that keep the trip easy from sunrise swims to sunset dinners.',
+    ctaLabel: 'Book beach stays',
+  },
+  forests: {
+    eyebrow: 'Forest journeys',
+    title: 'CANOPY',
+    stats: [
+      { value: '9K+', label: 'Nature seekers' },
+      { value: '860+', label: 'Cabin nights' },
+      { value: '210+', label: 'Guided trails' },
+    ],
+    description: 'Move through hidden lodges, jungle trails, and local-led routes designed for quieter, deeper trips with less guesswork.',
+    ctaLabel: 'Plan forest stays',
+  },
+  mountains: {
+    eyebrow: 'Mountain stays',
+    title: 'SUMMIT',
+    stats: [
+      { value: '12K+', label: 'Highland travellers' },
+      { value: '980+', label: 'Chalet stays' },
+      { value: '270+', label: 'Scenic routes' },
+    ],
+    description: 'Compare ridge-view hotels, alpine experiences, and transport support in one mountain plan built for altitude and ease.',
+    ctaLabel: 'Explore mountain trips',
+  },
+  cities: {
+    eyebrow: 'City breaks',
+    title: 'PULSE',
+    stats: [
+      { value: '22K+', label: 'Urban travellers' },
+      { value: '2.1K+', label: 'Boutique rooms' },
+      { value: '540+', label: 'Curated experiences' },
+    ],
+    description: 'From design hotels to food trails and late-night culture, shape faster city itineraries without splitting bookings across tabs.',
+    ctaLabel: 'Build a city trip',
+  },
+  deserts: {
+    eyebrow: 'Desert routes',
+    title: 'DUNES',
+    stats: [
+      { value: '7K+', label: 'Adventure travellers' },
+      { value: '640+', label: 'Camp stays' },
+      { value: '190+', label: 'Sunset experiences' },
+    ],
+    description: 'Plan camp nights, dune drives, and slow desert moments with trusted hosts and cleaner logistics from arrival to checkout.',
+    ctaLabel: 'Start desert journeys',
+  },
+};
+
 const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
 
 const isInternalHref = (href: string) => href.startsWith('/') || href.startsWith('#');
@@ -262,6 +331,7 @@ export const Home5: React.FC = () => {
   const [heroVideoTransitioning, setHeroVideoTransitioning] = useState(false);
   const [heroTouchMode, setHeroTouchMode] = useState(false);
   const [heroCursorVisible, setHeroCursorVisible] = useState(false);
+  const [heroInView, setHeroInView] = useState(true);
   const [howProgress, setHowProgress] = useState(0);
   const [finalRevealWordIndex, setFinalRevealWordIndex] = useState(0);
   const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
@@ -282,6 +352,8 @@ export const Home5: React.FC = () => {
   const stickyLogoRef = useRef<HTMLAnchorElement | null>(null);
   const stickyMenuRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
+  const heroBaseVideoRef = useRef<HTMLVideoElement | null>(null);
+  const heroPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const heroCursorFrameRef = useRef<number | null>(null);
   const heroTransitionTimerRef = useRef<number | null>(null);
   const heroCursorPointRef = useRef({ x: 0, y: 0 });
@@ -299,6 +371,8 @@ export const Home5: React.FC = () => {
     : previewHeroLayer;
   const heroSubtitleOnDark = activeHeroLayer.kind === 'video'
     || (heroVideoTransitioning && revealHeroLayer.kind === 'video');
+  const heroPreviewActive = heroInView && (heroCursorVisible || heroVideoTransitioning);
+  const activeVideoHeroContent = activeHeroLayer.kind === 'video' ? HERO_VIDEO_CONTENT[activeHeroLayer.id] : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -379,6 +453,28 @@ export const Home5: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const node = heroSectionRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        setHeroInView(entry.isIntersecting);
+      },
+      {
+        threshold: 0.02,
+        rootMargin: '20% 0px 20% 0px',
+      },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
     const media = window.matchMedia('(hover: hover) and (pointer: fine)');
     const updateMode = () => {
       const isFinePointer = media.matches;
@@ -421,6 +517,57 @@ export const Home5: React.FC = () => {
       window.removeEventListener('resize', syncHeroCursorDefaults);
     };
   }, [heroTouchMode]);
+
+  useEffect(() => {
+    const syncVideoPlayback = (video: HTMLVideoElement | null, shouldPlay: boolean) => {
+      if (!video) return;
+      if (shouldPlay) {
+        const playAttempt = video.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+          playAttempt.catch(() => {});
+        }
+        return;
+      }
+
+      video.pause();
+    };
+
+    syncVideoPlayback(heroBaseVideoRef.current, heroInView && activeHeroLayer.kind === 'video');
+    syncVideoPlayback(
+      heroPreviewVideoRef.current,
+      heroPreviewActive && revealHeroLayer.kind === 'video',
+    );
+  }, [activeHeroLayer.kind, heroInView, heroPreviewActive, revealHeroLayer.kind]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const pageVisible = document.visibilityState === 'visible';
+      if (!pageVisible) {
+        heroBaseVideoRef.current?.pause();
+        heroPreviewVideoRef.current?.pause();
+        return;
+      }
+
+      if (heroInView && activeHeroLayer.kind === 'video') {
+        const playAttempt = heroBaseVideoRef.current?.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+          playAttempt.catch(() => {});
+        }
+      }
+      if (heroPreviewActive && revealHeroLayer.kind === 'video') {
+        const playAttempt = heroPreviewVideoRef.current?.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+          playAttempt.catch(() => {});
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeHeroLayer.kind, heroInView, heroPreviewActive, revealHeroLayer.kind]);
 
   useEffect(() => {
     const updateStickyLogoTone = () => {
@@ -602,7 +749,7 @@ export const Home5: React.FC = () => {
 
   const handleHeroClick = (event: React.MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.home5-hero-menu')) return;
+    if (target?.closest('.home5-hero-menu') || target?.closest('.home5-hero-immersive-cta')) return;
     triggerHeroVideoReveal();
   };
 
@@ -843,6 +990,7 @@ export const Home5: React.FC = () => {
             <div className="home5-hero-bg-white home5-hero-bg-white-base" />
           ) : (
             <video
+              ref={heroBaseVideoRef}
               key={`hero-base-${activeHeroLayer.id}`}
               className="home5-hero-bg-video home5-hero-bg-video-base"
               src={activeHeroLayer.video}
@@ -851,7 +999,7 @@ export const Home5: React.FC = () => {
               muted
               loop
               playsInline
-              preload="auto"
+              preload="metadata"
               disablePictureInPicture
             />
           )}
@@ -861,6 +1009,7 @@ export const Home5: React.FC = () => {
             />
           ) : (
             <video
+              ref={heroPreviewVideoRef}
               key={`hero-preview-${revealHeroLayer.id}-${heroRevealIndex ?? nextHeroVideoIndex}`}
               className={`home5-hero-bg-video home5-hero-bg-video-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
               src={revealHeroLayer.video}
@@ -869,7 +1018,7 @@ export const Home5: React.FC = () => {
               muted
               loop
               playsInline
-              preload="auto"
+              preload="metadata"
               disablePictureInPicture
             />
           )}
@@ -879,19 +1028,49 @@ export const Home5: React.FC = () => {
         </div>
 
         <div className="home5-hero-shell">
-          <div className="home5-copy">
-            <h1 className="home5-title">The Betterpass</h1>
-            <h2 className={`home5-subtitle${heroSubtitleOnDark ? ' is-light' : ''}`}>
-              <span>travel made</span>
-              <span>simple</span>
-            </h2>
-          </div>
+          {activeHeroLayer.kind === 'white' ? (
+            <>
+              <div className="home5-copy">
+                <h1 className="home5-title">The Betterpass</h1>
+                <h2 className={`home5-subtitle${heroSubtitleOnDark ? ' is-light' : ''}`}>
+                  <span>travel made</span>
+                  <span>simple</span>
+                </h2>
+              </div>
 
-          <div className="home5-globe-stage" aria-hidden="true">
-            <div className="home5-globe-ground" />
-            <Globe className="home5-globe" />
-            <div className="home5-globe-fade" />
-          </div>
+              <div className="home5-globe-stage" aria-hidden="true">
+                <div className="home5-globe-ground" />
+                <Globe className="home5-globe" />
+                <div className="home5-globe-fade" />
+              </div>
+            </>
+          ) : activeVideoHeroContent ? (
+            <div className="home5-hero-immersive">
+              <div className="home5-hero-immersive-head">
+                <span className="home5-hero-immersive-eyebrow">{activeVideoHeroContent.eyebrow}</span>
+                <h1 className="home5-hero-immersive-title">{activeVideoHeroContent.title}</h1>
+              </div>
+
+              <div className="home5-hero-immersive-bottom">
+                <div className="home5-hero-immersive-stats" aria-label={`${activeVideoHeroContent.eyebrow} highlights`}>
+                  {activeVideoHeroContent.stats.map((stat) => (
+                    <div className="home5-hero-immersive-stat" key={`${activeVideoHeroContent.title}-${stat.label}`}>
+                      <strong>{stat.value}</strong>
+                      <span>{stat.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="home5-hero-immersive-cta-row">
+                  <Link className="home5-hero-immersive-cta" to="/auth">
+                    <span>{activeVideoHeroContent.ctaLabel}</span>
+                    <span className="home5-hero-immersive-cta-icon" aria-hidden="true">↗</span>
+                  </Link>
+                  <p>{activeVideoHeroContent.description}</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
