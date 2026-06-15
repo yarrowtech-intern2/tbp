@@ -189,7 +189,7 @@
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
   right: max(10px, env(safe-area-inset-right));
-  z-index: 80;
+  z-index: 90;
   display: grid;
   justify-items: end;
   gap: 12px;
@@ -228,6 +228,14 @@
 .home5-hero-menu-toggle:hover {
   color: #111111;
   transform: translateY(-1px);
+}
+
+.home5-hero-menu.is-on-dark .home5-hero-menu-toggle {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.home5-hero-menu.is-on-dark .home5-hero-menu-toggle:hover {
+  color: #ffffff;
 }
 
 .home5-hero-menu-line {
@@ -344,6 +352,10 @@
     height: 2.75rem;
     gap: 4px;
     color: rgba(17, 17, 17, 0.42);
+  }
+
+  .home5-hero-menu.is-on-dark .home5-hero-menu-toggle {
+    color: rgba(255, 255, 255, 0.72);
   }
 
   .home5-hero-menu-line {

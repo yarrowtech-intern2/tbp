@@ -10,7 +10,7 @@
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
   right: max(10px, env(safe-area-inset-right));
-  z-index: 80;
+  z-index: 90;
   display: grid;
   justify-items: end;
   gap: 12px;

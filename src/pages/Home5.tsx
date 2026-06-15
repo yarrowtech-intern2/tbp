@@ -273,10 +273,14 @@ export const Home5: React.FC = () => {
   const [contactError, setContactError] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [stickyLogoVisible, setStickyLogoVisible] = useState(false);
+  const [stickyLogoOnDark, setStickyLogoOnDark] = useState(false);
+  const [stickyMenuOnDark, setStickyMenuOnDark] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
   const bookingDragStartXRef = useRef<number | null>(null);
   const bookingDragDeltaXRef = useRef(0);
+  const stickyLogoRef = useRef<HTMLAnchorElement | null>(null);
+  const stickyMenuRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroCursorFrameRef = useRef<number | null>(null);
   const heroTransitionTimerRef = useRef<number | null>(null);
@@ -286,6 +290,7 @@ export const Home5: React.FC = () => {
   const logoActivatedRef = useRef(false);
   const howSectionRef = useRef<HTMLElement | null>(null);
   const finalSectionRef = useRef<HTMLElement | null>(null);
+  const footerRef = useRef<HTMLElement | null>(null);
   const activeHeroLayer = HERO_HERO_LAYERS[heroVideoIndex] ?? HERO_HERO_LAYERS[0];
   const nextHeroVideoIndex = (heroVideoIndex + 1) % HERO_HERO_LAYERS.length;
   const previewHeroLayer = HERO_HERO_LAYERS[nextHeroVideoIndex] ?? HERO_HERO_LAYERS[0];
@@ -416,6 +421,81 @@ export const Home5: React.FC = () => {
       window.removeEventListener('resize', syncHeroCursorDefaults);
     };
   }, [heroTouchMode]);
+
+  useEffect(() => {
+    const updateStickyLogoTone = () => {
+      const logoNode = stickyLogoRef.current;
+      const footerNode = footerRef.current;
+      if (!stickyLogoVisible || !logoNode || !footerNode) {
+        setStickyLogoOnDark(false);
+        return;
+      }
+
+      const logoRect = logoNode.getBoundingClientRect();
+      const footerRect = footerNode.getBoundingClientRect();
+      const sampleX = logoRect.left + (logoRect.width / 2);
+      const sampleY = logoRect.top + (logoRect.height / 2);
+      const overlapsFooter = (
+        sampleX >= footerRect.left
+        && sampleX <= footerRect.right
+        && sampleY >= footerRect.top
+        && sampleY <= footerRect.bottom
+      );
+
+      setStickyLogoOnDark(overlapsFooter);
+    };
+
+    updateStickyLogoTone();
+    window.addEventListener('scroll', updateStickyLogoTone, { passive: true });
+    window.addEventListener('resize', updateStickyLogoTone);
+
+    return () => {
+      window.removeEventListener('scroll', updateStickyLogoTone);
+      window.removeEventListener('resize', updateStickyLogoTone);
+    };
+  }, [stickyLogoVisible]);
+
+  useEffect(() => {
+    const updateStickyMenuTone = () => {
+      const menuNode = stickyMenuRef.current;
+      if (!menuNode) {
+        setStickyMenuOnDark(false);
+        return;
+      }
+
+      const menuRect = menuNode.getBoundingClientRect();
+      const sampleX = menuRect.left + (menuRect.width / 2);
+      const sampleY = menuRect.top + (menuRect.height / 2);
+      const footerRect = footerRef.current?.getBoundingClientRect();
+      const heroRect = heroSectionRef.current?.getBoundingClientRect();
+      const overlapsFooter = Boolean(
+        footerRect
+        && sampleX >= footerRect.left
+        && sampleX <= footerRect.right
+        && sampleY >= footerRect.top
+        && sampleY <= footerRect.bottom
+      );
+      const overlapsHero = Boolean(
+        heroRect
+        && sampleX >= heroRect.left
+        && sampleX <= heroRect.right
+        && sampleY >= heroRect.top
+        && sampleY <= heroRect.bottom
+      );
+      const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
+
+      setStickyMenuOnDark((current) => (current !== nextToneOnDark ? nextToneOnDark : current));
+    };
+
+    updateStickyMenuTone();
+    window.addEventListener('scroll', updateStickyMenuTone, { passive: true });
+    window.addEventListener('resize', updateStickyMenuTone);
+
+    return () => {
+      window.removeEventListener('scroll', updateStickyMenuTone);
+      window.removeEventListener('resize', updateStickyMenuTone);
+    };
+  }, [heroSubtitleOnDark]);
 
   useEffect(() => () => {
     if (heroCursorFrameRef.current !== null) {
@@ -704,15 +784,50 @@ export const Home5: React.FC = () => {
     opacity: 0.22 + (introProgress * 0.78),
     transform: `translateY(${(1 - introProgress) * 30}px)`,
   } satisfies React.CSSProperties;
+  const stickyLogoSrc = stickyLogoOnDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
   return (
     <main className="home5-page">
       <Link
+        ref={stickyLogoRef}
         to="/"
         className={`home5-sticky-logo${stickyLogoVisible ? ' is-visible' : ''}`}
         aria-label="The Betterpass home"
       >
-        <img src="/logo/final-logo.png" alt="The Betterpass" />
+        <img src={stickyLogoSrc} alt="The Betterpass" />
       </Link>
+
+      <div
+        ref={stickyMenuRef}
+        className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}${stickyMenuOnDark ? ' is-on-dark' : ''}`}
+      >
+        <button
+          type="button"
+          className="home5-hero-menu-toggle"
+          aria-label={heroMenuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={heroMenuOpen}
+          aria-controls="home5-hero-menu-panel"
+          onClick={() => setHeroMenuOpen((current) => !current)}
+        >
+          <span className="home5-hero-menu-line" />
+          <span className="home5-hero-menu-line" />
+          <span className="home5-hero-menu-line" />
+        </button>
+
+        <nav id="home5-hero-menu-panel" className="home5-hero-menu-panel" aria-label="Landing navigation">
+          <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
+          <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
+          <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Login</Link>
+          <button
+            type="button"
+            onClick={() => {
+              setHeroMenuOpen(false);
+              setContactModalOpen(true);
+            }}
+          >
+            Contact
+          </button>
+        </nav>
+      </div>
 
       <section
         ref={heroSectionRef}
@@ -761,36 +876,6 @@ export const Home5: React.FC = () => {
           <div className={`home5-hero-video-cursor${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`} />
           <div className="home5-hero-media-vignette" />
           <div className="home5-hero-media-noise" />
-        </div>
-
-        <div className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}`}>
-          <button
-            type="button"
-            className="home5-hero-menu-toggle"
-            aria-label={heroMenuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={heroMenuOpen}
-            aria-controls="home5-hero-menu-panel"
-            onClick={() => setHeroMenuOpen((current) => !current)}
-          >
-            <span className="home5-hero-menu-line" />
-            <span className="home5-hero-menu-line" />
-            <span className="home5-hero-menu-line" />
-          </button>
-
-          <nav id="home5-hero-menu-panel" className="home5-hero-menu-panel" aria-label="Landing navigation">
-            <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
-            <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
-            <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Login</Link>
-            <button
-              type="button"
-              onClick={() => {
-                setHeroMenuOpen(false);
-                setContactModalOpen(true);
-              }}
-            >
-              Contact
-            </button>
-          </nav>
         </div>
 
         <div className="home5-hero-shell">
@@ -1169,7 +1254,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <footer className="home5-footer" id="contact">
+      <footer ref={footerRef} className="home5-footer" id="contact">
         <div className="home5-footer-inner">
           <div className="home5-footer-watermark" aria-hidden="true">Betterpass</div>
 

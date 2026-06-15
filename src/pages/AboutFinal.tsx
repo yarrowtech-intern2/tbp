@@ -14,7 +14,9 @@ const ABOUT_STORY_SECTIONS = [
     id: 'intro',
     eyebrow: 'The Betterpass story',
     title: 'About Betterpass',
-    copy: 'Betterpass exists to make travel feel clear before it becomes memorable. We bring trusted stays, guided experiences, local providers, and secure booking into one calm path, so every trip starts with confidence instead of scattered planning.',
+    // copy: 'Betterpass exists to make travel feel clear before it becomes memorable. We bring trusted stays, guided experiences, local providers, and secure booking into one calm path, so every trip starts with confidence instead of scattered planning.',
+
+    copy: 'BetterPass is a modern travel companion designed to make exploring new destinations easier, more enjoyable, and more memorable. Our platform helps travelers discover attractions, activities, unique experiences, and travel opportunities while providing all the essential information needed for a seamless journey.',
     image: undefined,
     video: undefined,
     mediaAlt: undefined,
