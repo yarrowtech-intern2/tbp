@@ -480,6 +480,7 @@ export const TouristExplorePage: React.FC = () => {
             <button
               type="button"
               className={`txp-icon-btn${searchOpen ? ' is-active' : ''}`}
+              data-tutorial-id="tourist-explore-search"
               aria-label={searchOpen ? 'Close search' : 'Open search'}
               onClick={() => {
                 setSearchOpen((prev) => !prev);
@@ -490,7 +491,7 @@ export const TouristExplorePage: React.FC = () => {
           </div>
         </section>
 
-        <section className="txp-filters" aria-label="Explore categories">
+        <section className="txp-filters" aria-label="Explore categories" data-tutorial-id="tourist-explore-filters">
           {FILTERS.map((filter) => (
             <button
               key={filter.id}

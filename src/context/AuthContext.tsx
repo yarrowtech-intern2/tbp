@@ -131,6 +131,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             country: oauthIntent.country || metadataString(currentUser.user_metadata, 'country') || '',
                             city: oauthIntent.city || metadataString(currentUser.user_metadata, 'city') || '',
                             bio: oauthIntent.bio || metadataString(currentUser.user_metadata, 'bio') || '',
+                            tutorial_pending: true,
+                            tutorial_completed: false,
                         },
                     });
 

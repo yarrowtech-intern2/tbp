@@ -537,7 +537,7 @@ export const Profile: React.FC = () => {
                 )}
 
                 {/* ── Hero card ────────────────────────────────── */}
-                <div className="prf-hero-card">
+                <div className="prf-hero-card" data-tutorial-id="profile-hero">
 
                     {/* Cover image */}
                     <div
@@ -876,7 +876,7 @@ export const Profile: React.FC = () => {
                 </div>
 
                 {/* ── Bookings ─────────────────────────────────── */}
-                <section className="prf-card">
+                <section className="prf-card" data-tutorial-id="profile-readiness">
                     <div className="prf-card-head">
                         <div>
                             <h2 className="prf-card-title">{isProvider ? 'Inbound Bookings' : 'Your Journeys'}</h2>

@@ -5,6 +5,7 @@ import {
     CheckCircle2,
     ChevronLeft,
     ClipboardList,
+    CircleHelp,
     Compass,
     ExternalLink,
     FileText,
@@ -35,6 +36,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import { useAuth } from '../hooks/useAuth';
+import { useAppTutorial } from '../context/AppTutorialContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
@@ -869,6 +871,7 @@ const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: numb
 
 export const RoleDashboard: React.FC = () => {
     const { user, profile, profileLoading, signOut } = useAuth();
+    const { openTutorial } = useAppTutorial();
     const {
         unreadCount,
         notifications: centerNotifications,
@@ -4237,7 +4240,7 @@ export const RoleDashboard: React.FC = () => {
     const isDarkTheme = theme === 'dark';
 
     return (
-        <main className="rdb-page rdb-page--admin">
+        <main className="rdb-page rdb-page--admin" data-tutorial-id="dashboard-page">
             <div className="container rdb-shell rdb-shell--admin">
                 <aside className="rdb-sidebar">
                     <nav className="rdb-nav" aria-label="Dashboard menu">
@@ -4254,6 +4257,7 @@ export const RoleDashboard: React.FC = () => {
                                             setAdminMobileMenuOpen(false);
                                         }
                                     }}
+                                    data-tutorial-id={`dashboard-nav-${item.key}`}
                                     data-tooltip={item.label}
                                     aria-label={item.label}
                                 >
@@ -4331,6 +4335,18 @@ export const RoleDashboard: React.FC = () => {
                                     <button
                                         type="button"
                                         className="rdb-admin-ctrl-btn"
+                                        title="Help"
+                                        aria-label="Open tutorial"
+                                        data-tutorial-id="dashboard-help"
+                                        onClick={openTutorial}
+                                    >
+                                        <CircleHelp size={18} />
+                                    </button>
+                                )}
+                                {isDesktopDashboard && (
+                                    <button
+                                        type="button"
+                                        className="rdb-admin-ctrl-btn"
                                         title="Notifications"
                                         aria-label="Open notifications"
                                         onClick={() => goToSection('messages')}
@@ -4390,6 +4406,7 @@ export const RoleDashboard: React.FC = () => {
                                             type="button"
                                             key={`mobile-${item.key}`}
                                             className={`rdb-admin-mobile-menu-item${isActive ? ' is-active' : ''}`}
+                                            data-tutorial-id={`dashboard-mobile-${item.key}`}
                                             onClick={() => {
                                                 goToSection(item.key);
                                                 setAdminMobileMenuOpen(false);
@@ -4402,6 +4419,17 @@ export const RoleDashboard: React.FC = () => {
                                         </button>
                                     );
                                 })}
+                                <button
+                                    type="button"
+                                    className="rdb-admin-mobile-menu-item"
+                                    onClick={() => {
+                                        setAdminMobileMenuOpen(false);
+                                        openTutorial();
+                                    }}
+                                >
+                                    <span>Help</span>
+                                    <CircleHelp size={16} />
+                                </button>
                                 <button
                                     type="button"
                                     className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--logout"
@@ -4544,6 +4572,7 @@ export const RoleDashboard: React.FC = () => {
                                     type="button"
                                     key={`mob-${item.id}`}
                                     className={`rdb-bottom-nav-btn${isActive ? ' is-active' : ''}`}
+                                    data-tutorial-id={`dashboard-mobile-${item.section || item.id}`}
                                     onClick={() => {
                                         if (item.section) {
                                             goToSection(item.section);

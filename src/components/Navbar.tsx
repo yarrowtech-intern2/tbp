@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, X } from 'lucide-react';
+import { useAppTutorial } from '../context/AppTutorialContext';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { getProfileAvatarUrl } from '../lib/avatar';
@@ -10,6 +11,7 @@ type NavTab = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
 
 export const Navbar: React.FC = () => {
     const { user, profile, profileLoading, signOut, isAdmin, isProvider, roleLabel } = useAuth();
+    const { openTutorial } = useAppTutorial();
     const { theme, toggleTheme } = useTheme();
     const [showMenu, setShowMenu] = useState(false);
     const mobileNavRef = useRef<HTMLDivElement | null>(null);
@@ -241,6 +243,11 @@ export const Navbar: React.FC = () => {
                             {isDark ? <Sun size={14} /> : <Moon size={14} />}
                             {isDark ? 'Light Mode' : 'Dark Mode'}
                         </button>
+                        {user && (
+                            <button type="button" className="nbr-drop-item nbr-drop-item--btn" onClick={() => { openTutorial(); setShowMenu(false); }}>
+                                Help
+                            </button>
+                        )}
                         {user && (
                             <button
                                 type="button"

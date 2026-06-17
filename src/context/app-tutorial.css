@@ -1,0 +1,123 @@
+.app-tutorial-layer {
+    inset: 0;
+    pointer-events: none;
+    position: fixed;
+    z-index: 3000;
+}
+
+.app-tutorial-backdrop {
+    background: rgba(8, 11, 20, 0.56);
+    inset: 0;
+    position: absolute;
+}
+
+.app-tutorial-highlight {
+    border: 2px solid rgba(255, 255, 255, 0.92);
+    border-radius: 18px;
+    box-shadow:
+        0 0 0 9999px rgba(8, 11, 20, 0.54),
+        0 20px 60px rgba(8, 11, 20, 0.32);
+    position: absolute;
+    transition:
+        top 180ms ease,
+        left 180ms ease,
+        width 180ms ease,
+        height 180ms ease;
+}
+
+.app-tutorial-card {
+    background: rgba(255, 250, 242, 0.98);
+    border: 1px solid rgba(92, 45, 10, 0.12);
+    border-radius: 24px;
+    box-shadow: 0 28px 72px rgba(16, 24, 40, 0.28);
+    color: #1f1308;
+    padding: 20px 20px 18px;
+    pointer-events: auto;
+    position: absolute;
+}
+
+.app-tutorial-card h2 {
+    font-size: 1.08rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin: 0 0 8px;
+}
+
+.app-tutorial-card p {
+    color: rgba(31, 19, 8, 0.82);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.app-tutorial-step-count {
+    color: #b45309;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.app-tutorial-actions {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    margin-top: 18px;
+}
+
+.app-tutorial-nav {
+    display: flex;
+    gap: 10px;
+}
+
+.app-tutorial-btn {
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 700;
+    min-height: 40px;
+    padding: 0 16px;
+}
+
+.app-tutorial-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.app-tutorial-btn--ghost {
+    background: transparent;
+    color: rgba(31, 19, 8, 0.66);
+}
+
+.app-tutorial-btn--soft {
+    background: rgba(31, 19, 8, 0.08);
+    color: #1f1308;
+}
+
+.app-tutorial-btn--primary {
+    background: #1f1308;
+    color: #ffffff;
+}
+
+@media (max-width: 779px) {
+    .app-tutorial-card {
+        border-radius: 20px;
+        padding: 18px 16px 16px;
+    }
+
+    .app-tutorial-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .app-tutorial-nav {
+        width: 100%;
+    }
+
+    .app-tutorial-btn {
+        flex: 1;
+    }
+}

@@ -2695,6 +2695,8 @@ export const signUpWithRole = async (input: SignupInput) => {
                 government_id_ref: input.governmentId || null,
                 certificate_id: input.certificateId || null,
                 works_under_company: !!input.worksUnderCompany,
+                tutorial_pending: true,
+                tutorial_completed: false,
             },
         },
     });
