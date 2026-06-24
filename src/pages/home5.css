@@ -2610,10 +2610,9 @@
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: center;
-    justify-content: center;
-    gap: 16px;
-    width: fit-content;
-    max-width: calc(100vw - 40px);
+    gap: 18px;
+    width: 100%;
+    max-width: none;
     min-height: 3.75rem;
     padding: 0;
     pointer-events: auto;
@@ -2626,6 +2625,8 @@
     min-width: auto;
     padding-inline: 0;
     text-decoration: none;
+    justify-self: start;
+    cursor: pointer;
   }
 
   .home5-desktop-nav-brand img {
@@ -2735,9 +2736,28 @@
     font-weight: 600;
     line-height: 1;
     text-decoration: none;
+    cursor: pointer;
     transition:
       color 220ms ease,
       background-color 220ms ease,
+      transform 220ms ease,
+      box-shadow 220ms ease;
+  }
+
+  .home5-desktop-nav-links a::after,
+  .home5-desktop-nav-links button::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 0.38rem;
+    width: 0.34rem;
+    height: 0.34rem;
+    border-radius: 999px;
+    background: #ff7b29;
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px) scale(0.72);
+    transition:
+      opacity 220ms ease,
       transform 220ms ease;
   }
 
@@ -2750,6 +2770,7 @@
   .home5-nav-shell.is-glass .home5-desktop-nav-links button:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
   }
 
   .home5-nav-shell.is-on-dark.is-glass .home5-desktop-nav-links a:hover,
@@ -2761,6 +2782,14 @@
   .home5-nav-shell.is-in-hero .home5-desktop-nav-links button:hover {
     color: #ff8a39;
     transform: translateY(-1px);
+  }
+
+  .home5-desktop-nav-links a:hover::after,
+  .home5-desktop-nav-links a:focus-visible::after,
+  .home5-desktop-nav-links button:hover::after,
+  .home5-desktop-nav-links button:focus-visible::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 
   .home5-desktop-nav-cta {
@@ -2780,6 +2809,7 @@
     font-weight: 700;
     line-height: 1;
     text-decoration: none;
+    cursor: pointer;
     box-shadow:
       0 14px 30px rgba(255, 123, 41, 0.22),
       inset 0 1px 0 rgba(255, 255, 255, 0.34);
