@@ -85,19 +85,23 @@ const projectMarker = (
 
 export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers = [], ...rest }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const globeRef = useRef<CobeGlobe | null>(null);
   const frameRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const overlayMarkerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const overlayMarkersRef = useRef(overlayMarkers);
   const phiRef = useRef(0);
   const [size, setSize] = useState(0);
+  const [isInView, setIsInView] = useState(false);
+  const defaultMapSamples = config?.mapSamples ?? (size >= 720 ? 15000 : size >= 480 ? 12000 : 8000);
   const resolvedConfig = useMemo(() => ({
     ...DEFAULT_CONFIG,
     ...config,
+    mapSamples: defaultMapSamples,
     theta: config?.theta ?? DEFAULT_THETA,
     scale: config?.scale ?? DEFAULT_SCALE,
     offset: config?.offset ?? DEFAULT_OFFSET,
-  }), [config]);
+  }), [config, defaultMapSamples]);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -113,6 +117,25 @@ export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers 
     const observer = new ResizeObserver(() => {
       updateSize();
     });
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        setIsInView(entry.isIntersecting);
+      },
+      { rootMargin: '20% 0px', threshold: 0.01 },
+    );
 
     observer.observe(node);
 
@@ -153,8 +176,7 @@ export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers 
 
     const devicePixelRatio = getDevicePixelRatio();
     const renderSize = Math.round(size * devicePixelRatio);
-    let phi = 0;
-    phiRef.current = phi;
+    const phi = phiRef.current;
 
     const globe = createGlobe(canvas, {
       ...resolvedConfig,
@@ -163,32 +185,49 @@ export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers 
       devicePixelRatio,
       phi,
     } as COBEOptions) as CobeGlobe;
-
-    const prefersReducedMotion = typeof window !== 'undefined'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const rotate = () => {
-      phi += 0.0032;
-      phiRef.current = phi;
-      globe.update({ phi });
-      syncOverlayPositions(phi);
-      frameRef.current = window.requestAnimationFrame(rotate);
-    };
-
-    if (!prefersReducedMotion) {
-      frameRef.current = window.requestAnimationFrame(rotate);
-    } else {
-      syncOverlayPositions(phi);
-    }
+    globeRef.current = globe;
+    syncOverlayPositions(phi);
 
     return () => {
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
       }
+      if (globeRef.current === globe) {
+        globeRef.current = null;
+      }
       globe.destroy();
     };
   }, [resolvedConfig, size, syncOverlayPositions]);
+
+  useEffect(() => {
+    const globe = globeRef.current;
+    if (!globe) return undefined;
+
+    const prefersReducedMotion = typeof window !== 'undefined'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!isInView || prefersReducedMotion) {
+      syncOverlayPositions(phiRef.current);
+      return undefined;
+    }
+
+    const rotate = () => {
+      phiRef.current += 0.0032;
+      globeRef.current?.update({ phi: phiRef.current });
+      syncOverlayPositions(phiRef.current);
+      frameRef.current = window.requestAnimationFrame(rotate);
+    };
+
+    frameRef.current = window.requestAnimationFrame(rotate);
+
+    return () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+  }, [isInView, resolvedConfig, syncOverlayPositions]);
 
   return (
     <div ref={containerRef} className={className} {...rest}>

@@ -52,6 +52,7 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
   const sectionRef = useRef<HTMLElement | null>(null);
   const [progress, setProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [isNearViewport, setIsNearViewport] = useState(false);
 
   useEffect(() => {
     const updateViewportMode = () => {
@@ -67,6 +68,27 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
   }, []);
 
   useEffect(() => {
+    const node = sectionRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        setIsNearViewport(entry.isIntersecting);
+      },
+      { rootMargin: '28% 0px', threshold: 0.01 },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isNearViewport) return undefined;
+
     let frame = 0;
 
     const updateProgress = () => {
@@ -96,7 +118,7 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
     };
-  }, []);
+  }, [isNearViewport]);
 
   const lidProgress = clampValue(progress / 0.34, 0, 1);
   const dissolveProgress = clampValue((progress - 0.7) / 0.22, 0, 1);

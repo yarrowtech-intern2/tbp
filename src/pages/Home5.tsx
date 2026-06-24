@@ -1,12 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
-import { Globe } from '../components/ui/globe';
-import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterContent, type FooterLink } from '../lib/appContent';
 import { submitContactSubmission } from '../lib/contactSubmissions';
 import './home5.css';
+
+const LazyGlobe = lazy(async () => ({ default: (await import('../components/ui/globe')).Globe }));
+const LazyMacbookScrollDemo = lazy(async () => ({ default: (await import('../components/macbook-scroll-demo')).default }));
 
 type ScrollRevealProps = {
   children: React.ReactNode;
@@ -47,6 +48,57 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({ children, className, delay 
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
+    </div>
+  );
+};
+
+type DeferredMountProps = {
+  children: React.ReactNode;
+  className?: string;
+  minHeight?: string;
+  placeholderClassName?: string;
+  rootMargin?: string;
+};
+
+const DeferredMount: React.FC<DeferredMountProps> = ({
+  children,
+  className,
+  minHeight,
+  placeholderClassName,
+  rootMargin = '28% 0px',
+}) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (mounted) return undefined;
+
+    const node = ref.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setMounted(true);
+        observer.disconnect();
+      },
+      { rootMargin, threshold: 0.01 },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [mounted, rootMargin]);
+
+  return (
+    <div ref={ref} className={className} style={!mounted && minHeight ? { minHeight } : undefined}>
+      {mounted
+        ? children
+        : placeholderClassName
+          ? <div className={placeholderClassName} aria-hidden="true" />
+          : null}
     </div>
   );
 };
@@ -350,6 +402,8 @@ export const Home5: React.FC = () => {
   const [stickyLogoVisible, setStickyLogoVisible] = useState(false);
   const [stickyLogoOnDark, setStickyLogoOnDark] = useState(false);
   const [stickyMenuOnDark, setStickyMenuOnDark] = useState(false);
+  const [stickyNavInHero, setStickyNavInHero] = useState(true);
+  const [shouldLoadFooterContent, setShouldLoadFooterContent] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
   const bookingDragStartXRef = useRef<number | null>(null);
@@ -382,6 +436,30 @@ export const Home5: React.FC = () => {
     : null;
 
   useEffect(() => {
+    if (shouldLoadFooterContent) return undefined;
+
+    const node = footerRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setShouldLoadFooterContent(true);
+        observer.disconnect();
+      },
+      { rootMargin: '35% 0px', threshold: 0.01 },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [shouldLoadFooterContent]);
+
+  useEffect(() => {
+    if (!shouldLoadFooterContent) return undefined;
+
     let cancelled = false;
 
     getPublicAppContent()
@@ -395,7 +473,7 @@ export const Home5: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [shouldLoadFooterContent]);
 
   useEffect(() => {
     if (!contactModalOpen) return undefined;
@@ -486,7 +564,7 @@ export const Home5: React.FC = () => {
     const updateMode = () => {
       const isFinePointer = media.matches;
       setHeroTouchMode(!isFinePointer);
-      setHeroCursorVisible(!isFinePointer);
+      setHeroCursorVisible(false);
     };
 
     updateMode();
@@ -637,7 +715,9 @@ export const Home5: React.FC = () => {
         && sampleY <= heroRect.bottom
       );
       const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
+      const nextNavInHero = overlapsHero;
 
+      setStickyNavInHero((current) => (current !== nextNavInHero ? nextNavInHero : current));
       setStickyMenuOnDark((current) => (current !== nextToneOnDark ? nextToneOnDark : current));
     };
 
@@ -749,9 +829,6 @@ export const Home5: React.FC = () => {
     const target = event.target as HTMLElement | null;
     if (target?.closest('.home5-hero-menu')) return;
     updateHeroCursorPosition(event.clientX, event.clientY);
-    if (event.pointerType === 'touch') {
-      setHeroCursorVisible(true);
-    }
   };
 
   const handleHeroClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -939,6 +1016,7 @@ export const Home5: React.FC = () => {
     transform: `translateY(${(1 - introProgress) * 30}px)`,
   } satisfies React.CSSProperties;
   const stickyLogoSrc = stickyLogoOnDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
+  const navLogoSrc = stickyMenuOnDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
   return (
     <main className="home5-page">
       <Link
@@ -952,35 +1030,56 @@ export const Home5: React.FC = () => {
 
       <div
         ref={stickyMenuRef}
-        className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}${stickyMenuOnDark ? ' is-on-dark' : ''}`}
+        className={`home5-nav-shell${stickyMenuOnDark ? ' is-on-dark' : ''}${stickyNavInHero ? ' is-in-hero' : ' is-glass'}`}
       >
-        <button
-          type="button"
-          className="home5-hero-menu-toggle"
-          aria-label={heroMenuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={heroMenuOpen}
-          aria-controls="home5-hero-menu-panel"
-          onClick={() => setHeroMenuOpen((current) => !current)}
-        >
-          <span className="home5-hero-menu-line" />
-          <span className="home5-hero-menu-line" />
-          <span className="home5-hero-menu-line" />
-        </button>
+        <nav className="home5-desktop-nav" aria-label="Primary navigation">
+          <Link to="/" className="home5-desktop-nav-brand" aria-label="The Betterpass home">
+            <img src={navLogoSrc} alt="The Betterpass" />
+          </Link>
 
-        <nav id="home5-hero-menu-panel" className="home5-hero-menu-panel" aria-label="Landing navigation">
-          <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
-          <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
-          <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Login</Link>
+          <div className="home5-desktop-nav-glass">
+            <div className="home5-desktop-nav-links">
+              <Link to="/">Home</Link>
+              <Link to="/about-final">About us</Link>
+              <Link to="/auth">Login</Link>
+              <button type="button" onClick={() => setContactModalOpen(true)}>Contact</button>
+            </div>
+
+            <Link className="home5-desktop-nav-cta" to="/auth">
+              <span>Get started</span>
+            </Link>
+          </div>
+        </nav>
+
+        <div className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}`}>
           <button
             type="button"
-            onClick={() => {
-              setHeroMenuOpen(false);
-              setContactModalOpen(true);
-            }}
+            className="home5-hero-menu-toggle"
+            aria-label={heroMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={heroMenuOpen}
+            aria-controls="home5-hero-menu-panel"
+            onClick={() => setHeroMenuOpen((current) => !current)}
           >
-            Contact
+            <span className="home5-hero-menu-line" />
+            <span className="home5-hero-menu-line" />
+            <span className="home5-hero-menu-line" />
           </button>
-        </nav>
+
+          <nav id="home5-hero-menu-panel" className="home5-hero-menu-panel" aria-label="Landing navigation">
+            <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
+            <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
+            <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Login</Link>
+            <button
+              type="button"
+              onClick={() => {
+                setHeroMenuOpen(false);
+                setContactModalOpen(true);
+              }}
+            >
+              Contact
+            </button>
+          </nav>
+        </div>
       </div>
 
       <section
@@ -1047,7 +1146,9 @@ export const Home5: React.FC = () => {
 
               <div className="home5-globe-stage" aria-hidden="true">
                 <div className="home5-globe-ground" />
-                <Globe className="home5-globe" />
+                <Suspense fallback={<div className="home5-globe home5-globe-placeholder" aria-hidden="true" />}>
+                  <LazyGlobe className="home5-globe" />
+                </Suspense>
                 <div className="home5-globe-fade" />
               </div>
             </>
@@ -1071,7 +1172,7 @@ export const Home5: React.FC = () => {
                 <div className="home5-hero-immersive-cta-row">
                   <Link className="home5-hero-immersive-cta" to="/auth">
                     <span>{activeVideoHeroContent.ctaLabel}</span>
-                    <span className="home5-hero-immersive-cta-icon" aria-hidden="true">↗</span>
+                    <span className="home5-hero-immersive-cta-icon" aria-hidden="true">-&gt;</span>
                   </Link>
                   <p>{activeVideoHeroContent.description}</p>
                 </div>
@@ -1354,7 +1455,16 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <MacbookScrollDemo />
+      <DeferredMount
+        className="home5-deferred-shell"
+        minHeight="235vh"
+        placeholderClassName="home5-deferred-placeholder home5-deferred-placeholder-macbook"
+        rootMargin="22% 0px"
+      >
+        <Suspense fallback={<div className="home5-deferred-placeholder home5-deferred-placeholder-macbook" aria-hidden="true" />}>
+          <LazyMacbookScrollDemo />
+        </Suspense>
+      </DeferredMount>
 
       <section ref={finalSectionRef} className="home5-final-section">
         <div className="container">
@@ -1393,7 +1503,15 @@ export const Home5: React.FC = () => {
                   <span>Explore</span>
                 </Link>
                 <div className="home5-final-globe-ground" aria-hidden="true" />
-                <Globe className="home5-final-globe" aria-hidden="true" />
+                <DeferredMount
+                  className="home5-final-globe-mount"
+                  placeholderClassName="home5-final-globe home5-globe-placeholder"
+                  rootMargin="40% 0px"
+                >
+                  <Suspense fallback={<div className="home5-final-globe home5-globe-placeholder" aria-hidden="true" />}>
+                    <LazyGlobe className="home5-final-globe" aria-hidden="true" />
+                  </Suspense>
+                </DeferredMount>
               </div>
             </div>
           </div>
