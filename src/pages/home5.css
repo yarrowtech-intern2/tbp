@@ -2646,18 +2646,41 @@
     min-height: 3.55rem;
     padding: 0.32rem 0.42rem 0.32rem 0.82rem;
     border-radius: 999px;
+    overflow: hidden;
+    isolation: isolate;
+    -webkit-backdrop-filter: blur(0px) saturate(1);
+    backdrop-filter: blur(0px) saturate(1);
     transition:
+      background 320ms ease,
       background-color 320ms ease,
       border-color 320ms ease,
       box-shadow 320ms ease,
+      -webkit-backdrop-filter 320ms ease,
+      backdrop-filter 320ms ease,
       transform 320ms ease,
       opacity 320ms ease;
   }
 
   .home5-nav-shell.is-in-hero .home5-desktop-nav-glass {
-    background: transparent;
-    border: 1px solid transparent;
-    box-shadow: none;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.1)),
+      rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow:
+      0 14px 32px rgba(15, 23, 42, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    -webkit-backdrop-filter: blur(12px) saturate(1.18);
+    backdrop-filter: blur(12px) saturate(1.18);
+  }
+
+  .home5-nav-shell.is-on-dark.is-in-hero .home5-desktop-nav-glass {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06)),
+      rgba(17, 17, 17, 0.18);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow:
+      0 16px 36px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
   }
 
   .home5-nav-shell.is-glass .home5-desktop-nav-glass {
@@ -2670,6 +2693,8 @@
       0 4px 16px rgba(15, 23, 42, 0.05),
       inset 0 1px 0 rgba(255, 255, 255, 0.78),
       inset 0 -1px 0 rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(18px) saturate(1.32);
+    backdrop-filter: blur(18px) saturate(1.32);
   }
 
   .home5-nav-shell.is-on-dark.is-glass .home5-desktop-nav-glass {
@@ -2682,6 +2707,8 @@
       0 5px 18px rgba(0, 0, 0, 0.12),
       inset 0 1px 0 rgba(255, 255, 255, 0.2),
       inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    backdrop-filter: blur(18px) saturate(1.2);
   }
 
   .home5-desktop-nav-glass::before,

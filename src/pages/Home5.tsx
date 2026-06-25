@@ -1041,7 +1041,6 @@ export const Home5: React.FC = () => {
             <div className="home5-desktop-nav-links">
               <Link to="/">Home</Link>
               <Link to="/about-final">About us</Link>
-              <Link to="/auth">Login</Link>
               <button type="button" onClick={() => setContactModalOpen(true)}>Contact</button>
             </div>
 
@@ -1068,7 +1067,7 @@ export const Home5: React.FC = () => {
           <nav id="home5-hero-menu-panel" className="home5-hero-menu-panel" aria-label="Landing navigation">
             <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
             <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
-            <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Login</Link>
+            <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Get started</Link>
             <button
               type="button"
               onClick={() => {
