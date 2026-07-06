@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Loader2,
   Search,
+  Share2,
   UserCircle2,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -157,6 +158,49 @@ const formatPrice = (price: number | null | undefined): string => {
   return `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(price)}`;
 };
 
+const shareListing = async (args: {
+  title: string;
+  description: string;
+  imageUrl: string;
+  priceLabel: string;
+  url: string;
+}) => {
+  const shareText = [
+    args.title,
+    args.description,
+    args.priceLabel,
+    args.imageUrl ? `Image: ${args.imageUrl}` : null,
+    args.url,
+  ].filter(Boolean).join('\n');
+
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({
+        title: args.title,
+        text: [args.description, args.priceLabel].filter(Boolean).join('\n'),
+        url: args.url,
+      });
+      return;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+    }
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      alert('Share link copied.');
+      return;
+    } catch {
+      // Fall through to prompt fallback.
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    window.prompt('Copy and share this package:', shareText);
+  }
+};
+
 
 const getToneClass = (section: SectionTab): string => `dh-tone-${section}`;
 
@@ -250,6 +294,7 @@ const ListingCard: React.FC<{
   const listingTypeValue = toListingTypeValue(type);
   const priceLabel = formatPrice(post.price);
   const boosted = hasActiveBoost(post);
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingTypePath}/${post.id}` : '';
 
   useEffect(() => {
     if (!user || !post.id || !canFavorite) {
@@ -402,13 +447,34 @@ const ListingCard: React.FC<{
 
           <div className="listing-card-actions">
             <span className="listing-card-price">{priceLabel}</span>
-            <Link
-              to={`/listings/${listingTypePath}/${post.id}`}
-              className="listing-btn-book"
-              onClick={(event) => event.stopPropagation()}
-            >
-              BOOK
-            </Link>
+            <div className="listing-card-cta-cluster">
+              <Link
+                to={`/listings/${listingTypePath}/${post.id}`}
+                className="listing-btn-book"
+                onClick={(event) => event.stopPropagation()}
+              >
+                BOOK
+              </Link>
+              <button
+                type="button"
+                className="listing-btn-share"
+                aria-label="Share package"
+                title="Share package"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void shareListing({
+                    title,
+                    description: subtitle,
+                    imageUrl: activeImage,
+                    priceLabel,
+                    url: shareUrl,
+                  });
+                }}
+              >
+                <Share2 size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </div>

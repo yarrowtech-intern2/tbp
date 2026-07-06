@@ -335,6 +335,12 @@
   margin-top: 10px;
 }
 
+.listing-card-cta-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .listing-card-price {
   margin-right: auto;
   color: #b6ffb3;
@@ -362,6 +368,20 @@
   color: #ff6b00;
   border: none;
   box-shadow: none;
+}
+
+.listing-btn-share {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #ff6b00;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .listing-btn-booked {
@@ -462,6 +482,11 @@
     min-height: 34px;
     padding: 0 14px;
     font-size: 0.7rem;
+  }
+
+  .listing-btn-share {
+    width: 34px;
+    height: 34px;
   }
 }
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Heart, Loader2, MapPin, MessageCircle, ShieldCheck, Star, TrendingUp, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Facebook, Heart, Instagram, Loader2, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
     addListingFavorite,
@@ -69,6 +69,12 @@ const formatReviewSummary = (average: number | null, count: number): string => {
     return `${average.toFixed(1)} from ${count} ${count === 1 ? 'rating' : 'ratings'}`;
 };
 
+const buildShortDescription = (value: string, maxLength = 120): string => {
+    const trimmed = value.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
+};
+
 export const ListingDetail: React.FC = () => {
     const { id, type } = useParams<{ id: string; type?: string }>();
     const navigate = useNavigate();
@@ -83,6 +89,7 @@ export const ListingDetail: React.FC = () => {
     const [confirmingBooking, setConfirmingBooking] = useState(false);
     const [bookingPendingSync, setBookingPendingSync] = useState(false);
     const [bookingError, setBookingError] = useState<string | null>(null);
+    const [shareFeedback, setShareFeedback] = useState<string | null>(null);
     const [hasExistingBooking, setHasExistingBooking] = useState(false);
     const [hasConfirmedBooking, setHasConfirmedBooking] = useState(false);
     const [bookingAwaitingProvider, setBookingAwaitingProvider] = useState(false);
@@ -192,6 +199,7 @@ export const ListingDetail: React.FC = () => {
     const primaryImage = listing ? getListingImage(listing) : '';
     const image = galleryImages[selectedImageIndex] || primaryImage;
     const description = typeof listing?.description === 'string' ? listing.description : 'No description provided yet.';
+    const shortDescription = useMemo(() => buildShortDescription(description), [description]);
     const location = typeof listing?.location === 'string' ? listing.location : 'Location available after booking';
     const providerUnitPrice = typeof listing?.price === 'number' ? listing.price : 0;
     const ownerUserId = normalizeUuidString(listing?.provider_user_id)
@@ -209,6 +217,22 @@ export const ListingDetail: React.FC = () => {
     const canBook = profile?.role === 'tourist';
     const canFavorite = profile?.role === 'tourist';
     const canReview = profile?.role === 'tourist';
+    const bookingButtonDisabled = bookingLoading || Boolean(user && !canBook);
+    const bookingButtonLabel = !user ? 'Login to Book' : canBook ? 'Pay & Book' : 'Tourist Only';
+    const shareUrl = useMemo(() => {
+        if (typeof window === 'undefined') return '';
+        return `${window.location.origin}/listings/${effectiveType}/${listing?.id || id || ''}`;
+    }, [effectiveType, id, listing?.id]);
+    const shareText = useMemo(() => (
+        [
+            title,
+            shortDescription,
+            `Price: Rs ${pricing.tourist_unit_price.toLocaleString()}`,
+            `Location: ${location}`,
+            image ? `Image: ${image}` : null,
+            shareUrl,
+        ].filter(Boolean).join('\n')
+    ), [image, location, pricing.tourist_unit_price, shareUrl, shortDescription, title]);
     const canMessageProviderAfterBooking = Boolean(
         user
         && ownerUserId
@@ -393,7 +417,7 @@ export const ListingDetail: React.FC = () => {
         const currentUserId = normalizeUuidString(user?.id);
         const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
         if (!currentUserId) {
-            setBookingError('Your session expired. Please sign in again.');
+            setBookingError('Please log in to book this package.');
             navigate('/auth');
             return;
         }
@@ -505,6 +529,83 @@ export const ListingDetail: React.FC = () => {
             setConfirmingBooking(false);
             setBookingLoading(false);
         }
+    };
+
+    const openShareWindow = (url: string) => {
+        if (typeof window === 'undefined') return;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
+    const copyShareText = async () => {
+        if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) return false;
+        try {
+            await navigator.clipboard.writeText(shareText);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    const handleNativeShare = async () => {
+        setShareFeedback(null);
+        if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+                await navigator.share({
+                    title,
+                    text: [
+                        shortDescription,
+                        `Price: Rs ${pricing.tourist_unit_price.toLocaleString()}`,
+                        image ? `Image: ${image}` : null,
+                    ].filter(Boolean).join('\n'),
+                    url: shareUrl,
+                });
+                return;
+            } catch (error) {
+                if (error instanceof Error && error.name === 'AbortError') return;
+            }
+        }
+
+        const copied = await copyShareText();
+        setShareFeedback(copied ? 'Share text copied.' : 'Native share is not available on this device.');
+    };
+
+    const handleWhatsAppShare = () => {
+        setShareFeedback(null);
+        openShareWindow(`https://wa.me/?text=${encodeURIComponent(shareText)}`);
+    };
+
+    const handleFacebookShare = () => {
+        setShareFeedback(null);
+        openShareWindow(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent([
+            title,
+            shortDescription,
+            `Price: Rs ${pricing.tourist_unit_price.toLocaleString()}`,
+            image ? `Image: ${image}` : null,
+        ].filter(Boolean).join('\n'))}`);
+    };
+
+    const handleInstagramShare = async () => {
+        setShareFeedback(null);
+        if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+                await navigator.share({
+                    title,
+                    text: shareText,
+                    url: shareUrl,
+                });
+                return;
+            } catch (error) {
+                if (error instanceof Error && error.name === 'AbortError') return;
+            }
+        }
+
+        const copied = await copyShareText();
+        openShareWindow('https://www.instagram.com/');
+        setShareFeedback(
+            copied
+                ? 'Caption copied. Paste it into Instagram and attach the image there.'
+                : 'Open Instagram and paste the package caption manually.'
+        );
     };
 
     const handleMessage = async () => {
@@ -763,7 +864,13 @@ export const ListingDetail: React.FC = () => {
                                     <strong>Rs {pricing.platform_fee_amount.toLocaleString()}</strong>
                                 </div>
 
-                                {!canBook && (
+                                {!user && (
+                                    <p className="listing-book-warning">
+                                        You can view package details publicly. Log in to continue with booking.
+                                    </p>
+                                )}
+
+                                {user && !canBook && (
                                     <p className="listing-book-warning">
                                         Only tourist accounts can place bookings.
                                     </p>
@@ -775,9 +882,53 @@ export const ListingDetail: React.FC = () => {
                                     </p>
                                 )}
 
-                                <button className="btn btn-primary listing-detail-pill-btn listing-detail-center-btn" type="submit" disabled={bookingLoading || !canBook}>
-                                    {bookingLoading ? <Loader2 className="animate-spin" size={18} /> : 'Pay & Book'}
-                                </button>
+                                <div className="listing-book-cta-row">
+                                    <button className="btn btn-primary listing-detail-pill-btn listing-detail-center-btn listing-book-main-btn" type="submit" disabled={bookingButtonDisabled}>
+                                        {bookingLoading ? <Loader2 className="animate-spin" size={18} /> : bookingButtonLabel}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary listing-detail-share-round-btn"
+                                        onClick={() => void handleNativeShare()}
+                                        aria-label="Share this package"
+                                        title="Share this package"
+                                    >
+                                        <Share2 size={18} />
+                                    </button>
+                                </div>
+
+                                <div className="listing-share-dedicated-row" aria-label="Share package to apps">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary listing-share-app-btn"
+                                        onClick={handleWhatsAppShare}
+                                    >
+                                        <MessageCircle size={15} />
+                                        WhatsApp
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary listing-share-app-btn"
+                                        onClick={handleFacebookShare}
+                                    >
+                                        <Facebook size={15} />
+                                        Facebook
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary listing-share-app-btn"
+                                        onClick={() => void handleInstagramShare()}
+                                    >
+                                        <Instagram size={15} />
+                                        Instagram
+                                    </button>
+                                </div>
+
+                                {shareFeedback && (
+                                    <p className="listing-share-feedback">
+                                        {shareFeedback}
+                                    </p>
+                                )}
 
                                 <p className="listing-book-security">
                                     <ShieldCheck size={14} /> Secure booking. Price shown is tax-inclusive and includes platform fee.

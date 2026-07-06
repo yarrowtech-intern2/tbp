@@ -183,7 +183,7 @@ function App() {
               <Route path="/tours" element={<TouristOnlyRoute><Navigate to={DASHBOARD_TOURS_PATH} replace /></TouristOnlyRoute>} />
               <Route path="/guides" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
               <Route path="/events" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
-              <Route path="/listings/:type/:id" element={<TouristOnlyRoute><ListingDetail /></TouristOnlyRoute>} />
+              <Route path="/listings/:type/:id" element={<ListingDetail />} />
               <Route path="/destination/:id" element={<TouristOnlyRoute><DestinationDetail /></TouristOnlyRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />

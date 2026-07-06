@@ -217,6 +217,12 @@
   gap: 12px;
 }
 
+.listing-book-cta-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .listing-book-head {
   align-items: baseline;
   display: flex;
@@ -289,6 +295,41 @@
 .listing-detail-pill-btn {
   border-radius: 999px;
   min-height: 44px;
+}
+
+.listing-book-main-btn {
+  width: 100%;
+}
+
+.listing-detail-share-round-btn {
+  align-items: center;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+
+.listing-share-dedicated-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.listing-share-app-btn {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  min-height: 40px;
+  padding-inline: 12px;
+}
+
+.listing-share-feedback {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin: 0;
 }
 
 .listing-detail-fav-active {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowUpRight, Bookmark, Loader2 } from 'lucide-react';
+import { ArrowUpRight, Bookmark, Loader2, Share2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { addListingFavorite, isListingFavorited, removeListingFavorite } from '../lib/destinations';
@@ -37,6 +37,49 @@ const limitWords = (value: string, maxWords: number): string => {
     return `${words.slice(0, maxWords).join(' ')}...`;
 };
 
+const shareListing = async (args: {
+    title: string;
+    description: string;
+    imageUrl: string;
+    priceLabel: string;
+    url: string;
+}) => {
+    const shareText = [
+        args.title,
+        args.description,
+        args.priceLabel,
+        args.imageUrl ? `Image: ${args.imageUrl}` : null,
+        args.url,
+    ].filter(Boolean).join('\n');
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+            await navigator.share({
+                title: args.title,
+                text: [args.description, args.priceLabel].filter(Boolean).join('\n'),
+                url: args.url,
+            });
+            return;
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') return;
+        }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        try {
+            await navigator.clipboard.writeText(shareText);
+            alert('Share link copied.');
+            return;
+        } catch {
+            // Fall through to prompt fallback.
+        }
+    }
+
+    if (typeof window !== 'undefined') {
+        window.prompt('Copy and share this package:', shareText);
+    }
+};
+
 export const DestinationCard: React.FC<DestinationProps> = ({
     id,
     title,
@@ -58,6 +101,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
         ? limitWords(description, 12)
         : 'Curated listing with complete details available on open.';
     const priceLabel = formatPrice(price);
+    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingPathType}/${id}` : '';
 
     useEffect(() => {
         if (!user || !id || !canFavorite) {
@@ -166,13 +210,34 @@ export const DestinationCard: React.FC<DestinationProps> = ({
 
                     <div className="listing-card-actions">
                         <span className="listing-card-price">{priceLabel}</span>
-                        <Link
-                            to={`/listings/${listingPathType}/${id}`}
-                            className="listing-btn-book"
-                            onClick={(event) => event.stopPropagation()}
-                        >
-                            BOOK
-                        </Link>
+                        <div className="listing-card-cta-cluster">
+                            <Link
+                                to={`/listings/${listingPathType}/${id}`}
+                                className="listing-btn-book"
+                                onClick={(event) => event.stopPropagation()}
+                            >
+                                BOOK
+                            </Link>
+                            <button
+                                type="button"
+                                className="listing-btn-share"
+                                aria-label="Share package"
+                                title="Share package"
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    void shareListing({
+                                        title,
+                                        description: subtitle,
+                                        imageUrl: image_url,
+                                        priceLabel,
+                                        url: shareUrl,
+                                    });
+                                }}
+                            >
+                                <Share2 size={16} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -183,9 +248,30 @@ export const DestinationCard: React.FC<DestinationProps> = ({
 
                 <div className="listing-card-actions">
                     <span className="listing-card-price">{priceLabel}</span>
-                    <Link to={`/listings/${listingPathType}/${id}`} className="listing-btn-book" onClick={(event) => event.stopPropagation()}>
-                        BOOK
-                    </Link>
+                    <div className="listing-card-cta-cluster">
+                        <Link to={`/listings/${listingPathType}/${id}`} className="listing-btn-book" onClick={(event) => event.stopPropagation()}>
+                            BOOK
+                        </Link>
+                        <button
+                            type="button"
+                            className="listing-btn-share"
+                            aria-label="Share package"
+                            title="Share package"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                void shareListing({
+                                    title,
+                                    description: subtitle,
+                                    imageUrl: image_url,
+                                    priceLabel,
+                                    url: shareUrl,
+                                });
+                            }}
+                        >
+                            <Share2 size={16} />
+                        </button>
+                    </div>
                 </div>
             </div>
         </article>
