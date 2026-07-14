@@ -2701,6 +2701,65 @@
     box-shadow: none;
 }
 
+.rdb-route-history-card {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    display: grid;
+    gap: 12px;
+    border: none;
+    grid-column: 1 / -1;
+}
+
+.rdb-route-history-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 28px color-mix(in srgb, #000 10%, transparent);
+}
+
+.rdb-route-history-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rdb-route-history-card-arrow {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--rdb-admin-circle);
+    color: var(--rdb-admin-text-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.rdb-route-history-card-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.rdb-route-history-card-stats div {
+    border-radius: 14px;
+    background: var(--rdb-admin-card-soft);
+    padding: 12px;
+    display: grid;
+    gap: 4px;
+}
+
+.rdb-route-history-card-stats span {
+    font-size: 0.72rem;
+    color: var(--rdb-admin-text-muted);
+}
+
+.rdb-route-history-card-stats strong {
+    color: var(--rdb-admin-text-strong);
+    font-size: 0.96rem;
+}
+
 .rdb-admin-chart-card h3 {
     margin: 0;
     font-size: clamp(1.38rem, 2.4vw, 1.82rem);

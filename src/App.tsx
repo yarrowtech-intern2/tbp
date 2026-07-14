@@ -24,6 +24,7 @@ const TermsAndConditions = lazy(async () => ({ default: (await import('./pages/T
 const ListingDetail = lazy(async () => ({ default: (await import('./pages/ListingDetail')).ListingDetail }));
 const UserProfile = lazy(async () => ({ default: (await import('./pages/UserProfile')).UserProfile }));
 const Messages = lazy(async () => ({ default: (await import('./pages/Messages')).Messages }));
+const MapPage = lazy(async () => ({ default: (await import('./pages/MapPage')).MapPage }));
 
 const APP_HOME_PATH = '/';
 const DASHBOARD_TOURS_PATH = '/explore?tab=tours';
@@ -188,6 +189,7 @@ function App() {
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
               <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+              <Route path="/map" element={<MapPage />} />
               <Route path="/notifications" element={<ProtectedRoute><Navigate to="/dashboard?section=messages" replace /></ProtectedRoute>} />
               <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
               <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />

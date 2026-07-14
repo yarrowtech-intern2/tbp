@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, Moon, Sun, X } from 'lucide-react';
+import { MapPinned, Menu, Moon, Sun, X } from 'lucide-react';
 import { useAppTutorial } from '../context/AppTutorialContext';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
@@ -184,15 +184,25 @@ export const Navbar: React.FC = () => {
                     )}
                 </div>
 
-                {/* Right: user chip (outside the pill) */}
+                {/* Right: map shortcut and user chip (outside the pill) */}
                 {user && (
-                    <Link to={dashboardPath} className="nbr-user-chip">
-                        <div className="nbr-user-text">
-                            <span className="nbr-user-name">{shortName}</span>
-                            <span className="nbr-user-role">{roleLabel}</span>
-                        </div>
-                        <img src={avatarSrc} alt={shortName} className="nbr-avatar" />
-                    </Link>
+                    <div className="nbr-right-actions">
+                        <Link
+                            to="/map"
+                            className={`nbr-map-button${location.pathname === '/map' ? ' nbr-map-button--active' : ''}`}
+                            aria-label="Open map"
+                            title="Map"
+                        >
+                            <MapPinned size={17} strokeWidth={2.4} />
+                        </Link>
+                        <Link to={dashboardPath} className="nbr-user-chip">
+                            <div className="nbr-user-text">
+                                <span className="nbr-user-name">{shortName}</span>
+                                <span className="nbr-user-role">{roleLabel}</span>
+                            </div>
+                            <img src={avatarSrc} alt={shortName} className="nbr-avatar" />
+                        </Link>
+                    </div>
                 )}
             </div>
 
@@ -232,6 +242,9 @@ export const Navbar: React.FC = () => {
                         )}
                         {user && providerAccount && (
                             <Link to={providerStudioPath} className="nbr-drop-item" onClick={() => setShowMenu(false)}>Studio</Link>
+                        )}
+                        {user && (
+                            <Link to="/map" className="nbr-drop-item" onClick={() => setShowMenu(false)}>Map</Link>
                         )}
                         {!user && (
                             <Link to="/auth" className="nbr-drop-item nbr-drop-item--accent" onClick={() => setShowMenu(false)}>
@@ -385,6 +398,15 @@ export const Navbar: React.FC = () => {
                     text-decoration: none;
                 }
 
+                .nbr-right-actions {
+                    align-items: center;
+                    display: inline-flex;
+                    gap: 10px;
+                    grid-column: 3;
+                    justify-self: end;
+                }
+
+                .nbr-map-button,
                 .nbr-user-chip {
                     align-items: center;
                     animation: fadeInDown 0.5s cubic-bezier(0.23,1,0.32,1) both;
@@ -396,13 +418,28 @@ export const Navbar: React.FC = () => {
                     border-radius: 999px;
                     box-shadow: 0 4px 24px rgba(15,23,42,0.10), inset 0 1px 0 ${navInset};
                     display: inline-flex;
+                    color: ${navTextStrong};
+                    text-decoration: none;
+                    transition: box-shadow 0.2s, transform 0.2s, background 0.2s;
+                }
+
+                .nbr-map-button {
+                    height: 42px;
+                    justify-content: center;
+                    padding: 0;
+                    width: 42px;
+                }
+
+                .nbr-map-button:hover,
+                .nbr-map-button--active {
+                    background: ${navHover};
+                    transform: translateY(-1px);
+                }
+
+                .nbr-user-chip {
                     gap: 8px;
-                    grid-column: 3;
-                    justify-self: end;
                     padding: 5px 5px 5px 12px;
                     position: static;
-                    text-decoration: none;
-                    transition: box-shadow 0.2s, transform 0.2s;
                 }
 
                 .nbr-user-chip:hover {

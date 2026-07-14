@@ -89,6 +89,12 @@ import {
 import { DEFAULT_SALES_SETTINGS, getPublicAppContent, type SalesSettingsContent } from '../lib/appContent';
 import { ContactSubmissionsPanel } from '../components/contact/ContactSubmissionsPanel';
 import { MarketingContentEditor, SalesSettingsEditor } from '../components/marketing/MarketingContentEditor';
+import {
+    formatRouteDistance,
+    formatRouteDuration,
+    getTouristRouteHistory,
+    type RouteHistoryRecord,
+} from '../lib/routePlanner';
 import './role-dashboard.css';
 
 type DashboardRole = 'tourist' | 'provider' | 'admin' | 'marketing';
@@ -98,6 +104,7 @@ type SidebarKey =
     | 'revenue'
     | 'explore'
     | 'bookings'
+    | 'routes'
     | 'favorites'
     | 'listings'
     | 'advertisements'
@@ -479,6 +486,7 @@ const parseTouristSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'overview') return 'overview';
     if (normalized === 'explore') return 'explore';
     if (normalized === 'bookings') return 'bookings';
+    if (normalized === 'routes' || normalized === 'history' || normalized === 'route-history') return 'routes';
     if (normalized === 'revenue' || normalized === 'spend') return 'revenue';
     if (normalized === 'messages') return 'messages';
     if (normalized === 'favorites' || normalized === 'favs') return 'favorites';
@@ -924,6 +932,7 @@ export const RoleDashboard: React.FC = () => {
     const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
     const [touristFavorites, setTouristFavorites] = useState<FavoriteListingRecord[]>([]);
     const [touristConversations, setTouristConversations] = useState<ConversationRecord[]>([]);
+    const [touristRoutes, setTouristRoutes] = useState<RouteHistoryRecord[]>([]);
 
     const [providerListings, setProviderListings] = useState<PostRecord[]>([]);
     const [providerAds, setProviderAds] = useState<PaidAdRecord[]>([]);
@@ -1234,15 +1243,17 @@ export const RoleDashboard: React.FC = () => {
             setError(null);
             try {
                 if (effectiveRole === 'tourist') {
-                    const [bookings, favorites, conversations] = await Promise.all([
+                    const [bookings, favorites, conversations, routes] = await Promise.all([
                         getBookings(user.id),
                         getFavoriteListings(user.id),
                         getConversations(user.id),
+                        getTouristRouteHistory(user.id),
                     ]);
                     if (cancelled) return;
                     setTouristBookings(bookings);
                     setTouristFavorites(favorites);
                     setTouristConversations(conversations);
+                    setTouristRoutes(routes);
                 }
 
                 if (effectiveRole === 'provider') {
@@ -1736,6 +1747,27 @@ export const RoleDashboard: React.FC = () => {
     const favoriteRows = touristFavorites
         .filter((item) => !query || `${item.title || ''} ${item.location || ''} ${item.listing_type || ''}`.toLowerCase().includes(query));
 
+    const touristRouteRows = touristRoutes
+        .filter((item) => !query || [
+            item.title,
+            item.city,
+            item.start_name,
+            item.destination_name,
+            item.stop_names.join(' '),
+            item.travel_mode,
+        ].join(' ').toLowerCase().includes(query));
+
+    const touristRouteMetrics = useMemo(() => {
+        const totalDistanceMeters = touristRoutes.reduce((sum, item) => sum + (item.distance_meters || 0), 0);
+        const citySet = new Set(touristRoutes.map((item) => item.city).filter(Boolean));
+        return {
+            totalRoutes: touristRoutes.length,
+            totalDistanceMeters,
+            cityCount: citySet.size,
+            latestRoute: touristRoutes[0] || null,
+        };
+    }, [touristRoutes]);
+
     const providerRows = providerListings
         .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
 
@@ -2074,6 +2106,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'tourist') {
             return {
                 bookings: touristRows.length,
+                routes: touristRouteRows.length,
                 revenue: touristRevenueFilteredRows.length,
                 messages: touristNotificationRows.length,
                 favorites: favoriteRows.length,
@@ -2459,6 +2492,58 @@ export const RoleDashboard: React.FC = () => {
             );
         }
 
+        if (activeSection === 'routes') {
+            return (
+                <section className="rdb-panel rdb-panel-wide">
+                    <div className="rdb-panel-head">
+                        <h2>Route History</h2>
+                        <small>{query ? `Filtered by "${search}"` : `${touristRouteRows.length} records`}</small>
+                    </div>
+
+                    {touristRoutes.length > 0 ? (
+                        <div className="rdb-stat-list">
+                            <div><span>Total Routes</span><strong>{touristRouteMetrics.totalRoutes}</strong></div>
+                            <div><span>Cities Covered</span><strong>{touristRouteMetrics.cityCount}</strong></div>
+                            <div><span>Total Distance</span><strong>{formatRouteDistance(touristRouteMetrics.totalDistanceMeters)}</strong></div>
+                            <div><span>Latest</span><strong>{touristRouteMetrics.latestRoute?.title || 'N/A'}</strong></div>
+                        </div>
+                    ) : null}
+
+                    <div className="rdb-action-list">
+                        <Link to="/map" className="rdb-inline-link">Create another route</Link>
+                        <button type="button" className="rdb-inline-link" onClick={() => goToSection('overview')}>Back to dashboard</button>
+                    </div>
+
+                    <div className="rdb-list">
+                        {touristRouteRows.slice(0, 24).map((item) => (
+                            <div key={item.client_route_id} className="rdb-list-row">
+                                <div>
+                                    <p>{item.title}</p>
+                                    <small>
+                                        {item.city || 'Custom trip'} - {item.travel_mode} - {formatRouteDistance(item.distance_meters)} - {formatRouteDuration(item.duration_seconds)}
+                                    </small>
+                                    <small>
+                                {item.start_name} to {item.destination_name}
+                                {item.recommended_places.length
+                                    ? ` - ${item.recommended_places.filter((place) => place.visited).length}/${item.recommended_places.length} visited`
+                                    : item.stop_names.length
+                                      ? ` - ${item.stop_names.length} stop${item.stop_names.length === 1 ? '' : 's'}`
+                                      : ''}
+                            </small>
+                        </div>
+                                <small>{formatDate(item.visited_at)}</small>
+                            </div>
+                        ))}
+                        {touristRouteRows.length === 0 && (
+                            <p className="rdb-empty">
+                                No route history yet. Build one from the <Link to="/map">map route creator</Link>.
+                            </p>
+                        )}
+                    </div>
+                </section>
+            );
+        }
+
         if (activeSection === 'revenue') {
             const includedRows = touristRevenueFilteredRows.filter((item) => item.included_in_revenue);
             const excludedRows = touristRevenueFilteredRows.filter((item) => !item.included_in_revenue);
@@ -2687,6 +2772,47 @@ export const RoleDashboard: React.FC = () => {
                 </div>
 
                 <div className="rdb-admin-charts-row">
+                    <button
+                        type="button"
+                        className="rdb-admin-chart-card rdb-route-history-card"
+                        onClick={() => goToSection('routes')}
+                    >
+                        <div className="rdb-route-history-card-head">
+                            <div>
+                                <p className="rdb-admin-light-card-title">Routes</p>
+                                <h3>Route History</h3>
+                            </div>
+                            <span className="rdb-route-history-card-arrow">
+                                <ExternalLink size={16} />
+                            </span>
+                        </div>
+                        <p>
+                            {touristRouteMetrics.totalRoutes > 0
+                                ? `${touristRouteMetrics.totalRoutes} saved route${touristRouteMetrics.totalRoutes === 1 ? '' : 's'} across ${touristRouteMetrics.cityCount || 1} cit${touristRouteMetrics.cityCount === 1 ? 'y' : 'ies'}`
+                                : 'Create city routes on the map and review them later here.'}
+                        </p>
+                        <div className="rdb-route-history-card-stats">
+                            <div>
+                                <span>Total Distance</span>
+                                <strong>{formatRouteDistance(touristRouteMetrics.totalDistanceMeters)}</strong>
+                            </div>
+                            <div>
+                                <span>Latest</span>
+                                <strong>{touristRouteMetrics.latestRoute?.city || 'No routes yet'}</strong>
+                            </div>
+                        </div>
+                        <div className="rdb-admin-mod-list">
+                            {touristRoutes.slice(0, 3).map((item) => (
+                                <span key={item.client_route_id} className="rdb-admin-mod-item">
+                                    {item.title} • {formatRouteDuration(item.duration_seconds)}
+                                </span>
+                            ))}
+                            {touristRoutes.length === 0 && (
+                                <span className="rdb-admin-mod-item rdb-admin-mod-item--empty">No route history yet</span>
+                            )}
+                        </div>
+                    </button>
+
                     <article className="rdb-admin-chart-card">
                         <h3>Bookings</h3>
                         <p>Total count per month</p>
