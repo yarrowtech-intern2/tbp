@@ -2707,9 +2707,10 @@
     cursor: pointer;
     font: inherit;
     display: grid;
-    gap: 12px;
+    gap: 10px;
     border: none;
     grid-column: 1 / -1;
+    padding: 14px;
 }
 
 .rdb-route-history-card:hover {
@@ -2721,12 +2722,12 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
 }
 
 .rdb-route-history-card-arrow {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     background: var(--rdb-admin-circle);
     color: var(--rdb-admin-text-strong);
@@ -2739,25 +2740,25 @@
 .rdb-route-history-card-stats {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
 }
 
 .rdb-route-history-card-stats div {
-    border-radius: 14px;
+    border-radius: 12px;
     background: var(--rdb-admin-card-soft);
-    padding: 12px;
+    padding: 10px 11px;
     display: grid;
-    gap: 4px;
+    gap: 3px;
 }
 
 .rdb-route-history-card-stats span {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--rdb-admin-text-muted);
 }
 
 .rdb-route-history-card-stats strong {
     color: var(--rdb-admin-text-strong);
-    font-size: 0.96rem;
+    font-size: 0.9rem;
 }
 
 .rdb-admin-chart-card h3 {
@@ -2793,6 +2794,11 @@
     display: grid;
     gap: 8px;
     margin: 6px 0 8px;
+}
+
+.rdb-admin-mod-list--compact {
+    gap: 6px;
+    margin: 2px 0 0;
 }
 
 .rdb-admin-mod-item {
@@ -3204,9 +3210,27 @@
         grid-template-columns: 1fr 1fr;
     }
 
-.rdb-admin-chart-card {
+    .rdb-admin-chart-card {
         min-height: 304px;
         padding: 16px;
+    }
+
+    .rdb-trip-activity-card {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .rdb-bookings-chart-card {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .rdb-route-history-card {
+        grid-column: 1;
+        grid-row: 2;
+        max-width: 520px;
+        min-height: 0;
+        align-self: start;
     }
 }
 

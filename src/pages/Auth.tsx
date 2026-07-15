@@ -24,6 +24,7 @@ import {
 import './auth.css';
 
 const TOURIST_EXPLORE_PATH = '/explore';
+const SIGNUP_BASE_FIELDS = ['fullName', 'email', 'password'] as const;
 
 const normalizeAppUrl = (rawUrl?: string) => {
     if (!rawUrl) return '';
@@ -61,6 +62,12 @@ type AuthDraft = {
     isLogin: boolean;
     signupValues: Omit<SignupFormValues, 'password'>;
 };
+
+type SignupStep =
+    | { kind: 'base'; key: typeof SIGNUP_BASE_FIELDS[number] }
+    | { kind: 'role'; field: RoleFormField; label: string; placeholder: string; required: boolean }
+    | { kind: 'toggle'; key: 'worksUnderCompany'; label: string; description: string }
+    | { kind: 'final' };
 
 const getSignupValuesForDraft = (values: SignupFormValues): Omit<SignupFormValues, 'password'> => {
     const { password, ...draftValues } = values;
@@ -127,6 +134,7 @@ export const Auth: React.FC = () => {
     const [showSignupPassword, setShowSignupPassword] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [signupStepIndex, setSignupStepIndex] = useState(0);
     const [formValues, setFormValues] = useState<SignupFormValues>(() => ({
         ...DEFAULT_SIGNUP_VALUES,
         ...(initialDraft?.signupValues || {}),
@@ -140,6 +148,56 @@ export const Auth: React.FC = () => {
 
     const activeRole = formValues.role;
     const roleConfig = useMemo(() => ROLE_SIGNUP_CONFIG[activeRole], [activeRole]);
+    const signupSteps = useMemo<SignupStep[]>(() => {
+        const requiresCompanyToggle = activeRole === 'tour_instructor' || activeRole === 'tour_guide';
+
+        return [
+            { kind: 'base', key: 'fullName' },
+            { kind: 'base', key: 'email' },
+            { kind: 'base', key: 'password' },
+            ...roleConfig.fields.map((field) => ({
+                kind: 'role' as const,
+                field: field.key,
+                label: field.label,
+                placeholder: field.placeholder,
+                required: field.required,
+            })),
+            ...(requiresCompanyToggle
+                ? [{
+                    kind: 'toggle' as const,
+                    key: 'worksUnderCompany' as const,
+                    label: 'Tour Company Collaboration',
+                    description: 'Turn this on if you currently work under or collaborate with a tour company profile.',
+                }]
+                : []),
+            { kind: 'final' as const },
+        ];
+    }, [activeRole, roleConfig.fields]);
+    const isSignupWizard = !isLogin;
+    const currentSignupStep = signupSteps[Math.min(signupStepIndex, signupSteps.length - 1)];
+
+    const summaryEntries = useMemo(() => {
+        const items: Array<{ label: string; value: string }> = [
+            { label: 'Role', value: ROLE_LABELS[activeRole] },
+            { label: 'Name', value: formValues.fullName || 'Not set' },
+            { label: 'Email', value: formValues.email || 'Not set' },
+        ];
+
+        for (const field of roleConfig.fields) {
+            const value = String(formValues[field.key] ?? '').trim();
+            if (!value) continue;
+            items.push({ label: field.label, value });
+        }
+
+        if (activeRole === 'tour_instructor' || activeRole === 'tour_guide') {
+            items.push({
+                label: 'Collaboration',
+                value: formValues.worksUnderCompany ? 'Works with a tour company' : 'Independent',
+            });
+        }
+
+        return items;
+    }, [activeRole, formValues, roleConfig.fields]);
 
     useEffect(() => {
         writeAuthDraft({
@@ -148,6 +206,19 @@ export const Auth: React.FC = () => {
         });
     }, [formValues, isLogin]);
 
+    useEffect(() => {
+        if (!isSignupWizard) {
+            setSignupStepIndex(0);
+            return;
+        }
+        setSignupStepIndex((current) => Math.min(current, signupSteps.length - 1));
+    }, [isSignupWizard, signupSteps.length]);
+
+    useEffect(() => {
+        setSignupStepIndex(0);
+        setError(null);
+    }, [activeRole]);
+
     const updateField = <K extends keyof SignupFormValues>(key: K, value: SignupFormValues[K]) =>
         setFormValues((current) => ({ ...current, [key]: value }));
 
@@ -155,6 +226,120 @@ export const Auth: React.FC = () => {
         setIsLogin(login);
         setError(null);
         setInfo(null);
+    };
+
+    const getSignupStepValue = (step: SignupStep) => {
+        if (step.kind === 'base') return formValues[step.key];
+        if (step.kind === 'role') return formValues[step.field];
+        if (step.kind === 'toggle') return formValues[step.key];
+        return '';
+    };
+
+    const getSignupStepMeta = (step: SignupStep) => {
+        if (step.kind === 'base') {
+            switch (step.key) {
+                case 'fullName':
+                    return {
+                        label: 'Full Name',
+                        placeholder: 'Alex Mercer',
+                        type: 'text',
+                        required: true,
+                    };
+                case 'email':
+                    return {
+                        label: 'Email Address',
+                        placeholder: 'you@example.com',
+                        type: 'email',
+                        required: true,
+                    };
+                case 'password':
+                    return {
+                        label: 'Password',
+                        placeholder: 'Minimum 8 characters',
+                        type: showSignupPassword ? 'text' : 'password',
+                        required: true,
+                    };
+            }
+        }
+
+        if (step.kind === 'role') {
+            return {
+                label: step.label,
+                placeholder: step.placeholder,
+                type: FIELD_INPUT_TYPES[step.field] || 'text',
+                required: step.required,
+            };
+        }
+
+        if (step.kind === 'toggle') {
+            return {
+                label: step.label,
+                description: step.description,
+                required: false,
+            };
+        }
+
+        return null;
+    };
+
+    const validateSignupStep = (step: SignupStep) => {
+        if (step.kind === 'final') {
+            if (!acceptTerms) {
+                setError('Accept the Terms & Condition before creating an account.');
+                setInfo(null);
+                return false;
+            }
+            return true;
+        }
+
+        if (step.kind === 'toggle') {
+            setError(null);
+            return true;
+        }
+
+        const value = String(getSignupStepValue(step) ?? '').trim();
+        const meta = getSignupStepMeta(step);
+        if (!meta) return true;
+
+        if (meta.required && !value) {
+            setError(`${meta.label} is required.`);
+            setInfo(null);
+            return false;
+        }
+
+        if (step.kind === 'base' && step.key === 'email') {
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(value)) {
+                setError('Enter a valid email address.');
+                setInfo(null);
+                return false;
+            }
+        }
+
+        if (step.kind === 'base' && step.key === 'password' && value.length < 8) {
+            setError('Password must be at least 8 characters.');
+            setInfo(null);
+            return false;
+        }
+
+        setError(null);
+        return true;
+    };
+
+    const goToNextSignupStep = () => {
+        if (!currentSignupStep || !validateSignupStep(currentSignupStep)) return;
+        setSignupStepIndex((current) => Math.min(current + 1, signupSteps.length - 1));
+    };
+
+    const goToPreviousSignupStep = () => {
+        setError(null);
+        setSignupStepIndex((current) => Math.max(current - 1, 0));
+    };
+
+    const skipSignupStep = () => {
+        if (!currentSignupStep || currentSignupStep.kind !== 'role' || currentSignupStep.required) return;
+        setError(null);
+        setSignupStepIndex((current) => Math.min(current + 1, signupSteps.length - 1));
     };
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -435,115 +620,216 @@ export const Auth: React.FC = () => {
                             )}
 
                             <form onSubmit={handleSignup} className="auth-form auth-form--signup">
-                                <label className="auth-field">
-                                    <span>Full Name</span>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Alex Mercer"
-                                        value={formValues.fullName}
-                                        onChange={(e) => updateField('fullName', e.target.value)}
-                                    />
-                                </label>
-
-                                <label className="auth-field">
-                                    <span>Email Address</span>
-                                    <input
-                                        type="email"
-                                        required
-                                        placeholder="you@example.com"
-                                        value={formValues.email}
-                                        onChange={(e) => updateField('email', e.target.value)}
-                                    />
-                                </label>
-
-                                <label className="auth-field auth-field-full">
-                                    <span>Password</span>
-                                    <div className="auth-password-wrap">
-                                        <input
-                                            type={showSignupPassword ? 'text' : 'password'}
-                                            required
-                                            minLength={8}
-                                            placeholder="Minimum 8 characters"
-                                            value={formValues.password}
-                                            onChange={(e) => updateField('password', e.target.value)}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="auth-eye-btn"
-                                            onClick={() => setShowSignupPassword((current) => !current)}
-                                            aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
-                                        >
-                                            {showSignupPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        </button>
-                                    </div>
-                                </label>
-
-                                {roleConfig.fields.length > 0 &&
-                                    roleConfig.fields.map((field) => (
-                                        <label key={field.key} className="auth-field">
-                                            <span>{field.label}</span>
-                                            <div className="auth-input-icon-wrap">
-                                                {FIELD_ICONS[field.key] && <i>{FIELD_ICONS[field.key]}</i>}
-                                                <input
-                                                    type={FIELD_INPUT_TYPES[field.key] || 'text'}
-                                                    required={field.required}
-                                                    placeholder={field.placeholder}
-                                                    value={String(formValues[field.key] ?? '')}
-                                                    onChange={(e) =>
-                                                        updateField(field.key, e.target.value as SignupFormValues[typeof field.key])
-                                                    }
-                                                />
+                                {isSignupWizard && currentSignupStep ? (
+                                    <>
+                                        <div className="auth-tourist-step-header">
+                                            <p className="auth-tourist-step-kicker">
+                                                {ROLE_LABELS[activeRole]} signup
+                                                <span>{signupStepIndex + 1} / {signupSteps.length}</span>
+                                            </p>
+                                            <div className="auth-tourist-progress" aria-hidden="true">
+                                                <span style={{ width: `${((signupStepIndex + 1) / signupSteps.length) * 100}%` }} />
                                             </div>
-                                        </label>
-                                    ))}
+                                        </div>
 
-                                {activeRole !== 'tour_company' && activeRole !== 'tourist' && (
-                                    <label className="auth-check-row auth-check-row-full">
-                                        <input
-                                            type="checkbox"
-                                            checked={formValues.worksUnderCompany}
-                                            onChange={(e) => updateField('worksUnderCompany', e.target.checked)}
-                                        />
-                                        <span>I currently work under or collaborate with a tour company profile.</span>
-                                    </label>
-                                )}
+                                        {currentSignupStep.kind === 'final' ? (
+                                            <div className="auth-tourist-card auth-tourist-card--final auth-field-full">
+                                                <div className="auth-tourist-copy">
+                                                    <h2>Review and create your {ROLE_LABELS[activeRole].toLowerCase()} account</h2>
+                                                    <p>
+                                                        Your signup data stays the same. This only changes the front-end flow into
+                                                        single-question screens.
+                                                    </p>
+                                                </div>
+
+                                                <div className="auth-tourist-summary">
+                                                    {summaryEntries.map((item) => (
+                                                        <div key={item.label}>
+                                                            <span>{item.label}</span>
+                                                            <strong>{item.value}</strong>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <label className="auth-check-row auth-check-row-full auth-terms-check">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={acceptTerms}
+                                                        onChange={(e) => {
+                                                            setAcceptTerms(e.target.checked);
+                                                            setError(null);
+                                                        }}
+                                                    />
+                                                    <span>I agree to the </span>
+                                                    <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>
+                                                        Terms &amp; Condition
+                                                    </button>
+                                                </label>
+
+                                                <div className="auth-tourist-actions">
+                                                    <button type="button" className="auth-secondary-btn" onClick={goToPreviousSignupStep}>
+                                                        Back
+                                                    </button>
+                                                    <button type="submit" className="auth-submit" disabled={loading}>
+                                                        {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}
+                                                    </button>
+                                                </div>
+
+                                                {activeRole === 'tourist' && (
+                                                    <div className="auth-signup-social">
+                                                        <div className="auth-divider">or</div>
+                                                        <button
+                                                            type="button"
+                                                            className="auth-social-btn"
+                                                            disabled={googleLoading}
+                                                            onClick={() => void handleGoogleTouristAuth('signup')}
+                                                        >
+                                                            <span className="auth-google-mark" aria-hidden="true">G</span>
+                                                            {googleLoading ? 'Redirecting to Google...' : 'Sign up with Google'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            (() => {
+                                                const meta = getSignupStepMeta(currentSignupStep);
+                                                if (!meta) return null;
+                                                const fieldKey = currentSignupStep.kind === 'base'
+                                                    ? currentSignupStep.key
+                                                    : currentSignupStep.kind === 'role'
+                                                        ? currentSignupStep.field
+                                                        : currentSignupStep.key;
+                                                const toggleValue = currentSignupStep.kind === 'toggle'
+                                                    ? Boolean(getSignupStepValue(currentSignupStep))
+                                                    : false;
+                                                const inputValue = currentSignupStep.kind === 'toggle'
+                                                    ? ''
+                                                    : String(getSignupStepValue(currentSignupStep) ?? '');
+                                                const showSkip = currentSignupStep.kind === 'role' && !currentSignupStep.required;
+                                                const isPasswordField = currentSignupStep.kind === 'base' && currentSignupStep.key === 'password';
+                                                const isToggleField = currentSignupStep.kind === 'toggle';
+                                                const icon = currentSignupStep.kind === 'role' ? FIELD_ICONS[currentSignupStep.field] : null;
+
+                                                return (
+                                                    <div className="auth-tourist-card auth-field-full">
+                                                        <div className="auth-tourist-copy">
+                                                            <h2>{meta.label}</h2>
+                                                            <p>
+                                                                {isToggleField
+                                                                    ? meta.description
+                                                                    : meta.required
+                                                                    ? `This is required to create your ${ROLE_LABELS[activeRole].toLowerCase()} account.`
+                                                                    : 'Optional. You can skip this and add it later.'}
+                                                            </p>
+                                                        </div>
+
+                                                        {isToggleField ? (
+                                                            <label className="auth-check-card auth-field-full">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={toggleValue}
+                                                                    onChange={(e) => updateField(fieldKey, e.target.checked as SignupFormValues[typeof fieldKey])}
+                                                                />
+                                                                <div>
+                                                                    <strong>{meta.label}</strong>
+                                                                    <span>{meta.description}</span>
+                                                                </div>
+                                                            </label>
+                                                        ) : (
+                                                            <label className="auth-field auth-field-full">
+                                                                <span>{meta.label}</span>
+                                                                {isPasswordField ? (
+                                                                    <div className="auth-password-wrap">
+                                                                        <input
+                                                                        type={meta.type}
+                                                                        required={meta.required}
+                                                                        minLength={8}
+                                                                        placeholder={meta.placeholder}
+                                                                        value={inputValue}
+                                                                        onChange={(e) => updateField(fieldKey, e.target.value as SignupFormValues[typeof fieldKey])}
+                                                                    />
+                                                                        <button
+                                                                            type="button"
+                                                                            className="auth-eye-btn"
+                                                                            onClick={() => setShowSignupPassword((current) => !current)}
+                                                                            aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
+                                                                        >
+                                                                            {showSignupPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="auth-input-icon-wrap">
+                                                                        {icon && <i>{icon}</i>}
+                                                                        <input
+                                                                            type={meta.type}
+                                                                            required={meta.required}
+                                                                            placeholder={meta.placeholder}
+                                                                            value={inputValue}
+                                                                            onChange={(e) => updateField(fieldKey, e.target.value as SignupFormValues[typeof fieldKey])}
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                            </label>
+                                                        )}
+
+                                                        <div className="auth-tourist-actions">
+                                                            <button
+                                                                type="button"
+                                                                className="auth-secondary-btn"
+                                                                onClick={goToPreviousSignupStep}
+                                                                disabled={signupStepIndex === 0}
+                                                            >
+                                                                Back
+                                                            </button>
+                                                            <div className="auth-tourist-actions-group">
+                                                                {showSkip && (
+                                                                    <button type="button" className="auth-secondary-btn" onClick={skipSignupStep}>
+                                                                        Skip
+                                                                    </button>
+                                                                )}
+                                                                <button type="button" className="auth-submit auth-submit--step" onClick={goToNextSignupStep}>
+                                                                    Next
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <label className="auth-check-row auth-check-row-full auth-terms-check auth-terms-check--compact">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={acceptTerms}
+                                                                onChange={(e) => {
+                                                                    setAcceptTerms(e.target.checked);
+                                                                    setError(null);
+                                                                }}
+                                                            />
+                                                            <span>I agree to the </span>
+                                                            <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>
+                                                                Terms &amp; Condition
+                                                            </button>
+                                                        </label>
+
+                                                        {activeRole === 'tourist' && (
+                                                            <div className="auth-signup-social auth-signup-social--compact">
+                                                                <div className="auth-divider">or</div>
+                                                                <button
+                                                                    type="button"
+                                                                    className="auth-social-btn"
+                                                                    disabled={googleLoading}
+                                                                    onClick={() => void handleGoogleTouristAuth('signup')}
+                                                                >
+                                                                    <span className="auth-google-mark" aria-hidden="true">G</span>
+                                                                    {googleLoading ? 'Redirecting to Google...' : 'Sign up with Google'}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()
+                                        )}
+                                    </>
+                                ) : null}
 
                                 <p className="auth-role-note">Selected role: {ROLE_LABELS[activeRole]}</p>
-
-                                <label className="auth-check-row auth-check-row-full auth-terms-check">
-                                    <input
-                                        type="checkbox"
-                                        required
-                                        checked={acceptTerms}
-                                        onChange={(e) => {
-                                            setAcceptTerms(e.target.checked);
-                                            setError(null);
-                                        }}
-                                    />
-                                    <span>I agree to the </span>
-                                    <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>
-                                        Terms &amp; Condition
-                                    </button>
-                                </label>
-
-                                <button type="submit" className="auth-submit" disabled={loading}>
-                                    {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}
-                                </button>
-
-                                {activeRole === 'tourist' && (
-                                    <div className="auth-signup-social">
-                                        <div className="auth-divider">or</div>
-                                        <button
-                                            type="button"
-                                            className="auth-social-btn"
-                                            disabled={googleLoading}
-                                            onClick={() => void handleGoogleTouristAuth('signup')}
-                                        >
-                                            {googleLoading ? 'Redirecting to Google...' : 'Sign up with Google'}
-                                        </button>
-                                    </div>
-                                )}
                             </form>
                         </>
                     )}

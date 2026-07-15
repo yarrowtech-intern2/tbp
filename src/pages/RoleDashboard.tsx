@@ -2801,8 +2801,8 @@ export const RoleDashboard: React.FC = () => {
                                 <strong>{touristRouteMetrics.latestRoute?.city || 'No routes yet'}</strong>
                             </div>
                         </div>
-                        <div className="rdb-admin-mod-list">
-                            {touristRoutes.slice(0, 3).map((item) => (
+                        <div className="rdb-admin-mod-list rdb-admin-mod-list--compact">
+                            {touristRoutes.slice(0, 2).map((item) => (
                                 <span key={item.client_route_id} className="rdb-admin-mod-item">
                                     {item.title} • {formatRouteDuration(item.duration_seconds)}
                                 </span>
@@ -2813,13 +2813,13 @@ export const RoleDashboard: React.FC = () => {
                         </div>
                     </button>
 
-                    <article className="rdb-admin-chart-card">
+                    <article className="rdb-admin-chart-card rdb-bookings-chart-card">
                         <h3>Bookings</h3>
                         <p>Total count per month</p>
                         <AdminBarChart data={touristMonthlyBookings} themeKey={theme} />
                     </article>
 
-                    <article className="rdb-admin-chart-card">
+                    <article className="rdb-admin-chart-card rdb-trip-activity-card">
                         <h3>Trip Activity</h3>
                         <div className="rdb-admin-mod-list">
                             {touristRows.slice(0, 3).map((item) => (

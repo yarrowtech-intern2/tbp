@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { MapPinned, Menu, Moon, Sun, X } from 'lucide-react';
+import { Menu, Moon, Sun, X } from 'lucide-react';
 import { useAppTutorial } from '../context/AppTutorialContext';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
@@ -20,6 +20,7 @@ export const Navbar: React.FC = () => {
     const isDark = theme === 'dark';
     const homePath = '/';
     const logoSrc = isDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
+    const mapIconSrc = isDark ? '/icons/map-light.svg' : '/icons/map.svg';
     const navSurface = isDark ? 'rgba(0,0,0,0.74)' : 'rgba(242,138,36,0.46)';
     const navSurfaceSoft = isDark ? 'rgba(10,10,10,0.80)' : 'rgba(242,138,36,0.58)';
     const navBorder = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(138,73,8,0.28)';
@@ -193,7 +194,7 @@ export const Navbar: React.FC = () => {
                             aria-label="Open map"
                             title="Map"
                         >
-                            <MapPinned size={17} strokeWidth={2.4} />
+                            <img src={mapIconSrc} alt="" className="nbr-map-icon" aria-hidden="true" />
                         </Link>
                         <Link to={dashboardPath} className="nbr-user-chip">
                             <div className="nbr-user-text">
@@ -428,6 +429,13 @@ export const Navbar: React.FC = () => {
                     justify-content: center;
                     padding: 0;
                     width: 42px;
+                }
+
+                .nbr-map-icon {
+                    display: block;
+                    height: 18px;
+                    width: 18px;
+                    object-fit: contain;
                 }
 
                 .nbr-map-button:hover,

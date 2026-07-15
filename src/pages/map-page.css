@@ -1,17 +1,19 @@
 .map-page {
-  min-height: 100dvh;
-  padding: calc(env(safe-area-inset-top) + 92px) 14px
-    calc(env(safe-area-inset-bottom) + 18px);
+  box-sizing: border-box;
+  height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 76px) 0
+    calc(env(safe-area-inset-bottom) + 8px);
+  overflow: hidden;
   background: #eeeeee;
 }
 
 .map-page-shell {
   position: relative;
   overflow: hidden;
-  min-height: calc(100dvh - 110px);
-  width: min(100%, 1480px);
+  height: 100%;
+  width: 100%;
   margin: 0 auto;
-  border-radius: 18px;
+  border-radius: 20px 20px 0 0;
   background: #d2d2d2;
 }
 
@@ -73,13 +75,14 @@
 
 .map-page-route-creator {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  right: 12px;
+  top: 12px;
+  left: auto;
   z-index: 500;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 14px;
+  gap: 10px;
 }
 
 .map-page-create-route {
@@ -87,31 +90,38 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 156px;
-  min-height: 48px;
-  padding: 0 22px;
-  border: 0;
+  width: auto;
+  align-self: auto;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.96);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  color: #18110b;
+  background: #ff7a1a;
+  color: #ffffff;
   font-family: 'Outfit', 'Inter', sans-serif;
-  font-size: 15px;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   box-shadow:
-    0 14px 30px rgba(89, 45, 12, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+    0 16px 32px rgba(194, 87, 12, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(7px) saturate(1.22);
   -webkit-backdrop-filter: blur(7px) saturate(1.22);
   cursor: pointer;
   transition:
     transform 180ms ease,
     box-shadow 220ms ease,
-    background 220ms ease;
+    background-color 220ms ease,
+    border-color 220ms ease;
 }
 
 .map-page-create-route:hover {
   transform: translateY(-1px);
+  background: #f16d08;
+  box-shadow:
+    0 18px 36px rgba(194, 87, 12, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .map-page-create-route:focus-visible,
@@ -125,30 +135,16 @@
 }
 
 .map-page-create-route::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #f7c894 0%, #9b4516 55%, #eda05a 100%);
-  pointer-events: none;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
+  content: none;
 }
 
 .map-page-route-panel {
-  width: min(320px, calc(100vw - 48px));
-  max-height: min(620px, calc(100dvh - 180px));
+  width: 100%;
+  max-height: min(72dvh, 640px);
   overflow-x: hidden;
   overflow-y: auto;
   border: 1px solid rgba(199, 122, 68, 0.42);
-  border-radius: 30px;
+  border-radius: 28px;
   background:
     linear-gradient(180deg, rgba(255, 248, 241, 0.8) 0%, rgba(214, 233, 242, 0.54) 100%),
     rgba(255, 255, 255, 0.24);
@@ -158,8 +154,8 @@
   backdrop-filter: blur(20px) saturate(1.08);
   -webkit-backdrop-filter: blur(20px) saturate(1.08);
   opacity: 0;
-  transform: translateY(-12px) scale(0.96);
-  transform-origin: top right;
+  transform: translateY(20px) scale(0.98);
+  transform-origin: bottom center;
   pointer-events: none;
   transition:
     opacity 240ms ease,
@@ -178,22 +174,23 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 18px;
   min-height: 100%;
-  padding: 28px 24px 24px;
+  padding: 18px 16px 16px;
 }
 
 .map-page-route-panel-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .map-page-route-panel-header h2 {
   margin: 4px 0 0;
   color: #1d140f;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.05;
 }
@@ -212,11 +209,11 @@
   align-items: center;
   justify-content: center;
   min-height: 32px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.48);
   color: #6d3f1d;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 600;
 }
 
@@ -308,7 +305,7 @@
 
 .map-page-route-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -343,8 +340,9 @@
 
 .map-page-route-anchor-head {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -397,6 +395,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
   border: 1px solid rgba(177, 91, 34, 0.22);
   border-radius: 20px;
@@ -427,13 +426,13 @@
 }
 
 .map-page-route-selected-destination .map-page-route-secondary {
-  min-width: 88px;
-  min-height: 40px;
+  min-width: 100%;
+  min-height: 42px;
 }
 
 .map-page-route-destination-input {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -534,8 +533,8 @@
 .map-page-route-secondary,
 .map-page-route-primary {
   width: 100%;
-  min-height: 58px;
-  border-radius: 22px;
+  min-height: 54px;
+  border-radius: 20px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -618,15 +617,16 @@
 }
 
 :root[data-theme='dark'] .map-page-create-route {
-  background: rgba(22, 22, 24, 0.3);
-  color: rgba(255, 255, 255, 0.88);
+  background: #ff7a1a;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.96);
   box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.28),
+    0 18px 36px rgba(0, 0, 0, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 :root[data-theme='dark'] .map-page-create-route::before {
-  background: linear-gradient(135deg, rgba(255, 205, 143, 0.72) 0%, rgba(139, 62, 18, 0.86) 55%, rgba(239, 149, 72, 0.72) 100%);
+  content: none;
 }
 
 :root[data-theme='dark'] .map-page-route-panel {
@@ -721,59 +721,86 @@
 
 @media (min-width: 768px) {
   .map-page {
+    height: auto;
+    padding-top: calc(env(safe-area-inset-top) + 92px);
     padding-right: 28px;
     padding-left: 28px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 18px);
+    overflow: visible;
   }
 
   .map-page-shell {
-    min-height: calc(100dvh - 128px);
+    min-height: calc(100dvh - 110px);
+    height: auto;
+    width: min(100%, 1480px);
+    border-radius: 18px;
   }
-}
 
-@media (max-width: 520px) {
   .map-page-route-creator {
-    top: 14px;
-    right: 14px;
-    left: 14px;
-    align-items: stretch;
+    top: 18px;
+    right: 18px;
+    bottom: auto;
+    left: auto;
+    align-items: flex-end;
+    gap: 14px;
   }
 
   .map-page-create-route {
-    min-width: 132px;
-    min-height: 42px;
-    padding: 0 16px;
-    font-size: 13px;
+    width: auto;
+    align-self: auto;
+    min-width: 156px;
+    min-height: 48px;
+    padding: 0 22px;
+    font-size: 15px;
   }
 
   .map-page-route-panel {
-    width: 100%;
-    max-height: min(70dvh, 520px);
-    transform-origin: top center;
+    width: min(360px, calc(100vw - 84px));
+    max-height: min(620px, calc(100dvh - 180px));
+    border-radius: 30px;
+    transform: translateY(-12px) scale(0.96);
+    transform-origin: top right;
   }
 
   .map-page-route-panel-inner {
-    padding: 22px 18px 18px;
+    gap: 22px;
+    padding: 28px 24px 24px;
+  }
+
+  .map-page-route-panel-header {
+    gap: 16px;
+    flex-wrap: nowrap;
   }
 
   .map-page-route-panel-header h2 {
-    font-size: 1.45rem;
+    font-size: 1.8rem;
   }
 
-  .map-page-route-panel-footer {
-    grid-template-columns: 1fr;
+  .map-page-route-panel-status {
+    padding: 0 12px;
+    font-size: 0.82rem;
   }
 
   .map-page-route-summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .map-page-route-anchor-head {
-    align-items: start;
-    flex-direction: column;
+    align-items: baseline;
+    flex-direction: row;
+  }
+
+  .map-page-route-selected-destination .map-page-route-secondary {
+    min-width: 88px;
+    min-height: 40px;
+  }
+
+  .map-page-route-selected-destination {
+    flex-direction: row;
   }
 
   .map-page-route-destination-input {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 }
 
