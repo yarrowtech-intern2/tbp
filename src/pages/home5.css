@@ -1009,6 +1009,7 @@
   position: relative;
   padding: 104px 0 120px;
   overflow-x: clip;
+  contain: layout style;
   background:
     radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.035), transparent 34%),
     radial-gradient(circle at 50% 100%, rgba(255, 130, 28, 0.08), transparent 30%),
@@ -1120,7 +1121,6 @@
     transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
     filter 520ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform, opacity, filter;
 }
 
 .home5-carousel-card img {
@@ -1472,23 +1472,21 @@
 .home5-reveal {
   opacity: 0;
   transform: translateY(34px);
-  filter: blur(10px);
   transition:
     opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
-    filter 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .home5-reveal.is-visible {
   opacity: 1;
   transform: translateY(0);
-  filter: blur(0);
 }
 
 .home5-book-section {
   position: relative;
   padding: 124px 0 138px;
   overflow: clip;
+  contain: layout style;
   background: #ffffff;
 }
 
@@ -1582,7 +1580,6 @@
     transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
     opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
     filter 560ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform, opacity, filter;
 }
 
 .home5-book-card img {
@@ -1714,6 +1711,7 @@
   position: relative;
   padding: 128px 0 148px;
   overflow-x: clip;
+  contain: layout style;
   background: #ffffff;
 }
 
@@ -2031,6 +2029,7 @@
 .home5-faq-section {
   position: relative;
   padding: clamp(5rem, 10vw, 8rem) 0;
+  contain: layout style;
   background: #ffffff;
 }
 
@@ -3405,7 +3404,6 @@
   .home5-reveal {
     opacity: 1;
     transform: none;
-    filter: none;
     transition: none;
   }
 
@@ -3484,5 +3482,35 @@
   .home5-hero-spot-modal.is-open .home5-hero-spot-close {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ── Low-spec mobile GPU optimizations ── */
+@media (max-width: 640px) {
+  .home5-hero-bg-video-base {
+    filter: brightness(0.88);
+  }
+
+  .home5-hero-bg-video-preview {
+    filter: brightness(0.92);
+  }
+
+  .home5-hero-media-noise {
+    display: none;
+  }
+
+  .home5-carousel-arrow,
+  .home5-book-carousel-arrow {
+    backdrop-filter: none;
+    background: rgba(255, 255, 255, 0.88);
+  }
+
+  .home5-hero-immersive-eyebrow {
+    backdrop-filter: blur(6px);
+  }
+
+  .home5-hero-video-cursor::before,
+  .home5-hero-video-cursor::after {
+    display: none;
   }
 }

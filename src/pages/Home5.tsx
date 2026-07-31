@@ -389,8 +389,12 @@ export const Home5: React.FC = () => {
   const [heroTouchMode, setHeroTouchMode] = useState(false);
   const [heroCursorVisible, setHeroCursorVisible] = useState(false);
   const [heroInView, setHeroInView] = useState(true);
-  const [howProgress, setHowProgress] = useState(0);
-  const [finalRevealWordIndex, setFinalRevealWordIndex] = useState(0);
+  const howProgressRef = useRef(0);
+  const finalWordIndexRef = useRef(0);
+  const howSceneRef = useRef<HTMLDivElement | null>(null);
+  const flowNodesRef = useRef<(HTMLDivElement | null)[]>([]);
+  const flowConnectorsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const finalWordsRef = useRef<(HTMLSpanElement | null)[]>([]);
   const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [heroMenuOpen, setHeroMenuOpen] = useState(false);
@@ -400,9 +404,9 @@ export const Home5: React.FC = () => {
   const [contactError, setContactError] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [stickyLogoVisible, setStickyLogoVisible] = useState(false);
-  const [stickyLogoOnDark, setStickyLogoOnDark] = useState(false);
-  const [stickyMenuOnDark, setStickyMenuOnDark] = useState(false);
-  const [stickyNavInHero, setStickyNavInHero] = useState(true);
+  const stickyLogoOnDarkRef = useRef(false);
+  const stickyMenuOnDarkRef = useRef(false);
+  const stickyNavInHeroRef = useRef(true);
   const [shouldLoadFooterContent, setShouldLoadFooterContent] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const touchDeltaXRef = useRef(0);
@@ -659,7 +663,10 @@ export const Home5: React.FC = () => {
       const logoNode = stickyLogoRef.current;
       const footerNode = footerRef.current;
       if (!stickyLogoVisible || !logoNode || !footerNode) {
-        setStickyLogoOnDark(false);
+        if (stickyLogoOnDarkRef.current) {
+          stickyLogoOnDarkRef.current = false;
+          logoNode?.querySelector('img')?.setAttribute('src', '/logo/final-logo.png');
+        }
         return;
       }
 
@@ -674,7 +681,10 @@ export const Home5: React.FC = () => {
         && sampleY <= footerRect.bottom
       );
 
-      setStickyLogoOnDark(overlapsFooter);
+      if (stickyLogoOnDarkRef.current !== overlapsFooter) {
+        stickyLogoOnDarkRef.current = overlapsFooter;
+        logoNode.querySelector('img')?.setAttribute('src', overlapsFooter ? '/logo/final-logo-white.png' : '/logo/final-logo.png');
+      }
     };
 
     updateStickyLogoTone();
@@ -690,10 +700,7 @@ export const Home5: React.FC = () => {
   useEffect(() => {
     const updateStickyMenuTone = () => {
       const menuNode = stickyMenuRef.current;
-      if (!menuNode) {
-        setStickyMenuOnDark(false);
-        return;
-      }
+      if (!menuNode) return;
 
       const menuRect = menuNode.getBoundingClientRect();
       const sampleX = menuRect.left + (menuRect.width / 2);
@@ -717,8 +724,17 @@ export const Home5: React.FC = () => {
       const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
       const nextNavInHero = overlapsHero;
 
-      setStickyNavInHero((current) => (current !== nextNavInHero ? nextNavInHero : current));
-      setStickyMenuOnDark((current) => (current !== nextToneOnDark ? nextToneOnDark : current));
+      if (stickyNavInHeroRef.current !== nextNavInHero) {
+        stickyNavInHeroRef.current = nextNavInHero;
+        menuNode.classList.toggle('is-in-hero', nextNavInHero);
+        menuNode.classList.toggle('is-glass', !nextNavInHero);
+      }
+      if (stickyMenuOnDarkRef.current !== nextToneOnDark) {
+        stickyMenuOnDarkRef.current = nextToneOnDark;
+        menuNode.classList.toggle('is-on-dark', nextToneOnDark);
+        const navBrand = menuNode.querySelector('.home5-desktop-nav-brand img') as HTMLImageElement | null;
+        if (navBrand) navBrand.src = nextToneOnDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
+      }
     };
 
     updateStickyMenuTone();
@@ -942,7 +958,32 @@ export const Home5: React.FC = () => {
       const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
       const nextProgress = clampValue((-rect.top) / scrollableDistance, 0, 1);
 
-      setHowProgress((current) => (Math.abs(current - nextProgress) > 0.001 ? nextProgress : current));
+      if (Math.abs(howProgressRef.current - nextProgress) < 0.001) return;
+      howProgressRef.current = nextProgress;
+
+      const intro = clampValue(nextProgress / 0.18, 0, 1);
+      const discover = clampValue((nextProgress - 0.18) / 0.2, 0, 1);
+      const compare = clampValue((nextProgress - 0.42) / 0.2, 0, 1);
+      const book = clampValue((nextProgress - 0.68) / 0.2, 0, 1);
+
+      const sceneNode = howSceneRef.current;
+      if (sceneNode) {
+        sceneNode.style.opacity = String(0.22 + (intro * 0.78));
+        sceneNode.style.transform = `translateY(${(1 - intro) * 30}px)`;
+      }
+
+      const activeIdx = book > 0.08 ? 2 : compare > 0.08 ? 1 : discover > 0.08 ? 0 : -1;
+      flowNodesRef.current.forEach((el, i) => {
+        if (!el) return;
+        if (i === activeIdx) { el.classList.add('is-active'); }
+        else { el.classList.remove('is-active'); }
+      });
+
+      const connectorProgress = [discover, compare];
+      flowConnectorsRef.current.forEach((el, i) => {
+        if (!el) return;
+        el.style.setProperty('--flow-progress', String(connectorProgress[i] ?? 0));
+      });
     };
 
     const handleScroll = () => {
@@ -978,7 +1019,19 @@ export const Home5: React.FC = () => {
         Math.floor(nextProgress * (FINAL_CTA_WORDS.length + 1)),
       );
 
-      setFinalRevealWordIndex((current) => (current !== nextWordIndex ? nextWordIndex : current));
+      if (finalWordIndexRef.current === nextWordIndex) return;
+      finalWordIndexRef.current = nextWordIndex;
+
+      finalWordsRef.current.forEach((el, i) => {
+        if (!el) return;
+        if (i < nextWordIndex) {
+          el.className = 'home5-final-word is-complete';
+        } else if (i === nextWordIndex) {
+          el.className = 'home5-final-word is-next';
+        } else {
+          el.className = 'home5-final-word is-pending';
+        }
+      });
     };
 
     const handleScroll = () => {
@@ -997,26 +1050,6 @@ export const Home5: React.FC = () => {
     };
   }, []);
 
-  const introProgress = clampValue(howProgress / 0.18, 0, 1);
-  const discoverProgress = clampValue((howProgress - 0.18) / 0.2, 0, 1);
-  const compareProgress = clampValue((howProgress - 0.42) / 0.2, 0, 1);
-  const bookProgress = clampValue((howProgress - 0.68) / 0.2, 0, 1);
-  const leftLineProgress = discoverProgress;
-  const rightLineProgress = compareProgress;
-  const flowConnectorProgress = [leftLineProgress, rightLineProgress];
-  const activeFlowIndex = bookProgress > 0.08
-    ? 2
-    : compareProgress > 0.08
-      ? 1
-      : discoverProgress > 0.08
-        ? 0
-        : -1;
-  const howSceneStyle = {
-    opacity: 0.22 + (introProgress * 0.78),
-    transform: `translateY(${(1 - introProgress) * 30}px)`,
-  } satisfies React.CSSProperties;
-  const stickyLogoSrc = stickyLogoOnDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
-  const navLogoSrc = stickyMenuOnDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
   return (
     <main className="home5-page">
       <Link
@@ -1025,16 +1058,16 @@ export const Home5: React.FC = () => {
         className={`home5-sticky-logo${stickyLogoVisible ? ' is-visible' : ''}`}
         aria-label="The Betterpass home"
       >
-        <img src={stickyLogoSrc} alt="The Betterpass" />
+        <img src="/logo/final-logo.png" alt="The Betterpass" />
       </Link>
 
       <div
         ref={stickyMenuRef}
-        className={`home5-nav-shell${stickyMenuOnDark ? ' is-on-dark' : ''}${stickyNavInHero ? ' is-in-hero' : ' is-glass'}`}
+        className="home5-nav-shell is-in-hero"
       >
         <nav className="home5-desktop-nav" aria-label="Primary navigation">
           <Link to="/" className="home5-desktop-nav-brand" aria-label="The Betterpass home">
-            <img src={navLogoSrc} alt="The Betterpass" />
+            <img src="/logo/final-logo.png" alt="The Betterpass" />
           </Link>
 
           <div className="home5-desktop-nav-glass">
@@ -1286,7 +1319,7 @@ export const Home5: React.FC = () => {
         <div className="home5-how-track">
           <div className="home5-how-sticky">
             <div className="container">
-              <div className="home5-how-scene" style={howSceneStyle}>
+              <div ref={howSceneRef} className="home5-how-scene" style={{ opacity: 0.22, transform: 'translateY(30px)' }}>
                 <div className="home5-how-shell">
                   <span className="home5-how-eyebrow">Why choose betterpass</span>
                   <div className="home5-how-heading">
@@ -1300,31 +1333,30 @@ export const Home5: React.FC = () => {
 
                 <div className="home5-flow-stage" aria-label="How it works flow">
                   <div className="home5-flow-row">
-                    {FLOW_STEPS.map((step, index) => {
-                      const isActive = activeFlowIndex === index;
-
-                      return (
-                        <React.Fragment key={step.id}>
-                          <div className={`home5-flow-node${isActive ? ' is-active' : ''}`}>
-                            <svg className="home5-flow-ripple" viewBox="0 0 200 200" aria-hidden="true">
-                              <circle className="home5-flow-ring home5-flow-ring-1" cx="100" cy="100" r="64" />
-                              <circle className="home5-flow-ring home5-flow-ring-2" cx="100" cy="100" r="78" />
-                              <circle className="home5-flow-ring home5-flow-ring-3" cx="100" cy="100" r="92" />
-                            </svg>
-                            <div className="home5-flow-core">
-                              <span>{step.label}</span>
-                            </div>
+                    {FLOW_STEPS.map((step, index) => (
+                      <React.Fragment key={step.id}>
+                        <div
+                          ref={(el) => { flowNodesRef.current[index] = el; }}
+                          className="home5-flow-node"
+                        >
+                          <svg className="home5-flow-ripple" viewBox="0 0 200 200" aria-hidden="true">
+                            <circle className="home5-flow-ring home5-flow-ring-1" cx="100" cy="100" r="64" />
+                            <circle className="home5-flow-ring home5-flow-ring-2" cx="100" cy="100" r="78" />
+                            <circle className="home5-flow-ring home5-flow-ring-3" cx="100" cy="100" r="92" />
+                          </svg>
+                          <div className="home5-flow-core">
+                            <span>{step.label}</span>
                           </div>
-                          {index < FLOW_STEPS.length - 1 ? (
-                            <div
-                              className="home5-flow-connector"
-                              aria-hidden="true"
-                              style={{ '--flow-progress': flowConnectorProgress[index] } as React.CSSProperties}
-                            />
-                          ) : null}
-                        </React.Fragment>
-                      );
-                    })}
+                        </div>
+                        {index < FLOW_STEPS.length - 1 ? (
+                          <div
+                            ref={(el) => { flowConnectorsRef.current[index] = el; }}
+                            className="home5-flow-connector"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </React.Fragment>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1474,23 +1506,17 @@ export const Home5: React.FC = () => {
                 <span className="home5-final-eyebrow">Ready when you are</span>
                 <h2 className="home5-final-title">Start exploring with Betterpass</h2>
                 <p className="home5-final-reveal" aria-label={FINAL_CTA_COPY}>
-                  {FINAL_CTA_WORDS.map((word, index) => {
-                    const revealState = index < finalRevealWordIndex
-                      ? 'is-complete'
-                      : index === finalRevealWordIndex
-                        ? 'is-next'
-                        : 'is-pending';
-                    return (
-                      <span
-                        key={`${word}-${index}`}
-                        className={`home5-final-word ${revealState}`}
-                        aria-hidden="true"
-                      >
-                        {word}
-                        {index < FINAL_CTA_WORDS.length - 1 ? '\u00A0' : ''}
-                      </span>
-                    );
-                  })}
+                  {FINAL_CTA_WORDS.map((word, index) => (
+                    <span
+                      key={`${word}-${index}`}
+                      ref={(el) => { finalWordsRef.current[index] = el; }}
+                      className="home5-final-word is-pending"
+                      aria-hidden="true"
+                    >
+                      {word}
+                      {index < FINAL_CTA_WORDS.length - 1 ? '\u00A0' : ''}
+                    </span>
+                  ))}
                 </p>
               </div>
               <div className="home5-final-visual-slot">

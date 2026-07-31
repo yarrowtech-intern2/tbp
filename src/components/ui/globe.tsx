@@ -44,9 +44,12 @@ const DEFAULT_CONFIG: Omit<COBEOptions, 'width' | 'height' | 'devicePixelRatio' 
   ],
 };
 
-const getDevicePixelRatio = () => {
+const getDevicePixelRatio = (canvasSize: number) => {
   if (typeof window === 'undefined') return 1;
-  return Math.min(window.devicePixelRatio || 1, 2);
+  const raw = window.devicePixelRatio || 1;
+  if (canvasSize <= 400) return Math.min(raw, 1);
+  if (canvasSize <= 600) return Math.min(raw, 1.5);
+  return Math.min(raw, 2);
 };
 
 const toRadians = (value: number) => (value * Math.PI) / 180;
@@ -93,7 +96,7 @@ export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers 
   const phiRef = useRef(0);
   const [size, setSize] = useState(0);
   const [isInView, setIsInView] = useState(false);
-  const defaultMapSamples = config?.mapSamples ?? (size >= 720 ? 15000 : size >= 480 ? 12000 : 8000);
+  const defaultMapSamples = config?.mapSamples ?? (size >= 720 ? 12000 : size >= 480 ? 8000 : 4000);
   const resolvedConfig = useMemo(() => ({
     ...DEFAULT_CONFIG,
     ...config,
@@ -174,7 +177,7 @@ export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers 
     const canvas = canvasRef.current;
     if (!canvas || size === 0) return undefined;
 
-    const devicePixelRatio = getDevicePixelRatio();
+    const devicePixelRatio = getDevicePixelRatio(size);
     const renderSize = Math.round(size * devicePixelRatio);
     const phi = phiRef.current;
 
@@ -212,11 +215,15 @@ export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers 
       return undefined;
     }
 
-    const rotate = () => {
-      phiRef.current += 0.0032;
+    let lastTime = 0;
+    const rotate = (time: number) => {
+      frameRef.current = window.requestAnimationFrame(rotate);
+      const delta = time - lastTime;
+      if (delta < 33) return;
+      lastTime = time;
+      phiRef.current += 0.0032 * (delta / 16.67);
       globeRef.current?.update({ phi: phiRef.current });
       syncOverlayPositions(phiRef.current);
-      frameRef.current = window.requestAnimationFrame(rotate);
     };
 
     frameRef.current = window.requestAnimationFrame(rotate);

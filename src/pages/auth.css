@@ -2,7 +2,7 @@
     min-height: 100vh;
     min-height: 100dvh;
     display: flex;
-    align-items: center;
+    align-items: safe center;
     justify-content: center;
     padding: 88px 16px 24px;
     position: relative;
@@ -667,7 +667,9 @@
 
 @media (max-width: 860px) {
     .auth-page {
-        padding-top: 78px;
+        padding-top: 68px;
+        padding-bottom: 16px;
+        align-items: flex-start;
     }
 
     .auth-shell {
@@ -677,12 +679,14 @@
     }
 
     .auth-visual {
-        min-height: 250px;
+        min-height: 200px;
+        max-height: 260px;
     }
 
     .auth-panel {
         max-height: none;
         overflow: visible;
+        padding: 32px 28px 28px;
     }
 
     .auth-form--signup {
@@ -714,41 +718,129 @@
 }
 
 @media (max-width: 520px) {
+    .auth-page {
+        padding: 56px 10px 12px;
+    }
+
     .auth-back-link {
-        top: 16px;
-        left: 14px;
+        top: 14px;
+        left: 10px;
     }
 
     .auth-shell {
-        border-radius: 24px;
+        border-radius: 20px;
         border-width: 3px;
     }
 
     .auth-visual {
-        min-height: 200px;
+        min-height: 150px;
+        max-height: 200px;
     }
 
     .auth-visual-brand {
-        top: 18px;
-        left: 18px;
-        font-size: 0.92rem;
+        top: 14px;
+        left: 14px;
+    }
+
+    .auth-visual-brand img {
+        height: 28px;
     }
 
     .auth-panel {
-        padding: 24px 16px 18px;
+        padding: 20px 14px 16px;
     }
 
     .auth-role-choice {
         grid-template-columns: 1fr;
     }
 
+    .auth-header {
+        margin-bottom: 16px;
+    }
+
     .auth-header h1 {
-        font-size: 2rem;
+        font-size: 1.75rem;
+    }
+
+    .auth-header p {
+        font-size: 0.88rem;
     }
 
     .auth-field > input,
     .auth-password-wrap,
     .auth-input-icon-wrap {
-        min-height: 48px;
+        min-height: 46px;
+    }
+
+    .auth-submit {
+        min-height: 46px;
+    }
+
+    .auth-tourist-card {
+        padding: 16px 14px;
+        border-radius: 20px;
+    }
+
+    .auth-tourist-summary div {
+        min-height: 68px;
+        padding: 10px 12px;
+        border-radius: 14px;
+    }
+
+    .auth-submit--step {
+        min-width: 0;
+        padding: 0 20px;
+    }
+}
+
+@media (max-width: 380px) {
+    .auth-page {
+        padding: 50px 6px 8px;
+    }
+
+    .auth-shell {
+        border-radius: 16px;
+        border-width: 2px;
+    }
+
+    .auth-visual {
+        min-height: 120px;
+        max-height: 160px;
+    }
+
+    .auth-panel {
+        padding: 16px 12px 14px;
+    }
+
+    .auth-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .auth-tourist-copy h2 {
+        font-size: 1.2rem;
+    }
+
+    .auth-field > input,
+    .auth-password-wrap,
+    .auth-input-icon-wrap {
+        min-height: 44px;
+        font-size: 0.88rem;
+        padding: 0 12px;
+    }
+
+    .auth-role-choice-btn,
+    .auth-social-btn {
+        min-height: 40px;
+        font-size: 0.8rem;
+    }
+
+    .auth-submit {
+        min-height: 44px;
+        font-size: 0.9rem;
+    }
+
+    .auth-secondary-btn {
+        min-height: 42px;
+        font-size: 0.86rem;
     }
 }
