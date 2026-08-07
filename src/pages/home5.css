@@ -692,7 +692,7 @@
   margin: 0 auto;
   padding: max(72px, env(safe-area-inset-top) + 46px) 0 max(30px, env(safe-area-inset-bottom) + 18px);
   box-sizing: border-box;
-  animation: heroContentIn 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: heroContentIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .home5-hero-immersive-head {
@@ -836,20 +836,61 @@
 @keyframes heroChildIn {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translate3d(0, 14px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .home5-hero-immersive-head {
-  animation: heroChildIn 480ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+  will-change: opacity, transform;
+  animation: heroChildIn 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
 }
 
 .home5-hero-immersive-bottom {
-  animation: heroChildIn 500ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+  will-change: opacity, transform;
+  animation: heroChildIn 540ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
+}
+
+.home5-hero-immersive-eyebrow,
+.home5-hero-immersive-title,
+.home5-hero-immersive-stat,
+.home5-hero-immersive-cta-row {
+  will-change: opacity, transform;
+  animation: heroContextFadeIn 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home5-hero-immersive-title {
+  animation-delay: 70ms;
+}
+
+.home5-hero-immersive-stat:nth-child(1) {
+  animation-delay: 120ms;
+}
+
+.home5-hero-immersive-stat:nth-child(2) {
+  animation-delay: 170ms;
+}
+
+.home5-hero-immersive-stat:nth-child(3) {
+  animation-delay: 220ms;
+}
+
+.home5-hero-immersive-cta-row {
+  animation-delay: 260ms;
+}
+
+@keyframes heroContextFadeIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 .home5-hero-shell {
@@ -2886,6 +2927,10 @@
       filter 220ms ease;
   }
 
+  .home5-desktop-nav-cta * {
+    cursor: pointer;
+  }
+
   .home5-desktop-nav-cta:hover {
     transform: translateY(-1px);
     box-shadow:
@@ -3483,9 +3528,17 @@
   .home5-desktop-nav-links a,
   .home5-desktop-nav-links button,
   .home5-desktop-nav-cta,
+  .home5-hero-immersive,
+  .home5-hero-immersive-head,
+  .home5-hero-immersive-bottom,
+  .home5-hero-immersive-eyebrow,
+  .home5-hero-immersive-title,
+  .home5-hero-immersive-stat,
+  .home5-hero-immersive-cta-row,
   .home5-hero-menu-panel,
   .home5-hero-menu-panel a,
   .home5-hero-menu-panel button {
+    animation: none;
     transition: none;
   }
 

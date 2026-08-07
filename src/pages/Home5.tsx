@@ -296,7 +296,7 @@ const isVideoHeroLayerId = (id: HeroHeroLayer['id']): id is VideoHeroLayerId => 
 const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
   beaches: {
     eyebrow: 'Beach escapes',
-    title: 'COAST',
+    title: 'Beaches',
     stats: [
       { value: '18K+', label: 'Ocean travellers' },
       { value: '1.4K+', label: 'Coastal stays' },
@@ -307,7 +307,7 @@ const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
   },
   forests: {
     eyebrow: 'Forest journeys',
-    title: 'CANOPY',
+    title: 'Forests',
     stats: [
       { value: '9K+', label: 'Nature seekers' },
       { value: '860+', label: 'Cabin nights' },
@@ -318,7 +318,7 @@ const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
   },
   mountains: {
     eyebrow: 'Mountain stays',
-    title: 'SUMMIT',
+    title: 'Mountains',
     stats: [
       { value: '12K+', label: 'Highland travellers' },
       { value: '980+', label: 'Chalet stays' },
@@ -329,7 +329,7 @@ const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
   },
   cities: {
     eyebrow: 'City breaks',
-    title: 'PULSE',
+    title: 'Cityscapes',
     stats: [
       { value: '22K+', label: 'Urban travellers' },
       { value: '2.1K+', label: 'Boutique rooms' },
@@ -340,7 +340,7 @@ const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
   },
   deserts: {
     eyebrow: 'Desert routes',
-    title: 'DUNES',
+    title: 'Dunes',
     stats: [
       { value: '7K+', label: 'Adventure travellers' },
       { value: '640+', label: 'Camp stays' },

@@ -8,7 +8,7 @@ Status legend:
 
 Current release target: staging/beta first, production after the blockers below are closed.
 
-Completion: 22% (19 of 86 checklist items complete).
+Completion: 23% (20 of 86 checklist items complete).
 
 ## 0. Operating Rules
 
@@ -48,7 +48,8 @@ Completion: 22% (19 of 86 checklist items complete).
 
 ## 3. Supabase Database And Security
 
-- [ ] Inventory all required migrations and SQL setup files.
+- [x] Inventory all required migrations and SQL setup files.
+  - Result: see `docs/supabase-setup-inventory.md`.
 - [ ] Convert any required loose SQL files into ordered Supabase migrations, or document exact manual application order.
 - [ ] Verify Row Level Security is enabled on all user/business data tables.
 - [ ] Verify policies for tourist, provider, admin, and marketing roles.
@@ -154,6 +155,8 @@ Completion: 22% (19 of 86 checklist items complete).
 - 2026-08-07: Removed sensitive-looking values from `.env.example` and disabled browser-side OpenAI key usage.
 - 2026-08-07: Re-ran `npm run lint` and `npm run build`; both pass after secrets/environment cleanup.
 - 2026-08-07: Added `docs/smoke-test-checklist.md` for repeatable staging and production smoke tests.
+- 2026-08-07: Added `docs/supabase-setup-inventory.md` for database, storage, and Edge Function setup inventory.
+- 2026-08-07: Re-ran `npm run lint` and `npm run build`; both pass after Supabase inventory documentation.
 
 ## Production Environment Variables
 
