@@ -33,10 +33,8 @@ import {
     XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import ReactECharts from 'echarts-for-react';
-import type { EChartsOption } from 'echarts';
 import { useAuth } from '../hooks/useAuth';
-import { useAppTutorial } from '../context/AppTutorialContext';
+import { useAppTutorial } from '../context/app-tutorial-context-value';
 import { useNotifications } from '../hooks/useNotifications';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
@@ -575,7 +573,9 @@ type ChartPalette = {
     neutralDark: string;
 };
 
-const getChartPalette = (): ChartPalette => {
+const getChartPalette = (_themeKey?: string): ChartPalette => {
+    void _themeKey;
+
     if (typeof window === 'undefined') {
         return {
             accent: '#ff6700',
@@ -607,152 +607,121 @@ const AdminBarChart: React.FC<{
     data: Array<{ month: string; count: number; isCurrentMonth: boolean }>;
     themeKey: string;
 }> = ({ data, themeKey }) => {
-    const palette = useMemo(() => getChartPalette(), [themeKey]);
-    const option = useMemo<EChartsOption>(() => ({
-        animationDuration: 500,
-        animationEasing: 'cubicOut',
-        grid: {
-            top: 14,
-            right: 6,
-            bottom: 12,
-            left: 6,
-            containLabel: true,
-        },
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            formatter: (params: unknown) => {
-                const point = Array.isArray(params) ? params[0] as { axisValueLabel?: string; data?: number | { value?: number } } : null;
-                const rawValue = typeof point?.data === 'number'
-                    ? point.data
-                    : typeof point?.data === 'object' && point.data
-                        ? Number((point.data as { value?: number }).value || 0)
-                        : 0;
-                return `${point?.axisValueLabel || 'Month'}: <strong>${Math.max(0, rawValue)}</strong>`;
-            },
-            backgroundColor: '#131316',
-            borderWidth: 0,
-            textStyle: { color: '#f6f6f8' },
-            padding: [8, 10],
-        },
-        xAxis: {
-            type: 'category',
-            data: data.map((item) => item.month),
-            axisTick: { show: false },
-            axisLine: { lineStyle: { color: palette.grid } },
-            axisLabel: {
-                color: palette.text,
-                fontSize: 12,
-                margin: 10,
-            },
-        },
-        yAxis: {
-            type: 'value',
-            min: 0,
-            minInterval: 1,
-            splitNumber: 4,
-            axisLabel: { show: false },
-            axisTick: { show: false },
-            axisLine: { show: false },
-            splitLine: { lineStyle: { color: palette.grid } },
-        },
-        series: [{
-            type: 'bar',
-            barMaxWidth: 44,
-            data: data.map((item) => ({
-                value: item.count,
-                itemStyle: {
-                    color: item.isCurrentMonth ? palette.accent : palette.neutral,
-                    borderRadius: [12, 12, 0, 0],
-                },
-            })),
-            emphasis: {
-                itemStyle: {
-                    color: palette.accent,
-                },
-            },
-        }],
-    }), [data, palette]);
+    const palette = useMemo(() => getChartPalette(themeKey), [themeKey]);
+    const chart = useMemo(() => {
+        const maxValue = Math.max(1, ...data.map((item) => item.count));
+        const width = 420;
+        const height = 180;
+        const padding = { top: 12, right: 10, bottom: 34, left: 10 };
+        const plotWidth = width - padding.left - padding.right;
+        const plotHeight = height - padding.top - padding.bottom;
+        const slotWidth = plotWidth / Math.max(1, data.length);
+        const barWidth = Math.min(44, slotWidth * 0.58);
+
+        return { width, height, padding, plotHeight, slotWidth, barWidth, maxValue };
+    }, [data]);
 
     return (
-        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--bar">
-            <ReactECharts
-                option={option}
-                style={{ width: '100%', height: '100%' }}
-                opts={{ renderer: 'canvas' }}
-            />
+        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--bar" role="img" aria-label={`Monthly activity: ${data.map((item) => `${item.month} ${item.count}`).join(', ')}`}>
+            <svg className="rdb-admin-svg-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} preserveAspectRatio="none" aria-hidden="true">
+                {[0.25, 0.5, 0.75, 1].map((ratio) => {
+                    const y = chart.padding.top + (chart.plotHeight * ratio);
+                    return (
+                        <line
+                            key={ratio}
+                            x1={chart.padding.left}
+                            x2={chart.width - chart.padding.right}
+                            y1={y}
+                            y2={y}
+                            stroke={palette.grid}
+                            strokeWidth="1"
+                        />
+                    );
+                })}
+                {data.map((item, index) => {
+                    const normalizedValue = Math.max(0, item.count) / chart.maxValue;
+                    const barHeight = Math.max(item.count > 0 ? 8 : 2, normalizedValue * chart.plotHeight);
+                    const x = chart.padding.left + (index * chart.slotWidth) + ((chart.slotWidth - chart.barWidth) / 2);
+                    const y = chart.padding.top + chart.plotHeight - barHeight;
+
+                    return (
+                        <g key={`${item.month}-${index}`}>
+                            <rect
+                                x={x}
+                                y={y}
+                                width={chart.barWidth}
+                                height={barHeight}
+                                rx="10"
+                                fill={item.isCurrentMonth ? palette.accent : palette.neutral}
+                            />
+                            <text
+                                x={chart.padding.left + (index * chart.slotWidth) + (chart.slotWidth / 2)}
+                                y={chart.height - 12}
+                                textAnchor="middle"
+                                fill={palette.text}
+                                fontSize="12"
+                                fontWeight="600"
+                            >
+                                {item.month}
+                            </text>
+                        </g>
+                    );
+                })}
+            </svg>
         </div>
     );
 };
 
 const AdminLineChart: React.FC<{ data: number[]; themeKey: string }> = ({ data, themeKey }) => {
-    const palette = useMemo(() => getChartPalette(), [themeKey]);
-    const labels = useMemo(
-        () => data.map((_, idx) => `D${idx + 1}`),
-        [data],
-    );
-    const option = useMemo<EChartsOption>(() => ({
-        animationDuration: 500,
-        animationEasing: 'cubicOut',
-        grid: {
-            top: 14,
-            right: 8,
-            bottom: 8,
-            left: 8,
-            containLabel: false,
-        },
-        tooltip: {
-            trigger: 'axis',
-            axisPointer: { type: 'line', snap: true },
-            formatter: (params: unknown) => {
-                const point = Array.isArray(params) ? params[0] as { axisValueLabel?: string; data?: number } : null;
-                return `${point?.axisValueLabel || 'Day'}: <strong>${Math.max(0, Number(point?.data || 0))}</strong>`;
-            },
-            backgroundColor: '#131316',
-            borderWidth: 0,
-            textStyle: { color: '#f6f6f8' },
-            padding: [8, 10],
-        },
-        xAxis: {
-            type: 'category',
-            data: labels,
-            show: false,
-            boundaryGap: false,
-        },
-        yAxis: {
-            type: 'value',
-            min: 0,
-            minInterval: 1,
-            show: false,
-        },
-        series: [{
-            type: 'line',
-            data,
-            smooth: true,
-            symbol: 'circle',
-            symbolSize: 8,
-            lineStyle: {
-                color: palette.accent,
-                width: 3.4,
-            },
-            itemStyle: {
-                color: palette.textStrong,
-                borderWidth: 2,
-                borderColor: palette.accent,
-            },
-            areaStyle: {
-                color: 'rgba(255, 103, 0, 0.12)',
-            },
-        }],
-    }), [data, labels, palette]);
+    const palette = useMemo(() => getChartPalette(themeKey), [themeKey]);
+    const chart = useMemo(() => {
+        const width = 420;
+        const height = 154;
+        const padding = 12;
+        const maxValue = Math.max(1, ...data);
+        const points = data.map((value, index) => {
+            const x = data.length <= 1
+                ? width / 2
+                : padding + ((width - (padding * 2)) * index) / (data.length - 1);
+            const y = height - padding - ((Math.max(0, value) / maxValue) * (height - (padding * 2)));
+            return { x, y, value };
+        });
+        const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
+        const areaPoints = points.length > 0
+            ? `${padding},${height - padding} ${linePoints} ${width - padding},${height - padding}`
+            : '';
+
+        return { width, height, padding, points, linePoints, areaPoints };
+    }, [data]);
 
     return (
-        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--line">
-            <ReactECharts
-                option={option}
-                style={{ width: '100%', height: '100%' }}
-                opts={{ renderer: 'canvas' }}
-            />
+        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--line" role="img" aria-label={`Daily activity: ${data.map((value, index) => `Day ${index + 1} ${value}`).join(', ')}`}>
+            <svg className="rdb-admin-svg-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} preserveAspectRatio="none" aria-hidden="true">
+                {chart.areaPoints ? (
+                    <polygon points={chart.areaPoints} fill="rgba(255, 103, 0, 0.12)" />
+                ) : null}
+                {chart.linePoints ? (
+                    <polyline
+                        points={chart.linePoints}
+                        fill="none"
+                        stroke={palette.accent}
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                ) : null}
+                {chart.points.map((point, index) => (
+                    <circle
+                        key={`${point.x}-${index}`}
+                        cx={point.x}
+                        cy={point.y}
+                        r="4.4"
+                        fill={palette.textStrong}
+                        stroke={palette.accent}
+                        strokeWidth="2"
+                    />
+                ))}
+            </svg>
         </div>
     );
 };
@@ -827,51 +796,27 @@ const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: numb
     label,
     themeKey,
 }) => {
-    const palette = useMemo(() => getChartPalette(), [themeKey]);
+    const palette = useMemo(() => getChartPalette(themeKey), [themeKey]);
     const normalizedSegments = segments
         .map((segment) => ({ ...segment, value: Math.max(0, Math.round(segment.value)) }))
         .filter((segment) => segment.value > 0);
+    const donutBackground = useMemo(() => {
+        if (normalizedSegments.length === 0) return palette.neutral;
+        const total = normalizedSegments.reduce((sum, segment) => sum + segment.value, 0);
+        let cursor = 0;
 
-    const option = useMemo<EChartsOption>(() => ({
-        animationDuration: 450,
-        tooltip: {
-            trigger: 'item',
-            formatter: '{b}: <strong>{c}</strong> ({d}%)',
-            backgroundColor: '#131316',
-            borderWidth: 0,
-            textStyle: { color: '#f6f6f8' },
-            padding: [8, 10],
-        },
-        series: [{
-            type: 'pie',
-            radius: ['62%', '92%'],
-            center: ['50%', '50%'],
-            label: { show: false },
-            labelLine: { show: false },
-            itemStyle: { borderWidth: 0 },
-            data: normalizedSegments.length > 0
-                ? normalizedSegments.map((segment) => ({
-                    name: segment.label,
-                    value: segment.value,
-                    itemStyle: { color: segment.color },
-                }))
-                : [{
-                    name: 'No data',
-                    value: 1,
-                    itemStyle: { color: palette.neutral },
-                }],
-        }],
-    }), [normalizedSegments, palette.neutral]);
+        return `conic-gradient(${normalizedSegments.map((segment) => {
+            const start = (cursor / total) * 360;
+            cursor += segment.value;
+            const end = (cursor / total) * 360;
+            return `${segment.color} ${start}deg ${end}deg`;
+        }).join(', ')})`;
+    }, [normalizedSegments, palette.neutral]);
     const ariaText = `${label}: ${segments.map((segment) => `${segment.label} ${Math.max(0, Math.round(segment.value))}`).join(', ')}`;
 
     return (
         <div className="rdb-role-donut" role="img" aria-label={ariaText}>
-            <ReactECharts
-                className="rdb-role-donut-chart"
-                option={option}
-                style={{ width: '100%', height: '100%' }}
-                opts={{ renderer: 'canvas' }}
-            />
+            <span className="rdb-role-donut-chart" style={{ background: donutBackground }} aria-hidden="true" />
             <strong>{Math.max(0, Math.round(centerValue))}</strong>
         </div>
     );
@@ -1219,7 +1164,7 @@ export const RoleDashboard: React.FC = () => {
         );
     }, [effectiveRole, navigate, searchParams]);
 
-    const loadAdminAccountLocations = async (force = false) => {
+    const loadAdminAccountLocations = useCallback(async (force = false) => {
         if (effectiveRole !== 'admin') return;
         if (mapFetching) return;
         if (mapLoaded && !force) return;
@@ -1232,7 +1177,7 @@ export const RoleDashboard: React.FC = () => {
         } finally {
             setMapFetching(false);
         }
-    };
+    }, [effectiveRole, mapFetching, mapLoaded]);
 
     useEffect(() => {
         if (!user || profileLoading) return;
@@ -1351,7 +1296,7 @@ export const RoleDashboard: React.FC = () => {
     useEffect(() => {
         if (effectiveRole !== 'admin' || activeSection !== 'map') return;
         void loadAdminAccountLocations();
-    }, [activeSection, effectiveRole]);
+    }, [activeSection, effectiveRole, loadAdminAccountLocations]);
 
     useEffect(() => {
         if (effectiveRole !== 'provider') {
@@ -2162,6 +2107,7 @@ export const RoleDashboard: React.FC = () => {
         providerRows.length,
         touristNotificationRows.length,
         touristRevenueFilteredRows.length,
+        touristRouteRows.length,
         touristRows.length,
     ]);
 

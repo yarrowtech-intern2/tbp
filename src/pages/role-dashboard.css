@@ -2631,6 +2631,15 @@
     position: absolute;
     inset: 0;
     z-index: 0;
+    border-radius: 50%;
+}
+
+.rdb-role-donut-chart::after {
+    content: '';
+    position: absolute;
+    inset: 31%;
+    border-radius: 50%;
+    background: var(--rdb-admin-card);
 }
 
 .rdb-role-donut strong {
@@ -2778,6 +2787,13 @@
 
 .rdb-admin-echart-wrap {
     width: 100%;
+}
+
+.rdb-admin-svg-chart {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
 }
 
 .rdb-admin-echart-wrap--bar {

@@ -321,11 +321,6 @@ export const Home3: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        setActiveHorizontalIndex(0);
-        setHoveredHorizontalIndex(null);
-    }, []);
-
-    useEffect(() => {
         horizontalVideoRefs.current.forEach((video) => {
             if (!video) return;
             video.play().catch(() => {});

@@ -1169,7 +1169,7 @@ export const Home5: React.FC = () => {
         <div className="home5-hero-shell">
           {activeHeroLayer.kind === 'white' ? (
             <>
-              <div className="home5-copy">
+              <div key={`copy-${activeHeroLayer.id}`} className="home5-copy">
                 <h1 className="home5-title">The Betterpass</h1>
                 <h2 className={`home5-subtitle${heroSubtitleOnDark ? ' is-light' : ''}`}>
                   <span>travel made</span>
@@ -1186,7 +1186,7 @@ export const Home5: React.FC = () => {
               </div>
             </>
           ) : activeVideoHeroContent ? (
-            <div className="home5-hero-immersive">
+            <div key={`immersive-${activeHeroLayer.id}`} className="home5-hero-immersive">
               <div className="home5-hero-immersive-head">
                 <span className="home5-hero-immersive-eyebrow">{activeVideoHeroContent.eyebrow}</span>
                 <h1 className="home5-hero-immersive-title">{activeVideoHeroContent.title}</h1>

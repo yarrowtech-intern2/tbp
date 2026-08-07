@@ -39,10 +39,14 @@ export const useStaggeredImageRotation = ({
     }, [activeImageIndex]);
 
     useEffect(() => {
-        setActiveImageIndexState(0);
-        setPreviousImageIndex(0);
-        activeImageIndexRef.current = 0;
-        setTransitionKey((current) => current + 1);
+        const timeoutId = window.setTimeout(() => {
+            setActiveImageIndexState(0);
+            setPreviousImageIndex(0);
+            activeImageIndexRef.current = 0;
+            setTransitionKey((current) => current + 1);
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [imageCount]);
 
     const setActiveImageIndex = useCallback((nextValue: SetStateAction<number>) => {

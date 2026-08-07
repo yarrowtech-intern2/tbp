@@ -76,18 +76,7 @@ const describeListing = (listing: PostRecord) => {
     return `${listingTitle(listing)} (${listingLocation(listing)} | ${priceLabel})`;
 };
 
-const getToken = () => {
-    const envToken = typeof import.meta.env.VITE_OPENAI_API_KEY === 'string'
-        ? import.meta.env.VITE_OPENAI_API_KEY.trim()
-        : '';
-    if (envToken) return envToken;
-
-    if (typeof window === 'undefined') return '';
-    const localToken = window.localStorage.getItem('tbp_openai_api_key');
-    return typeof localToken === 'string' ? localToken.trim() : '';
-};
-
-export const getConfiguredChatbotMode = (): ChatbotMode => (getToken() ? 'ai' : 'rule-based');
+export const getConfiguredChatbotMode = (): ChatbotMode => 'rule-based';
 
 const detectListingType = (text: string): ListingType | null => {
     if (hasAny(text, [' tour ', ' tours ', ' trip ', ' trips '])) return 'tour';
@@ -241,113 +230,6 @@ const buildListingReply = (listings: PostRecord[], type: ListingType | null, loc
     return `I found ${filtered.length} ${label}.\n${top}`;
 };
 
-const summarizeContextForAI = (context: RuleContext, userId: string | null) => {
-    const tourTop = context.listingsByType.tour.slice(0, 4).map(describeListing).join('; ');
-    const activityTop = context.listingsByType.activity.slice(0, 4).map(describeListing).join('; ');
-    const eventTop = context.listingsByType.guide.slice(0, 4).map(describeListing).join('; ');
-    const bookingSummary = userId
-        ? `User bookings: ${context.bookings.length}`
-        : 'User not signed in.';
-    const profileSummary = context.profile
-        ? `User role: ${context.profile.role || 'member'}; verification: ${context.profile.verification_status || 'unknown'}`
-        : 'No user profile context.';
-
-    return [
-        `Catalog counts -> tours: ${context.listingsByType.tour.length}, activities: ${context.listingsByType.activity.length}, events: ${context.listingsByType.guide.length}.`,
-        `Top tours -> ${tourTop || 'none'}.`,
-        `Top activities -> ${activityTop || 'none'}.`,
-        `Top events -> ${eventTop || 'none'}.`,
-        bookingSummary,
-        profileSummary,
-    ].join('\n');
-};
-
-const extractResponseText = (payload: unknown): string => {
-    if (!payload || typeof payload !== 'object') return '';
-    if ('output_text' in payload && typeof payload.output_text === 'string') {
-        return payload.output_text.trim();
-    }
-
-    const output = 'output' in payload ? payload.output : null;
-    if (!Array.isArray(output)) return '';
-
-    for (const item of output) {
-        if (!item || typeof item !== 'object') continue;
-        if ('content' in item && Array.isArray(item.content)) {
-            for (const contentItem of item.content) {
-                if (!contentItem || typeof contentItem !== 'object') continue;
-                if ('text' in contentItem && typeof contentItem.text === 'string') {
-                    return contentItem.text.trim();
-                }
-            }
-        }
-    }
-
-    return '';
-};
-
-const requestAIReply = async (
-    question: string,
-    history: ChatbotHistoryTurn[],
-    context: RuleContext,
-    userId: string | null
-) => {
-    const token = getToken();
-    if (!token) return null;
-
-    const recentHistory = history.slice(-6).map((turn) => ({
-        role: turn.role,
-        content: turn.text,
-    }));
-
-    const systemInstruction = [
-        'You are the in-app assistant for a travel platform.',
-        'Answer strictly from provided context.',
-        'Be direct, short, and action-oriented.',
-        'When data is missing, say so clearly without guessing.',
-    ].join(' ');
-
-    const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: import.meta.env.VITE_OPENAI_MODEL || 'gpt-4.1-mini',
-            temperature: 0.2,
-            max_output_tokens: 240,
-            input: [
-                { role: 'system', content: systemInstruction },
-                ...recentHistory,
-                {
-                    role: 'user',
-                    content: [
-                        `Database context:`,
-                        summarizeContextForAI(context, userId),
-                        '',
-                        `User question: ${question}`,
-                        '',
-                        'Give a concise answer.',
-                    ].join('\n'),
-                },
-            ],
-        }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`OpenAI request failed with status ${response.status}`);
-    }
-
-    const payload = await response.json();
-    const text = extractResponseText(payload);
-    if (!text) {
-        throw new Error('OpenAI response was empty.');
-    }
-
-    return text;
-};
-
 const generateRuleReply = async (
     question: string,
     userId: string | null,
@@ -423,21 +305,6 @@ export const getChatbotReply = async (input: {
     }
 
     const context = await getRuleContext(input.userId);
-    const aiEnabled = getConfiguredChatbotMode() === 'ai';
-
-    if (aiEnabled) {
-        try {
-            const aiText = await requestAIReply(question, input.history, context, input.userId);
-            if (aiText) {
-                return {
-                    text: aiText,
-                    mode: 'ai',
-                };
-            }
-        } catch (error) {
-            console.error('AI response failed, switching to rule-based mode:', error);
-        }
-    }
 
     return {
         text: await generateRuleReply(question, input.userId, context),

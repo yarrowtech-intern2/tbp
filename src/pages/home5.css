@@ -441,6 +441,7 @@
   gap: 14px;
   padding: max(54px, env(safe-area-inset-top) + 28px) 16px 0;
   text-align: center;
+  animation: heroContentIn 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .home5-title {
@@ -691,6 +692,7 @@
   margin: 0 auto;
   padding: max(72px, env(safe-area-inset-top) + 46px) 0 max(30px, env(safe-area-inset-bottom) + 18px);
   box-sizing: border-box;
+  animation: heroContentIn 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .home5-hero-immersive-head {
@@ -818,6 +820,45 @@
   font-weight: 400;
   line-height: 1.45;
   text-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+}
+
+@keyframes heroContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroChildIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home5-hero-immersive-head {
+  animation: heroChildIn 480ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+.home5-hero-immersive-bottom {
+  animation: heroChildIn 500ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+}
+
+.home5-hero-shell {
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.home5-hero.is-video-transitioning .home5-hero-shell {
+  opacity: 0;
+  transform: translateY(12px);
 }
 
 .home5-hero-spot-modal {

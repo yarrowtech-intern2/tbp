@@ -1,4 +1,4 @@
-import lottie from 'lottie-web';
+import type { AnimationItem } from 'lottie-web';
 
 const FAVICON_ANIMATION_PATH = '/favicon/favicon.json';
 const FAVICON_SIZE = 64;
@@ -42,19 +42,6 @@ export const initAnimatedFavicon = (): void => {
   container.style.top = '-9999px';
   document.body.appendChild(container);
 
-  let sampledFrameCount = 0;
-  const animation = lottie.loadAnimation({
-    container,
-    renderer: 'canvas',
-    loop: true,
-    autoplay: true,
-    path: FAVICON_ANIMATION_PATH,
-    rendererSettings: {
-      clearCanvas: true,
-      preserveAspectRatio: 'xMidYMid meet',
-    },
-  });
-
   const updateFaviconFromCanvas = (): void => {
     const canvas = container.querySelector('canvas');
     if (!canvas) {
@@ -65,18 +52,46 @@ export const initAnimatedFavicon = (): void => {
     faviconLink.href = canvas.toDataURL('image/png');
   };
 
-  animation.addEventListener('DOMLoaded', updateFaviconFromCanvas);
-  animation.addEventListener('enterFrame', () => {
-    sampledFrameCount += 1;
-    if (sampledFrameCount % FRAME_SAMPLE_RATE === 0) {
-      updateFaviconFromCanvas();
-    }
-  });
+  let sampledFrameCount = 0;
+  let animation: AnimationItem | null = null;
+  let disposed = false;
+
+  void import('lottie-web/build/player/lottie_light_canvas')
+    .then(({ default: lottie }) => {
+      if (disposed) {
+        return;
+      }
+
+      animation = lottie.loadAnimation({
+        container,
+        renderer: 'canvas',
+        loop: true,
+        autoplay: true,
+        path: FAVICON_ANIMATION_PATH,
+        rendererSettings: {
+          clearCanvas: true,
+          preserveAspectRatio: 'xMidYMid meet',
+        },
+      });
+
+      animation.addEventListener('DOMLoaded', updateFaviconFromCanvas);
+      animation.addEventListener('enterFrame', () => {
+        sampledFrameCount += 1;
+        if (sampledFrameCount % FRAME_SAMPLE_RATE === 0) {
+          updateFaviconFromCanvas();
+        }
+      });
+    })
+    .catch(() => {
+      globalWindow[INIT_FLAG] = false;
+      container.remove();
+    });
 
   window.addEventListener(
     'beforeunload',
     () => {
-      animation.destroy();
+      disposed = true;
+      animation?.destroy();
       container.remove();
     },
     { once: true },

@@ -24,7 +24,7 @@ import {
 import './auth.css';
 
 const TOURIST_EXPLORE_PATH = '/explore';
-const SIGNUP_BASE_FIELDS = ['fullName', 'email', 'password'] as const;
+type SignupBaseField = 'fullName' | 'email' | 'password';
 
 const normalizeAppUrl = (rawUrl?: string) => {
     if (!rawUrl) return '';
@@ -64,7 +64,7 @@ type AuthDraft = {
 };
 
 type SignupStep =
-    | { kind: 'base'; key: typeof SIGNUP_BASE_FIELDS[number] }
+    | { kind: 'base'; key: SignupBaseField }
     | { kind: 'role'; field: RoleFormField; label: string; placeholder: string; required: boolean }
     | { kind: 'toggle'; key: 'worksUnderCompany'; label: string; description: string }
     | { kind: 'final' };

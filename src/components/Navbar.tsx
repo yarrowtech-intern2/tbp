@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, X } from 'lucide-react';
-import { useAppTutorial } from '../context/AppTutorialContext';
+import { useAppTutorial } from '../context/app-tutorial-context-value';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { getProfileAvatarUrl } from '../lib/avatar';

@@ -184,12 +184,6 @@ export const AdminAccountMap: React.FC<AdminAccountMapProps> = ({ accounts }) =>
         [filteredPins, selectedAccountId],
     );
 
-    useEffect(() => {
-        if (selectedAccountId && !filteredPins.some((pin) => pin.id === selectedAccountId)) {
-            setSelectedAccountId(null);
-        }
-    }, [filteredPins, selectedAccountId]);
-
     const themeClass = theme === 'dark' ? 'is-dark' : 'is-light';
 
     const imageryUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';

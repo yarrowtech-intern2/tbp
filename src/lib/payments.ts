@@ -201,7 +201,7 @@ export const confirmRazorpayBooking = async (
 
 export type PromotionKind = 'boost' | 'ad';
 
-export interface PromotionOrderPayload extends RazorpayOrderPayload {}
+export type PromotionOrderPayload = RazorpayOrderPayload;
 
 export interface BoostPromotionDraft {
     kind: 'boost';

@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { normalizeRoleValue } from '../lib/platform';
 import { supabase } from '../lib/supabase';
+import { AppTutorialContext } from './app-tutorial-context-value';
 import './app-tutorial.css';
 
 type TutorialRole = 'tourist' | 'provider' | 'admin' | 'marketing';
@@ -15,13 +16,6 @@ type TutorialStep = {
     title: string;
     description: string;
 };
-
-type AppTutorialContextType = {
-    isOpen: boolean;
-    openTutorial: () => void;
-};
-
-const AppTutorialContext = createContext<AppTutorialContextType | undefined>(undefined);
 
 const TUTORIAL_PENDING_KEY = 'tutorial_pending';
 const TUTORIAL_COMPLETED_KEY = 'tutorial_completed';
@@ -297,7 +291,7 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const tutorialPending = user?.user_metadata?.[TUTORIAL_PENDING_KEY] === true;
     const tutorialCompleted = user?.user_metadata?.[TUTORIAL_COMPLETED_KEY] === true;
 
-    const persistTutorialCompletion = async () => {
+    const persistTutorialCompletion = useCallback(async () => {
         if (!user || completionInFlightRef.current) return;
         completionInFlightRef.current = true;
 
@@ -317,18 +311,18 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
         } finally {
             completionInFlightRef.current = false;
         }
-    };
+    }, [user]);
 
-    const closeTutorial = async () => {
+    const closeTutorial = useCallback(async () => {
         setIsOpen(false);
         setTargetRect(null);
         if (user?.id) {
             handledAutoUsersRef.current.add(user.id);
         }
         await persistTutorialCompletion();
-    };
+    }, [persistTutorialCompletion, user?.id]);
 
-    const goToStep = (index: number) => {
+    const goToStep = useCallback((index: number) => {
         const boundedIndex = Math.max(0, Math.min(index, steps.length - 1));
         const nextStep = steps[boundedIndex];
         setActiveIndex(boundedIndex);
@@ -336,9 +330,9 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (!matchesRoute(location.pathname, location.search, nextStep.route)) {
             navigate(nextStep.route);
         }
-    };
+    }, [location.pathname, location.search, navigate, steps]);
 
-    const openTutorial = () => {
+    const openTutorial = useCallback(() => {
         if (!steps.length) return;
         setRunMode('manual');
         setActiveIndex(0);
@@ -346,7 +340,7 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (!matchesRoute(location.pathname, location.search, steps[0].route)) {
             navigate(steps[0].route);
         }
-    };
+    }, [location.pathname, location.search, navigate, steps]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -355,7 +349,7 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return () => {
             document.body.style.overflow = previousOverflow;
         };
-    }, [isOpen]);
+    }, [closeTutorial, isOpen]);
 
     useEffect(() => {
         if (!user || loading || profileLoading || isOpen) return;
@@ -463,7 +457,7 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen]);
+    }, [closeTutorial, isOpen]);
 
     const tooltipStyle = currentStep ? getTooltipStyle(targetRect) : null;
 
@@ -530,14 +524,4 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
             )}
         </AppTutorialContext.Provider>
     );
-};
-
-export const useAppTutorial = () => {
-    const context = useContext(AppTutorialContext);
-
-    if (context === undefined) {
-        throw new Error('useAppTutorial must be used within an AppTutorialProvider');
-    }
-
-    return context;
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { divIcon, latLngBounds } from 'leaflet';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -201,7 +201,7 @@ export const MapPage: React.FC = () => {
     setPlanningLocation(currentLocation);
   };
 
-  const handleStartSearch = async (query = startQuery, options?: { silent?: boolean }) => {
+  const handleStartSearch = useCallback(async (query = startQuery, options?: { silent?: boolean }) => {
     const normalizedQuery = query.trim();
     if (!normalizedQuery) {
       setStartResults([]);
@@ -233,9 +233,9 @@ export const MapPage: React.FC = () => {
         setIsSearchingStarts(false);
       }
     }
-  };
+  }, [currentCity, startAnchor, startQuery]);
 
-  const handleDestinationSearch = async (query = destinationQuery, options?: { silent?: boolean }) => {
+  const handleDestinationSearch = useCallback(async (query = destinationQuery, options?: { silent?: boolean }) => {
     if (!startAnchor) {
       setRouteError('Choose a starting point first.');
       return;
@@ -274,7 +274,7 @@ export const MapPage: React.FC = () => {
         setIsSearchingDestinations(false);
       }
     }
-  };
+  }, [currentCity, destinationQuery, endAnchor, startAnchor]);
 
   useEffect(() => {
     if (!startAnchor) return;
@@ -299,7 +299,7 @@ export const MapPage: React.FC = () => {
     }, 320);
 
     return () => window.clearTimeout(timeoutId);
-  }, [destinationQuery, endAnchor, startAnchor]);
+  }, [destinationQuery, endAnchor, handleDestinationSearch, startAnchor]);
 
   useEffect(() => {
     const normalizedQuery = startQuery.trim();
@@ -319,7 +319,7 @@ export const MapPage: React.FC = () => {
     }, 320);
 
     return () => window.clearTimeout(timeoutId);
-  }, [startAnchor?.name, startQuery]);
+  }, [handleStartSearch, startAnchor?.name, startQuery]);
 
   useEffect(() => {
     if (!startAnchor || !endAnchor) return;

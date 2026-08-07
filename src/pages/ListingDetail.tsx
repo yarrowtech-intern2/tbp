@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Facebook, Heart, Instagram, Loader2, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -243,7 +243,7 @@ export const ListingDetail: React.FC = () => {
     );
     const boosted = listing ? hasActiveBoost(listing) : false;
 
-    const retryPendingConfirmation = async () => {
+    const retryPendingConfirmation = useCallback(async () => {
         const currentUserId = normalizeUuidString(user?.id);
         const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
         if (!currentUserId || !listingId) return;
@@ -287,7 +287,7 @@ export const ListingDetail: React.FC = () => {
         } finally {
             setRetryingConfirmation(false);
         }
-    };
+    }, [effectiveType, id, image, listing?.id, primaryImage, title, user?.id]);
 
     useEffect(() => {
         setAutoRetryAttempted(false);
@@ -410,6 +410,7 @@ export const ListingDetail: React.FC = () => {
         confirmingBooking,
         retryingConfirmation,
         autoRetryAttempted,
+        retryPendingConfirmation,
     ]);
 
     const handleBooking = async (event: React.FormEvent) => {

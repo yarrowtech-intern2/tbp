@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Activity,
     CheckCircle2,
@@ -91,7 +91,7 @@ export const AdminConsole: React.FC = () => {
     const [bulkListingRejectReason, setBulkListingRejectReason] = useState('');
     const [bulkConfirmation, setBulkConfirmation] = useState<BulkConfirmationState>(null);
 
-    const loadQueue = async () => {
+    const loadQueue = useCallback(async () => {
         setFetching(true);
         try {
             const [data, listings, logs] = await Promise.all([
@@ -105,9 +105,9 @@ export const AdminConsole: React.FC = () => {
         } finally {
             setFetching(false);
         }
-    };
+    }, []);
 
-    const loadAccountLocations = async (force = false) => {
+    const loadAccountLocations = useCallback(async (force = false) => {
         if (mapFetching) return;
         if (mapLoaded && !force) return;
 
@@ -119,17 +119,17 @@ export const AdminConsole: React.FC = () => {
         } finally {
             setMapFetching(false);
         }
-    };
+    }, [mapFetching, mapLoaded]);
 
     useEffect(() => {
         if (!user || !isAdmin) return;
         void loadQueue();
-    }, [isAdmin, user]);
+    }, [isAdmin, loadQueue, user]);
 
     useEffect(() => {
         if (!user || !isAdmin || activeTab !== 'map') return;
         void loadAccountLocations();
-    }, [activeTab, isAdmin, user]);
+    }, [activeTab, isAdmin, loadAccountLocations, user]);
 
     const pendingCount = useMemo(() => queue.filter((i) => i.status === 'pending' || i.status === 'resubmitted').length, [queue]);
     const approvedCount = useMemo(() => queue.filter((i) => i.status === 'approved').length, [queue]);
