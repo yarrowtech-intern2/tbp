@@ -1,13 +1,15 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Home, Info, Loader2, Mail, MapPinned, UserPlus, X } from 'lucide-react';
+import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
+import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
+import WorldMap, { type WorldMapDot } from '../components/ui/world-map';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterContent, type FooterLink } from '../lib/appContent';
 import { submitContactSubmission } from '../lib/contactSubmissions';
 import './home5.css';
 
 const LazyGlobe = lazy(async () => ({ default: (await import('../components/ui/globe')).Globe }));
-const LazyMacbookScrollDemo = lazy(async () => ({ default: (await import('../components/macbook-scroll-demo')).default }));
 
 type ScrollRevealProps = {
   children: React.ReactNode;
@@ -135,6 +137,33 @@ const FLOW_STEPS = [
     label: 'Book',
   },
 ] as const;
+
+const HOW_SECTION_MAP_DOTS: WorldMapDot[] = [
+  {
+    start: { lat: 64.2008, lng: -149.4937 },
+    end: { lat: 34.0522, lng: -118.2437 },
+  },
+  {
+    start: { lat: 64.2008, lng: -149.4937 },
+    end: { lat: -15.7975, lng: -47.8919 },
+  },
+  {
+    start: { lat: -15.7975, lng: -47.8919 },
+    end: { lat: 38.7223, lng: -9.1393 },
+  },
+  {
+    start: { lat: 51.5074, lng: -0.1278 },
+    end: { lat: 28.6139, lng: 77.209 },
+  },
+  {
+    start: { lat: 28.6139, lng: 77.209 },
+    end: { lat: 43.1332, lng: 131.9113 },
+  },
+  {
+    start: { lat: 28.6139, lng: 77.209 },
+    end: { lat: -1.2921, lng: 36.8219 },
+  },
+];
 
 const BOOKING_CATEGORIES = [
   {
@@ -438,6 +467,34 @@ export const Home5: React.FC = () => {
   const activeVideoHeroContent = activeHeroLayer.kind === 'video' && isVideoHeroLayerId(activeHeroLayer.id)
     ? HERO_VIDEO_CONTENT[activeHeroLayer.id]
     : null;
+  const mobileDockItems: FloatingDockItem[] = [
+    {
+      title: 'Home',
+      icon: <Home />,
+      to: '/',
+    },
+    {
+      title: 'About us',
+      icon: <Info />,
+      to: '/about-final',
+    },
+    {
+      title: 'Map',
+      icon: <MapPinned />,
+      to: '/map',
+    },
+    {
+      title: 'Contact',
+      icon: <Mail />,
+      onClick: () => setContactModalOpen(true),
+    },
+    {
+      title: 'Get started',
+      icon: <UserPlus />,
+      to: '/auth',
+      isPrimary: true,
+    },
+  ];
 
   useEffect(() => {
     if (shouldLoadFooterContent) return undefined;
@@ -732,8 +789,6 @@ export const Home5: React.FC = () => {
       if (stickyMenuOnDarkRef.current !== nextToneOnDark) {
         stickyMenuOnDarkRef.current = nextToneOnDark;
         menuNode.classList.toggle('is-on-dark', nextToneOnDark);
-        const navBrand = menuNode.querySelector('.home5-desktop-nav-brand img') as HTMLImageElement | null;
-        if (navBrand) navBrand.src = nextToneOnDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
       }
     };
 
@@ -843,13 +898,13 @@ export const Home5: React.FC = () => {
 
   const handleHeroPointerDown = (event: React.PointerEvent<HTMLElement>) => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.home5-hero-menu')) return;
+    if (target?.closest('.home5-mobile-dock') || target?.closest('.home5-hero-menu')) return;
     updateHeroCursorPosition(event.clientX, event.clientY);
   };
 
   const handleHeroClick = (event: React.MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.home5-hero-menu') || target?.closest('.home5-hero-immersive-cta')) return;
+    if (target?.closest('.home5-mobile-dock') || target?.closest('.home5-hero-menu') || target?.closest('.home5-hero-immersive-cta')) return;
     triggerHeroVideoReveal();
   };
 
@@ -1065,23 +1120,7 @@ export const Home5: React.FC = () => {
         ref={stickyMenuRef}
         className="home5-nav-shell is-in-hero"
       >
-        <nav className="home5-desktop-nav" aria-label="Primary navigation">
-          <Link to="/" className="home5-desktop-nav-brand" aria-label="The Betterpass home">
-            <img src="/logo/final-logo.png" alt="The Betterpass" />
-          </Link>
-
-          <div className="home5-desktop-nav-glass">
-            <div className="home5-desktop-nav-links">
-              <Link to="/">Home</Link>
-              <Link to="/about-final">About us</Link>
-              <button type="button" onClick={() => setContactModalOpen(true)}>Contact</button>
-            </div>
-
-            <Link className="home5-desktop-nav-cta" to="/auth">
-              <span>Get started</span>
-            </Link>
-          </div>
-        </nav>
+        <FloatingDock className="home5-mobile-dock" items={mobileDockItems} ariaLabel="Landing navigation" />
 
         <div className={`home5-hero-menu${heroMenuOpen ? ' is-open' : ''}`}>
           <button
@@ -1318,7 +1357,13 @@ export const Home5: React.FC = () => {
       <section ref={howSectionRef} className="home5-how-section" id="home5-flow">
         <div className="home5-how-track">
           <div className="home5-how-sticky">
-            <div className="container">
+            <WorldMap
+              className="home5-how-map-bg"
+              dots={HOW_SECTION_MAP_DOTS}
+              lineColor="#ff6a00"
+              aria-hidden="true"
+            />
+            <div className="container home5-how-content-layer">
               <div ref={howSceneRef} className="home5-how-scene" style={{ opacity: 0.22, transform: 'translateY(30px)' }}>
                 <div className="home5-how-shell">
                   <span className="home5-how-eyebrow">Why choose betterpass</span>
@@ -1487,16 +1532,7 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <DeferredMount
-        className="home5-deferred-shell"
-        minHeight="235vh"
-        placeholderClassName="home5-deferred-placeholder home5-deferred-placeholder-macbook"
-        rootMargin="22% 0px"
-      >
-        <Suspense fallback={<div className="home5-deferred-placeholder home5-deferred-placeholder-macbook" aria-hidden="true" />}>
-          <LazyMacbookScrollDemo />
-        </Suspense>
-      </DeferredMount>
+      <MacbookScrollDemo />
 
       <section ref={finalSectionRef} className="home5-final-section">
         <div className="container">

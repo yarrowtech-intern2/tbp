@@ -31,6 +31,48 @@ begin
 end
 $$;
 
+create or replace function public.prevent_non_admin_payout_accounting_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if auth.role() = 'service_role' or public.is_admin_user(auth.uid()) then
+        return new;
+    end if;
+
+    if old.platform_fee_rate is distinct from new.platform_fee_rate
+        or old.platform_fee_amount is distinct from new.platform_fee_amount
+        or old.provider_payout_amount is distinct from new.provider_payout_amount
+        or old.payout_processed_at is distinct from new.payout_processed_at
+        or old.payout_reference is distinct from new.payout_reference then
+        raise exception 'Payout accounting fields are admin-only.'
+            using errcode = '42501';
+    end if;
+
+    if old.payout_status is distinct from new.payout_status
+        and not (
+            new.provider_user_id = auth.uid()
+            and coalesce(old.payout_status, 'pending_provider_acceptance') = 'pending_provider_acceptance'
+            and new.payout_status in ('ready_for_payout', 'cancelled')
+        ) then
+        raise exception 'Payout status changes are admin-only outside provider booking decisions.'
+            using errcode = '42501';
+    end if;
+
+    return new;
+end;
+$$;
+
+grant execute on function public.prevent_non_admin_payout_accounting_change() to authenticated, service_role;
+
+drop trigger if exists bookings_prevent_non_admin_payout_accounting_change on public.bookings;
+create trigger bookings_prevent_non_admin_payout_accounting_change
+before update on public.bookings
+for each row
+execute function public.prevent_non_admin_payout_accounting_change();
+
 create table if not exists public.provider_payout_onboarding (
     user_id uuid primary key references auth.users(id) on delete cascade,
     status text not null default 'not_started',
@@ -67,7 +109,10 @@ create policy "provider_payout_onboarding_select_own"
 on public.provider_payout_onboarding
 for select
 to authenticated
-using (auth.uid() = user_id);
+using (
+    auth.uid() = user_id
+    or public.is_admin_user()
+);
 
 drop policy if exists "provider_payout_onboarding_upsert_own" on public.provider_payout_onboarding;
 create policy "provider_payout_onboarding_upsert_own"
@@ -81,5 +126,11 @@ create policy "provider_payout_onboarding_update_own"
 on public.provider_payout_onboarding
 for update
 to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+using (
+    auth.uid() = user_id
+    or public.is_admin_user()
+)
+with check (
+    auth.uid() = user_id
+    or public.is_admin_user()
+);

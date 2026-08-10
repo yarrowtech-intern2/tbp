@@ -3383,6 +3383,35 @@ export const getProviderListingsByUserId = async (userId: string): Promise<PostR
 };
 
 export const getAdminAccountLocations = async (): Promise<AdminAccountLocationRecord[]> => {
+    const mapLocationRows = (rows: unknown) => safeArray(rows as Record<string, unknown>[])
+        .map((row) => ({
+            id: typeof row.id === 'string' ? row.id : '',
+            full_name: typeof row.full_name === 'string' ? row.full_name : null,
+            email: typeof row.email === 'string' ? row.email : null,
+            role: typeof row.role === 'string' ? row.role : null,
+            phone: typeof row.phone === 'string' ? row.phone : null,
+            city: typeof row.city === 'string' ? row.city : null,
+            country: typeof row.country === 'string' ? row.country : null,
+            latitude: normalizeCoordinateValue(row.latitude),
+            longitude: normalizeCoordinateValue(row.longitude),
+            profile_image_url: typeof row.profile_image_url === 'string' ? row.profile_image_url : null,
+            bio: typeof row.bio === 'string' ? row.bio : null,
+            website: typeof row.website === 'string' ? row.website : null,
+            company_name: typeof row.company_name === 'string' ? row.company_name : null,
+            provider_specialties: typeof row.provider_specialties === 'string' ? row.provider_specialties : null,
+            is_verified: typeof row.is_verified === 'boolean' ? row.is_verified : null,
+            created_at: typeof row.created_at === 'string' ? row.created_at : null,
+        }))
+        .filter((row) => row.id.length > 0);
+
+    const rpcResult = await supabase.rpc('get_admin_account_locations');
+    if (!rpcResult.error) {
+        return mapLocationRows(rpcResult.data);
+    }
+    if (rpcResult.error.code !== '42883') {
+        console.warn('get_admin_account_locations RPC unavailable, using direct profiles fallback:', rpcResult.error.message);
+    }
+
     const selectColumns = [
         'id',
         'full_name',
@@ -3445,26 +3474,7 @@ export const getAdminAccountLocations = async (): Promise<AdminAccountLocationRe
         return [];
     }
 
-    return safeArray(result.data)
-        .map((row) => ({
-            id: typeof row.id === 'string' ? row.id : '',
-            full_name: typeof row.full_name === 'string' ? row.full_name : null,
-            email: typeof row.email === 'string' ? row.email : null,
-            role: typeof row.role === 'string' ? row.role : null,
-            phone: typeof row.phone === 'string' ? row.phone : null,
-            city: typeof row.city === 'string' ? row.city : null,
-            country: typeof row.country === 'string' ? row.country : null,
-            latitude: normalizeCoordinateValue(row.latitude),
-            longitude: normalizeCoordinateValue(row.longitude),
-            profile_image_url: typeof row.profile_image_url === 'string' ? row.profile_image_url : null,
-            bio: typeof row.bio === 'string' ? row.bio : null,
-            website: typeof row.website === 'string' ? row.website : null,
-            company_name: typeof row.company_name === 'string' ? row.company_name : null,
-            provider_specialties: typeof row.provider_specialties === 'string' ? row.provider_specialties : null,
-            is_verified: typeof row.is_verified === 'boolean' ? row.is_verified : null,
-            created_at: typeof row.created_at === 'string' ? row.created_at : null,
-        }))
-        .filter((row) => row.id.length > 0);
+    return mapLocationRows(result.data);
 };
 
 const getProfileRoleByUserId = async (userId: string): Promise<string | null> => {

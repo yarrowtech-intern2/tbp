@@ -8,7 +8,7 @@ Status legend:
 
 Current release target: staging/beta first, production after the blockers below are closed.
 
-Completion: 23% (20 of 86 checklist items complete).
+Completion: 30% (26 of 86 checklist items complete).
 
 ## 0. Operating Rules
 
@@ -50,12 +50,19 @@ Completion: 23% (20 of 86 checklist items complete).
 
 - [x] Inventory all required migrations and SQL setup files.
   - Result: see `docs/supabase-setup-inventory.md`.
-- [ ] Convert any required loose SQL files into ordered Supabase migrations, or document exact manual application order.
-- [ ] Verify Row Level Security is enabled on all user/business data tables.
-- [ ] Verify policies for tourist, provider, admin, and marketing roles.
-- [ ] Test that one user cannot read or mutate another user's private data.
-- [ ] Test provider access boundaries for listings, bookings, ads, and payouts.
-- [ ] Test admin-only moderation, refunds, and account map access.
+- [x] Convert any required loose SQL files into ordered Supabase migrations, or document exact manual application order.
+  - Result: `docs/supabase-setup-inventory.md` now documents an exact manual setup order and identifies optional/superseded loose SQL files.
+- [x] Verify Row Level Security is enabled on all user/business data tables.
+  - Static audit started: see `docs/rls-coverage-audit.md`.
+  - Result: local setup scripts now enable RLS for active user/business tables, add conditional coverage for legacy/review tables, and document the live verification query for staging/production.
+- [x] Verify policies for tourist, provider, admin, and marketing roles.
+  - Result: see `docs/role-policy-audit.md`; profile role escalation via self-update was blocked in policy SQL.
+- [x] Test that one user cannot read or mutate another user's private data.
+  - Result: see `docs/cross-user-boundary-audit.md`; profile reads were hardened from all-authenticated access to relationship-aware visibility.
+- [x] Test provider access boundaries for listings, bookings, ads, and payouts.
+  - Result: see `docs/provider-access-boundary-audit.md`; local SQL now blocks non-admin listing/booking owner reassignment and allows admin payout-onboarding review.
+- [x] Test admin-only moderation, refunds, and account map access.
+  - Result: see `docs/admin-only-boundary-audit.md`; local SQL now guards moderation/review/refund/accounting fields and exposes account map rows through an admin-only RPC.
 - [ ] Confirm storage buckets and policies for listing/profile/ad uploads.
 - [ ] Add a database backup and restore plan.
 
@@ -157,6 +164,19 @@ Completion: 23% (20 of 86 checklist items complete).
 - 2026-08-07: Added `docs/smoke-test-checklist.md` for repeatable staging and production smoke tests.
 - 2026-08-07: Added `docs/supabase-setup-inventory.md` for database, storage, and Edge Function setup inventory.
 - 2026-08-07: Re-ran `npm run lint` and `npm run build`; both pass after Supabase inventory documentation.
+- 2026-08-10: Tightened Supabase setup inventory with exact manual application order, optional legacy data migration, and superseded loose SQL files.
+- 2026-08-10: Started static RLS coverage audit and added RLS policies for promotion payment tables.
+- 2026-08-10: Re-ran `npm run lint` and `npm run build`; both pass after RLS audit and promotion policy changes.
+- 2026-08-10: Completed local RLS setup coverage for user/business tables, including conditional policies for legacy reviews, legacy bookings, and public legacy content tables.
+- 2026-08-10: Re-ran `npm run lint` and `npm run build`; both pass after completing local RLS setup coverage.
+- 2026-08-10: Completed static role-policy audit and hardened profile insert/update policies against self-assigned internal roles.
+- 2026-08-10: Re-ran `npm run lint` and `npm run build`; both pass after role-policy hardening.
+- 2026-08-10: Completed static cross-user boundary audit and hardened profile read access to self/admin/public-provider/relationship visibility.
+- 2026-08-10: Re-ran `npm run lint` and `npm run build`; both pass after cross-user boundary hardening.
+- 2026-08-10: Completed static provider access boundary audit and hardened listing/booking ownership plus payout onboarding admin access.
+- 2026-08-10: Re-ran `npm run lint` and `npm run build`; both pass after provider boundary hardening.
+- 2026-08-10: Completed static admin-only boundary audit and hardened moderation, refund processing, payout accounting, and account map access controls.
+- 2026-08-10: Re-ran `npm run lint` and `npm run build`; both pass after admin-only boundary hardening.
 
 ## Production Environment Variables
 

@@ -34,3 +34,56 @@ create index if not exists profiles_coordinates_idx
 
 comment on column public.profiles.latitude is 'Cached latitude resolved from profile city/country for internal map features.';
 comment on column public.profiles.longitude is 'Cached longitude resolved from profile city/country for internal map features.';
+
+create or replace function public.get_admin_account_locations()
+returns table (
+    id uuid,
+    full_name text,
+    email text,
+    role text,
+    phone text,
+    city text,
+    country text,
+    latitude double precision,
+    longitude double precision,
+    profile_image_url text,
+    bio text,
+    website text,
+    company_name text,
+    provider_specialties text,
+    is_verified boolean,
+    created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if not public.is_admin_user(auth.uid()) then
+        raise exception 'Forbidden' using errcode = '42501';
+    end if;
+
+    return query
+    select
+        p.id,
+        p.full_name,
+        p.email,
+        p.role,
+        p.phone,
+        p.city,
+        p.country,
+        p.latitude,
+        p.longitude,
+        p.profile_image_url,
+        p.bio,
+        p.website,
+        p.company_name,
+        p.provider_specialties,
+        p.is_verified,
+        p.created_at
+    from public.profiles p
+    order by p.created_at desc;
+end;
+$$;
+
+grant execute on function public.get_admin_account_locations() to authenticated;

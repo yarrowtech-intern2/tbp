@@ -748,8 +748,164 @@ as $$
     );
 $$;
 
+create or replace function public.current_profile_role(check_user_id uuid default auth.uid())
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select role
+    from public.profiles
+    where id = check_user_id;
+$$;
+
+create or replace function public.can_view_profile(target_user_id uuid, check_user_id uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select
+        target_user_id = check_user_id
+        or public.is_admin_user(check_user_id)
+        or exists (
+            select 1
+            from public.profiles target
+            where target.id = target_user_id
+              and target.role in ('tour_company', 'tour_instructor', 'tour_guide')
+              and coalesce(target.verification_status, 'not_required') in ('not_required', 'approved')
+        )
+        or exists (
+            select 1
+            from public.bookings b
+            where (
+                b.user_id = check_user_id
+                and b.provider_user_id = target_user_id
+            ) or (
+                b.provider_user_id = check_user_id
+                and b.user_id = target_user_id
+            )
+        )
+        or exists (
+            select 1
+            from public.conversations c
+            where (
+                c.traveler_id = check_user_id
+                and c.provider_id = target_user_id
+            ) or (
+                c.provider_id = check_user_id
+                and c.traveler_id = target_user_id
+            )
+        );
+$$;
+
+create or replace function public.prevent_non_admin_post_owner_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if auth.role() = 'service_role' or public.is_admin_user(auth.uid()) then
+        return new;
+    end if;
+
+    if old.user_id is distinct from new.user_id
+        or old.provider_user_id is distinct from new.provider_user_id then
+        raise exception 'Listing ownership cannot be changed by non-admin users.'
+            using errcode = '42501';
+    end if;
+
+    return new;
+end;
+$$;
+
+create or replace function public.prevent_non_admin_booking_owner_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if auth.role() = 'service_role' or public.is_admin_user(auth.uid()) then
+        return new;
+    end if;
+
+    if old.user_id is distinct from new.user_id
+        or old.provider_user_id is distinct from new.provider_user_id then
+        raise exception 'Booking ownership cannot be changed by non-admin users.'
+            using errcode = '42501';
+    end if;
+
+    return new;
+end;
+$$;
+
+create or replace function public.prevent_non_admin_post_moderation_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if auth.role() = 'service_role' or public.is_admin_user(auth.uid()) then
+        return new;
+    end if;
+
+    if old.status is distinct from new.status
+        and new.status in ('approved', 'live', 'published') then
+        raise exception 'Listing moderation status is admin-only.'
+            using errcode = '42501';
+    end if;
+
+    if (old.reviewed_at is distinct from new.reviewed_at and new.reviewed_at is not null)
+        or (old.reviewed_by is distinct from new.reviewed_by and new.reviewed_by is not null) then
+        raise exception 'Listing review fields are admin-only.'
+            using errcode = '42501';
+    end if;
+
+    return new;
+end;
+$$;
+
+create or replace function public.prevent_non_admin_verification_review_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if auth.role() = 'service_role' or public.is_admin_user(auth.uid()) then
+        return new;
+    end if;
+
+    if old.status is distinct from new.status
+        and new.status in ('approved', 'rejected') then
+        raise exception 'Verification review status is admin-only.'
+            using errcode = '42501';
+    end if;
+
+    if (old.reviewed_at is distinct from new.reviewed_at and new.reviewed_at is not null)
+        or (old.reviewed_by is distinct from new.reviewed_by and new.reviewed_by is not null)
+        or (old.rejection_reason is distinct from new.rejection_reason and new.rejection_reason is not null) then
+        raise exception 'Verification review fields are admin-only.'
+            using errcode = '42501';
+    end if;
+
+    return new;
+end;
+$$;
+
 grant execute on function public.is_admin_user(uuid) to anon, authenticated, service_role;
 grant execute on function public.is_verified_provider(uuid) to anon, authenticated, service_role;
+grant execute on function public.current_profile_role(uuid) to anon, authenticated, service_role;
+grant execute on function public.can_view_profile(uuid, uuid) to anon, authenticated, service_role;
+grant execute on function public.prevent_non_admin_post_owner_change() to authenticated, service_role;
+grant execute on function public.prevent_non_admin_booking_owner_change() to authenticated, service_role;
+grant execute on function public.prevent_non_admin_post_moderation_change() to authenticated, service_role;
+grant execute on function public.prevent_non_admin_verification_review_change() to authenticated, service_role;
 
 alter table public.profiles enable row level security;
 alter table public.verification enable row level security;
@@ -760,22 +916,48 @@ alter table public.conversations enable row level security;
 alter table public.conversation_messages enable row level security;
 alter table public.moderation_audit_logs enable row level security;
 
+drop trigger if exists posts_prevent_non_admin_owner_change on public.posts;
+create trigger posts_prevent_non_admin_owner_change
+before update on public.posts
+for each row
+execute function public.prevent_non_admin_post_owner_change();
+
+drop trigger if exists posts_prevent_non_admin_moderation_change on public.posts;
+create trigger posts_prevent_non_admin_moderation_change
+before update on public.posts
+for each row
+execute function public.prevent_non_admin_post_moderation_change();
+
+drop trigger if exists bookings_prevent_non_admin_owner_change on public.bookings;
+create trigger bookings_prevent_non_admin_owner_change
+before update on public.bookings
+for each row
+execute function public.prevent_non_admin_booking_owner_change();
+
+drop trigger if exists verification_prevent_non_admin_review_change on public.verification;
+create trigger verification_prevent_non_admin_review_change
+before update on public.verification
+for each row
+execute function public.prevent_non_admin_verification_review_change();
+
 drop policy if exists "profiles_select_authenticated" on public.profiles;
 drop policy if exists "profiles_select_self_or_admin" on public.profiles;
-create policy "profiles_select_authenticated"
+drop policy if exists "profiles_select_visible" on public.profiles;
+create policy "profiles_select_visible"
 on public.profiles
 for select
 to authenticated
-using (
-    true
-);
+using (public.can_view_profile(id));
 
 drop policy if exists "profiles_insert_self" on public.profiles;
 create policy "profiles_insert_self"
 on public.profiles
 for insert
 to authenticated
-with check (id = auth.uid());
+with check (
+    id = auth.uid()
+    and role in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'provider')
+);
 
 drop policy if exists "profiles_update_self_or_admin" on public.profiles;
 create policy "profiles_update_self_or_admin"
@@ -787,8 +969,11 @@ using (
     or public.is_admin_user()
 )
 with check (
-    id = auth.uid()
-    or public.is_admin_user()
+    public.is_admin_user()
+    or (
+        id = auth.uid()
+        and role = public.current_profile_role(auth.uid())
+    )
 );
 
 drop policy if exists "verification_select_self_or_admin" on public.verification;
@@ -1139,6 +1324,115 @@ with check (
     or target_user_id = auth.uid()
     or public.is_admin_user()
 );
+
+do $$
+declare
+    review_user_predicate text;
+begin
+    if to_regclass('public.reviews_posts') is not null then
+        execute 'alter table public.reviews_posts enable row level security';
+
+        execute 'drop policy if exists "reviews_posts_select_public" on public.reviews_posts';
+        execute $policy$
+            create policy "reviews_posts_select_public"
+            on public.reviews_posts
+            for select
+            to anon, authenticated
+            using (true)
+        $policy$;
+
+        select string_agg(format('%I = auth.uid()', column_name), ' or ')
+        into review_user_predicate
+        from information_schema.columns
+        where table_schema = 'public'
+          and table_name = 'reviews_posts'
+          and column_name in ('user_id', 'reviewer_id', 'tourist_user_id', 'traveler_user_id', 'customer_user_id');
+
+        review_user_predicate := case
+            when review_user_predicate is null then 'public.is_admin_user()'
+            else '(' || review_user_predicate || ') or public.is_admin_user()'
+        end;
+
+        execute 'drop policy if exists "reviews_posts_insert_owner_or_admin" on public.reviews_posts';
+        execute format($policy$
+            create policy "reviews_posts_insert_owner_or_admin"
+            on public.reviews_posts
+            for insert
+            to authenticated
+            with check (%s)
+        $policy$, review_user_predicate);
+
+        execute 'drop policy if exists "reviews_posts_update_owner_or_admin" on public.reviews_posts';
+        execute format($policy$
+            create policy "reviews_posts_update_owner_or_admin"
+            on public.reviews_posts
+            for update
+            to authenticated
+            using (%s)
+            with check (%s)
+        $policy$, review_user_predicate, review_user_predicate);
+
+        execute 'drop policy if exists "reviews_posts_delete_owner_or_admin" on public.reviews_posts';
+        execute format($policy$
+            create policy "reviews_posts_delete_owner_or_admin"
+            on public.reviews_posts
+            for delete
+            to authenticated
+            using (%s)
+        $policy$, review_user_predicate);
+    end if;
+
+    if to_regclass('public.bookings_acts') is not null then
+        execute 'alter table public.bookings_acts enable row level security';
+
+        if exists (
+            select 1
+            from information_schema.columns
+            where table_schema = 'public'
+              and table_name = 'bookings_acts'
+              and column_name = 'user_id'
+        ) then
+            execute 'drop policy if exists "bookings_acts_select_owner_or_admin" on public.bookings_acts';
+            execute $policy$
+                create policy "bookings_acts_select_owner_or_admin"
+                on public.bookings_acts
+                for select
+                to authenticated
+                using (
+                    user_id = auth.uid()
+                    or public.is_admin_user()
+                )
+            $policy$;
+
+            execute 'drop policy if exists "bookings_acts_insert_owner" on public.bookings_acts';
+            execute $policy$
+                create policy "bookings_acts_insert_owner"
+                on public.bookings_acts
+                for insert
+                to authenticated
+                with check (user_id = auth.uid())
+            $policy$;
+        end if;
+    end if;
+
+    if to_regclass('public.activities') is not null then
+        execute 'alter table public.activities enable row level security';
+        execute 'drop policy if exists "activities_select_public" on public.activities';
+        execute 'create policy "activities_select_public" on public.activities for select to anon, authenticated using (true)';
+    end if;
+
+    if to_regclass('public.tours') is not null then
+        execute 'alter table public.tours enable row level security';
+        execute 'drop policy if exists "tours_select_public" on public.tours';
+        execute 'create policy "tours_select_public" on public.tours for select to anon, authenticated using (true)';
+    end if;
+
+    if to_regclass('public.events') is not null then
+        execute 'alter table public.events enable row level security';
+        execute 'drop policy if exists "events_select_public" on public.events';
+        execute 'create policy "events_select_public" on public.events for select to anon, authenticated using (true)';
+    end if;
+end $$;
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)

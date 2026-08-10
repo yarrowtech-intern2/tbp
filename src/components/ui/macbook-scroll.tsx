@@ -10,7 +10,36 @@ const KEY_ROWS = [
   ['fn', 'ctrl', 'opt', 'cmd', 'space', 'cmd2', 'opt2', 'left', 'down', 'right', 'blank1'],
 ] as const;
 
+type MacbookCssVars = React.CSSProperties & Record<`--${string}`, string>;
+
 const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const getMacbookVars = (progress: number, isMobile: boolean): MacbookCssVars => {
+  const lidProgress = clampValue(progress / 0.34, 0, 1);
+  const dissolveProgress = clampValue((progress - 0.7) / 0.22, 0, 1);
+
+  return {
+    '--macbook-lid-rotate': `${-9 + (9 * lidProgress)}deg`,
+    '--macbook-scale-x': String(isMobile ? 0.98 + (0.02 * lidProgress) : 1 + (0.08 * lidProgress)),
+    '--macbook-scale-y': String(isMobile ? 0.96 + (0.04 * lidProgress) : 0.94 + (0.08 * lidProgress)),
+    '--macbook-lid-offset': `${160 * progress}px`,
+    '--macbook-device-offset': `${-32 + (20 * progress)}px`,
+    '--macbook-text-offset': `${96 * clampValue(progress / 0.24, 0, 1)}px`,
+    '--macbook-text-opacity': String(1 - clampValue(progress / 0.2, 0, 1)),
+    '--macbook-screen-scale': String(1 + (0.08 * dissolveProgress)),
+    '--macbook-screen-lift': `${-42 * dissolveProgress}px`,
+    '--macbook-chassis-opacity': String(1 - dissolveProgress),
+    '--macbook-bezel-opacity': String(1 - dissolveProgress),
+    '--macbook-screen-radius': `${20 - (8 * dissolveProgress)}px`,
+  };
+};
+
+const applyMacbookVars = (node: HTMLElement, progress: number, isMobile: boolean) => {
+  const vars = getMacbookVars(progress, isMobile);
+  Object.entries(vars).forEach(([property, value]) => {
+    node.style.setProperty(property, value);
+  });
+};
 
 const getKeyClassName = (value: string) => {
   if (value === 'space') return 'macbook-scroll-key is-space';
@@ -38,6 +67,8 @@ const renderKeyLabel = (value: string) => {
 
 type MacbookScrollProps = {
   src?: string;
+  srcSet?: string;
+  sizes?: string;
   showGradient?: boolean;
   title?: React.ReactNode;
   badge?: React.ReactNode;
@@ -45,18 +76,26 @@ type MacbookScrollProps = {
 
 export const MacbookScroll: React.FC<MacbookScrollProps> = ({
   src = 'https://res.cloudinary.com/dc3qprub3/image/upload/v1780906443/Screenshot_2026-06-08_134329_hfhfau.png',
+  srcSet,
+  sizes = '(max-width: 768px) 88vw, 36rem',
   showGradient = false,
   title,
   badge,
 }) => {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
+  const isMobileRef = useRef(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isNearViewport, setIsNearViewport] = useState(false);
 
   useEffect(() => {
     const updateViewportMode = () => {
-      setIsMobile(window.innerWidth < 768);
+      const nextIsMobile = window.innerWidth < 768;
+      isMobileRef.current = nextIsMobile;
+      setIsMobile(nextIsMobile);
+      if (sectionRef.current) {
+        applyMacbookVars(sectionRef.current, progressRef.current, nextIsMobile);
+      }
     };
 
     updateViewportMode();
@@ -101,7 +140,10 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
       const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
       const nextProgress = clampValue((-rect.top) / scrollableDistance, 0, 1);
 
-      setProgress((current) => (Math.abs(current - nextProgress) > 0.001 ? nextProgress : current));
+      if (Math.abs(progressRef.current - nextProgress) <= 0.001) return;
+
+      progressRef.current = nextProgress;
+      applyMacbookVars(node, nextProgress, isMobileRef.current);
     };
 
     const handleScroll = () => {
@@ -120,39 +162,11 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
     };
   }, [isNearViewport]);
 
-  const lidProgress = clampValue(progress / 0.34, 0, 1);
-  const dissolveProgress = clampValue((progress - 0.7) / 0.22, 0, 1);
-  const lidRotate = `${-24 + (24 * lidProgress)}deg`;
-  const scaleX = isMobile ? 0.98 + (0.03 * lidProgress) : 1.04 + (0.22 * lidProgress);
-  const scaleY = isMobile ? 0.88 + (0.12 * lidProgress) : 0.72 + (0.48 * lidProgress);
-  const lidOffset = `${160 * progress}px`;
-  const deviceOffset = `${-32 + (20 * progress)}px`;
-  const textOffset = `${96 * clampValue(progress / 0.24, 0, 1)}px`;
-  const textOpacity = 1 - clampValue(progress / 0.2, 0, 1);
-  const screenScale = 1 + (0.26 * dissolveProgress);
-  const screenLift = `${-42 * dissolveProgress}px`;
-  const chassisOpacity = 1 - dissolveProgress;
-  const bezelOpacity = 1 - dissolveProgress;
-  const screenRadius = `${20 - (8 * dissolveProgress)}px`;
-
   return (
     <section
       ref={sectionRef}
       className="macbook-scroll-section"
-      style={{
-        ['--macbook-lid-rotate' as string]: lidRotate,
-        ['--macbook-scale-x' as string]: String(scaleX),
-        ['--macbook-scale-y' as string]: String(scaleY),
-        ['--macbook-lid-offset' as string]: lidOffset,
-        ['--macbook-device-offset' as string]: deviceOffset,
-        ['--macbook-text-offset' as string]: textOffset,
-        ['--macbook-text-opacity' as string]: String(textOpacity),
-        ['--macbook-screen-scale' as string]: String(screenScale),
-        ['--macbook-screen-lift' as string]: screenLift,
-        ['--macbook-chassis-opacity' as string]: String(chassisOpacity),
-        ['--macbook-bezel-opacity' as string]: String(bezelOpacity),
-        ['--macbook-screen-radius' as string]: screenRadius,
-      }}
+      style={getMacbookVars(0, isMobile)}
     >
       <div className="macbook-scroll-sticky">
         <div className="macbook-scroll-shell">
@@ -171,7 +185,16 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
 
             <div className="macbook-scroll-device">
               <div className="macbook-scroll-image-wrap">
-                <img src={src} alt="Betterpass platform preview" loading="lazy" decoding="async" className="macbook-scroll-hero-img" />
+                <img
+                  src={src}
+                  srcSet={srcSet}
+                  sizes={sizes}
+                  alt="Betterpass platform preview"
+                  loading="eager"
+                  decoding="sync"
+                  fetchPriority="high"
+                  className="macbook-scroll-hero-img"
+                />
               </div>
 
               <div className="macbook-scroll-base" aria-hidden="true">

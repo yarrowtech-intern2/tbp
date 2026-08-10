@@ -2,7 +2,7 @@
 
 This inventory lists the database, storage, and Edge Function setup currently required by the app.
 
-Current status: production setup is split between ordered files in `supabase/migrations/` and older loose SQL files in `docs/`. Before a clean staging or production project is created, either convert the required loose SQL files into ordered migrations or follow the manual order below.
+Current status: production setup is split between ordered files in `supabase/migrations/` and older loose SQL files in `docs/`. Before a clean staging or production project is created, either convert the required loose SQL files into ordered migrations or follow the exact manual order below.
 
 ## Ordered Migrations
 
@@ -17,6 +17,7 @@ These are already in `supabase/migrations/` and can be applied by Supabase migra
 2. `supabase/migrations/202606080001_add_booking_refund_workflow.sql`
    - Adds refund workflow fields to `public.bookings`.
    - Adds refund indexes.
+   - Adds a refund processing guard so non-admin users cannot complete/refund bookings directly.
 
 3. `supabase/migrations/202606110001_add_razorpay_route_payout_fields.sql`
    - Adds Razorpay account fields to `public.provider_payout_onboarding`.
@@ -43,7 +44,12 @@ These files are not currently part of the ordered Supabase migration chain.
   - Creates `public.moderation_audit_logs`.
   - Creates `public.notifications`.
   - Defines helper functions including `public.is_admin_user` and `public.is_verified_provider`.
+  - Defines `public.current_profile_role` so self profile updates cannot change account role.
+  - Defines `public.can_view_profile` for relationship-aware profile read policies.
+  - Adds owner-change prevention triggers for non-admin listing and booking updates.
+  - Adds admin-only review guards for listing moderation and provider verification updates.
   - Enables RLS on profiles, verification, posts, bookings, favorites, conversations, conversation messages, moderation audit logs, and notifications.
+  - Adds conditional RLS coverage for legacy `reviews_posts`, `bookings_acts`, `activities`, `tours`, and `events` when present.
   - Creates the `avatars` storage bucket and storage object policies.
 
 ### Listings And Moderation
@@ -52,12 +58,14 @@ These files are not currently part of the ordered Supabase migration chain.
   - Updates provider/vendor role handling.
   - Adds moderation fields to `public.posts`.
   - Replaces `public.is_verified_provider`.
+  - Adds the listing owner-change prevention trigger for environments applying this file after the foundation script.
+  - Adds the listing moderation guard trigger for environments applying this file after the foundation script.
   - Adds published-read, provider-insert, and owner/admin-update policies for posts.
   - Adds moderation audit log fields.
 
 - `docs/legacy-content-to-posts.sql`
   - Migrates legacy tours, activities, and events into `public.posts`.
-  - Seed/data migration, not a baseline schema object definition.
+  - Optional one-time data migration for environments that still contain legacy `tours`, `activities`, or `events` rows.
 
 - `docs/listing-gallery-images-migration.sql`
   - Adds `gallery_images` to `public.posts`.
@@ -72,7 +80,7 @@ These files are not currently part of the ordered Supabase migration chain.
 
 - `docs/razorpay-source-listing-id-migration.sql`
   - Similar source listing compatibility migration for bookings.
-  - Must be reconciled with `docs/razorpay-booking-migration.sql` before converting to ordered migrations.
+  - Superseded for manual setup by `docs/razorpay-booking-migration.sql`, which already adds `source_listing_id`, loosens legacy booking id constraints, backfills the source listing id, and creates the lookup index.
 
 - `docs/booking-provider-decision-migration.sql`
   - Adds provider accept/reject decision workflow fields to bookings.
@@ -83,8 +91,9 @@ These files are not currently part of the ordered Supabase migration chain.
 
 - `docs/platform-fee-payout-migration.sql`
   - Adds platform fee/payout accounting fields to bookings.
+  - Adds a payout accounting guard so non-admin users cannot edit accounting fields directly.
   - Creates `public.provider_payout_onboarding`.
-  - Enables RLS and owner policies for payout onboarding.
+  - Enables RLS and owner/admin policies for payout onboarding.
 
 - `docs/admin-revenue-rpc.sql`
   - Creates `public.get_admin_revenue`.
@@ -96,6 +105,8 @@ These files are not currently part of the ordered Supabase migration chain.
   - Creates `public.post_boost_payments`.
   - Creates `public.ad_payments`.
   - Adds promotion payment indexes.
+  - Enables RLS for promotion payment tables and the legacy `public.ads` table when present.
+  - Adds owner/admin read policies for promotion payment and ad records.
 
 ### Marketing And Public Content
 
@@ -112,7 +123,7 @@ These files are not currently part of the ordered Supabase migration chain.
 
 - `docs/contact-submissions-migration.sql`
   - Older loose version of the contact submissions migration.
-  - Appears superseded by `supabase/migrations/202606060001_create_contact_submissions.sql`.
+  - Superseded for manual setup by `supabase/migrations/202606060001_create_contact_submissions.sql`.
 
 ### Social/Profile/Map
 
@@ -123,6 +134,7 @@ These files are not currently part of the ordered Supabase migration chain.
 
 - `docs/profile-location-coordinates-migration.sql`
   - Adds country/city/coordinate fields and indexes to `public.profiles`.
+  - Creates `public.get_admin_account_locations()` for admin-only account map data.
 
 ## Storage Buckets
 
@@ -178,33 +190,43 @@ Observed Supabase table usage includes:
 - `reviews_posts`
 - `tourist_routes`
 - `tours`
-- `users`
+- `auth.users` through `get-account-bookings` service-role lookup
 - `verification`
 
-## Recommended Manual Setup Order
+## Exact Manual Setup Order
 
-Use this order only until the loose SQL files are converted into real ordered migrations.
+Use this order only until the loose SQL files are converted into real ordered migrations. Apply each file once in order for a clean staging or production project. Skip only the files explicitly marked optional or superseded below.
 
 1. `docs/supabase-role-system.sql`
 2. `docs/vendor-post-approval-migration.sql`
-3. `docs/profile-location-coordinates-migration.sql`
-4. `docs/profile-follow-system.sql`
-5. `docs/razorpay-booking-migration.sql`
-6. `docs/booking-provider-decision-migration.sql`
-7. `docs/bookings-legacy-trigger-compat.sql`
-8. `docs/platform-fee-payout-migration.sql`
-9. `docs/ads-boost-system-migration.sql`
-10. `docs/marketing-content-role-migration.sql`
-11. `docs/about-page-content-seed.sql`
-12. Apply ordered migrations from `supabase/migrations/` that are not already represented in the loose scripts.
-13. Deploy Edge Functions.
-14. Set Supabase function secrets from `docs/production-readiness-tasklist.md`.
+3. Optional for legacy data only: `docs/legacy-content-to-posts.sql`
+4. `docs/listing-gallery-images-migration.sql`
+5. `docs/profile-location-coordinates-migration.sql`
+6. `docs/profile-follow-system.sql`
+7. `docs/razorpay-booking-migration.sql`
+8. `docs/booking-provider-decision-migration.sql`
+9. `docs/bookings-legacy-trigger-compat.sql`
+10. `docs/platform-fee-payout-migration.sql`
+11. `supabase/migrations/202606110001_add_razorpay_route_payout_fields.sql`
+12. `docs/admin-revenue-rpc.sql`
+13. `supabase/migrations/202606080001_add_booking_refund_workflow.sql`
+14. `docs/ads-boost-system-migration.sql`
+15. `docs/marketing-content-role-migration.sql`
+16. `docs/about-page-content-seed.sql`
+17. `supabase/migrations/202606060001_create_contact_submissions.sql`
+18. `supabase/migrations/202607140001_create_tourist_routes.sql`
+19. Deploy Edge Functions.
+20. Set Supabase function secrets from `docs/production-readiness-tasklist.md`.
+
+Do not apply these files in a clean manual setup unless a specific legacy environment requires them:
+
+- `docs/razorpay-source-listing-id-migration.sql` is superseded by `docs/razorpay-booking-migration.sql`.
+- `docs/contact-submissions-migration.sql` is superseded by `supabase/migrations/202606060001_create_contact_submissions.sql`.
 
 ## Reconciliation Needed Before Production
 
 - Decide whether to convert all required loose SQL files to ordered migrations.
-- Reconcile overlap between loose files and existing ordered migrations.
-- Reconcile overlap between `docs/razorpay-booking-migration.sql` and `docs/razorpay-source-listing-id-migration.sql`.
-- Decide whether `docs/contact-submissions-migration.sql` should be deleted, ignored, or kept as historical after the ordered migration.
+- Reconcile overlap between loose files and existing ordered migrations before adopting migration tooling for a clean project.
+- Decide whether superseded loose files should be deleted, ignored, or kept as historical notes.
 - Review the single `avatars` bucket policy because it supports avatars, listing images, and promo images.
 - Verify all RLS policies against the smoke-test security boundary checklist.

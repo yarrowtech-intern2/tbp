@@ -49,6 +49,70 @@ $$;
 
 grant execute on function public.is_verified_provider(uuid) to anon, authenticated, service_role;
 
+create or replace function public.prevent_non_admin_post_owner_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if auth.role() = 'service_role' or public.is_admin_user(auth.uid()) then
+        return new;
+    end if;
+
+    if old.user_id is distinct from new.user_id
+        or old.provider_user_id is distinct from new.provider_user_id then
+        raise exception 'Listing ownership cannot be changed by non-admin users.'
+            using errcode = '42501';
+    end if;
+
+    return new;
+end;
+$$;
+
+grant execute on function public.prevent_non_admin_post_owner_change() to authenticated, service_role;
+
+drop trigger if exists posts_prevent_non_admin_owner_change on public.posts;
+create trigger posts_prevent_non_admin_owner_change
+before update on public.posts
+for each row
+execute function public.prevent_non_admin_post_owner_change();
+
+create or replace function public.prevent_non_admin_post_moderation_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+    if auth.role() = 'service_role' or public.is_admin_user(auth.uid()) then
+        return new;
+    end if;
+
+    if old.status is distinct from new.status
+        and new.status in ('approved', 'live', 'published') then
+        raise exception 'Listing moderation status is admin-only.'
+            using errcode = '42501';
+    end if;
+
+    if (old.reviewed_at is distinct from new.reviewed_at and new.reviewed_at is not null)
+        or (old.reviewed_by is distinct from new.reviewed_by and new.reviewed_by is not null) then
+        raise exception 'Listing review fields are admin-only.'
+            using errcode = '42501';
+    end if;
+
+    return new;
+end;
+$$;
+
+grant execute on function public.prevent_non_admin_post_moderation_change() to authenticated, service_role;
+
+drop trigger if exists posts_prevent_non_admin_moderation_change on public.posts;
+create trigger posts_prevent_non_admin_moderation_change
+before update on public.posts
+for each row
+execute function public.prevent_non_admin_post_moderation_change();
+
 -- Public can only read live listings (plus published for compatibility).
 drop policy if exists "posts_public_read_published" on public.posts;
 create policy "posts_public_read_published"

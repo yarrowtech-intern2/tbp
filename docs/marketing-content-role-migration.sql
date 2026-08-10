@@ -70,13 +70,8 @@ grant select on public.app_content to anon, authenticated;
 grant insert, update, delete on public.app_content to authenticated;
 
 -- Platform data read access for Sales Dashboard users.
--- These policies add marketing read access without weakening existing user/admin policies.
+-- Keep full profile/location data behind relationship-aware profile policies and admin-only RPCs.
 drop policy if exists "profiles_select_marketing_all" on public.profiles;
-create policy "profiles_select_marketing_all"
-on public.profiles
-for select
-to authenticated
-using (public.is_marketing_user());
 
 drop policy if exists "bookings_select_marketing_all" on public.bookings;
 create policy "bookings_select_marketing_all"
