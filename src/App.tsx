@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
+import { AppSEO } from './components/SEO';
 import { AppTutorialProvider } from './context/AppTutorialContext';
 import { normalizeRoleValue } from './lib/platform';
 
@@ -173,6 +174,7 @@ function App() {
     <Router>
       <AppTutorialProvider>
         <div className="app">
+          <AppSEO />
           <AppNavbar />
           <Suspense fallback={null}>
             <Routes>

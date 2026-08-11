@@ -496,20 +496,45 @@
     border-radius: 999px;
     border: 1px solid #dddddd;
     background: #fff;
-    color: #2f2f2f;
+    color: #3c4043;
     font: inherit;
-    font-size: 0.84rem;
+    font-size: 0.86rem;
+    font-weight: 600;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
     padding: 0 18px;
+    width: 100%;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.auth-social-btn:hover:not(:disabled) {
+    background: #f8f9fa;
+    border-color: #c9c9c9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.auth-social-btn:active:not(:disabled) {
+    background: #f1f3f4;
+    transform: translateY(1px);
+}
+
+.auth-social-btn:focus-visible {
+    outline: 2px solid #4285f4;
+    outline-offset: 2px;
 }
 
 .auth-social-btn:disabled {
-    opacity: 0.6;
+    opacity: 0.65;
     cursor: not-allowed;
+}
+
+.auth-google-icon {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
 }
 
 .auth-signup-social {
@@ -526,22 +551,6 @@
 .auth-signup-social .auth-social-btn {
     width: auto;
     min-width: 220px;
-}
-
-.auth-google-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    background: #fff;
-    border: 1px solid #e3e3e3;
-    color: #4285f4;
-    font-size: 0.95rem;
-    font-weight: 800;
-    line-height: 1;
-    flex: 0 0 22px;
 }
 
 .auth-terms-check--compact {

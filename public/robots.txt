@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /profile
+Disallow: /users/
+Disallow: /messages
+Disallow: /admin
+Disallow: /admin/
+Disallow: /provider/studio
+Disallow: /notifications
+
+Sitemap: https://thebetterpass.com/sitemap.xml

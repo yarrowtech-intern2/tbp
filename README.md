@@ -150,3 +150,23 @@ supabase functions deploy confirm-razorpay-booking
 ```
 
 Email delivery is non-blocking: if the email provider is not configured or temporarily fails, the booking still completes and the function logs the email failure.
+
+## SEO and AEO Setup
+
+The app includes route-aware SEO metadata in `src/components/SEO.tsx`, static fallback metadata in `index.html`, and crawler assets in `public/robots.txt`, `public/sitemap.xml`, `public/llms.txt`, and `public/site.webmanifest`.
+
+Set the production frontend URL before building:
+
+```env
+VITE_PUBLIC_APP_URL=https://thebetterpass.com
+```
+
+If the production domain changes, update:
+
+- `VITE_PUBLIC_APP_URL`
+- `index.html` canonical/Open Graph URLs
+- `public/robots.txt`
+- `public/sitemap.xml`
+- `public/llms.txt`
+
+Private app surfaces such as auth, dashboards, profiles, messages, admin, and provider studio are marked or blocked as noindex. Public package detail pages receive dynamic title, description, Open Graph image, canonical URL, price/rating schema, and breadcrumb structured data after the listing loads.

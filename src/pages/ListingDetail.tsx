@@ -24,6 +24,8 @@ import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pric
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
+import { SEOHead } from '../components/SEO';
+import { buildListingJsonLd } from '../lib/seo';
 import {
     clearPendingBookingConfirmation,
     getPendingBookingConfirmation,
@@ -223,6 +225,27 @@ export const ListingDetail: React.FC = () => {
         if (typeof window === 'undefined') return '';
         return `${window.location.origin}/listings/${effectiveType}/${listing?.id || id || ''}`;
     }, [effectiveType, id, listing?.id]);
+    const seoDescription = useMemo(() => {
+        const base = shortDescription && shortDescription !== 'No description provided yet.'
+            ? shortDescription
+            : `Book ${title || 'this travel package'} with verified provider details, traveler reviews and secure checkout on The Better Pass.`;
+        return `${base} ${location ? `Location: ${location}.` : ''}`.trim();
+    }, [location, shortDescription, title]);
+    const seoImage = primaryImage || image;
+    const seoJsonLd = useMemo(() => {
+        if (!listing || !shareUrl || !seoImage) return undefined;
+        return buildListingJsonLd({
+            title,
+            description: seoDescription,
+            url: shareUrl,
+            image: seoImage,
+            price: pricing.tourist_unit_price,
+            currency: 'INR',
+            location,
+            ratingValue: reviewAverage,
+            reviewCount,
+        });
+    }, [listing, location, pricing.tourist_unit_price, reviewAverage, reviewCount, seoDescription, seoImage, shareUrl, title]);
     const shareText = useMemo(() => (
         [
             title,
@@ -706,6 +729,14 @@ export const ListingDetail: React.FC = () => {
 
     return (
         <main className="listing-detail-page">
+            <SEOHead
+                title={`${title} | ${displayType.charAt(0).toUpperCase()}${displayType.slice(1)} Package | The Better Pass`}
+                description={seoDescription}
+                path={`/listings/${effectiveType}/${listing.id}`}
+                image={seoImage}
+                type="product"
+                jsonLd={seoJsonLd}
+            />
             {confirmingBooking && (
                 <div className="listing-payment-overlay" role="status" aria-live="polite" aria-label="Processing payment confirmation">
                     <div className="listing-payment-overlay-card">
