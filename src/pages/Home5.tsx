@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, ChevronRight, Home, Info, Loader2, Mail, MapPinned, UserPlus, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import { RiHome5Line, RiInformationLine, RiMapPin2Line, RiMailLine, RiUserAddLine } from 'react-icons/ri';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
 import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
@@ -470,27 +471,27 @@ export const Home5: React.FC = () => {
   const mobileDockItems: FloatingDockItem[] = [
     {
       title: 'Home',
-      icon: <Home />,
+      icon: <RiHome5Line />,
       to: '/',
     },
     {
       title: 'About us',
-      icon: <Info />,
+      icon: <RiInformationLine />,
       to: '/about-final',
     },
     {
       title: 'Map',
-      icon: <MapPinned />,
+      icon: <RiMapPin2Line />,
       to: '/map',
     },
     {
       title: 'Contact',
-      icon: <Mail />,
+      icon: <RiMailLine />,
       onClick: () => setContactModalOpen(true),
     },
     {
       title: 'Get started',
-      icon: <UserPlus />,
+      icon: <RiUserAddLine />,
       to: '/auth',
       isPrimary: true,
     },
