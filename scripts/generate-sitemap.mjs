@@ -16,7 +16,9 @@ const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABA
 const today = new Date().toISOString().slice(0, 10);
 
 function normalizeSiteUrl(value) {
-  return String(value || 'https://thebetterpass.com').replace(/\/+$/, '');
+  const normalized = String(value || 'https://thebetterpass.com').trim().replace(/\/+$/, '');
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  return `https://${normalized}`;
 }
 
 function normalizeListingType(value) {

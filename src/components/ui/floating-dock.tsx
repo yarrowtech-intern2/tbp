@@ -35,7 +35,6 @@ export function FloatingDock({ items, className, ariaLabel = 'Floating navigatio
       className={className ? `floating-dock ${className}` : 'floating-dock'}
       aria-label={ariaLabel}
     >
-      <span className="floating-dock-rim" aria-hidden="true" />
       {items.map((item) => (
         <DockItem key={item.title} item={item} mouseX={mouseX} />
       ))}
