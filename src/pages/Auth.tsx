@@ -426,8 +426,9 @@ export const Auth: React.FC = () => {
         setInfo(null);
 
         try {
-            const redirectTo = `${getOAuthRedirectBaseUrl()}/auth?mode=recovery`;
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+            const { error: resetError } = await supabase.functions.invoke('send-password-reset-email', {
+                body: { email },
+            });
             if (resetError) throw resetError;
             setForgotPasswordOpen(false);
             setInfo('Password reset link sent. Check your email and open the link to set a new password.');

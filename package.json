@@ -25,6 +25,7 @@
     "dotted-map": "^3.1.0",
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
+    "framer-motion": "^13.1.0",
     "gsap": "^3.15.0",
     "leaflet": "^1.9.4",
     "lottie-react": "^2.4.1",

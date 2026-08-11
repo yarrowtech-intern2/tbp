@@ -14,19 +14,22 @@
   backdrop-filter: blur(18px) saturate(1.2);
 }
 
+.floating-dock-link {
+  display: inline-flex;
+  border: 0;
+  padding: 0;
+  background: none;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 .floating-dock-item {
   position: relative;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 0;
   border-radius: 999px;
-  padding: 0;
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.76);
-  text-decoration: none;
-  cursor: pointer;
   transition:
     background 180ms ease,
     color 180ms ease,
@@ -38,7 +41,7 @@
 .floating-dock-item:focus-visible {
   background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
-  transform: translateY(-5px) scale(1.08);
+  transform: translateY(-5px);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
 }
 
@@ -51,8 +54,6 @@
 .floating-dock-icon {
   display: grid;
   place-items: center;
-  width: 19px;
-  height: 19px;
 }
 
 .floating-dock-icon svg {
@@ -65,7 +66,7 @@
 .floating-dock-tooltip {
   position: absolute;
   left: 50%;
-  top: calc(100% + 9px);
+  top: -34px;
   padding: 6px 8px;
   border-radius: 8px;
   background: rgba(17, 17, 17, 0.94);
@@ -94,16 +95,6 @@
     gap: 6px;
     padding: 7px;
     border-radius: 999px;
-  }
-
-  .floating-dock-item {
-    width: 34px;
-    height: 34px;
-  }
-
-  .floating-dock-icon {
-    width: 17px;
-    height: 17px;
   }
 }
 
