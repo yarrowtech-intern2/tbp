@@ -9,7 +9,7 @@ import {
     MapPin,
     Phone,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { signUpWithRole } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
@@ -21,6 +21,7 @@ import {
     type SignupFormValues,
     type UserRole,
 } from '../lib/platform';
+import { getPasswordFormatStatus, PASSWORD_METER_CIRCUMFERENCE, PASSWORD_REQUIREMENTS_ERROR } from '../lib/password';
 import './auth.css';
 
 const TOURIST_EXPLORE_PATH = '/explore';
@@ -69,32 +70,6 @@ type SignupStep =
     | { kind: 'toggle'; key: 'worksUnderCompany'; label: string; description: string }
     | { kind: 'final' };
 
-const PASSWORD_REQUIREMENTS = [
-    { key: 'length', label: '8 characters', test: (value: string) => value.length >= 8 },
-    { key: 'uppercase', label: 'Capital letter', test: (value: string) => /[A-Z]/.test(value) },
-    { key: 'lowercase', label: 'Lowercase letter', test: (value: string) => /[a-z]/.test(value) },
-    { key: 'number', label: 'Number', test: (value: string) => /\d/.test(value) },
-    { key: 'special', label: 'Special character', test: (value: string) => /[^A-Za-z0-9\s]/.test(value) },
-] as const;
-
-const PASSWORD_REQUIREMENTS_ERROR =
-    'Password must include 8 characters, a capital letter, a lowercase letter, a number, and a special character.';
-const PASSWORD_METER_CIRCUMFERENCE = 157.08;
-
-const getPasswordFormatStatus = (password: string) => {
-    const requirements = PASSWORD_REQUIREMENTS.map((requirement) => ({
-        ...requirement,
-        met: requirement.test(password),
-    }));
-    const metCount = requirements.filter((requirement) => requirement.met).length;
-
-    return {
-        requirements,
-        percentage: Math.round((metCount / PASSWORD_REQUIREMENTS.length) * 100),
-        isComplete: metCount === PASSWORD_REQUIREMENTS.length,
-    };
-};
-
 const getSignupValuesForDraft = (values: SignupFormValues): Omit<SignupFormValues, 'password'> => {
     const { password, ...draftValues } = values;
     void password;
@@ -130,10 +105,10 @@ const clearAuthDraft = () => {
     window.sessionStorage.removeItem(AUTH_DRAFT_STORAGE_KEY);
 };
 
-const readAuthQueryIntent = (): { isLogin?: boolean; role?: UserRole } => {
-    if (typeof window === 'undefined') return {};
+const readAuthQueryIntent = (rawSearch?: string): { isLogin?: boolean; isRecovery?: boolean; deleted?: boolean; role?: UserRole } => {
+    if (typeof window === 'undefined' && typeof rawSearch !== 'string') return {};
 
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(typeof rawSearch === 'string' ? rawSearch : window.location.search);
     const mode = params.get('mode')?.trim().toLowerCase();
     const rawRole = params.get('role')?.trim().toLowerCase();
     const requestedRole = rawRole === 'provider' ? 'tour_company' : rawRole;
@@ -143,6 +118,8 @@ const readAuthQueryIntent = (): { isLogin?: boolean; role?: UserRole } => {
 
     return {
         isLogin: mode === 'login' ? true : mode === 'signup' ? false : undefined,
+        isRecovery: mode === 'recovery',
+        deleted: params.get('deleted') === '1',
         role,
     };
 };
@@ -150,6 +127,8 @@ const readAuthQueryIntent = (): { isLogin?: boolean; role?: UserRole } => {
 export const Auth: React.FC = () => {
     const initialDraft = useMemo(() => readAuthDraft(), []);
     const initialQueryIntent = useMemo(() => readAuthQueryIntent(), []);
+    const location = useLocation();
+    const currentQueryIntent = useMemo(() => readAuthQueryIntent(location.search), [location.search]);
     const [sideImage] = useState(
         () => NATURE_SIDE_IMAGES[Math.floor(Math.random() * NATURE_SIDE_IMAGES.length)]
     );
@@ -158,6 +137,10 @@ export const Auth: React.FC = () => {
     const [loginPassword, setLoginPassword] = useState('');
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showSignupPassword, setShowSignupPassword] = useState(false);
+    const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
+    const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [recoveryPassword, setRecoveryPassword] = useState('');
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [signupStepIndex, setSignupStepIndex] = useState(0);
@@ -169,15 +152,23 @@ export const Auth: React.FC = () => {
     }));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [info, setInfo] = useState<string | null>(null);
+    const [info, setInfo] = useState<string | null>(
+        () => initialQueryIntent.deleted ? 'Your account has been deleted.' : null
+    );
     const navigate = useNavigate();
 
     const activeRole = formValues.role;
     const passwordFormat = useMemo(() => getPasswordFormatStatus(formValues.password), [formValues.password]);
+    const recoveryPasswordFormat = useMemo(() => getPasswordFormatStatus(recoveryPassword), [recoveryPassword]);
     const passwordProgressStyle = {
         '--password-progress': `${passwordFormat.percentage}%`,
         '--password-progress-offset': PASSWORD_METER_CIRCUMFERENCE - (PASSWORD_METER_CIRCUMFERENCE * passwordFormat.percentage) / 100,
     } as React.CSSProperties;
+    const recoveryPasswordProgressStyle = {
+        '--password-progress': `${recoveryPasswordFormat.percentage}%`,
+        '--password-progress-offset': PASSWORD_METER_CIRCUMFERENCE - (PASSWORD_METER_CIRCUMFERENCE * recoveryPasswordFormat.percentage) / 100,
+    } as React.CSSProperties;
+    const isRecoveryMode = currentQueryIntent.isRecovery === true;
     const roleConfig = useMemo(() => ROLE_SIGNUP_CONFIG[activeRole], [activeRole]);
     const signupSteps = useMemo<SignupStep[]>(() => {
         const requiresCompanyToggle = activeRole === 'tour_instructor' || activeRole === 'tour_guide';
@@ -249,6 +240,13 @@ export const Auth: React.FC = () => {
         setSignupStepIndex(0);
         setError(null);
     }, [activeRole]);
+
+    useEffect(() => {
+        if (currentQueryIntent.deleted) {
+            setInfo('Your account has been deleted.');
+            setError(null);
+        }
+    }, [currentQueryIntent.deleted]);
 
     const updateField = <K extends keyof SignupFormValues>(key: K, value: SignupFormValues[K]) =>
         setFormValues((current) => ({ ...current, [key]: value }));
@@ -388,6 +386,59 @@ export const Auth: React.FC = () => {
             navigate(TOURIST_EXPLORE_PATH);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleForgotPassword = async (e?: React.FormEvent) => {
+        e?.preventDefault();
+        const email = forgotEmail.trim() || loginEmail.trim();
+        if (!email) {
+            setError('Enter your email address to reset your password.');
+            setInfo(null);
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        setInfo(null);
+
+        try {
+            const redirectTo = `${getOAuthRedirectBaseUrl()}/auth?mode=recovery`;
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+            if (resetError) throw resetError;
+            setForgotPasswordOpen(false);
+            setInfo('Password reset link sent. Check your email and open the link to set a new password.');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Password reset failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRecoveryPasswordUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!recoveryPasswordFormat.isComplete) {
+            setError(PASSWORD_REQUIREMENTS_ERROR);
+            setInfo(null);
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        setInfo(null);
+
+        try {
+            const { error: updateError } = await supabase.auth.updateUser({ password: recoveryPassword });
+            if (updateError) throw updateError;
+            await supabase.auth.signOut();
+            setRecoveryPassword('');
+            setInfo('Password changed. Log in with your new password.');
+            navigate('/auth?mode=login', { replace: true });
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Password update failed. Please request a new reset link.');
         } finally {
             setLoading(false);
         }
@@ -542,7 +593,74 @@ export const Auth: React.FC = () => {
                     {error && <div className="auth-alert auth-alert-error">{error}</div>}
                     {info && <div className="auth-alert auth-alert-info">{info}</div>}
 
-                    {isLogin ? (
+                    {isRecoveryMode ? (
+                        <>
+                            <header className="auth-header">
+                                <h1>Set password</h1>
+                                <p>
+                                    Enter a new password for your account.{' '}
+                                    <button type="button" onClick={() => navigate('/auth?mode=login', { replace: true })}>
+                                        Back to login
+                                    </button>
+                                </p>
+                            </header>
+
+                            <form onSubmit={handleRecoveryPasswordUpdate} className="auth-form">
+                                <label className="auth-field">
+                                    <span>New Password</span>
+                                    <div className="auth-password-wrap">
+                                        <input
+                                            type={showRecoveryPassword ? 'text' : 'password'}
+                                            required
+                                            minLength={8}
+                                            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,}"
+                                            placeholder="Create a strong password"
+                                            value={recoveryPassword}
+                                            onChange={(e) => setRecoveryPassword(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="auth-eye-btn"
+                                            onClick={() => setShowRecoveryPassword((current) => !current)}
+                                            aria-label={showRecoveryPassword ? 'Hide password' : 'Show password'}
+                                        >
+                                            {showRecoveryPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                </label>
+
+                                <div
+                                    className={`auth-password-format${recoveryPasswordFormat.isComplete ? ' is-complete' : ''}`}
+                                    aria-live="polite"
+                                >
+                                    <div
+                                        className="auth-password-meter"
+                                        style={recoveryPasswordProgressStyle}
+                                        role="img"
+                                        aria-label={`Password format ${recoveryPasswordFormat.percentage}% complete`}
+                                    >
+                                        <svg viewBox="0 0 64 64" aria-hidden="true">
+                                            <circle className="auth-password-meter-track" cx="32" cy="32" r="25" />
+                                            <circle className="auth-password-meter-progress" cx="32" cy="32" r="25" />
+                                        </svg>
+                                        <span>{recoveryPasswordFormat.percentage}%</span>
+                                    </div>
+                                    <ul className="auth-password-rules">
+                                        {recoveryPasswordFormat.requirements.map((requirement) => (
+                                            <li key={requirement.key} className={requirement.met ? 'is-met' : ''}>
+                                                <span aria-hidden="true" />
+                                                {requirement.label}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <button type="submit" className="auth-submit" disabled={loading || !recoveryPasswordFormat.isComplete}>
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : 'Change Password'}
+                                </button>
+                            </form>
+                        </>
+                    ) : isLogin ? (
                         <>
                             <header className="auth-header">
                                 <h1>Log in</h1>
@@ -588,8 +706,53 @@ export const Auth: React.FC = () => {
                                 </label>
 
                                 <div className="auth-row-link">
-                                    <button type="button" className="auth-text-link">Forgot Password?</button>
+                                    <button
+                                        type="button"
+                                        className="auth-text-link"
+                                        onClick={() => {
+                                            setForgotEmail(loginEmail);
+                                            setForgotPasswordOpen((open) => !open);
+                                            setError(null);
+                                            setInfo(null);
+                                        }}
+                                    >
+                                        Forgot Password?
+                                    </button>
                                 </div>
+
+                                {forgotPasswordOpen && (
+                                    <div className="auth-reset-card">
+                                        <div className="auth-reset-form">
+                                            <label className="auth-field">
+                                                <span>Reset Email</span>
+                                                <input
+                                                    type="email"
+                                                    required
+                                                    placeholder="you@example.com"
+                                                    value={forgotEmail}
+                                                    onChange={(e) => setForgotEmail(e.target.value)}
+                                                />
+                                            </label>
+                                            <div className="auth-reset-actions">
+                                                <button
+                                                    type="button"
+                                                    className="auth-secondary-btn"
+                                                    onClick={() => setForgotPasswordOpen(false)}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="auth-submit auth-submit--reset"
+                                                    disabled={loading}
+                                                    onClick={() => void handleForgotPassword()}
+                                                >
+                                                    {loading ? <Loader2 className="animate-spin" size={18} /> : 'Send Link'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <button type="submit" className="auth-submit" disabled={loading}>
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : 'Log in'}

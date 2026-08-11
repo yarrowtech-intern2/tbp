@@ -66,12 +66,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const GuestOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const isRecoveryMode = new URLSearchParams(location.search).get('mode') === 'recovery';
 
   if (loading) {
     return null;
   }
 
-  if (user) {
+  if (user && !isRecoveryMode) {
     return <Navigate to={APP_HOME_PATH} replace />;
   }
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Building2, Calendar, Camera, Check, ChevronLeft, ClipboardList, Globe, Home, Languages,
-    LayoutDashboard, Loader2, LogOut, MapPin, MessageSquare, Moon, Package, Phone, RefreshCcw, Shield, ShieldAlert, Sparkles,
-    Search, Sun, UserCircle2, Users, X,
+    KeyRound, LayoutDashboard, Loader2, LogOut, MapPin, MessageSquare, Moon, Package, Phone, RefreshCcw, Shield, ShieldAlert, Sparkles,
+    Search, Sun, Trash2, UserCircle2, Users, X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -16,6 +16,7 @@ import {
     type FavoriteListingRecord, type UnifiedBooking, type VerificationRecord,
 } from '../lib/destinations';
 import { isProviderRole } from '../lib/platform';
+import { getPasswordFormatStatus, PASSWORD_METER_CIRCUMFERENCE, PASSWORD_REQUIREMENTS_ERROR } from '../lib/password';
 
 /* ── helpers ───────────────────────────────────────────────── */
 const AVATARS_BUCKET = 'avatars';
@@ -260,10 +261,107 @@ export const Profile: React.FC = () => {
     const [localCoverUrl, setLocalCoverUrl] = useState<string | undefined>();
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const coverInputRef = useRef<HTMLInputElement>(null);
+    const [securityPanel, setSecurityPanel] = useState<'password' | 'delete' | null>(null);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState('');
+    const [deleteBusy, setDeleteBusy] = useState(false);
+    const [securityError, setSecurityError] = useState('');
+    const [securityInfo, setSecurityInfo] = useState('');
+
+    const newPasswordFormat = useMemo(() => getPasswordFormatStatus(newPassword), [newPassword]);
+    const newPasswordProgressStyle = {
+        '--password-progress': `${newPasswordFormat.percentage}%`,
+        '--password-progress-offset': PASSWORD_METER_CIRCUMFERENCE - (PASSWORD_METER_CIRCUMFERENCE * newPasswordFormat.percentage) / 100,
+    } as React.CSSProperties;
 
     const handleSignOut = async () => {
         await signOut();
         navigate('/auth', { replace: true });
+    };
+
+    const resetSecurityMessages = () => {
+        setSecurityError('');
+        setSecurityInfo('');
+    };
+
+    const handlePasswordChange = async (event: React.FormEvent) => {
+        event.preventDefault();
+        resetSecurityMessages();
+
+        const email = user?.email?.trim();
+        if (!email) {
+            setSecurityError('This account does not have an email password login.');
+            return;
+        }
+
+        if (!currentPassword.trim()) {
+            setSecurityError('Enter your current password.');
+            return;
+        }
+
+        if (!newPasswordFormat.isComplete) {
+            setSecurityError(PASSWORD_REQUIREMENTS_ERROR);
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setSecurityError('New password and confirmation do not match.');
+            return;
+        }
+
+        setPasswordSaving(true);
+        try {
+            const { error: verifyError } = await supabase.auth.signInWithPassword({
+                email,
+                password: currentPassword,
+            });
+            if (verifyError) throw verifyError;
+
+            const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+            if (updateError) throw updateError;
+
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+            setSecurityInfo('Password changed successfully.');
+        } catch (error) {
+            setSecurityError(error instanceof Error ? error.message : 'Password change failed. Please try again.');
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
+
+    const handleDeleteAccount = async (event: React.FormEvent) => {
+        event.preventDefault();
+        resetSecurityMessages();
+
+        const email = user?.email?.trim();
+        if (!email) {
+            setSecurityError('This account cannot be deleted because the email is unavailable.');
+            return;
+        }
+
+        if (deleteConfirm.trim().toLowerCase() !== email.toLowerCase()) {
+            setSecurityError('Type your account email exactly to confirm deletion.');
+            return;
+        }
+
+        setDeleteBusy(true);
+        try {
+            const { error: deleteError } = await supabase.functions.invoke('delete-account', {
+                body: { confirmation: deleteConfirm.trim() },
+            });
+            if (deleteError) throw deleteError;
+            await signOut();
+            navigate('/auth?deleted=1', { replace: true });
+        } catch (error) {
+            setSecurityError(error instanceof Error ? error.message : 'Account deletion failed. Please try again.');
+        } finally {
+            setDeleteBusy(false);
+        }
     };
 
     useEffect(() => {
@@ -1011,6 +1109,165 @@ export const Profile: React.FC = () => {
                         </div>
                         <ToggleSwitch on={isDark} onToggle={toggleTheme} label="Toggle dark mode" />
                     </div>
+
+                    <div className="prf-setting-sep" />
+
+                    <div className="prf-setting-row">
+                        <div className="prf-setting-left">
+                            <div className="prf-setting-icon">
+                                <KeyRound size={16} />
+                            </div>
+                            <div>
+                                <p className="prf-setting-label">Password</p>
+                                <p className="prf-setting-sub">Change your account password</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            className="prf-action-btn"
+                            onClick={() => {
+                                resetSecurityMessages();
+                                setSecurityPanel((panel) => panel === 'password' ? null : 'password');
+                            }}
+                        >
+                            Change
+                        </button>
+                    </div>
+
+                    {securityPanel === 'password' && (
+                        <form className="prf-security-panel" onSubmit={handlePasswordChange}>
+                            {securityError && <div className="prf-security-alert prf-security-alert--error">{securityError}</div>}
+                            {securityInfo && <div className="prf-security-alert prf-security-alert--info">{securityInfo}</div>}
+                            <div className="prf-security-grid">
+                                <label className="prf-security-field">
+                                    <span>Current Password</span>
+                                    <input
+                                        type="password"
+                                        autoComplete="current-password"
+                                        value={currentPassword}
+                                        onChange={(event) => setCurrentPassword(event.target.value)}
+                                    />
+                                </label>
+                                <label className="prf-security-field">
+                                    <span>New Password</span>
+                                    <input
+                                        type="password"
+                                        autoComplete="new-password"
+                                        minLength={8}
+                                        value={newPassword}
+                                        onChange={(event) => setNewPassword(event.target.value)}
+                                    />
+                                </label>
+                                <label className="prf-security-field">
+                                    <span>Confirm Password</span>
+                                    <input
+                                        type="password"
+                                        autoComplete="new-password"
+                                        minLength={8}
+                                        value={confirmPassword}
+                                        onChange={(event) => setConfirmPassword(event.target.value)}
+                                    />
+                                </label>
+                            </div>
+
+                            <div className={`prf-password-format${newPasswordFormat.isComplete ? ' is-complete' : ''}`}>
+                                <div className="prf-password-meter" style={newPasswordProgressStyle} aria-hidden="true">
+                                    <svg viewBox="0 0 64 64">
+                                        <circle className="prf-password-meter-track" cx="32" cy="32" r="25" />
+                                        <circle className="prf-password-meter-progress" cx="32" cy="32" r="25" />
+                                    </svg>
+                                    <span>{newPasswordFormat.percentage}%</span>
+                                </div>
+                                <ul className="prf-password-rules">
+                                    {newPasswordFormat.requirements.map((requirement) => (
+                                        <li key={requirement.key} className={requirement.met ? 'is-met' : ''}>
+                                            <span aria-hidden="true" />
+                                            {requirement.label}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="prf-security-actions">
+                                <button
+                                    type="button"
+                                    className="prf-action-btn"
+                                    onClick={() => {
+                                        setSecurityPanel(null);
+                                        resetSecurityMessages();
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="prf-primary-action-btn"
+                                    disabled={passwordSaving || !newPasswordFormat.isComplete}
+                                >
+                                    {passwordSaving ? <Loader2 className="animate-spin" size={16} /> : 'Save Password'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    <div className="prf-setting-sep" />
+
+                    <div className="prf-setting-row">
+                        <div className="prf-setting-left">
+                            <div className="prf-setting-icon prf-setting-icon--danger">
+                                <Trash2 size={16} />
+                            </div>
+                            <div>
+                                <p className="prf-setting-label">Delete Account</p>
+                                <p className="prf-setting-sub">Permanently remove your account</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            className="prf-signout-btn"
+                            onClick={() => {
+                                resetSecurityMessages();
+                                setSecurityPanel((panel) => panel === 'delete' ? null : 'delete');
+                            }}
+                        >
+                            Delete
+                        </button>
+                    </div>
+
+                    {securityPanel === 'delete' && (
+                        <form className="prf-security-panel prf-security-panel--danger" onSubmit={handleDeleteAccount}>
+                            {securityError && <div className="prf-security-alert prf-security-alert--error">{securityError}</div>}
+                            <div className="prf-delete-warning">
+                                <ShieldAlert size={17} />
+                                <span>This permanently removes your login and profile data. This cannot be undone.</span>
+                            </div>
+                            <label className="prf-security-field">
+                                <span>Type {user?.email || 'your email'} to confirm</span>
+                                <input
+                                    type="email"
+                                    value={deleteConfirm}
+                                    onChange={(event) => setDeleteConfirm(event.target.value)}
+                                    placeholder={user?.email || 'you@example.com'}
+                                />
+                            </label>
+                            <div className="prf-security-actions">
+                                <button
+                                    type="button"
+                                    className="prf-action-btn"
+                                    onClick={() => {
+                                        setSecurityPanel(null);
+                                        setDeleteConfirm('');
+                                        resetSecurityMessages();
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="prf-danger-action-btn" disabled={deleteBusy}>
+                                    {deleteBusy ? <Loader2 className="animate-spin" size={16} /> : 'Delete Account'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
 
                     <div className="prf-setting-sep" />
 
@@ -1819,6 +2076,214 @@ export const Profile: React.FC = () => {
                     margin: 0 -2px;
                 }
 
+                .prf-action-btn,
+                .prf-primary-action-btn,
+                .prf-danger-action-btn {
+                    align-items: center;
+                    border-radius: 999px;
+                    cursor: pointer;
+                    display: inline-flex;
+                    flex-shrink: 0;
+                    font-size: 0.82rem;
+                    font-weight: 700;
+                    gap: 8px;
+                    justify-content: center;
+                    min-height: 36px;
+                    padding: 8px 16px;
+                    transition: background 0.18s ease, border-color 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+                }
+                .prf-action-btn {
+                    background: var(--surface-muted);
+                    border: 1px solid var(--border-light);
+                    color: var(--text-primary);
+                }
+                .prf-primary-action-btn {
+                    background: var(--accent);
+                    border: 1px solid var(--accent);
+                    color: #fff;
+                }
+                .prf-danger-action-btn {
+                    background: rgba(239,68,68,0.92);
+                    border: 1px solid rgba(239,68,68,0.92);
+                    color: #fff;
+                }
+                .prf-action-btn:hover:not(:disabled),
+                .prf-primary-action-btn:hover:not(:disabled),
+                .prf-danger-action-btn:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                }
+                .prf-action-btn:disabled,
+                .prf-primary-action-btn:disabled,
+                .prf-danger-action-btn:disabled {
+                    cursor: not-allowed;
+                    opacity: 0.55;
+                }
+
+                .prf-security-panel {
+                    background: var(--surface-muted);
+                    border: 1px solid var(--border-light);
+                    border-radius: 18px;
+                    display: grid;
+                    gap: 14px;
+                    margin: 2px 0 14px;
+                    padding: 14px;
+                }
+                .prf-security-panel--danger {
+                    background: rgba(239,68,68,0.05);
+                    border-color: rgba(239,68,68,0.2);
+                }
+                .prf-security-grid {
+                    display: grid;
+                    gap: 12px;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                }
+                .prf-security-field {
+                    display: grid;
+                    gap: 7px;
+                    min-width: 0;
+                }
+                .prf-security-field span {
+                    color: var(--text-muted);
+                    font-size: 0.76rem;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                }
+                .prf-security-field input {
+                    background: var(--surface-card);
+                    border: 1px solid var(--border-light);
+                    border-radius: 999px;
+                    color: var(--text-primary);
+                    font: inherit;
+                    font-size: 0.88rem;
+                    min-height: 42px;
+                    outline: none;
+                    padding: 0 14px;
+                    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+                    width: 100%;
+                }
+                .prf-security-field input:focus {
+                    border-color: var(--accent);
+                    box-shadow: 0 0 0 3px rgba(255,122,47,0.14);
+                }
+                .prf-security-actions {
+                    align-items: center;
+                    display: flex;
+                    gap: 10px;
+                    justify-content: flex-end;
+                }
+                .prf-security-alert {
+                    border-radius: 12px;
+                    font-size: 0.8rem;
+                    font-weight: 700;
+                    padding: 10px 12px;
+                }
+                .prf-security-alert--error {
+                    background: rgba(239,68,68,0.08);
+                    border: 1px solid rgba(239,68,68,0.22);
+                    color: var(--danger-text);
+                }
+                .prf-security-alert--info {
+                    background: rgba(34,197,94,0.1);
+                    border: 1px solid rgba(34,197,94,0.24);
+                    color: #15803d;
+                }
+                .prf-delete-warning {
+                    align-items: center;
+                    color: var(--danger-text);
+                    display: flex;
+                    font-size: 0.82rem;
+                    font-weight: 700;
+                    gap: 9px;
+                    line-height: 1.35;
+                }
+
+                .prf-password-format {
+                    align-items: center;
+                    display: grid;
+                    gap: 14px;
+                    grid-template-columns: auto minmax(0, 1fr);
+                }
+                .prf-password-meter {
+                    --password-progress: 0%;
+                    --password-progress-offset: 157.08;
+                    background: var(--surface-card);
+                    border-radius: 50%;
+                    display: grid;
+                    height: 60px;
+                    place-items: center;
+                    position: relative;
+                    transition: transform 0.18s ease;
+                    width: 60px;
+                }
+                .prf-password-format.is-complete .prf-password-meter {
+                    transform: scale(1.02);
+                }
+                .prf-password-meter svg {
+                    height: 100%;
+                    inset: 0;
+                    position: absolute;
+                    transform: rotate(-90deg);
+                    width: 100%;
+                }
+                .prf-password-meter-track,
+                .prf-password-meter-progress {
+                    fill: none;
+                    stroke-width: 8;
+                }
+                .prf-password-meter-track { stroke: var(--border-light); }
+                .prf-password-meter-progress {
+                    stroke: var(--accent);
+                    stroke-dasharray: 157.08;
+                    stroke-dashoffset: var(--password-progress-offset);
+                    stroke-linecap: round;
+                    transition: stroke-dashoffset 0.24s ease, stroke 0.18s ease;
+                }
+                .prf-password-format.is-complete .prf-password-meter-progress { stroke: #168248; }
+                .prf-password-meter span {
+                    color: var(--text-primary);
+                    font-size: 0.8rem;
+                    font-weight: 900;
+                    position: relative;
+                    z-index: 1;
+                }
+                .prf-password-rules {
+                    display: grid;
+                    gap: 7px 10px;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    list-style: none;
+                    margin: 0;
+                    padding: 0;
+                }
+                .prf-password-rules li {
+                    align-items: center;
+                    color: var(--text-muted);
+                    display: inline-flex;
+                    font-size: 0.78rem;
+                    font-weight: 700;
+                    gap: 7px;
+                    line-height: 1.25;
+                    min-width: 0;
+                    transition: color 0.18s ease, transform 0.18s ease;
+                }
+                .prf-password-rules li span {
+                    background: var(--surface-card);
+                    border: 1px solid var(--border-strong);
+                    border-radius: 50%;
+                    flex: 0 0 9px;
+                    height: 9px;
+                    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+                    width: 9px;
+                }
+                .prf-password-rules li.is-met {
+                    color: #168248;
+                    transform: translateX(1px);
+                }
+                .prf-password-rules li.is-met span {
+                    background: #168248;
+                    border-color: #168248;
+                    box-shadow: 0 0 0 3px rgba(22,130,72,0.12);
+                }
+
                 /* Toggle switch */
                 .prf-toggle {
                     background: var(--border-light);
@@ -1869,6 +2334,40 @@ export const Profile: React.FC = () => {
                     .prf-avatar-row { padding: 0 16px; }
                     .prf-info-body { padding: 12px 16px 22px; }
                     .prf-form-grid { grid-template-columns: 1fr; }
+                    .prf-setting-row {
+                        align-items: flex-start;
+                        gap: 12px;
+                    }
+                    .prf-setting-left {
+                        align-items: flex-start;
+                    }
+                    .prf-action-btn,
+                    .prf-primary-action-btn,
+                    .prf-danger-action-btn,
+                    .prf-signout-btn {
+                        min-height: 34px;
+                        padding: 7px 12px;
+                    }
+                    .prf-security-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .prf-security-actions {
+                        display: grid;
+                        grid-template-columns: 1fr;
+                    }
+                    .prf-security-actions .prf-action-btn,
+                    .prf-security-actions .prf-primary-action-btn,
+                    .prf-security-actions .prf-danger-action-btn {
+                        width: 100%;
+                    }
+                    .prf-password-format {
+                        grid-template-columns: 1fr;
+                        justify-items: center;
+                    }
+                    .prf-password-rules {
+                        grid-template-columns: 1fr;
+                        width: 100%;
+                    }
                     .prf-field--full { grid-column: auto; }
                     .prf-stats-row { grid-template-columns: repeat(2, 1fr); }
                     .prf-checklist { grid-template-columns: 1fr; }
