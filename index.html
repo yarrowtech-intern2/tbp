@@ -2,8 +2,9 @@
 <html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon/favicon.png" />
-    <link rel="apple-touch-icon" href="/logo/icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon/favicon-192.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon/favicon-48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="canonical" href="https://thebetterpass.com/" />
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
@@ -34,14 +35,32 @@
         "@type": "TravelAgency",
         "@id": "https://thebetterpass.com/#organization",
         "name": "The Better Pass",
-        "alternateName": "TBP",
+        "alternateName": "Better Pass",
         "url": "https://thebetterpass.com/",
-        "logo": "https://thebetterpass.com/logo/final-logo.png",
+        "logo": "https://thebetterpass.com/favicon/favicon-512.png",
         "image": "https://thebetterpass.com/images/home4/tbp-map-1920.png",
         "description": "The Better Pass helps travelers discover verified tours, activities, local guides, destination ideas and provider-backed travel experiences in one booking-ready platform.",
         "email": "hello@thebetterpass.com",
         "areaServed": ["India", "Asia"],
         "knowsAbout": ["travel planning", "tour booking", "local guides", "activities", "destination discovery", "verified travel providers"]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": "https://thebetterpass.com/#website",
+        "name": "The Better Pass",
+        "alternateName": "Better Pass",
+        "url": "https://thebetterpass.com/",
+        "publisher": {
+          "@id": "https://thebetterpass.com/#organization"
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://thebetterpass.com/explore?query={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
       }
     </script>
     <title>The Better Pass | Verified Travel Discovery, Tours, Activities and Local Guides</title>

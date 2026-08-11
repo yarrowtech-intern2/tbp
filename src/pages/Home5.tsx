@@ -224,15 +224,15 @@ const TRUST_ITEMS = [
   },
 ] as const;
 
-const FINAL_CTA_COPY = 'Betterpass brings trusted stays, guided experiences, local experts, and secure booking into one clear travel path, so you can stop juggling scattered plans and start choosing trips with confidence.';
+const FINAL_CTA_COPY = 'The Better Pass brings trusted stays, guided experiences, local experts, and secure booking into one clear travel path, so you can stop juggling scattered plans and start choosing trips with confidence.';
 const FINAL_CTA_WORDS = FINAL_CTA_COPY.split(/\s+/);
 
-const HOME5_FOOTER_TITLE = 'Travel beautifully, hassle free\nwith The Betterpass';
+const HOME5_FOOTER_TITLE = 'Travel beautifully, hassle free\nwith The Better Pass';
 
 const FAQ_ITEMS = [
   {
-    question: 'What is Betterpass?',
-    answer: 'Betterpass is a travel discovery and booking platform that brings stays, guided experiences, local experts, and secure booking into one place — so you can plan and book your entire trip without juggling tabs or scattered services.',
+    question: 'What is The Better Pass?',
+    answer: 'The Better Pass is a travel discovery and booking platform that brings stays, guided experiences, local experts, and secure booking into one place, so you can plan and book your entire trip without juggling tabs or scattered services.',
   },
   {
     question: 'How does booking work?',
@@ -240,10 +240,10 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Are the providers verified?',
-    answer: 'Yes. Every provider on Betterpass goes through an admin review and approval process before their listings go live. This ensures you only see trusted, vetted stays, guides, and experiences.',
+    answer: 'Yes. Every provider on The Better Pass goes through an admin review and approval process before their listings go live. This ensures you only see trusted, vetted stays, guides, and experiences.',
   },
   {
-    question: 'What can I book on Betterpass?',
+    question: 'What can I book on The Better Pass?',
     answer: 'You can book across four categories: Stays (hotels, camps, villas), Experiences (safaris, walking tours, food trails, day plans), Guides (local hosts, drivers, experts), and Support (transfers, timing, day-of coordination).',
   },
   {
@@ -1112,9 +1112,9 @@ export const Home5: React.FC = () => {
         ref={stickyLogoRef}
         to="/"
         className={`home5-sticky-logo${stickyLogoVisible ? ' is-visible' : ''}`}
-        aria-label="The Betterpass home"
+        aria-label="The Better Pass home"
       >
-        <img src="/logo/final-logo.png" alt="The Betterpass" />
+        <img src="/logo/final-logo.png" alt="The Better Pass" />
       </Link>
 
       <div
@@ -1210,7 +1210,7 @@ export const Home5: React.FC = () => {
           {activeHeroLayer.kind === 'white' ? (
             <>
               <div key={`copy-${activeHeroLayer.id}`} className="home5-copy">
-                <h1 className="home5-title">The Betterpass</h1>
+                <h1 className="home5-title">The Better Pass</h1>
                 <h2 className={`home5-subtitle${heroSubtitleOnDark ? ' is-light' : ''}`}>
                   <span>travel made</span>
                   <span>simple</span>
@@ -1258,7 +1258,7 @@ export const Home5: React.FC = () => {
       <section ref={valueSectionRef} className="home5-value-section" id="home5-discover">
         <div className="container">
           <ScrollReveal className="home5-value-shell">
-            <span className="home5-section-eyebrow">Why The Betterpass</span>
+            <span className="home5-section-eyebrow">Why The Better Pass</span>
             <h2 className="home5-section-title">Why travel feels easier here</h2>
             <TextReveal className="home5-value-reveal">
               Plan less, compare faster, and move through trips with fewer decisions.
@@ -1367,7 +1367,7 @@ export const Home5: React.FC = () => {
             <div className="container home5-how-content-layer">
               <div ref={howSceneRef} className="home5-how-scene" style={{ opacity: 0.22, transform: 'translateY(30px)' }}>
                 <div className="home5-how-shell">
-                  <span className="home5-how-eyebrow">Why choose betterpass</span>
+                  <span className="home5-how-eyebrow">Why choose The Better Pass</span>
                   <div className="home5-how-heading">
                     <h2 className="home5-how-section-title">Three simple steps</h2>
                     <p className="home5-how-section-subtitle">from idea to booked experience</p>
@@ -1418,7 +1418,7 @@ export const Home5: React.FC = () => {
             <div className="home5-book-heading">
               <h2 className="home5-book-title">Build the trip, not just one booking</h2>
               <p className="home5-book-copy">
-                Betterpass brings the stay, experience, guide, and support layer into one trip-building flow.
+                The Better Pass brings the stay, experience, guide, and support layer into one trip-building flow.
               </p>
             </div>
           </ScrollReveal>
@@ -1510,14 +1510,14 @@ export const Home5: React.FC = () => {
         <div className="container">
           <div className="home5-trust-layout">
             <ScrollReveal className="home5-trust-intro">
-              <span className="home5-trust-eyebrow">Why trust Betterpass</span>
+              <span className="home5-trust-eyebrow">Why trust The Better Pass</span>
               <h2 className="home5-trust-title">Book with people and plans you can trust</h2>
               <TextReveal className="home5-trust-reveal">
                 Confidence comes from verified providers, clear details, connected support, and payment visibility in one place.
               </TextReveal>
             </ScrollReveal>
 
-            <div className="home5-trust-list" aria-label="Betterpass trust points">
+            <div className="home5-trust-list" aria-label="The Better Pass trust points">
               {TRUST_ITEMS.map((item, index) => (
                 <ScrollReveal
                   key={item.id}
@@ -1541,7 +1541,7 @@ export const Home5: React.FC = () => {
             <div className="home5-final-layout">
               <div className="home5-final-content">
                 <span className="home5-final-eyebrow">Ready when you are</span>
-                <h2 className="home5-final-title">Start exploring with Betterpass</h2>
+                <h2 className="home5-final-title">Start exploring with The Better Pass</h2>
                 <p className="home5-final-reveal" aria-label={FINAL_CTA_COPY}>
                   {FINAL_CTA_WORDS.map((word, index) => (
                     <span
@@ -1623,11 +1623,11 @@ export const Home5: React.FC = () => {
 
       <footer ref={footerRef} className="home5-footer" id="contact">
         <div className="home5-footer-inner">
-          <div className="home5-footer-watermark" aria-hidden="true">Betterpass</div>
+          <div className="home5-footer-watermark" aria-hidden="true">The Better Pass</div>
 
           <div className="home5-footer-top">
             <div className="home5-footer-brand">
-              <span className="home5-footer-eyebrow">The Betterpass</span>
+              <span className="home5-footer-eyebrow">The Better Pass</span>
               <p>{HOME5_FOOTER_TITLE}</p>
               <button type="button" className="home5-footer-contact-btn" onClick={() => setContactModalOpen(true)}>
                 Contact us

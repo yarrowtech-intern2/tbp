@@ -12,38 +12,38 @@ import './about-final.css';
 const ABOUT_STORY_SECTIONS = [
   {
     id: 'intro',
-    eyebrow: 'The Betterpass story',
-    title: 'About Betterpass',
-    // copy: 'Betterpass exists to make travel feel clear before it becomes memorable. We bring trusted stays, guided experiences, local providers, and secure booking into one calm path, so every trip starts with confidence instead of scattered planning.',
+    eyebrow: 'The Better Pass story',
+    title: 'About The Better Pass',
+    // copy: 'The Better Pass exists to make travel feel clear before it becomes memorable. We bring trusted stays, guided experiences, local providers, and secure booking into one calm path, so every trip starts with confidence instead of scattered planning.',
 
-    copy: 'BetterPass is a modern travel companion designed to make exploring new destinations easier, more enjoyable, and more memorable. Our platform helps travelers discover attractions, activities, unique experiences, and travel opportunities while providing all the essential information needed for a seamless journey.',
+    copy: 'The Better Pass is a modern travel companion designed to make exploring new destinations easier, more enjoyable, and more memorable. Our platform helps travelers discover attractions, activities, unique experiences, and travel opportunities while providing all the essential information needed for a seamless journey.',
     image: undefined,
     video: undefined,
     mediaAlt: undefined,
   },
   {
     id: 'why',
-    eyebrow: 'Why Betterpass exists',
+    eyebrow: 'Why The Better Pass exists',
     title: 'Travel should feel clear before it feels memorable',
-    copy: 'Betterpass exists because planning a trip should not mean juggling scattered tabs, uncertain providers, vague details, and last minute doubt. We bring stays, guided experiences, local experts, and booking decisions into one calm path so travelers can move from curiosity to confidence faster.',
+    copy: 'The Better Pass exists because planning a trip should not mean juggling scattered tabs, uncertain providers, vague details, and last minute doubt. We bring stays, guided experiences, local experts, and booking decisions into one calm path so travelers can move from curiosity to confidence faster.',
     image: undefined,
     video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1780904026/3_pcoth2.mp4',
-    mediaAlt: 'Travel planning video placeholder for why Betterpass exists',
+    mediaAlt: 'Travel planning video placeholder for why The Better Pass exists',
   },
   {
     id: 'safer',
     eyebrow: 'How we make travel safer',
     title: 'Trust is designed into every step',
-    copy: 'Safer travel starts before checkout. Betterpass helps travelers compare clearer listings, understand who is hosting the experience, see what is included, and choose providers with stronger signals. The goal is simple: fewer surprises, better decisions, and a booking path that feels transparent.',
+    copy: 'Safer travel starts before checkout. The Better Pass helps travelers compare clearer listings, understand who is hosting the experience, see what is included, and choose providers with stronger signals. The goal is simple: fewer surprises, better decisions, and a booking path that feels transparent.',
     image: undefined,
     video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1780904026/1_zldhdr.mp4',
-    mediaAlt: 'Travel safety video placeholder for Betterpass trust',
+    mediaAlt: 'Travel safety video placeholder for The Better Pass trust',
   },
   {
     id: 'community',
     eyebrow: 'Community',
     title: 'Better trips are built with local people',
-    copy: 'The Betterpass community connects travelers with hosts, guides, tour operators, and local businesses who shape the real texture of a place. We believe memorable travel comes from context, care, timing, and people who know the route beyond the surface.',
+    copy: 'The Better Pass community connects travelers with hosts, guides, tour operators, and local businesses who shape the real texture of a place. We believe memorable travel comes from context, care, timing, and people who know the route beyond the surface.',
     image: undefined,
     video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1780904026/2_raucel.mp4',
     mediaAlt: 'Community travel video placeholder for local people',
@@ -172,10 +172,10 @@ const AboutFinalContactSection: React.FC<{ footerContent: FooterContent }> = ({ 
     <section className="about-final-contact-section" aria-labelledby="about-final-contact-title">
       <div className="about-final-contact-shell">
         <div className="about-final-contact-copy">
-          <span className="about-final-eyebrow">Where was BetterPass born?</span>
+          <span className="about-final-eyebrow">Where was The Better Pass born?</span>
           <h2 id="about-final-contact-title" className="about-final-contact-title">Kolkata, India</h2>
 
-          <div className="about-final-contact-links" aria-label="BetterPass contact details">
+          <div className="about-final-contact-links" aria-label="The Better Pass contact details">
             {contactLinks.map((link) => {
               const href = getFooterHref(link);
               return (
@@ -211,7 +211,7 @@ const AboutFinalContactSection: React.FC<{ footerContent: FooterContent }> = ({ 
         </div>
 
         <figure className="about-final-map-wrap" aria-label="Kolkata map">
-          <img src="/map/kolkata-map.svg" alt="Kolkata map showing the BetterPass address" loading="lazy" decoding="async" />
+          <img src="/map/kolkata-map.svg" alt="Kolkata map showing The Better Pass address" loading="lazy" decoding="async" />
         </figure>
       </div>
     </section>

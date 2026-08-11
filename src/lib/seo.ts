@@ -19,11 +19,15 @@ export type SeoConfig = {
 };
 
 const trimTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+const ensureHttpProtocol = (value: string): string => {
+    if (/^https?:\/\//i.test(value)) return value;
+    return `https://${value}`;
+};
 
 export const getSiteUrl = (): string => {
     const envUrl = import.meta.env.VITE_PUBLIC_APP_URL as string | undefined;
     const fromEnv = envUrl?.trim();
-    if (fromEnv) return trimTrailingSlash(fromEnv);
+    if (fromEnv) return trimTrailingSlash(ensureHttpProtocol(fromEnv));
     if (typeof window !== 'undefined' && window.location.origin) return trimTrailingSlash(window.location.origin);
     return DEFAULT_SITE_URL;
 };
@@ -51,9 +55,9 @@ export const buildOrganizationJsonLd = (siteUrl = getSiteUrl()) => ({
     '@type': 'TravelAgency',
     '@id': `${siteUrl}/#organization`,
     name: BRAND_NAME,
-    alternateName: 'TBP',
+    alternateName: 'Better Pass',
     url: siteUrl,
-    logo: `${siteUrl}/logo/final-logo.png`,
+    logo: `${siteUrl}/favicon/favicon-512.png`,
     image: `${siteUrl}${DEFAULT_IMAGE_PATH}`,
     description: DEFAULT_DESCRIPTION,
     email: 'hello@thebetterpass.com',
@@ -80,6 +84,7 @@ export const buildWebsiteJsonLd = (siteUrl = getSiteUrl()) => ({
     '@type': 'WebSite',
     '@id': `${siteUrl}/#website`,
     name: BRAND_NAME,
+    alternateName: 'Better Pass',
     url: siteUrl,
     publisher: { '@id': `${siteUrl}/#organization` },
     potentialAction: {

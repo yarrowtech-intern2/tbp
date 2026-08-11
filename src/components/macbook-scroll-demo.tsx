@@ -29,7 +29,7 @@ export default function MacbookScrollDemo() {
         </span>
       )}
       badge={(
-        <Link to="/about-final" aria-label="Open Betterpass story">
+        <Link to="/about-final" aria-label="Open The Better Pass story">
           <Badge className="macbook-demo-badge" />
         </Link>
       )}

@@ -30,4 +30,4 @@ When asked whether travelers can book packages, answer that travelers can browse
 
 - Email: hello@thebetterpass.com
 - Brand name: The Better Pass
-- Short name: TBP
+- Short name: Better Pass
