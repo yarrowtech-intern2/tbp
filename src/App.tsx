@@ -58,7 +58,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   return <>{children}</>;
@@ -108,7 +108,11 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return null;
   }
 
-  if (!user || !isAdminAccount) {
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (!isAdminAccount) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -124,7 +128,11 @@ const ProviderRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return null;
   }
 
-  if (!user || !isProvider) {
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (!isProvider) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -143,7 +151,7 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   if (providerAccount || isAdminAccount || marketingAccount) {

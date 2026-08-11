@@ -261,6 +261,11 @@ export const Profile: React.FC = () => {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const coverInputRef = useRef<HTMLInputElement>(null);
 
+    const handleSignOut = async () => {
+        await signOut();
+        navigate('/auth', { replace: true });
+    };
+
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const media = window.matchMedia('(max-width: 900px)');
@@ -1023,7 +1028,7 @@ export const Profile: React.FC = () => {
                         <button
                             type="button"
                             className="prf-signout-btn"
-                            onClick={() => void signOut()}
+                            onClick={() => void handleSignOut()}
                         >
                             Sign Out
                         </button>

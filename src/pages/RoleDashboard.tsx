@@ -836,6 +836,10 @@ export const RoleDashboard: React.FC = () => {
     const { role: roleParam } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const handleSignOut = async () => {
+        await signOut();
+        navigate('/auth', { replace: true });
+    };
     const search = '';
     const [activeSection, setActiveSection] = useState<SidebarKey>('overview');
     const [isDesktopDashboard, setIsDesktopDashboard] = useState(
@@ -4367,7 +4371,7 @@ export const RoleDashboard: React.FC = () => {
                     <button
                         type="button"
                         className="rdb-admin-sidebar-logout"
-                        onClick={() => { void signOut(); }}
+                        onClick={() => { void handleSignOut(); }}
                         title="Log out"
                         aria-label="Log out"
                     >
@@ -4507,7 +4511,7 @@ export const RoleDashboard: React.FC = () => {
                                     className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--logout"
                                     onClick={() => {
                                         setAdminMobileMenuOpen(false);
-                                        void signOut();
+                                        void handleSignOut();
                                     }}
                                 >
                                     <span>Log out</span>
