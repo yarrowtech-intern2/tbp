@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "build": "npm run generate:sitemap && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -33,9 +34,9 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-globe.gl": "^2.37.1",
-    "react-icons": "^5.7.0",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.13.1",
+    "reicon-react": "^1.2.0",
     "three": "^0.184.0"
   },
   "devDependencies": {

@@ -10,6 +10,7 @@ import {
     Phone,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { CircleBottomUp } from 'reicon-react';
 import { supabase } from '../lib/supabase';
 import { signUpWithRole } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
@@ -36,6 +37,30 @@ const getOAuthRedirectBaseUrl = () => {
     const fromEnv = normalizeAppUrl(import.meta.env.VITE_PUBLIC_APP_URL);
     if (fromEnv) return fromEnv;
     return normalizeAppUrl(window.location.origin);
+};
+
+const getFunctionErrorMessage = async (err: unknown, fallback: string): Promise<string> => {
+    const context = typeof err === 'object' && err !== null && 'context' in err
+        ? (err as { context?: unknown }).context
+        : null;
+
+    if (context instanceof Response) {
+        const response = context.clone();
+        try {
+            const payload = await response.json() as { error?: unknown; message?: unknown };
+            const message = typeof payload.error === 'string'
+                ? payload.error
+                : typeof payload.message === 'string'
+                    ? payload.message
+                    : '';
+            if (message) return message;
+        } catch {
+            const text = await context.clone().text().catch(() => '');
+            if (text.trim()) return text.trim();
+        }
+    }
+
+    return err instanceof Error && err.message ? err.message : fallback;
 };
 
 const NATURE_SIDE_IMAGES = [
@@ -433,7 +458,7 @@ export const Auth: React.FC = () => {
             setForgotPasswordOpen(false);
             setInfo('Password reset link sent. Check your email and open the link to set a new password.');
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Password reset failed. Please try again.');
+            setError(await getFunctionErrorMessage(err, 'Password reset failed. Please try again.'));
         } finally {
             setLoading(false);
         }
@@ -777,7 +802,14 @@ export const Auth: React.FC = () => {
                                 )}
 
                                 <button type="submit" className="auth-submit" disabled={loading}>
-                                    {loading ? <Loader2 className="animate-spin" size={18} /> : 'Log in'}
+                                    {loading ? (
+                                        <Loader2 className="animate-spin" size={18} />
+                                    ) : (
+                                        <>
+                                            <span>Log in</span>
+                                            <CircleBottomUp size={18} />
+                                        </>
+                                    )}
                                 </button>
 
                                 <div className="auth-divider">or</div>

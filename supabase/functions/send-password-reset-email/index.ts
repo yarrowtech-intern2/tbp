@@ -112,11 +112,11 @@ Deno.serve(async (req) => {
         });
 
         if (error || !data.properties?.action_link) {
-            const message = error?.message || 'Could not create recovery link.';
-            if (message.toLowerCase().includes('not found')) {
-                return jsonResponse(200, { sent: true });
-            }
-            throw new Error(message);
+            console.warn('Password reset link was not generated', {
+                email,
+                reason: error?.message || 'Missing action link.',
+            });
+            return jsonResponse(200, { sent: true });
         }
 
         await sendEmail({ to: email, actionLink: data.properties.action_link });

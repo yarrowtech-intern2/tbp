@@ -159,14 +159,18 @@ Set the production frontend URL before building:
 
 ```env
 VITE_PUBLIC_APP_URL=https://thebetterpass.com
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-public-anon-key
 ```
+
+`npm run build` runs `npm run generate:sitemap` first. The sitemap generator pulls public listings from Supabase `posts`, plus legacy `tours`, `activities`, and `events` tables when they exist, and writes listing URLs like `/listings/tour/:id`, `/listings/activity/:id`, and `/listings/guide/:id`. If Supabase env vars are missing or unreachable, it keeps the deployment working with the static routes only.
 
 If the production domain changes, update:
 
 - `VITE_PUBLIC_APP_URL`
 - `index.html` canonical/Open Graph URLs
 - `public/robots.txt`
-- `public/sitemap.xml`
+- regenerate `public/sitemap.xml` with `npm run generate:sitemap`
 - `public/llms.txt`
 
 Private app surfaces such as auth, dashboards, profiles, messages, admin, and provider studio are marked or blocked as noindex. Public package detail pages receive dynamic title, description, Open Graph image, canonical URL, price/rating schema, and breadcrumb structured data after the listing loads.
