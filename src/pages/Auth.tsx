@@ -69,6 +69,32 @@ type SignupStep =
     | { kind: 'toggle'; key: 'worksUnderCompany'; label: string; description: string }
     | { kind: 'final' };
 
+const PASSWORD_REQUIREMENTS = [
+    { key: 'length', label: '8 characters', test: (value: string) => value.length >= 8 },
+    { key: 'uppercase', label: 'Capital letter', test: (value: string) => /[A-Z]/.test(value) },
+    { key: 'lowercase', label: 'Lowercase letter', test: (value: string) => /[a-z]/.test(value) },
+    { key: 'number', label: 'Number', test: (value: string) => /\d/.test(value) },
+    { key: 'special', label: 'Special character', test: (value: string) => /[^A-Za-z0-9\s]/.test(value) },
+] as const;
+
+const PASSWORD_REQUIREMENTS_ERROR =
+    'Password must include 8 characters, a capital letter, a lowercase letter, a number, and a special character.';
+const PASSWORD_METER_CIRCUMFERENCE = 157.08;
+
+const getPasswordFormatStatus = (password: string) => {
+    const requirements = PASSWORD_REQUIREMENTS.map((requirement) => ({
+        ...requirement,
+        met: requirement.test(password),
+    }));
+    const metCount = requirements.filter((requirement) => requirement.met).length;
+
+    return {
+        requirements,
+        percentage: Math.round((metCount / PASSWORD_REQUIREMENTS.length) * 100),
+        isComplete: metCount === PASSWORD_REQUIREMENTS.length,
+    };
+};
+
 const getSignupValuesForDraft = (values: SignupFormValues): Omit<SignupFormValues, 'password'> => {
     const { password, ...draftValues } = values;
     void password;
@@ -147,6 +173,11 @@ export const Auth: React.FC = () => {
     const navigate = useNavigate();
 
     const activeRole = formValues.role;
+    const passwordFormat = useMemo(() => getPasswordFormatStatus(formValues.password), [formValues.password]);
+    const passwordProgressStyle = {
+        '--password-progress': `${passwordFormat.percentage}%`,
+        '--password-progress-offset': PASSWORD_METER_CIRCUMFERENCE - (PASSWORD_METER_CIRCUMFERENCE * passwordFormat.percentage) / 100,
+    } as React.CSSProperties;
     const roleConfig = useMemo(() => ROLE_SIGNUP_CONFIG[activeRole], [activeRole]);
     const signupSteps = useMemo<SignupStep[]>(() => {
         const requiresCompanyToggle = activeRole === 'tour_instructor' || activeRole === 'tour_guide';
@@ -316,8 +347,8 @@ export const Auth: React.FC = () => {
             }
         }
 
-        if (step.kind === 'base' && step.key === 'password' && value.length < 8) {
-            setError('Password must be at least 8 characters.');
+        if (step.kind === 'base' && step.key === 'password' && !getPasswordFormatStatus(value).isComplete) {
+            setError(PASSWORD_REQUIREMENTS_ERROR);
             setInfo(null);
             return false;
         }
@@ -364,6 +395,14 @@ export const Auth: React.FC = () => {
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!passwordFormat.isComplete) {
+            const passwordStepIndex = signupSteps.findIndex((step) => step.kind === 'base' && step.key === 'password');
+            if (passwordStepIndex >= 0) setSignupStepIndex(passwordStepIndex);
+            setError(PASSWORD_REQUIREMENTS_ERROR);
+            setInfo(null);
+            return;
+        }
 
         if (!acceptTerms) {
             setError('Accept the Terms & Condition before creating an account.');
@@ -670,7 +709,7 @@ export const Auth: React.FC = () => {
                                                     <button type="button" className="auth-secondary-btn" onClick={goToPreviousSignupStep}>
                                                         Back
                                                     </button>
-                                                    <button type="submit" className="auth-submit" disabled={loading}>
+                                                    <button type="submit" className="auth-submit" disabled={loading || !passwordFormat.isComplete}>
                                                         {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}
                                                     </button>
                                                 </div>
@@ -709,6 +748,7 @@ export const Auth: React.FC = () => {
                                                 const isPasswordField = currentSignupStep.kind === 'base' && currentSignupStep.key === 'password';
                                                 const isToggleField = currentSignupStep.kind === 'toggle';
                                                 const icon = currentSignupStep.kind === 'role' ? FIELD_ICONS[currentSignupStep.field] : null;
+                                                const passwordNextDisabled = isPasswordField && !passwordFormat.isComplete;
 
                                                 return (
                                                     <div className="auth-tourist-card auth-field-full">
@@ -744,6 +784,7 @@ export const Auth: React.FC = () => {
                                                                         type={meta.type}
                                                                         required={meta.required}
                                                                         minLength={8}
+                                                                        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,}"
                                                                         placeholder={meta.placeholder}
                                                                         value={inputValue}
                                                                         onChange={(e) => updateField(fieldKey, e.target.value as SignupFormValues[typeof fieldKey])}
@@ -772,6 +813,37 @@ export const Auth: React.FC = () => {
                                                             </label>
                                                         )}
 
+                                                        {isPasswordField && (
+                                                            <div
+                                                                className={`auth-password-format${passwordFormat.isComplete ? ' is-complete' : ''}`}
+                                                                aria-live="polite"
+                                                            >
+                                                                <div
+                                                                    className="auth-password-meter"
+                                                                    style={passwordProgressStyle}
+                                                                    role="img"
+                                                                    aria-label={`Password format ${passwordFormat.percentage}% complete`}
+                                                                >
+                                                                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                                                                        <circle className="auth-password-meter-track" cx="32" cy="32" r="25" />
+                                                                        <circle className="auth-password-meter-progress" cx="32" cy="32" r="25" />
+                                                                    </svg>
+                                                                    <span>{passwordFormat.percentage}%</span>
+                                                                </div>
+                                                                <ul className="auth-password-rules">
+                                                                    {passwordFormat.requirements.map((requirement) => (
+                                                                        <li
+                                                                            key={requirement.key}
+                                                                            className={requirement.met ? 'is-met' : ''}
+                                                                        >
+                                                                            <span aria-hidden="true" />
+                                                                            {requirement.label}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+
                                                         <div className="auth-tourist-actions">
                                                             <button
                                                                 type="button"
@@ -787,7 +859,12 @@ export const Auth: React.FC = () => {
                                                                         Skip
                                                                     </button>
                                                                 )}
-                                                                <button type="button" className="auth-submit auth-submit--step" onClick={goToNextSignupStep}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="auth-submit auth-submit--step"
+                                                                    onClick={goToNextSignupStep}
+                                                                    disabled={passwordNextDisabled}
+                                                                >
                                                                     Next
                                                                 </button>
                                                             </div>

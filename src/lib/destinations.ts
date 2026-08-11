@@ -2710,6 +2710,21 @@ export const signUpWithRole = async (input: SignupInput) => {
         if (data.session) throw profileErr;
         console.error('Failed to submit profile during signup (will retry on first login):', profileErr);
     }
+
+    try {
+        const { error: emailError } = await supabase.functions.invoke('send-signup-email', {
+            body: {
+                user_id: data.user.id,
+                role: input.role,
+            },
+        });
+        if (emailError) {
+            console.warn('Signup welcome email request failed:', emailError.message);
+        }
+    } catch (emailErr) {
+        console.warn('Signup welcome email request failed:', emailErr);
+    }
+
     return data;
 };
 

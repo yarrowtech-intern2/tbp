@@ -121,3 +121,32 @@ supabase secrets set PAYOUT_PROCESSOR_SECRET=replace-with-a-long-random-secret
 
 `SUPABASE_SERVICE_ROLE_KEY` is required by `confirm-razorpay-booking` and is normally available in Supabase function runtime.
 `process-provider-payout` also requires Razorpay Route to be enabled and each provider to have a `provider_payout_onboarding.razorpay_account_id`.
+
+## Email Setup
+
+Registration email is handled by Supabase Auth. In the Supabase dashboard, enable email confirmations under **Authentication > Providers > Email**, then edit the confirmation template under **Authentication > Email Templates**. Keep the app using `supabase.auth.signUp`; the signup flow already stores the user role and profile metadata before Supabase sends the confirmation email.
+
+Booking confirmation email is handled by the `confirm-razorpay-booking` Edge Function after Razorpay signature verification succeeds. The function sends:
+
+- a booking/payment confirmation to the traveler
+- a new booking notification to the provider, when the provider profile has an email
+
+Signup welcome email is handled by the `send-signup-email` Edge Function after `supabase.auth.signUp` returns a user. It sends once per auth user and stores `signup_welcome_email_sent_at` in auth app metadata to avoid duplicate welcome emails.
+
+Configure a sending domain in Resend, then set these Supabase function secrets:
+
+```bash
+supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
+supabase secrets set "EMAIL_FROM=The Better Pass <bookings@your-domain.com>"
+supabase secrets set EMAIL_REPLY_TO=support@your-domain.com
+supabase secrets set PUBLIC_APP_URL=https://your-frontend-domain.com
+```
+
+Redeploy the booking function after setting secrets:
+
+```bash
+supabase functions deploy send-signup-email
+supabase functions deploy confirm-razorpay-booking
+```
+
+Email delivery is non-blocking: if the email provider is not configured or temporarily fails, the booking still completes and the function logs the email failure.

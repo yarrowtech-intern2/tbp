@@ -69,6 +69,20 @@ interface ConfirmBody {
     payment?: PaymentPayload;
 }
 
+interface TransactionalEmail {
+    to: string | string[];
+    subject: string;
+    html: string;
+    text?: string;
+    replyTo?: string;
+}
+
+interface TransactionalEmailResult {
+    ok: boolean;
+    skipped: boolean;
+    reason?: string;
+}
+
 type SupabaseAdminClient = ReturnType<typeof createClient>;
 const PLATFORM_FEE_RATE = 0.15;
 
@@ -165,6 +179,89 @@ const asErrorMessage = (value: unknown): string => (
             ? value
             : ''
 );
+
+const formatInr = (value: number): string => (
+    `INR ${Math.round(value).toLocaleString('en-IN')}`
+);
+
+const formatBookingDate = (value?: string | null): string => {
+    if (!value) return 'To be coordinated with the provider';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+};
+
+const getAppUrl = (): string => (
+    (Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('VITE_PUBLIC_APP_URL') || '').trim().replace(/\/+$/, '')
+);
+
+const normalizeRecipients = (value: string | string[]): string[] => (
+    (Array.isArray(value) ? value : [value])
+        .map((email) => email.trim())
+        .filter(Boolean)
+);
+
+const escapeHtml = (value: unknown): string => (
+    String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+);
+
+const sendTransactionalEmail = async (
+    message: TransactionalEmail
+): Promise<TransactionalEmailResult> => {
+    const apiKey = Deno.env.get('RESEND_API_KEY')?.trim();
+    const from = Deno.env.get('EMAIL_FROM')?.trim();
+    const defaultReplyTo = Deno.env.get('EMAIL_REPLY_TO')?.trim();
+    const to = normalizeRecipients(message.to);
+
+    if (!to.length) {
+        return { ok: false, skipped: true, reason: 'No recipient email address.' };
+    }
+
+    if (!apiKey || !from) {
+        return { ok: false, skipped: true, reason: 'Email provider is not configured.' };
+    }
+
+    const payload: Record<string, unknown> = {
+        from,
+        to,
+        subject: message.subject,
+        html: message.html,
+    };
+
+    if (message.text?.trim()) payload.text = message.text.trim();
+    if (message.replyTo?.trim() || defaultReplyTo) {
+        payload.reply_to = message.replyTo?.trim() || defaultReplyTo;
+    }
+
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        const details = await response.text().catch(() => '');
+        return {
+            ok: false,
+            skipped: false,
+            reason: details || `Email provider returned ${response.status}.`,
+        };
+    }
+
+    return { ok: true, skipped: false };
+};
 
 const extractMissingColumnName = (message: string | undefined): string | null => {
     if (!message) return null;
@@ -455,6 +552,141 @@ const safeCreatePaymentNotifications = async (
     }
 };
 
+const getAuthUserContact = async (
+    admin: SupabaseAdminClient,
+    userId: string | null | undefined
+): Promise<{ email: string; name: string }> => {
+    if (!userId) return { email: '', name: '' };
+
+    try {
+        const { data, error } = await admin.auth.admin.getUserById(userId);
+        if (error || !data.user) {
+            if (error) console.warn('Failed to load auth user contact for email fallback', error.message);
+            return { email: '', name: '' };
+        }
+
+        const metadata = data.user.user_metadata || {};
+        const fullName = normalizeLooseString(metadata.full_name)
+            || normalizeLooseString(metadata.name)
+            || normalizeLooseString(data.user.email?.split('@')[0]);
+
+        return {
+            email: normalizeLooseString(data.user.email),
+            name: fullName,
+        };
+    } catch (error) {
+        console.warn('Failed to load auth user contact for email fallback', asErrorMessage(error));
+        return { email: '', name: '' };
+    }
+};
+
+const sendBookingEmails = async (args: {
+    travelerEmail: string;
+    travelerName: string;
+    providerEmail: string;
+    providerName: string;
+    bookingId: string;
+    listingTitle: string;
+    travelersCount: number;
+    totalPrice: number;
+    bookingDate?: string | null;
+}) => {
+    const appUrl = getAppUrl();
+    const touristBookingsUrl = appUrl ? `${appUrl}/dashboard/tourist?section=bookings` : '';
+    const providerBookingsUrl = appUrl ? `${appUrl}/dashboard/provider?section=bookings` : '';
+    const safeListingTitle = escapeHtml(args.listingTitle);
+    const safeBookingId = escapeHtml(args.bookingId);
+    const safeTravelerName = escapeHtml(args.travelerName || 'Traveler');
+    const safeProviderName = escapeHtml(args.providerName || 'Provider');
+    const bookingDate = escapeHtml(formatBookingDate(args.bookingDate));
+    const paidAmount = escapeHtml(formatInr(args.totalPrice));
+
+    const travelerHtml = `
+        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#172033">
+            <h2 style="margin:0 0 12px">Booking request submitted</h2>
+            <p>Hi ${safeTravelerName}, your payment was received and your booking request for <strong>${safeListingTitle}</strong> has been submitted.</p>
+            <p><strong>Booking ID:</strong> ${safeBookingId}<br>
+            <strong>Travelers:</strong> ${args.travelersCount}<br>
+            <strong>Date:</strong> ${bookingDate}<br>
+            <strong>Amount paid:</strong> ${paidAmount}</p>
+            <p>The provider will review and confirm the request from their dashboard.</p>
+            ${touristBookingsUrl ? `<p><a href="${escapeHtml(touristBookingsUrl)}">View your booking</a></p>` : ''}
+        </div>
+    `;
+
+    const providerHtml = `
+        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#172033">
+            <h2 style="margin:0 0 12px">New booking received</h2>
+            <p>Hi ${safeProviderName},</p>
+            <p>${safeTravelerName} booked <strong>${safeListingTitle}</strong>.</p>
+            <p><strong>Booking ID:</strong> ${safeBookingId}<br>
+            <strong>Travelers:</strong> ${args.travelersCount}<br>
+            <strong>Date:</strong> ${bookingDate}<br>
+            <strong>Amount paid:</strong> ${paidAmount}</p>
+            <p>Open your dashboard to accept or reject this booking.</p>
+            ${providerBookingsUrl ? `<p><a href="${escapeHtml(providerBookingsUrl)}">Open provider bookings</a></p>` : ''}
+        </div>
+    `;
+
+    if (args.travelerEmail) {
+        const result = await sendTransactionalEmail({
+            to: args.travelerEmail,
+            subject: `Booking received: ${args.listingTitle}`,
+            html: travelerHtml,
+            text: [
+                `Hi ${args.travelerName || 'Traveler'}, your payment was received.`,
+                `Booking: ${args.listingTitle}`,
+                `Booking ID: ${args.bookingId}`,
+                `Travelers: ${args.travelersCount}`,
+                `Date: ${formatBookingDate(args.bookingDate)}`,
+                `Amount paid: ${formatInr(args.totalPrice)}`,
+                touristBookingsUrl ? `View: ${touristBookingsUrl}` : '',
+            ].filter(Boolean).join('\n'),
+        });
+        if (!result.ok) console.warn('Booking traveler email was not sent', result.reason);
+        else console.info('Booking traveler email sent', { booking_id: args.bookingId });
+    } else {
+        console.warn('Booking traveler email skipped: no traveler email address.', {
+            booking_id: args.bookingId,
+        });
+    }
+
+    if (args.providerEmail && args.providerEmail.toLowerCase() !== args.travelerEmail.toLowerCase()) {
+        const result = await sendTransactionalEmail({
+            to: args.providerEmail,
+            subject: `New booking: ${args.listingTitle}`,
+            html: providerHtml,
+            text: [
+                `${args.travelerName || 'A traveler'} booked ${args.listingTitle}.`,
+                `Booking ID: ${args.bookingId}`,
+                `Travelers: ${args.travelersCount}`,
+                `Date: ${formatBookingDate(args.bookingDate)}`,
+                `Amount paid: ${formatInr(args.totalPrice)}`,
+                providerBookingsUrl ? `Open: ${providerBookingsUrl}` : '',
+            ].filter(Boolean).join('\n'),
+        });
+        if (!result.ok) console.warn('Booking provider email was not sent', result.reason);
+        else console.info('Booking provider email sent', { booking_id: args.bookingId });
+    } else if (!args.providerEmail) {
+        console.warn('Booking provider email skipped: no provider email address.', {
+            booking_id: args.bookingId,
+        });
+    }
+};
+
+const safeSendBookingEmails = async (
+    args: Parameters<typeof sendBookingEmails>[0]
+) => {
+    try {
+        await sendBookingEmails(args);
+    } catch (error) {
+        console.error('confirm-razorpay-booking email send failed (non-blocking)', {
+            error: asErrorMessage(error),
+            booking_id: args.bookingId,
+        });
+    }
+};
+
 const authenticateUser = async (authHeader: string) => {
     const supabaseUrl = ensureEnv('SUPABASE_URL');
     const supabaseAnonKey = ensureEnv('SUPABASE_ANON_KEY');
@@ -636,11 +868,39 @@ Deno.serve(async (req) => {
             .select('full_name, email, phone')
             .eq('id', user.id)
             .maybeSingle();
+        const travelerAuthContact = {
+            email: normalizeLooseString(user.email),
+            name: normalizeLooseString(user.user_metadata?.full_name)
+                || normalizeLooseString(user.user_metadata?.name),
+        };
         const travelerName = normalizeLooseString((travelerProfile.data as Record<string, unknown> | null)?.full_name)
             || normalizeLooseString((travelerProfile.data as Record<string, unknown> | null)?.email)
+            || travelerAuthContact.name
+            || normalizeLooseString(travelerAuthContact.email.split('@')[0])
             || 'A traveler';
-        const travelerEmail = normalizeLooseString((travelerProfile.data as Record<string, unknown> | null)?.email);
+        const travelerEmail = normalizeLooseString((travelerProfile.data as Record<string, unknown> | null)?.email)
+            || travelerAuthContact.email;
         const travelerPhone = normalizeLooseString((travelerProfile.data as Record<string, unknown> | null)?.phone);
+        let providerName = 'Provider';
+        let providerEmail = '';
+
+        if (resolvedProviderUserId) {
+            const providerProfile = await admin
+                .from('profiles')
+                .select('full_name, email, company_name')
+                .eq('id', resolvedProviderUserId)
+                .maybeSingle();
+            const providerData = (providerProfile.data as Record<string, unknown> | null) || null;
+            const providerAuthContact = await getAuthUserContact(admin, resolvedProviderUserId);
+            providerName = normalizeLooseString(providerData?.company_name)
+                || normalizeLooseString(providerData?.full_name)
+                || providerAuthContact.name
+                || normalizeLooseString(providerAuthContact.email.split('@')[0])
+                || 'Provider';
+            providerEmail = normalizeLooseString(providerData?.email)
+                || providerAuthContact.email;
+        }
+
         let uuidListingIdFallback: string | null = null;
         const getUuidListingIdFallback = async () => {
             uuidListingIdFallback = uuidListingIdFallback || await deterministicListingUuid(listingType, listingId);
@@ -774,6 +1034,17 @@ Deno.serve(async (req) => {
                     travelerEmail,
                     travelerPhone,
                 });
+                await safeSendBookingEmails({
+                    travelerEmail,
+                    travelerName,
+                    providerEmail,
+                    providerName,
+                    bookingId: confirmExisting.data.id,
+                    listingTitle,
+                    travelersCount: numberOfPeople,
+                    totalPrice,
+                    bookingDate,
+                });
                 return jsonResponse(200, {
                     booking_id: confirmExisting.data.id,
                 });
@@ -867,6 +1138,17 @@ Deno.serve(async (req) => {
                 travelerEmail,
                 travelerPhone,
             });
+            await safeSendBookingEmails({
+                travelerEmail,
+                travelerName,
+                providerEmail,
+                providerName,
+                bookingId: bookingInsert.data.id,
+                listingTitle,
+                travelersCount: numberOfPeople,
+                totalPrice,
+                bookingDate,
+            });
             return jsonResponse(200, {
                 booking_id: bookingInsert.data.id,
             });
@@ -926,6 +1208,17 @@ Deno.serve(async (req) => {
             travelerName,
             travelerEmail,
             travelerPhone,
+        });
+        await safeSendBookingEmails({
+            travelerEmail,
+            travelerName,
+            providerEmail,
+            providerName,
+            bookingId: fallbackBookingId,
+            listingTitle,
+            travelersCount: numberOfPeople,
+            totalPrice,
+            bookingDate,
         });
 
         return jsonResponse(200, {
