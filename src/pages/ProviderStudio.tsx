@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
 import {
     createOrUpdateListing,
     getMyPosts,
@@ -31,10 +30,10 @@ import {
 import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
+import { uploadCloudinaryImage } from '../lib/cloudinaryUpload';
 import { LISTING_LABELS, getRoleLabel, type ListingType, canRolePublish } from '../lib/platform';
 import './provider-studio.css';
 
-const LISTING_IMAGE_BUCKET = 'avatars';
 const MAX_LISTING_IMAGE_MB = 8;
 const MIN_LISTING_IMAGES = 3;
 const MAX_LISTING_IMAGES = 10;
@@ -492,15 +491,13 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
     const uploadListingImage = async (file: File): Promise<string> => {
         if (!user) throw new Error('You must be logged in to upload an image.');
-        const ext = file.name.split('.').pop() || 'jpg';
+
         const safeType = form.type || 'tour';
-        const path = `${user.id}/listing-${safeType}-${Date.now()}.${ext}`;
-        const { error } = await supabase.storage
-            .from(LISTING_IMAGE_BUCKET)
-            .upload(path, file, { upsert: true, contentType: file.type });
-        if (error) throw error;
-        const { data } = supabase.storage.from(LISTING_IMAGE_BUCKET).getPublicUrl(path);
-        return `${data.publicUrl}?t=${Date.now()}`;
+        return uploadCloudinaryImage(file, {
+            folder: `${user.id}/listings`,
+            fileNamePrefix: `listing-${safeType}`,
+            tags: ['tbp', 'listing', safeType],
+        });
     };
 
     const handleListingImageUpload = async (file: File) => {
@@ -525,10 +522,10 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error || '');
             console.error('Failed to upload listing image:', error);
-            if (message.toLowerCase().includes('bucket')) {
-                alert('Image upload failed: storage bucket is missing. Please run docs/supabase-role-system.sql.');
-            } else if (message.toLowerCase().includes('row-level security') || message.toLowerCase().includes('policy')) {
-                alert('Image upload blocked by Supabase policy. Please run docs/supabase-role-system.sql.');
+            if (message.toLowerCase().includes('cloudinary is not configured')) {
+                alert(message);
+            } else if (message.toLowerCase().includes('upload preset')) {
+                alert(`${message} Make sure the Cloudinary preset is unsigned and allows image uploads.`);
             } else {
                 alert(message || 'Failed to upload image. Please try again.');
             }

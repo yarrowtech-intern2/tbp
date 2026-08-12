@@ -1,6 +1,20 @@
 {
   "headers": [
     {
+      "source": "/favicon.ico",
+      "headers": [
+        { "key": "Content-Type", "value": "image/x-icon" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    },
+    {
+      "source": "/favicon.png",
+      "headers": [
+        { "key": "Content-Type", "value": "image/png" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    },
+    {
       "source": "/robots.txt",
       "headers": [
         { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
@@ -31,7 +45,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!robots\\.txt|llms\\.txt|sitemap\\.xml|site\\.webmanifest|assets/|favicon/|font/|icons/|images/|logo/|map/|UI/|video/|animation/).*)",
+      "source": "/((?!robots\\.txt|llms\\.txt|sitemap\\.xml|site\\.webmanifest|favicon\\.ico|favicon\\.png|assets/|favicon/|font/|icons/|images/|logo/|map/|UI/|video/|animation/).*)",
       "destination": "/index.html"
     }
   ]

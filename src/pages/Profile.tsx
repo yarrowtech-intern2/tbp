@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
 import { getProfileAvatarUrl } from '../lib/avatar';
+import { uploadCloudinaryImage } from '../lib/cloudinaryUpload';
 import {
     getBookings, getConversations, getFavoriteListings,
     getLatestVerification, getProfileFollowStats, getProviderBookings,
@@ -19,14 +20,16 @@ import { isProviderRole } from '../lib/platform';
 import { getPasswordFormatStatus, PASSWORD_METER_CIRCUMFERENCE, PASSWORD_REQUIREMENTS_ERROR } from '../lib/password';
 
 /* ── helpers ───────────────────────────────────────────────── */
-const AVATARS_BUCKET = 'avatars';
-
 const getProfileErrorMessage = (error: unknown): string => {
     const message = error instanceof Error ? error.message : String(error || '');
     const lower = message.toLowerCase();
 
-    if (lower.includes('bucket') && (lower.includes('not found') || lower.includes('does not exist'))) {
-        return 'Image upload failed: the "avatars" storage bucket is missing. Run docs/supabase-role-system.sql to create it.';
+    if (lower.includes('cloudinary is not configured')) {
+        return message;
+    }
+
+    if (lower.includes('upload preset')) {
+        return `${message} Make sure the Cloudinary preset is unsigned and allows WebP image uploads.`;
     }
 
     if (lower.includes('row-level security') || lower.includes('policy')) {
@@ -40,14 +43,11 @@ const getProfileErrorMessage = (error: unknown): string => {
     return message ? `Request failed: ${message}` : 'Request failed. Check Supabase schema and policies.';
 };
 const uploadImage = async (file: File, userId: string, type: 'avatar' | 'cover'): Promise<string> => {
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `${userId}/${type}.${ext}`;
-    const { error } = await supabase.storage
-        .from(AVATARS_BUCKET)
-        .upload(path, file, { upsert: true, contentType: file.type });
-    if (error) throw error;
-    const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path);
-    return `${data.publicUrl}?t=${Date.now()}`;
+    return uploadCloudinaryImage(file, {
+        folder: `${userId}/profiles`,
+        fileNamePrefix: type,
+        tags: ['tbp', 'profile', type],
+    });
 };
 
 /* ── BookingCard ───────────────────────────────────────────── */

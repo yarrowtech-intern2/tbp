@@ -39,6 +39,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
 import { getProfileAvatarUrl } from '../lib/avatar';
+import { uploadCloudinaryImage } from '../lib/cloudinaryUpload';
 import {
     getAdminAccountLocations,
     getBookings,
@@ -253,7 +254,6 @@ type BoostDialogState = {
 };
 
 const LIVE_STATUSES = new Set(['live', 'published', 'approved']);
-const PROMO_IMAGE_BUCKET = 'avatars';
 const MAX_PROMO_IMAGE_MB = 8;
 
 const normalizeRoleParam = (value?: string): DashboardRole | null => {
@@ -2231,17 +2231,11 @@ export const RoleDashboard: React.FC = () => {
 
     const uploadPromoImage = async (file: File): Promise<string> => {
         if (!user) throw new Error('You must be logged in to upload an image.');
-
-        const ext = file.name.split('.').pop() || 'jpg';
-        const path = `${user.id}/promo-ad-${Date.now()}.${ext}`;
-        const { error } = await supabase.storage
-            .from(PROMO_IMAGE_BUCKET)
-            .upload(path, file, { upsert: true, contentType: file.type });
-
-        if (error) throw error;
-
-        const { data } = supabase.storage.from(PROMO_IMAGE_BUCKET).getPublicUrl(path);
-        return `${data.publicUrl}?t=${Date.now()}`;
+        return uploadCloudinaryImage(file, {
+            folder: `${user.id}/promotions`,
+            fileNamePrefix: 'promo-ad',
+            tags: ['tbp', 'promotion', 'ad'],
+        });
     };
 
     const handleAdImageUpload = async (file: File) => {
