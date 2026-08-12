@@ -1289,8 +1289,9 @@
   }
 
   .dh-listing-row {
-    grid-auto-columns: minmax(148px, calc((100vw - 56px) / 2));
-    gap: 10px;
+    grid-auto-columns: clamp(142px, 41vw, 158px);
+    gap: 12px;
+    padding: 2px 0 8px;
   }
 
   .listing-card {

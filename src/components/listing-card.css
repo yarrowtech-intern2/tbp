@@ -488,6 +488,76 @@
     width: 34px;
     height: 34px;
   }
+
+  .dh-page .listing-card {
+    border-radius: 18px;
+  }
+
+  .dh-page .listing-card-media {
+    aspect-ratio: 3 / 4;
+    border-radius: inherit;
+  }
+
+  .dh-page .listing-card-media-overlay {
+    background:
+      linear-gradient(180deg, rgba(8, 11, 18, 0.02) 0%, rgba(8, 11, 18, 0.08) 42%, rgba(0, 0, 0, 0.64) 76%, rgba(0, 0, 0, 0.92) 100%);
+  }
+
+  .dh-page .listing-card-content-overlay {
+    gap: 4px;
+    padding: 48px 10px 8px;
+  }
+
+  .dh-page .listing-card-title {
+    font-size: 0.94rem;
+    line-height: 0.98;
+  }
+
+  .dh-page .listing-card-sub,
+  .dh-page .listing-card-gallery-btn,
+  .dh-page .listing-card-gallery-dots {
+    display: none;
+  }
+
+  .dh-page .listing-card-actions {
+    gap: 5px;
+    margin-top: 2px;
+  }
+
+  .dh-page .listing-card-cta-cluster {
+    gap: 4px;
+  }
+
+  .dh-page .listing-card-price {
+    font-size: 0.86rem;
+  }
+
+  .dh-page .listing-btn-book,
+  .dh-page .listing-btn-booked {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 0.62rem;
+  }
+
+  .dh-page .listing-btn-share {
+    width: 28px;
+    height: 28px;
+  }
+
+  .dh-page .listing-btn-share svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .dh-page .listing-card-fav-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .dh-page .listing-card-fav-btn svg {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
