@@ -173,7 +173,7 @@ function App() {
   return (
     <Router>
       <AppTutorialProvider>
-        <div className="app">
+        <div className={`app${user ? ' app-authenticated' : ''}`}>
           <AppSEO />
           <AppNavbar />
           <Suspense fallback={null}>

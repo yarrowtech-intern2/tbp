@@ -548,6 +548,10 @@
     color: var(--text-main);
 }
 
+.ac-fee-breakdown {
+    margin-top: 10px;
+}
+
 /* ── Reject Reason Input ──────────────────────────────────────── */
 .ac-reject-reason {
     margin-top: 10px;

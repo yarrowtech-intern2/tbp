@@ -1,10 +1,58 @@
 .map-page {
+  position: relative;
   box-sizing: border-box;
   height: 100dvh;
   padding: calc(env(safe-area-inset-top) + 76px) 0
     calc(env(safe-area-inset-bottom) + 8px);
   overflow: hidden;
   background: #eeeeee;
+}
+
+.map-page--coming-soon .map-page-shell {
+  filter: blur(12px);
+  transform: scale(1.018);
+  pointer-events: none;
+  user-select: none;
+}
+
+.map-page--coming-soon::after {
+  position: absolute;
+  inset: 0;
+  z-index: 900;
+  background: rgba(18, 18, 18, 0.34);
+  content: '';
+  pointer-events: none;
+}
+
+.map-page-coming-soon {
+  position: absolute;
+  inset: 0;
+  z-index: 901;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: #ffffff;
+  text-align: center;
+  pointer-events: auto;
+}
+
+.map-page-coming-soon h1 {
+  margin: 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.6rem, 5vw, 2.35rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.map-page-coming-soon p {
+  margin: 0;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(0.76rem, 2.4vw, 0.95rem);
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .map-page-shell {

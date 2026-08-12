@@ -142,6 +142,14 @@ supabase secrets set EMAIL_REPLY_TO=support@your-domain.com
 supabase secrets set PUBLIC_APP_URL=https://your-frontend-domain.com
 ```
 
+For local checks, keep the same non-public keys in `.env` and run:
+
+```bash
+npm run check:email-config
+```
+
+Vercel/Vite environment variables do not automatically configure Supabase Edge Functions; the Resend keys must be set with `supabase secrets set` for the deployed functions.
+
 Redeploy the booking function after setting secrets:
 
 ```bash

@@ -448,8 +448,8 @@ export const MapPage: React.FC = () => {
   const visibleMapPoints = plannedRoute?.route_points || [];
 
   return (
-    <main className="map-page" aria-label="Map page">
-      <section className="map-page-shell" aria-label="Tourist map">
+    <main className="map-page map-page--coming-soon" aria-label="Map page">
+      <section className="map-page-shell" aria-label="Tourist map" aria-hidden="true">
         <div className="map-page-canvas" aria-label="Map canvas">
           <MapContainer
             center={DEFAULT_MAP_CENTER}
@@ -863,6 +863,10 @@ export const MapPage: React.FC = () => {
           </div>
         </div>
       </section>
+      <div className="map-page-coming-soon" role="status" aria-live="polite">
+        <h1>Coming Soon</h1>
+        <p>In version 2</p>
+      </div>
     </main>
   );
 };

@@ -88,6 +88,7 @@ import {
 import { DEFAULT_SALES_SETTINGS, getPublicAppContent, type SalesSettingsContent } from '../lib/appContent';
 import { ContactSubmissionsPanel } from '../components/contact/ContactSubmissionsPanel';
 import { MarketingContentEditor, SalesSettingsEditor } from '../components/marketing/MarketingContentEditor';
+import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import {
     formatRouteDistance,
     formatRouteDuration,
@@ -1071,18 +1072,6 @@ export const RoleDashboard: React.FC = () => {
     }, [effectiveRole, navigate, profileLoading, routeRole, user]);
 
     useEffect(() => {
-        if (effectiveRole === 'admin' && !isDesktopDashboard && activeSection === 'map') {
-            const nextSearchParams = new URLSearchParams(searchParams);
-            nextSearchParams.set('section', 'overview');
-            setActiveSection('overview');
-            navigate(
-                { pathname: `/dashboard/${effectiveRole}`, search: `?${nextSearchParams.toString()}` },
-                { replace: true },
-            );
-        }
-    }, [activeSection, effectiveRole, isDesktopDashboard, navigate, searchParams]);
-
-    useEffect(() => {
         if (isDesktopDashboard) {
             setAdminMobileMenuOpen(false);
         }
@@ -1299,8 +1288,9 @@ export const RoleDashboard: React.FC = () => {
 
     useEffect(() => {
         if (effectiveRole !== 'admin' || activeSection !== 'map') return;
-        void loadAdminAccountLocations();
-    }, [activeSection, effectiveRole, loadAdminAccountLocations]);
+        setMapLoaded(false);
+        setAdminAccountLocations([]);
+    }, [activeSection, effectiveRole]);
 
     useEffect(() => {
         if (effectiveRole !== 'provider') {
@@ -3583,6 +3573,12 @@ export const RoleDashboard: React.FC = () => {
                             <div><span>Reviewed</span><strong>{formatDate(item.reviewed_at || null)}</strong></div>
                             {item.rejection_reason && <div><span>Reason</span><strong>{item.rejection_reason}</strong></div>}
                         </div>
+                        <FeeBreakdownView
+                            feeBreakdown={item.fee_breakdown}
+                            title="Fee breakdown"
+                            compact
+                            className="rdb-fee-breakdown"
+                        />
                         <div className="rdb-moderation-actions">
                             <button
                                 type="button"
@@ -3934,33 +3930,26 @@ export const RoleDashboard: React.FC = () => {
         }
 
         if (activeSection === 'map') {
-            if (!isDesktopDashboard) {
-                return (
-                    <section className="rdb-panel rdb-panel-wide">
+            return (
+                <section className="rdb-panel rdb-panel-wide rdb-map-coming-soon-panel">
+                    <div className="rdb-map-coming-soon-content" aria-hidden="true">
                         <div className="rdb-panel-head">
                             <h2>Account Geography</h2>
-                            <small>Desktop only</small>
+                            <small>{isDesktopDashboard ? `${adminAccountLocations.length} accounts` : 'Desktop only'}</small>
+                            {isDesktopDashboard ? (
+                                <button
+                                    type="button"
+                                    className="rdb-row-edit-link"
+                                    onClick={() => void loadAdminAccountLocations(true)}
+                                >
+                                    Refresh Map
+                                </button>
+                            ) : null}
                         </div>
+
+                    {!isDesktopDashboard ? (
                         <p className="rdb-empty">The admin map is available on desktop only.</p>
-                    </section>
-                );
-            }
-
-            return (
-                <section className="rdb-panel rdb-panel-wide">
-                    <div className="rdb-panel-head">
-                        <h2>Account Geography</h2>
-                        <small>{adminAccountLocations.length} accounts</small>
-                        <button
-                            type="button"
-                            className="rdb-row-edit-link"
-                            onClick={() => void loadAdminAccountLocations(true)}
-                        >
-                            Refresh Map
-                        </button>
-                    </div>
-
-                    {mapFetching && !mapLoaded ? (
+                    ) : mapFetching && !mapLoaded ? (
                         <div className="rdb-loading">
                             <Loader2 size={32} className="animate-spin" />
                             <p>Loading map…</p>
@@ -3972,6 +3961,12 @@ export const RoleDashboard: React.FC = () => {
                             <LazyAdminAccountMap accounts={adminAccountLocations} />
                         </Suspense>
                     )}
+                    </div>
+
+                    <div className="rdb-map-coming-soon-overlay" role="status" aria-live="polite">
+                        <h2>Coming Soon</h2>
+                        <p>In version 2</p>
+                    </div>
                 </section>
             );
         }
@@ -4043,6 +4038,12 @@ export const RoleDashboard: React.FC = () => {
                                         <div><span>Created</span><strong>{formatDate(selectedModerationItem.created_at)}</strong></div>
                                         <div><span>Reviewed</span><strong>{formatDate(selectedModerationItem.reviewed_at || null)}</strong></div>
                                     </div>
+                                    <FeeBreakdownView
+                                        feeBreakdown={selectedModerationItem.fee_breakdown}
+                                        title="Fee breakdown"
+                                        compact
+                                        className="rdb-fee-breakdown"
+                                    />
                                     <div className="rdb-moderation-actions">
                                         <button
                                             type="button"

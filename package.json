@@ -7,6 +7,7 @@
     "dev": "vite",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "generate:static-seo": "node scripts/generate-static-seo.mjs",
+    "check:email-config": "node scripts/check-email-config.mjs",
     "build": "npm run generate:sitemap && tsc -b && vite build && npm run generate:static-seo",
     "cleanup:avatars:dry-run": "node scripts/cleanup-supabase-avatars.mjs",
     "cleanup:avatars:execute": "node scripts/cleanup-supabase-avatars.mjs --execute",

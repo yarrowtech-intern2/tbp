@@ -336,9 +336,9 @@
   content: "";
   position: absolute;
   top: 50%;
-  right: 2.2rem;
-  width: 0.78rem;
-  height: 3px;
+  right: 1.8rem;
+  width: 1.1rem;
+  height: 2.5px;
   border-radius: 999px;
   background: #ff6a00;
   transform: translateY(-50%) rotate(-45deg);
@@ -350,12 +350,13 @@
   content: "";
   position: absolute;
   top: 50%;
-  right: 1.7rem;
-  width: 0.85rem;
-  height: 0.85rem;
-  border-top: 4px solid #ff6a00;
-  border-right: 4px solid #ff6a00;
-  transform: translateY(-62%);
+  right: 1.72rem;
+  width: 0.56rem;
+  height: 0.56rem;
+  border-top: 2.5px solid #ff6a00;
+  border-right: 2.5px solid #ff6a00;
+  transform: translateY(-50%) rotate(0deg);
+  transform-origin: center;
 }
 
 .home5-hero-menu-panel a:hover,
@@ -415,15 +416,15 @@
 
   .home5-hero-menu-panel a::before,
   .home5-hero-menu-panel button::before {
-    right: 1.92rem;
-    width: 0.66rem;
+    right: 1.62rem;
+    width: 1rem;
   }
 
   .home5-hero-menu-panel a::after,
   .home5-hero-menu-panel button::after {
-    right: 1.5rem;
-    width: 0.72rem;
-    height: 0.72rem;
+    right: 1.55rem;
+    width: 0.52rem;
+    height: 0.52rem;
   }
 }
 
@@ -1318,8 +1319,8 @@
 
 .home5-how-section {
   position: relative;
-  min-height: 500vh;
-  min-height: 500dvh;
+  min-height: 620vh;
+  min-height: 620dvh;
   background:
     radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.035), transparent 34%),
     radial-gradient(circle at 50% 100%, rgba(255, 130, 28, 0.08), transparent 30%),
@@ -1484,12 +1485,18 @@
 }
 
 .home5-flow-core span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 2.35em;
   padding: 0 10px;
   font-family: 'Outfit', sans-serif;
   font-size: clamp(0.86rem, 1.4vw, 1.08rem);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.05;
   letter-spacing: -0.03em;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .home5-flow-node.is-active .home5-flow-core {
@@ -1599,6 +1606,22 @@
 .home5-reveal.is-visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+.home5-how-easy {
+  margin: -18px 0 0;
+  color: #111111;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.45rem, 3vw, 2.45rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  transition:
+    opacity 260ms ease,
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .home5-book-section {
@@ -3083,8 +3106,8 @@
   }
 
   .home5-how-section {
-    min-height: 440vh;
-    min-height: 440dvh;
+    min-height: 560vh;
+    min-height: 560dvh;
   }
 
   .home5-book-section {
@@ -3334,7 +3357,10 @@
   }
 
   .home5-flow-core span {
-    font-size: 0.84rem;
+    min-height: 2.5em;
+    padding: 0 8px;
+    font-size: 0.8rem;
+    line-height: 1.05;
   }
 
   .home5-flow-node.is-active .home5-flow-core {
@@ -3346,6 +3372,11 @@
     min-width: 0;
     max-width: none;
     height: 3.75rem;
+  }
+
+  .home5-how-easy {
+    margin-top: 22px;
+    font-size: clamp(1.35rem, 7vw, 2rem);
   }
 
   .home5-flow-connector::before,
@@ -3443,7 +3474,8 @@
   }
 
   .home5-flow-core span {
-    font-size: 0.78rem;
+    padding: 0 7px;
+    font-size: 0.74rem;
   }
 
   .home5-flow-node.is-active .home5-flow-core {

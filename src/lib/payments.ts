@@ -172,8 +172,20 @@ export interface ConfirmRazorpayBookingInput {
     payment: RazorpayPaymentSuccessResponse;
 }
 
+export interface RecipientEmailDelivery {
+    sent: boolean;
+    skipped: boolean;
+    reason?: string;
+}
+
+export interface BookingEmailDelivery {
+    traveler?: RecipientEmailDelivery;
+    provider?: RecipientEmailDelivery;
+}
+
 export interface ConfirmRazorpayBookingResult {
     booking_id: string;
+    email_delivery?: BookingEmailDelivery;
 }
 
 export const confirmRazorpayBooking = async (
@@ -196,7 +208,19 @@ export const confirmRazorpayBooking = async (
         throw new Error('Booking confirmation response is missing booking_id.');
     }
 
-    return { booking_id: payload.booking_id };
+    const emailDelivery = payload.email_delivery as BookingEmailDelivery | undefined;
+    if (emailDelivery) {
+        const travelerFailed = emailDelivery.traveler && !emailDelivery.traveler.sent;
+        const providerFailed = emailDelivery.provider && !emailDelivery.provider.sent && !emailDelivery.provider.skipped;
+        if (travelerFailed || providerFailed) {
+            console.warn('Booking email delivery issue:', emailDelivery);
+        }
+    }
+
+    return {
+        booking_id: payload.booking_id,
+        email_delivery: emailDelivery,
+    };
 };
 
 export type PromotionKind = 'boost' | 'ad';

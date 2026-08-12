@@ -18,13 +18,19 @@ import {
     type PostRecord,
 } from '../lib/destinations';
 import type { ListingType } from '../lib/platform';
-import { confirmRazorpayBooking, createRazorpayOrder, openRazorpayCheckout } from '../lib/payments';
+import { confirmRazorpayBooking, createRazorpayOrder, openRazorpayCheckout, type BookingEmailDelivery } from '../lib/payments';
 import { getLocalBookedLookup, markListingBookedLocally, onBookingSync } from '../lib/bookingSync';
-import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
+import {
+    PLATFORM_FEE_RATE,
+    calculatePricingFromFeeBreakdown,
+    calculatePricingFromProviderUnit,
+    normalizeListingFeeBreakdown,
+} from '../lib/pricing';
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
 import { SEOHead } from '../components/SEO';
+import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import { buildListingJsonLd } from '../lib/seo';
 import {
     clearPendingBookingConfirmation,
@@ -40,6 +46,21 @@ const toInternalListingType = (value: string | undefined): ListingType | undefin
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const getBookingEmailWarning = (delivery?: BookingEmailDelivery): string | null => {
+    const traveler = delivery?.traveler;
+    if (!traveler || traveler.sent) return null;
+
+    const reason = typeof traveler.reason === 'string' ? traveler.reason.trim() : '';
+    if (traveler.skipped && reason.toLowerCase().includes('already confirmed')) return null;
+    if (reason.toLowerCase().includes('not configured')) {
+        return 'Booking saved, but email delivery is not configured yet.';
+    }
+    if (reason.toLowerCase().includes('no recipient')) {
+        return 'Booking saved, but no email address was available for the confirmation email.';
+    }
+    return 'Booking saved, but the confirmation email was not sent.';
+};
 
 const normalizeLooseString = (value: unknown): string | null => {
     if (typeof value === 'number' && Number.isFinite(value)) return String(value);
@@ -91,6 +112,7 @@ export const ListingDetail: React.FC = () => {
     const [confirmingBooking, setConfirmingBooking] = useState(false);
     const [bookingPendingSync, setBookingPendingSync] = useState(false);
     const [bookingError, setBookingError] = useState<string | null>(null);
+    const [bookingEmailWarning, setBookingEmailWarning] = useState<string | null>(null);
     const [shareFeedback, setShareFeedback] = useState<string | null>(null);
     const [hasExistingBooking, setHasExistingBooking] = useState(false);
     const [hasConfirmedBooking, setHasConfirmedBooking] = useState(false);
@@ -204,6 +226,10 @@ export const ListingDetail: React.FC = () => {
     const shortDescription = useMemo(() => buildShortDescription(description), [description]);
     const location = typeof listing?.location === 'string' ? listing.location : 'Location available after booking';
     const providerUnitPrice = typeof listing?.price === 'number' ? listing.price : 0;
+    const feeBreakdown = useMemo(
+        () => normalizeListingFeeBreakdown(listing?.fee_breakdown),
+        [listing?.fee_breakdown],
+    );
     const ownerUserId = normalizeUuidString(listing?.provider_user_id)
         || normalizeUuidString(listing?.user_id)
         || null;
@@ -213,8 +239,10 @@ export const ListingDetail: React.FC = () => {
         : (listingType || 'activity');
     const displayType = effectiveType === 'guide' ? 'event' : effectiveType;
     const pricing = useMemo(
-        () => calculatePricingFromProviderUnit(providerUnitPrice, guests, platformFeeRate),
-        [providerUnitPrice, guests, platformFeeRate]
+        () => feeBreakdown
+            ? calculatePricingFromFeeBreakdown(feeBreakdown, guests, platformFeeRate)
+            : calculatePricingFromProviderUnit(providerUnitPrice, guests, platformFeeRate),
+        [feeBreakdown, providerUnitPrice, guests, platformFeeRate]
     );
     const canBook = profile?.role === 'tourist';
     const canFavorite = profile?.role === 'tourist';
@@ -280,11 +308,13 @@ export const ListingDetail: React.FC = () => {
 
         setRetryingConfirmation(true);
         setBookingError(null);
+        setBookingEmailWarning(null);
         try {
-            await confirmRazorpayBooking({
+            const confirmation = await confirmRazorpayBooking({
                 booking: pending.booking,
                 payment: pending.payment,
             });
+            setBookingEmailWarning(getBookingEmailWarning(confirmation.email_delivery));
             clearPendingBookingConfirmation({
                 userId: currentUserId,
                 listingId,
@@ -467,6 +497,7 @@ export const ListingDetail: React.FC = () => {
         setBookingAwaitingProvider(false);
         setBookingPendingSync(false);
         setBookingError(null);
+        setBookingEmailWarning(null);
         let paymentCaptured = false;
         try {
             const bookingDraft = {
@@ -507,10 +538,11 @@ export const ListingDetail: React.FC = () => {
                 created_at: new Date().toISOString(),
             });
 
-            await confirmRazorpayBooking({
+            const confirmation = await confirmRazorpayBooking({
                 booking: bookingDraft,
                 payment,
             });
+            setBookingEmailWarning(getBookingEmailWarning(confirmation.email_delivery));
             setBookingSuccess(false);
             setHasExistingBooking(true);
             setHasConfirmedBooking(false);
@@ -797,6 +829,12 @@ export const ListingDetail: React.FC = () => {
                             </div>
                             <h1 className="listing-detail-title">{title}</h1>
                             <p className="listing-detail-description">{description}</p>
+                            <FeeBreakdownView
+                                feeBreakdown={feeBreakdown}
+                                peopleCount={guests}
+                                platformFeeRate={platformFeeRate}
+                                className="listing-detail-fee-breakdown"
+                            />
                             {ownerUserId && (
                                 <div className="listing-detail-actions">
                                     <Link to={`/users/${ownerUserId}`} className="btn btn-secondary listing-detail-pill-btn">
@@ -837,6 +875,9 @@ export const ListingDetail: React.FC = () => {
                                 {bookingError && (
                                     <p className="listing-book-warning">{bookingError}</p>
                                 )}
+                                {bookingEmailWarning && (
+                                    <p className="listing-book-warning">{bookingEmailWarning}</p>
+                                )}
                                 <div className="listing-book-success-actions">
                                     {bookingPendingSync && hasRetryablePendingConfirmation && (
                                         <button
@@ -863,7 +904,7 @@ export const ListingDetail: React.FC = () => {
                             <form onSubmit={handleBooking} className="listing-book-form">
                                 <div className="listing-book-head">
                                     <h3>Reserve</h3>
-                                    <strong>Rs {pricing.tourist_unit_price.toLocaleString()}</strong>
+                                    <strong>Rs {pricing.total_price.toLocaleString()}</strong>
                                 </div>
 
                                 <label className="listing-book-field">

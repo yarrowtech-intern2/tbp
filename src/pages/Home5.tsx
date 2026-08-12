@@ -131,11 +131,11 @@ const FLOW_STEPS = [
   },
   {
     id: 'compare',
-    label: 'Compare',
+    label: 'Book',
   },
   {
-    id: 'book',
-    label: 'Book',
+    id: 'start-travelling',
+    label: 'Start travelling',
   },
 ] as const;
 
@@ -236,7 +236,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'How does booking work?',
-    answer: 'It follows three simple steps: Discover listings for stays, tours, activities, and guides. Compare options side by side with clear pricing and inclusions. Then Book and pay securely — all in one flow.',
+    answer: 'It follows three simple steps: Discover listings for stays, tours, activities, and guides. Book with clear pricing and inclusions. Then start travelling with the trip details in one flow.',
   },
   {
     question: 'Are the providers verified?',
@@ -426,6 +426,7 @@ export const Home5: React.FC = () => {
   const howSceneRef = useRef<HTMLDivElement | null>(null);
   const flowNodesRef = useRef<(HTMLDivElement | null)[]>([]);
   const flowConnectorsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const howEasyRef = useRef<HTMLParagraphElement | null>(null);
   const finalWordsRef = useRef<(HTMLSpanElement | null)[]>([]);
   const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
   const [contactModalOpen, setContactModalOpen] = useState(false);
@@ -1064,9 +1065,10 @@ export const Home5: React.FC = () => {
       howProgressRef.current = nextProgress;
 
       const intro = clampValue(nextProgress / 0.18, 0, 1);
-      const discover = clampValue((nextProgress - 0.18) / 0.2, 0, 1);
-      const compare = clampValue((nextProgress - 0.42) / 0.2, 0, 1);
-      const book = clampValue((nextProgress - 0.68) / 0.2, 0, 1);
+      const discover = clampValue((nextProgress - 0.16) / 0.18, 0, 1);
+      const compare = clampValue((nextProgress - 0.38) / 0.18, 0, 1);
+      const book = clampValue((nextProgress - 0.6) / 0.18, 0, 1);
+      const easy = clampValue((nextProgress - 0.82) / 0.14, 0, 1);
 
       const sceneNode = howSceneRef.current;
       if (sceneNode) {
@@ -1086,6 +1088,12 @@ export const Home5: React.FC = () => {
         if (!el) return;
         el.style.setProperty('--flow-progress', String(connectorProgress[i] ?? 0));
       });
+
+      const easyNode = howEasyRef.current;
+      if (easyNode) {
+        easyNode.style.opacity = String(easy);
+        easyNode.style.transform = `translateY(${(1 - easy) * 18}px) scale(${0.96 + easy * 0.04})`;
+      }
     };
 
     const handleScroll = () => {
@@ -1417,10 +1425,10 @@ export const Home5: React.FC = () => {
                   <span className="home5-how-eyebrow">Why choose The Better Pass</span>
                   <div className="home5-how-heading">
                     <h2 className="home5-how-section-title">Three simple steps</h2>
-                    <p className="home5-how-section-subtitle">from idea to booked experience</p>
+                    <p className="home5-how-section-subtitle">from idea to travelling</p>
                   </div>
                   <p className="home5-how-support">
-                    Discover, compare and confirm with one cleaner path through the trip.
+                    Discover, book and start travelling with one cleaner path through the trip.
                   </p>
                 </div>
 
@@ -1451,6 +1459,7 @@ export const Home5: React.FC = () => {
                       </React.Fragment>
                     ))}
                   </div>
+                  <p ref={howEasyRef} className="home5-how-easy">yep, its that easy</p>
                 </div>
               </div>
             </div>

@@ -83,6 +83,17 @@ interface TransactionalEmailResult {
     reason?: string;
 }
 
+interface RecipientEmailDelivery {
+    sent: boolean;
+    skipped: boolean;
+    reason?: string;
+}
+
+interface BookingEmailDelivery {
+    traveler: RecipientEmailDelivery;
+    provider: RecipientEmailDelivery;
+}
+
 type SupabaseAdminClient = ReturnType<typeof createClient>;
 const PLATFORM_FEE_RATE = 0.15;
 
@@ -590,7 +601,7 @@ const sendBookingEmails = async (args: {
     travelersCount: number;
     totalPrice: number;
     bookingDate?: string | null;
-}) => {
+}): Promise<BookingEmailDelivery> => {
     const appUrl = getAppUrl();
     const touristBookingsUrl = appUrl ? `${appUrl}/dashboard/tourist?section=bookings` : '';
     const providerBookingsUrl = appUrl ? `${appUrl}/dashboard/provider?section=bookings` : '';
@@ -627,6 +638,16 @@ const sendBookingEmails = async (args: {
             ${providerBookingsUrl ? `<p><a href="${escapeHtml(providerBookingsUrl)}">Open provider bookings</a></p>` : ''}
         </div>
     `;
+    let traveler: RecipientEmailDelivery = {
+        sent: false,
+        skipped: true,
+        reason: 'No traveler email address.',
+    };
+    let provider: RecipientEmailDelivery = {
+        sent: false,
+        skipped: true,
+        reason: 'No provider email address.',
+    };
 
     if (args.travelerEmail) {
         const result = await sendTransactionalEmail({
@@ -643,6 +664,11 @@ const sendBookingEmails = async (args: {
                 touristBookingsUrl ? `View: ${touristBookingsUrl}` : '',
             ].filter(Boolean).join('\n'),
         });
+        traveler = {
+            sent: result.ok,
+            skipped: result.skipped,
+            reason: result.ok ? undefined : result.reason,
+        };
         if (!result.ok) console.warn('Booking traveler email was not sent', result.reason);
         else console.info('Booking traveler email sent', { booking_id: args.bookingId });
     } else {
@@ -665,27 +691,65 @@ const sendBookingEmails = async (args: {
                 providerBookingsUrl ? `Open: ${providerBookingsUrl}` : '',
             ].filter(Boolean).join('\n'),
         });
+        provider = {
+            sent: result.ok,
+            skipped: result.skipped,
+            reason: result.ok ? undefined : result.reason,
+        };
         if (!result.ok) console.warn('Booking provider email was not sent', result.reason);
         else console.info('Booking provider email sent', { booking_id: args.bookingId });
     } else if (!args.providerEmail) {
         console.warn('Booking provider email skipped: no provider email address.', {
             booking_id: args.bookingId,
         });
+    } else {
+        provider = {
+            sent: false,
+            skipped: true,
+            reason: 'Provider email matches traveler email.',
+        };
     }
+
+    return { traveler, provider };
 };
 
 const safeSendBookingEmails = async (
     args: Parameters<typeof sendBookingEmails>[0]
-) => {
+): Promise<BookingEmailDelivery> => {
     try {
-        await sendBookingEmails(args);
+        return await sendBookingEmails(args);
     } catch (error) {
         console.error('confirm-razorpay-booking email send failed (non-blocking)', {
             error: asErrorMessage(error),
             booking_id: args.bookingId,
         });
+        return {
+            traveler: {
+                sent: false,
+                skipped: false,
+                reason: asErrorMessage(error) || 'Traveler email send failed.',
+            },
+            provider: {
+                sent: false,
+                skipped: false,
+                reason: asErrorMessage(error) || 'Provider email send failed.',
+            },
+        };
     }
 };
+
+const skippedBookingEmailDelivery = (reason: string): BookingEmailDelivery => ({
+    traveler: {
+        sent: false,
+        skipped: true,
+        reason,
+    },
+    provider: {
+        sent: false,
+        skipped: true,
+        reason,
+    },
+});
 
 const authenticateUser = async (authHeader: string) => {
     const supabaseUrl = ensureEnv('SUPABASE_URL');
@@ -854,7 +918,10 @@ Deno.serve(async (req) => {
             .maybeSingle();
 
         if (!existingLookup.error && existingLookup.data?.id) {
-            return jsonResponse(200, { booking_id: existingLookup.data.id });
+            return jsonResponse(200, {
+                booking_id: existingLookup.data.id,
+                email_delivery: skippedBookingEmailDelivery('Booking payment was already confirmed.'),
+            });
         }
 
         const resolvedProviderUserId = await resolveProviderUserId(
@@ -1034,7 +1101,7 @@ Deno.serve(async (req) => {
                     travelerEmail,
                     travelerPhone,
                 });
-                await safeSendBookingEmails({
+                const emailDelivery = await safeSendBookingEmails({
                     travelerEmail,
                     travelerName,
                     providerEmail,
@@ -1047,6 +1114,7 @@ Deno.serve(async (req) => {
                 });
                 return jsonResponse(200, {
                     booking_id: confirmExisting.data.id,
+                    email_delivery: emailDelivery,
                 });
             }
         }
@@ -1138,7 +1206,7 @@ Deno.serve(async (req) => {
                 travelerEmail,
                 travelerPhone,
             });
-            await safeSendBookingEmails({
+            const emailDelivery = await safeSendBookingEmails({
                 travelerEmail,
                 travelerName,
                 providerEmail,
@@ -1151,6 +1219,7 @@ Deno.serve(async (req) => {
             });
             return jsonResponse(200, {
                 booking_id: bookingInsert.data.id,
+                email_delivery: emailDelivery,
             });
         }
 
@@ -1209,7 +1278,7 @@ Deno.serve(async (req) => {
             travelerEmail,
             travelerPhone,
         });
-        await safeSendBookingEmails({
+        const emailDelivery = await safeSendBookingEmails({
             travelerEmail,
             travelerName,
             providerEmail,
@@ -1224,6 +1293,7 @@ Deno.serve(async (req) => {
         return jsonResponse(200, {
             booking_id: fallbackBookingId,
             storage: 'bookings_acts',
+            email_delivery: emailDelivery,
         });
     } catch (error) {
         if (error instanceof Error && error.message === 'Unauthorized') {

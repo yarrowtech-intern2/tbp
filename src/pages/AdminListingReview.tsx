@@ -12,6 +12,7 @@ import {
     type VerificationRecord,
 } from '../lib/destinations';
 import { getRoleLabel } from '../lib/platform';
+import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import './admin-listing-review.css';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -235,6 +236,12 @@ export const AdminListingReview: React.FC = () => {
                             <div><span>Government ID Ref</span><strong>{governmentId}</strong></div>
                             <div><span>Verification Status</span><strong>{verification?.status || providerProfile?.verification_status || 'N/A'}</strong></div>
                         </div>
+
+                        <FeeBreakdownView
+                            feeBreakdown={listing.fee_breakdown}
+                            title="Fee breakdown"
+                            className="alr-fee-breakdown"
+                        />
 
                         <label className="alr-reject-reason">
                             <span>Reject Reason</span>

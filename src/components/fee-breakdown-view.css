@@ -1,0 +1,142 @@
+.fee-breakdown-view {
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    background: var(--surface-main);
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+}
+
+.fbv-head {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.fbv-head h2 {
+    font-size: 1.05rem;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.fbv-head span {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.fbv-empty {
+    border: 1px dashed var(--border-light);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-weight: 700;
+    padding: 14px;
+    text-align: center;
+}
+
+.fbv-list {
+    display: grid;
+    gap: 8px;
+}
+
+.fbv-row {
+    align-items: flex-start;
+    background: var(--surface-muted);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 10px 12px;
+}
+
+.fbv-row-main {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.fbv-row-main strong,
+.fbv-amount {
+    color: var(--text-main);
+}
+
+.fbv-row-main p {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.fbv-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.fbv-pills span {
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 3px 7px;
+    text-transform: uppercase;
+}
+
+.fbv-amount {
+    white-space: nowrap;
+}
+
+.fbv-totals {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.fbv-totals div {
+    background: var(--surface-muted);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+}
+
+.fbv-totals span {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.fbv-totals strong {
+    color: var(--text-main);
+    font-size: 0.92rem;
+}
+
+.fee-breakdown-view--compact {
+    padding: 12px;
+}
+
+.fee-breakdown-view--compact .fbv-head h2 {
+    font-size: 0.95rem;
+}
+
+.fee-breakdown-view--compact .fbv-row {
+    padding: 9px 10px;
+}
+
+@media (max-width: 560px) {
+    .fbv-row {
+        display: grid;
+    }
+
+    .fbv-amount {
+        white-space: normal;
+    }
+}

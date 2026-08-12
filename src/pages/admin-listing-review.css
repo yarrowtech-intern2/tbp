@@ -155,6 +155,10 @@
     font-size: 0.95rem;
 }
 
+.alr-fee-breakdown {
+    width: 100%;
+}
+
 .alr-reject-reason {
     display: flex;
     flex-direction: column;

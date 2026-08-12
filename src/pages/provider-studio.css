@@ -356,6 +356,10 @@
     cursor: not-allowed;
 }
 
+.ps-input[readonly] {
+    cursor: default;
+}
+
 .ps-textarea {
     min-height: 140px;
     resize: vertical;
@@ -528,6 +532,95 @@
 .ps-gallery-actions button:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+}
+
+.ps-fee-section {
+    border: 1.5px solid var(--border-light);
+    border-radius: 14px;
+    background: var(--bg-main);
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+}
+
+.ps-fee-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ps-fee-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.ps-fee-row {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.4fr) minmax(90px, 0.7fr) minmax(130px, 0.9fr) minmax(140px, 1fr) minmax(140px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.ps-fee-name[readonly] {
+    background: color-mix(in srgb, var(--surface-muted) 58%, var(--bg-main));
+    font-weight: 700;
+}
+
+.ps-fee-note {
+    min-width: 0;
+}
+
+.ps-fee-remove-btn {
+    align-items: center;
+    border: 1.5px solid var(--border-light);
+    background: var(--surface-main);
+    border-radius: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    height: 42px;
+    justify-content: center;
+    width: 42px;
+}
+
+.ps-fee-remove-btn:hover:not(:disabled) {
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #b91c1c;
+}
+
+.ps-fee-remove-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ps-fee-preview {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.ps-fee-preview div {
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background: var(--surface-main);
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+}
+
+.ps-fee-preview span {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.ps-fee-preview strong {
+    color: var(--text-main);
+    font-size: 0.95rem;
 }
 
 .ps-consent-block {
@@ -1014,6 +1107,30 @@
 
     .ps-upload-hint {
         text-align: left;
+    }
+}
+
+@media (max-width: 860px) {
+    .ps-fee-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .ps-fee-note {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 520px) {
+    .ps-fee-row {
+        grid-template-columns: 1fr;
+    }
+
+    .ps-fee-note {
+        grid-column: auto;
+    }
+
+    .ps-fee-remove-btn {
+        width: 100%;
     }
 }
 

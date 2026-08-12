@@ -513,7 +513,7 @@ export const Auth: React.FC = () => {
         setInfo(null);
 
         try {
-            await signUpWithRole({
+            const signupResult = await signUpWithRole({
                 fullName: formValues.fullName,
                 email: formValues.email,
                 password: formValues.password,
@@ -542,10 +542,15 @@ export const Auth: React.FC = () => {
                 }
             }
 
+            const emailDeliveryNote = signupResult.welcomeEmail?.sent === false
+                ? ' The welcome email was not sent; email delivery may need admin configuration.'
+                : '';
+
             setInfo(
-                activeRole === 'tour_company' || activeRole === 'tour_instructor' || activeRole === 'tour_guide'
+                (activeRole === 'tour_company' || activeRole === 'tour_instructor' || activeRole === 'tour_guide'
                     ? 'Account created. Check your email verification link, then sign in to submit listings for admin approval.'
-                    : 'Account created. Check your email verification link to continue.'
+                    : 'Account created. Check your email verification link to continue.')
+                + emailDeliveryNote
             );
             clearAuthDraft();
             setFormValues(DEFAULT_SIGNUP_VALUES);

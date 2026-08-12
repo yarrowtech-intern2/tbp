@@ -30,6 +30,7 @@ import {
 import { getAccountRoleGroup, type AccountRoleGroup } from '../lib/accountGeo';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { LISTING_LABELS, getRoleLabel } from '../lib/platform';
+import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import './admin-console.css';
 
 type Tab = 'providers' | 'listings' | 'audit' | 'map';
@@ -912,6 +913,13 @@ export const AdminConsole: React.FC = () => {
                                                     <span className="ac-detail-key">Description</span>
                                                     <p>{listing.description || 'No description provided.'}</p>
                                                 </div>
+
+                                                <FeeBreakdownView
+                                                    feeBreakdown={listing.fee_breakdown}
+                                                    title="Fee breakdown"
+                                                    compact
+                                                    className="ac-fee-breakdown"
+                                                />
 
                                                 <div className="ac-reject-reason">
                                                     <span className="ac-reject-reason-label">Reject reason for provider</span>

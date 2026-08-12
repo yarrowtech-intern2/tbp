@@ -10,6 +10,8 @@ import {
     Image,
     Loader2,
     MapPin,
+    Plus,
+    ReceiptText,
     ShieldAlert,
     Sparkles,
     Star,
@@ -27,7 +29,16 @@ import {
     type ListingInput,
     type PostRecord,
 } from '../lib/destinations';
-import { PLATFORM_FEE_RATE, calculatePricingFromProviderUnit } from '../lib/pricing';
+import {
+    PLATFORM_FEE_RATE,
+    buildListingFeeBreakdownForStorage,
+    calculatePricingFromFeeBreakdown,
+    calculatePricingFromProviderUnit,
+    type ListingFeeBreakdown,
+    type ListingFeeBreakdownBasis,
+    type ListingFeeBreakdownItem,
+    type ListingFeeBreakdownStatus,
+} from '../lib/pricing';
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { uploadCloudinaryImage } from '../lib/cloudinaryUpload';
@@ -37,6 +48,121 @@ import './provider-studio.css';
 const MAX_LISTING_IMAGE_MB = 8;
 const MIN_LISTING_IMAGES = 3;
 const MAX_LISTING_IMAGES = 10;
+
+const PRESET_FEE_ITEMS = [
+    'Base package fee',
+    'Transport',
+    'Meals',
+    'Accommodation',
+    'Guide fee',
+    'Entry tickets',
+] as const;
+
+const FEE_BASIS_OPTIONS: Array<{ value: ListingFeeBreakdownBasis; label: string }> = [
+    { value: 'per_person', label: 'Per person' },
+    { value: 'per_package', label: 'Per package' },
+];
+
+const FEE_STATUS_OPTIONS: Array<{ value: ListingFeeBreakdownStatus; label: string }> = [
+    { value: 'included', label: 'Included' },
+    { value: 'optional', label: 'Optional' },
+    { value: 'pay_at_location', label: 'Pay at location' },
+];
+
+const createFeeItemId = () => (
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `fee-${Date.now()}-${Math.random().toString(36).slice(2)}`
+);
+
+const createFeeItem = (
+    label: string,
+    isCustom = false,
+    amount = 0,
+): ListingFeeBreakdownItem => ({
+    id: createFeeItemId(),
+    label,
+    amount,
+    basis: 'per_person',
+    status: 'included',
+    note: '',
+    is_custom: isCustom,
+});
+
+const createDefaultFeeItems = () => PRESET_FEE_ITEMS.map((label) => createFeeItem(label));
+
+const isFeeBasis = (value: unknown): value is ListingFeeBreakdownBasis => (
+    value === 'per_person' || value === 'per_package'
+);
+
+const isFeeStatus = (value: unknown): value is ListingFeeBreakdownStatus => (
+    value === 'included' || value === 'optional' || value === 'pay_at_location'
+);
+
+const normalizeDraftAmount = (value: unknown) => {
+    const amount = typeof value === 'number' ? value : Number(value || 0);
+    return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0;
+};
+
+const normalizeFeeDraftItems = (
+    value: unknown,
+    fallbackPrice?: number | null,
+): ListingFeeBreakdownItem[] => {
+    const row = value && typeof value === 'object' ? value as Record<string, unknown> : null;
+    const rawItems = row && Array.isArray(row.items) ? row.items : [];
+    const items = rawItems
+        .map((item): ListingFeeBreakdownItem | null => {
+            if (!item || typeof item !== 'object') return null;
+            const raw = item as Record<string, unknown>;
+            const label = typeof raw.label === 'string' ? raw.label.trim() : '';
+            const amount = normalizeDraftAmount(raw.amount);
+            if (!label && amount <= 0) return null;
+            return {
+                id: typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : createFeeItemId(),
+                label,
+                amount,
+                basis: isFeeBasis(raw.basis) ? raw.basis : 'per_person',
+                status: isFeeStatus(raw.status) ? raw.status : 'included',
+                note: typeof raw.note === 'string' ? raw.note : '',
+                is_custom: raw.is_custom === true,
+            };
+        })
+        .filter((item): item is ListingFeeBreakdownItem => Boolean(item));
+
+    if (items.length) return items;
+
+    const fallbackAmount = normalizeDraftAmount(fallbackPrice);
+    if (fallbackAmount > 0) {
+        const [base, ...rest] = createDefaultFeeItems();
+        return [{ ...base, amount: fallbackAmount }, ...rest];
+    }
+
+    return createDefaultFeeItems();
+};
+
+const buildDraftFeeBreakdown = (
+    items: ListingFeeBreakdownItem[],
+    platformFeeRate: number,
+): ListingFeeBreakdown => {
+    const draft: ListingFeeBreakdown = {
+        version: 1,
+        currency: 'INR',
+        items,
+    };
+    const pricing = calculatePricingFromFeeBreakdown(draft, 1, platformFeeRate);
+
+    return {
+        ...draft,
+        provider_total: pricing.provider_subtotal,
+        platform_fee_rate: pricing.platform_fee_rate,
+        platform_fee_amount: pricing.platform_fee_amount,
+        tourist_total: pricing.total_price,
+    };
+};
+
+const getDraftFeeItems = (breakdown?: ListingFeeBreakdown | null) => (
+    breakdown?.items?.length ? breakdown.items : createDefaultFeeItems()
+);
 
 const TYPE_META: Record<ListingType, { icon: React.ReactNode; description: string }> = {
     tour: { icon: <Compass size={22} />, description: 'Itinerary-led guided tour' },
@@ -54,6 +180,7 @@ const EMPTY_FORM = (type: ListingType): ListingInput => ({
     type,
     sub_category: '',
     price: null,
+    fee_breakdown: buildDraftFeeBreakdown(createDefaultFeeItems(), PLATFORM_FEE_RATE),
     starts_at: '',
     status: 'pending',
 });
@@ -87,6 +214,10 @@ const readProviderStudioDraft = (userId: string, allowedTypes: ListingType[]): P
                 type,
                 gallery_images: normalizeImageList(rawForm.gallery_images || []),
                 price: typeof rawForm.price === 'number' ? rawForm.price : Number(rawForm.price || 0) || null,
+                fee_breakdown: buildDraftFeeBreakdown(
+                    normalizeFeeDraftItems(rawForm.fee_breakdown, typeof rawForm.price === 'number' ? rawForm.price : Number(rawForm.price || 0) || null),
+                    PLATFORM_FEE_RATE,
+                ),
             },
             galleryInput: typeof parsed.galleryInput === 'string' ? parsed.galleryInput : '',
             acceptTerms: parsed.acceptTerms === true,
@@ -182,6 +313,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [imgError, setImgError] = useState(false);
     const [galleryInput, setGalleryInput] = useState('');
     const [galleryError, setGalleryError] = useState<string | null>(null);
+    const [feeBreakdownError, setFeeBreakdownError] = useState<string | null>(null);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptAgreement, setAcceptAgreement] = useState(false);
     const [consentError, setConsentError] = useState<string | null>(null);
@@ -227,6 +359,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setEditingListingId(null);
         setImgError(false);
         setGalleryError(null);
+        setFeeBreakdownError(null);
         setConsentError(null);
         setForm(draft.form);
         setGalleryInput(draft.galleryInput);
@@ -249,6 +382,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setImgError(false);
         setGalleryInput('');
         setGalleryError(null);
+        setFeeBreakdownError(null);
         setAcceptTerms(false);
         setAcceptAgreement(false);
         setConsentError(null);
@@ -269,6 +403,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setImgError(false);
         setGalleryInput('');
         setGalleryError(null);
+        setFeeBreakdownError(null);
         setAcceptTerms(false);
         setAcceptAgreement(false);
         setConsentError(null);
@@ -287,10 +422,14 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             type: listingType,
             sub_category: listing.sub_category || '',
             price: typeof listing.price === 'number' ? listing.price : null,
+            fee_breakdown: buildDraftFeeBreakdown(
+                normalizeFeeDraftItems(listing.fee_breakdown, typeof listing.price === 'number' ? listing.price : null),
+                platformFeeRate,
+            ),
             starts_at: listing.starts_at || '',
             status: (listing.status as ListingInput['status']) || 'pending',
         });
-    }, [allowedTypes, currentUserId]);
+    }, [allowedTypes, currentUserId, platformFeeRate]);
 
     useEffect(() => {
         const editId = searchParams.get('edit');
@@ -336,10 +475,53 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         () => normalizeImageList(form.gallery_images || []),
         [form.gallery_images]
     );
-    const pricingPreview = useMemo(
-        () => calculatePricingFromProviderUnit(typeof form.price === 'number' ? form.price : 0, 1, platformFeeRate),
-        [form.price, platformFeeRate]
+    const feeItems = useMemo(
+        () => getDraftFeeItems(form.fee_breakdown),
+        [form.fee_breakdown]
     );
+    const feeBreakdownDraft = useMemo(
+        () => buildDraftFeeBreakdown(feeItems, platformFeeRate),
+        [feeItems, platformFeeRate]
+    );
+    const pricingPreview = useMemo(
+        () => calculatePricingFromFeeBreakdown(feeBreakdownDraft, 1, platformFeeRate),
+        [feeBreakdownDraft, platformFeeRate]
+    );
+
+    const updateFeeItems = useCallback((updater: (items: ListingFeeBreakdownItem[]) => ListingFeeBreakdownItem[]) => {
+        setForm((current) => {
+            const currentItems = getDraftFeeItems(current.fee_breakdown);
+            const nextItems = updater(currentItems);
+            const nextBreakdown = buildDraftFeeBreakdown(nextItems, platformFeeRate);
+            const nextPricing = calculatePricingFromFeeBreakdown(nextBreakdown, 1, platformFeeRate);
+            return {
+                ...current,
+                fee_breakdown: nextBreakdown,
+                price: nextPricing.provider_subtotal > 0 ? nextPricing.provider_subtotal : null,
+            };
+        });
+        setFeeBreakdownError(null);
+    }, [platformFeeRate]);
+
+    const updateFeeItem = useCallback((
+        itemId: string,
+        patch: Partial<ListingFeeBreakdownItem>,
+    ) => {
+        updateFeeItems((items) => items.map((item) => (
+            item.id === itemId ? { ...item, ...patch } : item
+        )));
+    }, [updateFeeItems]);
+
+    const addCustomFeeItem = useCallback(() => {
+        updateFeeItems((items) => [...items, createFeeItem('', true)]);
+    }, [updateFeeItems]);
+
+    const removeCustomFeeItem = useCallback((itemId: string) => {
+        updateFeeItems((items) => {
+            const nextItems = items.filter((item) => item.id !== itemId || !item.is_custom);
+            return nextItems.length ? nextItems : createDefaultFeeItems();
+        });
+    }, [updateFeeItems]);
 
     const applyGallery = useCallback((nextImages: string[]) => {
         const cleaned = normalizeImageList(nextImages);
@@ -447,8 +629,20 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             setGalleryError('Primary and cover images must be different.');
             return;
         }
+        const feeLineMissingLabel = feeItems.find((item) => item.amount > 0 && !item.label.trim());
+        if (feeLineMissingLabel) {
+            setFeeBreakdownError('Add a label for every fee item with an amount.');
+            return;
+        }
+        const submissionFeeBreakdown = buildListingFeeBreakdownForStorage(feeBreakdownDraft, platformFeeRate);
+        if (!submissionFeeBreakdown) {
+            setFeeBreakdownError('Add at least one included fee item before posting.');
+            return;
+        }
+        const submissionPricing = calculatePricingFromFeeBreakdown(submissionFeeBreakdown, 1, platformFeeRate);
         setConsentError(null);
         setGalleryError(null);
+        setFeeBreakdownError(null);
         setSaving(true);
         try {
             await createOrUpdateListing({
@@ -460,9 +654,10 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 image_url: primaryImage,
                 cover_image_url: coverImage,
                 gallery_images: normalizedGallery,
+                fee_breakdown: submissionFeeBreakdown,
                 status: 'pending',
                 rejection_reason: null,
-                price: typeof form.price === 'number' ? form.price : Number(form.price || 0) || null,
+                price: submissionPricing.provider_subtotal,
                 starts_at: form.starts_at || null,
             });
             await loadListings();
@@ -787,22 +982,127 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                 </div>
                             </div>
 
+                            <div className="ps-fee-section">
+                                <div className="ps-fee-section-head">
+                                    <div>
+                                        <span className="ps-field-label"><ReceiptText size={13} /> Fee breakdown</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="ps-upload-btn"
+                                        onClick={addCustomFeeItem}
+                                        disabled={!canAccessStudio}
+                                    >
+                                        <Plus size={14} />
+                                        Add custom
+                                    </button>
+                                </div>
+
+                                <div className="ps-fee-grid">
+                                    {feeItems.map((item) => (
+                                        <div key={item.id} className="ps-fee-row">
+                                            <input
+                                                className="ps-input ps-fee-name"
+                                                value={item.label}
+                                                onChange={(event) => updateFeeItem(item.id, { label: event.target.value })}
+                                                readOnly={!item.is_custom}
+                                                placeholder="Custom fee"
+                                                disabled={!canAccessStudio}
+                                            />
+                                            <input
+                                                className="ps-input"
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                value={item.amount > 0 ? item.amount : ''}
+                                                onChange={(event) => updateFeeItem(item.id, { amount: normalizeDraftAmount(event.target.value) })}
+                                                placeholder="Rs"
+                                                disabled={!canAccessStudio}
+                                            />
+                                            <select
+                                                className="ps-select"
+                                                value={item.basis}
+                                                onChange={(event) => updateFeeItem(item.id, { basis: event.target.value as ListingFeeBreakdownBasis })}
+                                                disabled={!canAccessStudio}
+                                            >
+                                                {FEE_BASIS_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                className="ps-select"
+                                                value={item.status}
+                                                onChange={(event) => updateFeeItem(item.id, { status: event.target.value as ListingFeeBreakdownStatus })}
+                                                disabled={!canAccessStudio}
+                                            >
+                                                {FEE_STATUS_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                className="ps-input ps-fee-note"
+                                                value={item.note || ''}
+                                                onChange={(event) => updateFeeItem(item.id, { note: event.target.value })}
+                                                placeholder="Note"
+                                                disabled={!canAccessStudio}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="ps-fee-remove-btn"
+                                                onClick={() => removeCustomFeeItem(item.id)}
+                                                disabled={!canAccessStudio || !item.is_custom}
+                                                aria-label="Remove custom fee item"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {feeBreakdownError && <p className="ps-gallery-error">{feeBreakdownError}</p>}
+
+                                <div className="ps-fee-preview">
+                                    <div>
+                                        <span>Vendor package fee</span>
+                                        <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Platform fee ({Math.round(platformFeeRate * 100)}%)</span>
+                                        <strong>Rs {pricingPreview.platform_fee_amount.toLocaleString()}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Tourist total shown</span>
+                                        <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong>
+                                    </div>
+                                    {pricingPreview.optional_total > 0 && (
+                                        <div>
+                                            <span>Optional items</span>
+                                            <strong>Rs {pricingPreview.optional_total.toLocaleString()}</strong>
+                                        </div>
+                                    )}
+                                    {pricingPreview.pay_at_location_total > 0 && (
+                                        <div>
+                                            <span>Pay at location</span>
+                                            <strong>Rs {pricingPreview.pay_at_location_total.toLocaleString()}</strong>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="ps-two-up">
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><DollarSign size={13} /> Price (Rs)</span>
+                                    <span className="ps-field-label"><DollarSign size={13} /> Vendor package fee (Rs)</span>
                                     <input
                                         className="ps-input"
                                         type="number"
                                         min="1"
-                                        value={typeof form.price === 'number' ? form.price : ''}
-                                        onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) || null }))}
+                                        value={pricingPreview.provider_subtotal > 0 ? pricingPreview.provider_subtotal : ''}
                                         placeholder="0"
-                                        disabled={!canAccessStudio}
-                                        required
+                                        readOnly
                                     />
                                     <p className="ps-price-note">
-                                        Tourist price shown in package cards: <strong>Rs {pricingPreview.tourist_unit_price.toLocaleString()}</strong> (includes {Math.round(platformFeeRate * 100)}% platform fee).
-                                        You will receive <strong>Rs {pricingPreview.provider_unit_price.toLocaleString()}</strong> per booking.
+                                        Package cards show <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong> including platform fee.
+                                        You receive <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong> for one traveler/package selection.
                                     </p>
                                 </label>
                                 <label className="ps-field">

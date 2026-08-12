@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, X } from 'lucide-react';
+import { Globe2 } from 'reicon-react';
 import { useAppTutorial } from '../context/app-tutorial-context-value';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
@@ -20,7 +21,6 @@ export const Navbar: React.FC = () => {
     const isDark = theme === 'dark';
     const homePath = '/';
     const logoSrc = isDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
-    const mapIconSrc = isDark ? '/icons/map-light.svg' : '/icons/map.svg';
     const navSurface = isDark ? 'rgba(0,0,0,0.74)' : 'rgba(242,138,36,0.46)';
     const navSurfaceSoft = isDark ? 'rgba(10,10,10,0.80)' : 'rgba(242,138,36,0.58)';
     const navBorder = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(138,73,8,0.28)';
@@ -194,7 +194,7 @@ export const Navbar: React.FC = () => {
                             aria-label="Open map"
                             title="Map"
                         >
-                            <img src={mapIconSrc} alt="" className="nbr-map-icon" aria-hidden="true" />
+                            <Globe2 size={24} className="nbr-map-icon" aria-hidden="true" />
                         </Link>
                         <Link to={dashboardPath} className="nbr-user-chip">
                             <div className="nbr-user-text">
@@ -433,9 +433,9 @@ export const Navbar: React.FC = () => {
 
                 .nbr-map-icon {
                     display: block;
-                    height: 18px;
-                    width: 18px;
-                    object-fit: contain;
+                    height: 24px;
+                    width: 24px;
+                    color: currentColor;
                 }
 
                 .nbr-map-button:hover,

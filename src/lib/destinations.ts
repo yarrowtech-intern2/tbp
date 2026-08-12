@@ -16,7 +16,13 @@ import {
 } from './platform';
 import { resolveProfileCoordinates } from './accountGeo';
 import { isPromotionWindowActive, type PromotionPlanKey } from './promotions';
-import { deriveBookingAmounts } from './pricing';
+import {
+    PLATFORM_FEE_RATE,
+    buildListingFeeBreakdownForStorage,
+    calculatePricingFromFeeBreakdown,
+    deriveBookingAmounts,
+    type ListingFeeBreakdown,
+} from './pricing';
 
 export interface Destination {
     id: string;
@@ -90,6 +96,7 @@ export interface PostRecord {
     type?: string | null;
     sub_category?: string | null;
     price?: number | null;
+    fee_breakdown?: ListingFeeBreakdown | null;
     created_at?: string;
     starts_at?: string;
     status?: ListingStatus | string | null;
@@ -116,6 +123,7 @@ export interface ListingInput {
     type: ListingType;
     sub_category?: string;
     price?: number | null;
+    fee_breakdown?: ListingFeeBreakdown | null;
     starts_at?: string | null;
     status?: ListingStatus;
     rejection_reason?: string | null;
@@ -270,6 +278,8 @@ export type AppNotificationType =
     | 'verification_resubmitted'
     | 'verification_approved'
     | 'verification_rejected'
+    | 'listing_submitted'
+    | 'listing_resubmitted'
     | 'listing_approved'
     | 'listing_rejected';
 
@@ -343,6 +353,12 @@ export interface SignupInput extends ProviderApplicationInput {
     country: string;
     city: string;
     bio?: string;
+}
+
+export interface SignupEmailDelivery {
+    sent: boolean;
+    skipped?: boolean;
+    reason?: string;
 }
 
 export interface UnifiedBooking {
@@ -1644,6 +1660,7 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
     const normalizedStatus: ListingStatus = 'pending';
     const normalizedTitle = listing.title?.trim() || 'Untitled listing';
     const normalizedType = normalizeListingType(listing.type);
+    const isResubmission = Boolean(listing.id);
     const normalizedCategory = listing.sub_category?.trim() || normalizedType;
     const normalizedImage = listing.image_url?.trim() || '';
     const normalizedCoverImage = listing.cover_image_url?.trim() || '';
@@ -1676,7 +1693,21 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
     if (coverImageCandidate === primaryImage) {
         throw new Error('Cover image must be different from primary image.');
     }
-    const normalizedPrice = typeof listing.price === 'number' ? listing.price : Number(listing.price || 0) || 0;
+    const feeBreakdown = listing.fee_breakdown
+        ? buildListingFeeBreakdownForStorage(
+            listing.fee_breakdown,
+            listing.fee_breakdown.platform_fee_rate ?? PLATFORM_FEE_RATE,
+        )
+        : null;
+    if (!feeBreakdown) {
+        throw new Error('A detailed fee breakdown with at least one included item is required before posting a package.');
+    }
+    const feePricing = calculatePricingFromFeeBreakdown(
+        feeBreakdown,
+        1,
+        feeBreakdown.platform_fee_rate ?? PLATFORM_FEE_RATE,
+    );
+    const normalizedPrice = feePricing.provider_subtotal;
     const payload: Record<string, unknown> = {
         ...listing,
         title: normalizedTitle,
@@ -1688,6 +1719,7 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
         cover_image_url: coverImageCandidate,
         thumbnail_url: primaryImage,
         gallery_images: galleryWithCover,
+        fee_breakdown: feeBreakdown,
         price: normalizedPrice,
         status: normalizedStatus,
         rejection_reason: null,
@@ -1700,7 +1732,30 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
         payload.created_at = new Date().toISOString();
     }
 
-    return writePostWithSchemaFallback(payload, listing.id);
+    const savedListing = await writePostWithSchemaFallback(payload, listing.id);
+    const savedListingId = savedListing?.id || listing.id;
+    const providerUserId = typeof listing.provider_user_id === 'string' && listing.provider_user_id
+        ? listing.provider_user_id
+        : typeof listing.user_id === 'string' && listing.user_id
+            ? listing.user_id
+            : null;
+
+    if (savedListingId && providerUserId) {
+        await notifyAdmins({
+            actorUserId: providerUserId,
+            type: isResubmission ? 'listing_resubmitted' : 'listing_submitted',
+            title: isResubmission ? 'Listing resubmitted' : 'New listing submitted',
+            body: `${normalizedTitle} was ${isResubmission ? 'resubmitted' : 'submitted'} for admin review.`,
+            metadata: {
+                listing_id: savedListingId,
+                listing_type: normalizedType,
+                target_user_id: providerUserId,
+                route: '/dashboard/admin?section=moderation',
+            },
+        });
+    }
+
+    return savedListing;
 };
 
 export const getContentModerationQueue = async (): Promise<PostRecord[]> => {
@@ -1832,6 +1887,32 @@ export const resubmitListing = async (listingId: string) => {
             listingTitle: typeof data?.title === 'string' ? data.title : typeof data?.name === 'string' ? data.name : null,
         },
     });
+
+    const targetProviderId = typeof data?.provider_user_id === 'string'
+        ? data.provider_user_id
+        : typeof data?.user_id === 'string'
+            ? data.user_id
+            : null;
+
+    if (targetProviderId) {
+        const listingTitle = typeof data?.title === 'string'
+            ? data.title
+            : typeof data?.name === 'string'
+                ? data.name
+                : 'A listing';
+        await notifyAdmins({
+            actorUserId: targetProviderId,
+            type: 'listing_resubmitted',
+            title: 'Listing resubmitted',
+            body: `${listingTitle} was resubmitted for admin review.`,
+            metadata: {
+                listing_id: listingId,
+                listing_type: typeof data?.type === 'string' ? data.type : null,
+                target_user_id: targetProviderId,
+                route: '/dashboard/admin?section=moderation',
+            },
+        });
+    }
 
     return data as PostRecord | null;
 };
@@ -2417,6 +2498,13 @@ const writePostWithSchemaFallback = async (
                     details: result.error.message,
                 };
             }
+            if (missingColumn === 'fee_breakdown') {
+                throw {
+                    code: 'POST_FEE_BREAKDOWN_SCHEMA_REQUIRED',
+                    message: 'The posts.fee_breakdown column is missing in Supabase. Run docs/listing-fee-breakdown-migration.sql before submitting packages.',
+                    details: result.error.message,
+                };
+            }
             delete nextPayload[missingColumn];
             continue;
         }
@@ -2702,7 +2790,12 @@ export const signUpWithRole = async (input: SignupInput) => {
     });
 
     if (error) throw error;
-    if (!data.user) return data;
+    let welcomeEmail: SignupEmailDelivery = {
+        sent: false,
+        skipped: true,
+        reason: 'Signup did not return a user.',
+    };
+    if (!data.user) return { ...data, welcomeEmail };
 
     try {
         await createOrUpdateProfileFromSignup(data.user.id, input);
@@ -2712,20 +2805,39 @@ export const signUpWithRole = async (input: SignupInput) => {
     }
 
     try {
-        const { error: emailError } = await supabase.functions.invoke('send-signup-email', {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-signup-email', {
             body: {
                 user_id: data.user.id,
                 role: input.role,
             },
         });
+        const emailPayload = emailData as Partial<SignupEmailDelivery> | null;
         if (emailError) {
+            welcomeEmail = {
+                sent: false,
+                skipped: false,
+                reason: emailError.message,
+            };
             console.warn('Signup welcome email request failed:', emailError.message);
+        } else if (emailPayload?.sent === true) {
+            welcomeEmail = { sent: true };
+        } else {
+            welcomeEmail = {
+                sent: false,
+                skipped: emailPayload?.skipped,
+                reason: emailPayload?.reason || 'Signup welcome email was not sent.',
+            };
         }
     } catch (emailErr) {
+        welcomeEmail = {
+            sent: false,
+            skipped: false,
+            reason: emailErr instanceof Error ? emailErr.message : 'Signup welcome email request failed.',
+        };
         console.warn('Signup welcome email request failed:', emailErr);
     }
 
-    return data;
+    return { ...data, welcomeEmail };
 };
 
 export const getBookings = async (userId: string): Promise<UnifiedBooking[]> => {
