@@ -1483,6 +1483,23 @@
     grid-template-columns: minmax(0, 1fr) 40px;
 }
 
+.rdb-editor-row--locked {
+    grid-template-columns: minmax(160px, 0.8fr) minmax(220px, 1.2fr);
+}
+
+.rdb-marketing-field small {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 0 12px;
+    background: color-mix(in srgb, var(--surface-muted) 44%, var(--surface-main));
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
 /* ─── User split (admin) ─────────────────────────────────── */
 .rdb-user-split {
     display: grid;

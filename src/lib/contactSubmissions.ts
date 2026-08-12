@@ -85,7 +85,7 @@ export const submitContactSubmission = async (input: ContactSubmissionInput): Pr
         name: input.name.trim(),
         email: input.email.trim(),
         phone: input.phone.trim(),
-        location: input.location.trim(),
+        location: input.location.trim() || 'Not provided',
         message: input.message.trim(),
         source_page: input.sourcePage?.trim() || 'landing_page',
     };

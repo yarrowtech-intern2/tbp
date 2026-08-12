@@ -1,7 +1,7 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
-import { Home as HomeIcon, InfoCircle, MapPoint, Envelope, CircleBottomUp } from 'reicon-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Home as HomeIcon, InfoCircle, Globe2, Envelope, CircleBottomUp, Send } from 'reicon-react';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
 import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
@@ -383,7 +383,7 @@ const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
 
 const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
 
-const isInternalHref = (href: string) => href.startsWith('/') || href.startsWith('#');
+const isRouteHref = (href: string) => href.startsWith('/');
 
 type ContactFormState = {
   name: string;
@@ -400,6 +400,8 @@ const EMPTY_CONTACT_FORM: ContactFormState = {
   location: '',
   message: '',
 };
+
+const CONTACT_MODAL_TRANSITION_MS = 240;
 
 const getCarouselOffset = (index: number, activeIndex: number, total: number) => {
   let offset = index - activeIndex;
@@ -427,6 +429,8 @@ export const Home5: React.FC = () => {
   const finalWordsRef = useRef<(HTMLSpanElement | null)[]>([]);
   const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactModalRendered, setContactModalRendered] = useState(false);
+  const contactModalOpenFrameRef = useRef<number | null>(null);
   const [heroMenuOpen, setHeroMenuOpen] = useState(false);
   const [contactForm, setContactForm] = useState<ContactFormState>(EMPTY_CONTACT_FORM);
   const [contactSubmitting, setContactSubmitting] = useState(false);
@@ -468,6 +472,23 @@ export const Home5: React.FC = () => {
   const activeVideoHeroContent = activeHeroLayer.kind === 'video' && isVideoHeroLayerId(activeHeroLayer.id)
     ? HERO_VIDEO_CONTENT[activeHeroLayer.id]
     : null;
+  const openContactModal = useCallback(() => {
+    if (contactModalOpenFrameRef.current !== null) {
+      window.cancelAnimationFrame(contactModalOpenFrameRef.current);
+    }
+    setContactModalRendered(true);
+    contactModalOpenFrameRef.current = window.requestAnimationFrame(() => {
+      contactModalOpenFrameRef.current = null;
+      setContactModalOpen(true);
+    });
+  }, []);
+  const closeContactModal = useCallback(() => {
+    if (contactModalOpenFrameRef.current !== null) {
+      window.cancelAnimationFrame(contactModalOpenFrameRef.current);
+      contactModalOpenFrameRef.current = null;
+    }
+    setContactModalOpen(false);
+  }, []);
   const mobileDockItems: FloatingDockItem[] = [
     {
       title: 'Home',
@@ -481,13 +502,13 @@ export const Home5: React.FC = () => {
     },
     {
       title: 'Map',
-      icon: <MapPoint />,
+      icon: <Globe2 />,
       to: '/map',
     },
     {
       title: 'Contact',
       icon: <Envelope />,
-      onClick: () => setContactModalOpen(true),
+      onClick: openContactModal,
     },
     {
       title: 'Get started',
@@ -520,6 +541,14 @@ export const Home5: React.FC = () => {
   }, [shouldLoadFooterContent]);
 
   useEffect(() => {
+    return () => {
+      if (contactModalOpenFrameRef.current !== null) {
+        window.cancelAnimationFrame(contactModalOpenFrameRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!shouldLoadFooterContent) return undefined;
 
     let cancelled = false;
@@ -538,10 +567,27 @@ export const Home5: React.FC = () => {
   }, [shouldLoadFooterContent]);
 
   useEffect(() => {
-    if (!contactModalOpen) return undefined;
+    if (contactModalOpen) {
+      setContactModalRendered(true);
+      return undefined;
+    }
+
+    if (!contactModalRendered) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setContactModalRendered(false);
+    }, CONTACT_MODAL_TRANSITION_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [contactModalOpen, contactModalRendered]);
+
+  useEffect(() => {
+    if (!contactModalRendered) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setContactModalOpen(false);
+      if (event.key === 'Escape') closeContactModal();
     };
 
     document.body.style.overflow = 'hidden';
@@ -551,7 +597,7 @@ export const Home5: React.FC = () => {
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [contactModalOpen]);
+  }, [closeContactModal, contactModalRendered]);
 
   useEffect(() => {
     if (!heroMenuOpen) return undefined;
@@ -1146,7 +1192,7 @@ export const Home5: React.FC = () => {
               type="button"
               onClick={() => {
                 setHeroMenuOpen(false);
-                setContactModalOpen(true);
+                openContactModal();
               }}
             >
               Contact
@@ -1156,6 +1202,7 @@ export const Home5: React.FC = () => {
       </div>
 
       <section
+        id="home5-hero"
         ref={heroSectionRef}
         className={`home5-hero${heroVideoTransitioning ? ' is-video-transitioning' : ''}${activeHeroLayer.kind === 'white' ? ' is-default-hero-layer' : ''}`}
         onPointerEnter={handleHeroPointerEnter}
@@ -1629,7 +1676,7 @@ export const Home5: React.FC = () => {
             <div className="home5-footer-brand">
               <span className="home5-footer-eyebrow">The Better Pass</span>
               <p>{HOME5_FOOTER_TITLE}</p>
-              <button type="button" className="home5-footer-contact-btn" onClick={() => setContactModalOpen(true)}>
+              <button type="button" className="home5-footer-contact-btn" onClick={openContactModal}>
                 Contact us
               </button>
             </div>
@@ -1643,10 +1690,10 @@ export const Home5: React.FC = () => {
                       const href = getFooterHref(link);
                       return (
                         <li key={`${column.title}-${link.label}-${index}`}>
-                          {isInternalHref(href) ? (
+                          {isRouteHref(href) ? (
                             <Link to={href}>{link.label}</Link>
                           ) : (
-                            <a href={href} target={href.startsWith('mailto:') || href.startsWith('tel:') ? undefined : '_blank'} rel="noreferrer">
+                            <a href={href} target={href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('#') ? undefined : '_blank'} rel="noreferrer">
                               {link.label}
                             </a>
                           )}
@@ -1680,49 +1727,55 @@ export const Home5: React.FC = () => {
         </div>
       </footer>
 
-      {contactModalOpen && (
-        <div className="home5-contact-modal" role="dialog" aria-modal="true" aria-labelledby="home5-contact-title">
-          <button type="button" className="home5-contact-backdrop" aria-label="Close contact form" onClick={() => setContactModalOpen(false)} />
+      {contactModalRendered && (
+        <div
+          className={`home5-contact-modal${contactModalOpen ? ' is-open' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="home5-contact-title"
+        >
+          <button type="button" className="home5-contact-backdrop" aria-label="Close contact form" onClick={closeContactModal} />
           <div className="home5-contact-panel">
             <div className="home5-contact-head">
               <div>
-                <span>Contact</span>
+                <span>Contact Us</span>
                 <h2 id="home5-contact-title">Tell us what you need</h2>
               </div>
-              <button type="button" className="home5-contact-close" onClick={() => setContactModalOpen(false)} aria-label="Close contact form">
-                <X size={20} />
+              <button
+                type="button"
+                className="home5-contact-close"
+                onClick={closeContactModal}
+                aria-label="Close contact form"
+              >
+                <span aria-hidden="true" />
               </button>
             </div>
 
             <form className="home5-contact-form" onSubmit={(event) => void handleContactSubmit(event)}>
-              <label>
-                <span>Name</span>
+              <label className="home5-contact-field home5-contact-name-field">
+                <span>Full Name</span>
                 <input value={contactForm.name} onChange={(event) => updateContactField('name', event.target.value)} required />
               </label>
-              <label>
+              <label className="home5-contact-field home5-contact-email-field">
                 <span>Email</span>
                 <input type="email" value={contactForm.email} onChange={(event) => updateContactField('email', event.target.value)} required />
               </label>
-              <label>
+              <label className="home5-contact-field home5-contact-phone-field">
                 <span>Phone</span>
                 <input value={contactForm.phone} onChange={(event) => updateContactField('phone', event.target.value)} />
               </label>
-              <label>
-                <span>Location</span>
-                <input value={contactForm.location} onChange={(event) => updateContactField('location', event.target.value)} />
-              </label>
-              <label className="home5-contact-wide">
-                <span>Message</span>
+              <label className="home5-contact-field home5-contact-message-field">
+                <span>Your Message</span>
                 <textarea value={contactForm.message} onChange={(event) => updateContactField('message', event.target.value)} required />
               </label>
+              <div className="home5-contact-actions">
+                <button type="submit" className="home5-contact-submit" disabled={contactSubmitting} aria-label="Send message">
+                  {contactSubmitting ? <Loader2 size={22} className="home5-spin" /> : <Send size={24} aria-hidden="true" />}
+                </button>
+              </div>
 
               {contactStatus && <p className="home5-contact-status"><CheckCircle2 size={16} />{contactStatus}</p>}
               {contactError && <p className="home5-contact-error">{contactError}</p>}
-
-              <button type="submit" className="home5-contact-submit" disabled={contactSubmitting}>
-                {contactSubmitting ? <Loader2 size={17} className="home5-spin" /> : null}
-                Send message
-              </button>
             </form>
           </div>
         </div>

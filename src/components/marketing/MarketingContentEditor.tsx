@@ -5,6 +5,8 @@ import {
     DEFAULT_ABOUT_PAGE_CONTENT,
     DEFAULT_FOOTER_CONTENT,
     DEFAULT_HERO_MESSAGES,
+    FOOTER_EXPLORE_COLUMN_INDEX,
+    FOOTER_EXPLORE_LINKS,
     HERO_MESSAGE_MOODS,
     getPublicAppContent,
     normalizeAboutPageContent,
@@ -57,7 +59,9 @@ const footerToForm = (footer: FooterContent): FooterForm => {
         const source = footer.columns[index] || fallback;
         return {
             title: source.title || fallback.title,
-            links: source.links.length > 0 ? source.links : fallback.links,
+            links: index === FOOTER_EXPLORE_COLUMN_INDEX
+                ? FOOTER_EXPLORE_LINKS
+                : source.links.length > 0 ? source.links : fallback.links,
         };
     });
 
@@ -74,7 +78,7 @@ const formToFooter = (form: FooterForm): FooterContent => ({
     copyright: form.copyright.trim() || DEFAULT_FOOTER_CONTENT.copyright,
     columns: form.columns.map((column, index) => {
         const fallback = DEFAULT_FOOTER_CONTENT.columns[index] || DEFAULT_FOOTER_CONTENT.columns[0];
-        const links = cleanLinks(column.links);
+        const links = index === FOOTER_EXPLORE_COLUMN_INDEX ? FOOTER_EXPLORE_LINKS : cleanLinks(column.links);
         return {
             title: column.title.trim() || fallback.title,
             links: links.length > 0 ? links : fallback.links,
@@ -353,28 +357,43 @@ export const MarketingContentEditor: React.FC<MarketingContentEditorProps> = ({ 
                                         }))}
                                     />
                                 </label>
-                                <button type="button" className="rdb-editor-add-btn" onClick={() => addColumnLink(columnIndex)}>
-                                    <Plus size={15} />
-                                    Add item
-                                </button>
+                                {columnIndex !== FOOTER_EXPLORE_COLUMN_INDEX && (
+                                    <button type="button" className="rdb-editor-add-btn" onClick={() => addColumnLink(columnIndex)}>
+                                        <Plus size={15} />
+                                        Add item
+                                    </button>
+                                )}
                             </div>
 
                             <div className="rdb-editor-row-list">
-                                {column.links.map((link, linkIndex) => (
-                                    <div className="rdb-editor-row" key={`footer-${columnIndex}-${linkIndex}`}>
-                                        <label className="rdb-marketing-field">
-                                            <span>Label</span>
-                                            <input value={link.label} onChange={(e) => updateColumnLink(columnIndex, linkIndex, { label: e.target.value })} />
-                                        </label>
-                                        <label className="rdb-marketing-field">
-                                            <span>Link</span>
-                                            <input value={link.href || ''} onChange={(e) => updateColumnLink(columnIndex, linkIndex, { href: e.target.value })} placeholder="https://, mailto:, tel:, /page, or #section" />
-                                        </label>
-                                        <button type="button" className="rdb-editor-icon-btn" onClick={() => removeColumnLink(columnIndex, linkIndex)} aria-label="Remove footer item">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                ))}
+                                {columnIndex === FOOTER_EXPLORE_COLUMN_INDEX
+                                    ? FOOTER_EXPLORE_LINKS.map((link, linkIndex) => (
+                                        <div className="rdb-editor-row rdb-editor-row--locked" key={`footer-fixed-${linkIndex}`}>
+                                            <label className="rdb-marketing-field">
+                                                <span>Label</span>
+                                                <input value={link.label} readOnly />
+                                            </label>
+                                            <div className="rdb-marketing-field">
+                                                <span>Fixed destination</span>
+                                                <small>{link.href}</small>
+                                            </div>
+                                        </div>
+                                    ))
+                                    : column.links.map((link, linkIndex) => (
+                                        <div className="rdb-editor-row" key={`footer-${columnIndex}-${linkIndex}`}>
+                                            <label className="rdb-marketing-field">
+                                                <span>Label</span>
+                                                <input value={link.label} onChange={(e) => updateColumnLink(columnIndex, linkIndex, { label: e.target.value })} />
+                                            </label>
+                                            <label className="rdb-marketing-field">
+                                                <span>Link</span>
+                                                <input value={link.href || ''} onChange={(e) => updateColumnLink(columnIndex, linkIndex, { href: e.target.value })} placeholder="https://, mailto:, tel:, /page, or #section" />
+                                            </label>
+                                            <button type="button" className="rdb-editor-icon-btn" onClick={() => removeColumnLink(columnIndex, linkIndex)} aria-label="Remove footer item">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
                             </div>
                         </article>
                     ))}

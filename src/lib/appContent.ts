@@ -23,6 +23,14 @@ export type FooterContactDetails = {
     phone: FooterLink | null;
 };
 
+export const FOOTER_EXPLORE_COLUMN_INDEX = 0;
+
+export const FOOTER_EXPLORE_LINKS: FooterLink[] = [
+    { label: 'Home', href: '#home5-hero' },
+    { label: 'Destinations', href: '#home5-discover' },
+    { label: 'Newsletter', href: '#contact' },
+];
+
 export type HeroMessagesContent = Record<HeroMessageMood, string[]>;
 
 export type AppContentConfig = {
@@ -101,11 +109,7 @@ export const DEFAULT_FOOTER_CONTENT: FooterContent = {
     columns: [
         {
             title: 'Explore',
-            links: [
-                { label: 'Home', href: '#h4-hero' },
-                { label: 'Destinations', href: '#h4-about' },
-                { label: 'Newsletter', href: '#h4-contact' },
-            ],
+            links: FOOTER_EXPLORE_LINKS,
         },
         {
             title: 'Experiences',
@@ -288,10 +292,12 @@ export const normalizeFooterContent = (value: unknown): FooterContent => {
 
     const columns = Array.isArray(value.columns)
         ? value.columns
-            .map((column) => {
+            .map((column, index) => {
                 if (!isRecord(column)) return null;
                 const title = normalizeText(column.title);
-                const links = Array.isArray(column.links)
+                const links = index === FOOTER_EXPLORE_COLUMN_INDEX
+                    ? FOOTER_EXPLORE_LINKS
+                    : Array.isArray(column.links)
                     ? column.links.map(normalizeFooterLink).filter((item): item is FooterLink => Boolean(item))
                     : [];
                 if (!title || links.length === 0) return null;
