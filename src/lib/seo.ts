@@ -6,6 +6,30 @@ export const DEFAULT_DESCRIPTION = 'The Better Pass helps travelers discover ver
 export const ROBOTS_INDEX = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 export const ROBOTS_NOINDEX = 'noindex, nofollow, noarchive';
 
+const PRIVATE_ROUTE_PREFIXES = [
+    '/auth',
+    '/dashboard',
+    '/profile',
+    '/users',
+    '/messages',
+    '/admin',
+    '/provider',
+    '/notifications',
+    '/explore',
+    '/destination',
+];
+
+const NOINDEX_ROUTE_META: Record<string, Pick<SeoConfig, 'title' | 'description'>> = {
+    '/about-final': {
+        title: 'About Preview | The Better Pass',
+        description: 'Preview version of The Better Pass about page.',
+    },
+    '/whomadeit': {
+        title: 'Credits | The Better Pass',
+        description: 'Project credits for The Better Pass.',
+    },
+};
+
 export type JsonLd = Record<string, unknown> | Record<string, unknown>[];
 
 export type SeoConfig = {
@@ -193,8 +217,8 @@ export const buildRouteSeo = (pathname: string): SeoConfig => {
 
     if (pathname === '/map') {
         return {
-            title: 'Travel Map | The Better Pass',
-            description: 'Explore destinations and travel context through The Better Pass map experience.',
+            title: 'Travel Map | Route Planning and Destination Discovery | The Better Pass',
+            description: 'Explore destination routes, nearby travel anchors and map-based planning tools for discovering places with The Better Pass.',
             path: '/map',
             jsonLd: buildBreadcrumbJsonLd('/map', 'Travel Map'),
         };
@@ -207,6 +231,24 @@ export const buildRouteSeo = (pathname: string): SeoConfig => {
             path: pathname,
             type: 'product',
             jsonLd: buildBreadcrumbJsonLd(pathname, 'Travel Package Details'),
+        };
+    }
+
+    const noindexRoute = NOINDEX_ROUTE_META[pathname];
+    if (noindexRoute) {
+        return {
+            ...noindexRoute,
+            path: pathname,
+            noindex: true,
+        };
+    }
+
+    if (PRIVATE_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+        return {
+            title: `${BRAND_NAME} | Account Area`,
+            description: 'Secure account area for The Better Pass travelers, providers and administrators.',
+            path: pathname,
+            noindex: true,
         };
     }
 

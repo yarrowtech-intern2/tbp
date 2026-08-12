@@ -74,7 +74,7 @@ const formatReviewSummary = (average: number | null, count: number): string => {
 const buildShortDescription = (value: string, maxLength = 120): string => {
     const trimmed = value.trim();
     if (trimmed.length <= maxLength) return trimmed;
-    return `${trimmed.slice(0, maxLength - 1).trimEnd()}…`;
+    return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
 };
 
 export const ListingDetail: React.FC = () => {

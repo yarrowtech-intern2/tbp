@@ -78,11 +78,13 @@ export const SEOHead: React.FC<SeoConfig> = ({
         upsertMetaByName('bingbot', robots);
         upsertMetaByName('author', BRAND_NAME);
         upsertMetaByName('application-name', BRAND_NAME);
+        upsertMetaByName('apple-mobile-web-app-title', BRAND_NAME);
         upsertMetaByName('theme-color', '#0b1320');
         upsertMetaByName('twitter:card', 'summary_large_image');
         upsertMetaByName('twitter:title', title);
         upsertMetaByName('twitter:description', description);
         upsertMetaByName('twitter:image', absoluteImage);
+        upsertMetaByName('twitter:image:alt', `${BRAND_NAME} travel discovery platform`);
         upsertMetaByProperty('og:site_name', BRAND_NAME);
         upsertMetaByProperty('og:type', type);
         upsertMetaByProperty('og:title', title);
@@ -90,6 +92,8 @@ export const SEOHead: React.FC<SeoConfig> = ({
         upsertMetaByProperty('og:url', canonical);
         upsertMetaByProperty('og:image', absoluteImage);
         upsertMetaByProperty('og:image:alt', `${BRAND_NAME} travel discovery platform`);
+        upsertMetaByProperty('og:image:width', '1200');
+        upsertMetaByProperty('og:image:height', '630');
         upsertMetaByProperty('og:locale', 'en_IN');
         upsertLink('canonical', canonical);
         upsertJsonLd(jsonLd);
