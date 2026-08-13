@@ -5,6 +5,8 @@ import {
     Search, Sun, Trash2, UserCircle2, Users, X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
+import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
@@ -232,9 +234,6 @@ export const Profile: React.FC = () => {
     const { theme, toggleTheme } = useTheme();
     const isDark = theme === 'dark';
     const navigate = useNavigate();
-    const [showMobileProfileNav, setShowMobileProfileNav] = useState(
-        typeof window !== 'undefined' ? window.innerWidth <= 900 : false,
-    );
 
     /* data */
     const [travelerBookings, setTravelerBookings] = useState<UnifiedBooking[]>([]);
@@ -363,17 +362,6 @@ export const Profile: React.FC = () => {
             setDeleteBusy(false);
         }
     };
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const media = window.matchMedia('(max-width: 900px)');
-        const sync = (event?: MediaQueryListEvent) => {
-            setShowMobileProfileNav(event ? event.matches : media.matches);
-        };
-        sync();
-        media.addEventListener('change', sync);
-        return () => media.removeEventListener('change', sync);
-    }, []);
 
     /* sync form + local images with profile */
     useEffect(() => {
@@ -1293,32 +1281,17 @@ export const Profile: React.FC = () => {
                 </section>
             </div>
 
-            <nav
-                className="prf-bottom-nav"
-                aria-label="Mobile role navigation"
-                style={{ display: showMobileProfileNav ? 'block' : 'none' }}
-            >
-                <div className="prf-bottom-nav-track">
-                    {profileMobileNavItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = item.id === 'profile';
-                        return (
-                            <button
-                                key={`prf-mob-${item.id}`}
-                                type="button"
-                                className={`prf-bottom-nav-btn${isActive ? ' is-active' : ''}`}
-                                onClick={() => navigate(item.to)}
-                                aria-current={isActive ? 'page' : undefined}
-                                aria-label={item.id}
-                            >
-                                <span className="prf-bottom-nav-icon">
-                                    <Icon size={20} />
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </nav>
+            <LiquidMobileNav
+                ariaLabel="Mobile role navigation"
+                items={profileMobileNavItems.map((item): LiquidNavItem => ({
+                    id: item.id,
+                    label: item.id,
+                    isActive: item.id === 'profile',
+                    iconSrc: MOBILE_NAV_ICON_SRC[item.id],
+                    icon: item.icon,
+                    onClick: () => navigate(item.to),
+                }))}
+            />
 
             <style>{`
                 /* ── Page ──────────────────────────────────────── */
@@ -1333,88 +1306,6 @@ export const Profile: React.FC = () => {
                     flex-direction: column;
                     gap: 20px;
                     max-width: 800px;
-                }
-
-                .prf-bottom-nav {
-                    display: none;
-                    position: fixed;
-                    left: 50%;
-                    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-                    transform: translateX(-50%);
-                    z-index: 200;
-                    width: max-content;
-                    max-width: calc(100vw - 20px);
-                    padding: 6px 8px;
-                    border-radius: 999px;
-                    border: 1px solid color-mix(in srgb, var(--accent) 58%, rgba(132,76,28,0.34));
-                    background: color-mix(in srgb, var(--accent) 20%, transparent);
-                    backdrop-filter: blur(22px) saturate(220%) brightness(1.04) contrast(1.08);
-                    -webkit-backdrop-filter: blur(22px) saturate(220%) brightness(1.04) contrast(1.08);
-                    box-shadow:
-                        0 20px 42px rgba(71, 35, 8, 0.18),
-                        0 6px 14px rgba(92, 45, 8, 0.12),
-                        inset 0 1.5px 0 rgba(255,255,255,0.96),
-                        inset 0 -1px 0 rgba(176, 106, 46, 0.34);
-                }
-                .prf-bottom-nav-track {
-                    display: flex;
-                    align-items: center;
-                    gap: 2px;
-                }
-                .prf-bottom-nav-btn {
-                    align-items: center;
-                    background: transparent;
-                    border: none;
-                    border-radius: 999px;
-                    color: color-mix(in srgb, var(--text-main) 78%, var(--accent) 22%);
-                    cursor: pointer;
-                    display: inline-flex;
-                    justify-content: center;
-                    padding: 6px;
-                    transition: color 0.2s ease, background 0.22s ease, box-shadow 0.22s ease, transform 0.2s ease;
-                    -webkit-tap-highlight-color: transparent;
-                }
-                .prf-bottom-nav-icon {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 50%;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .prf-bottom-nav-btn:hover {
-                    color: color-mix(in srgb, var(--text-main) 90%, #5f2d09);
-                    transform: translateY(-1px);
-                }
-                .prf-bottom-nav-btn.is-active {
-                    color: #ffffff;
-                    background:
-                        linear-gradient(180deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.08) 55%, transparent 100%),
-                        linear-gradient(180deg, color-mix(in srgb, var(--accent) 76%, #d1732c) 0%, color-mix(in srgb, var(--accent) 92%, #6b2e07) 100%);
-                    box-shadow:
-                        inset 0 1.5px 0 rgba(255,255,255,0.58),
-                        inset 0 -0.5px 0 rgba(90, 35, 5, 0.3),
-                        0 6px 16px rgba(166, 90, 31, 0.26);
-                }
-                .prf-bottom-nav-btn.is-active .prf-bottom-nav-icon {
-                    transform: scale(1.1);
-                }
-                :root[data-theme='dark'] .prf-bottom-nav {
-                    border-color: color-mix(in srgb, #f2c094 52%, rgba(255,255,255,0.18));
-                    background: color-mix(in srgb, var(--accent) 20%, transparent);
-                    box-shadow:
-                        0 22px 54px rgba(0, 0, 0, 0.5),
-                        0 6px 14px rgba(0, 0, 0, 0.26),
-                        inset 0 1.5px 0 rgba(255, 237, 219, 0.68),
-                        inset 0 -1px 0 rgba(72, 37, 10, 0.76);
-                }
-                :root[data-theme='dark'] .prf-bottom-nav-btn {
-                    color: rgba(255, 235, 218, 0.74);
-                }
-                :root[data-theme='dark'] .prf-bottom-nav-btn.is-active {
-                    color: #2f1607;
-                    background:
-                        linear-gradient(180deg, rgba(255,251,246,0.95) 0%, rgba(244,214,186,0.88) 52%, rgba(226,162,112,0.78) 100%);
                 }
 
                 /* Back button */
@@ -2385,7 +2276,6 @@ export const Profile: React.FC = () => {
 
                 @media (max-width: 900px) {
                     .prf-page { padding-bottom: 136px; }
-                    .prf-bottom-nav { display: block; }
                 }
             `}</style>
         </main>

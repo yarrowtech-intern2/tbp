@@ -15,6 +15,8 @@ import {
   Share2,
   UserCircle2,
 } from 'lucide-react';
+import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
+import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
 import {
   addListingFavorite,
@@ -1116,28 +1118,17 @@ export const DashboardHome: React.FC = () => {
         )}
       </div>
 
-      <nav className="dh-bottom-nav" aria-label="Tourist mobile navigation">
-        <div className="dh-bottom-nav-track">
-          {TOURIST_MOBILE_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.key === activeMobileNav;
-            return (
-              <button
-                type="button"
-                key={`dh-mob-${item.key}`}
-                className={`dh-bottom-nav-btn${isActive ? ' is-active' : ''}`}
-                onClick={() => handleMobileNav(item.key)}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span className="dh-bottom-nav-icon">
-                  <Icon size={20} />
-                </span>
-                <span className="dh-bottom-nav-label">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      <LiquidMobileNav
+        ariaLabel="Tourist mobile navigation"
+        items={TOURIST_MOBILE_NAV_ITEMS.map((item): LiquidNavItem => ({
+          id: item.key,
+          label: item.label,
+          isActive: item.key === activeMobileNav,
+          iconSrc: MOBILE_NAV_ICON_SRC[item.key],
+          icon: item.icon,
+          onClick: () => handleMobileNav(item.key),
+        }))}
+      />
     </main>
   );
 };

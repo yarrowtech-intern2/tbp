@@ -33,6 +33,8 @@ import {
     XCircle,
 } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
+import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
 import { useAppTutorial } from '../context/app-tutorial-context-value';
 import { useNotifications } from '../hooks/useNotifications';
@@ -214,6 +216,14 @@ const ADMIN_PRIMARY_NAV_KEYS: SidebarKey[] = [
     'bookings',
     'revenue',
     'moderation',
+    'messages',
+];
+
+const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
+    'overview',
+    'content',
+    'bookings',
+    'revenue',
     'messages',
 ];
 
@@ -1382,8 +1392,17 @@ export const RoleDashboard: React.FC = () => {
 
     const mobileNavItems = useMemo<MobileNavItem[]>(() => {
         if (effectiveRole === 'admin') {
-            return navItems
-                .filter((item) => item.key !== 'map')
+            const coreItems = ADMIN_MOBILE_PRIMARY_NAV_KEYS
+                .map((key) => navItems.find((item) => item.key === key))
+                .filter((item): item is NavItem => Boolean(item));
+            const activeItem = activeSection !== 'map'
+                ? navItems.find((item) => item.key === activeSection)
+                : undefined;
+            const compactItems = activeItem && !coreItems.some((item) => item.key === activeItem.key)
+                ? [activeItem, ...coreItems.filter((item) => item.key !== activeItem.key)].slice(0, 5)
+                : coreItems.slice(0, 5);
+
+            return compactItems
                 .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
         }
         if (effectiveRole === 'provider') {
@@ -1402,7 +1421,7 @@ export const RoleDashboard: React.FC = () => {
             { id: 'revenue', label: 'Spend', icon: CalendarDays, section: 'revenue' },
             { id: 'profile', label: 'Profile', icon: UserCircle2, to: '/profile' },
         ];
-    }, [effectiveRole, navItems]);
+    }, [activeSection, effectiveRole, navItems]);
 
     const adminSidebarNavItems = useMemo(() => {
         if (effectiveRole !== 'admin') return navItems;
@@ -4402,6 +4421,17 @@ export const RoleDashboard: React.FC = () => {
                                         <Menu size={18} />
                                     </button>
                                 )}
+                                {!isDesktopDashboard && (
+                                    <button
+                                        type="button"
+                                        className="rdb-admin-ctrl-btn"
+                                        title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                                        aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                                        onClick={toggleTheme}
+                                    >
+                                        {isDarkTheme ? <Sun size={18} /> : <Moon size={18} />}
+                                    </button>
+                                )}
                                 {isDesktopDashboard && (
                                     <button
                                         type="button"
@@ -4490,6 +4520,17 @@ export const RoleDashboard: React.FC = () => {
                                         </button>
                                     );
                                 })}
+                                <button
+                                    type="button"
+                                    className="rdb-admin-mobile-menu-item"
+                                    onClick={() => {
+                                        setAdminMobileMenuOpen(false);
+                                        toggleTheme();
+                                    }}
+                                >
+                                    <span>{isDarkTheme ? 'Light theme' : 'Dark theme'}</span>
+                                    {isDarkTheme ? <Sun size={16} /> : <Moon size={16} />}
+                                </button>
                                 <button
                                     type="button"
                                     className="rdb-admin-mobile-menu-item"
@@ -4632,43 +4673,32 @@ export const RoleDashboard: React.FC = () => {
             )}
 
             {!isDesktopDashboard && (
-                <nav className="rdb-bottom-nav" aria-label="Mobile dashboard navigation">
-                    <div className="rdb-bottom-nav-track">
-                        {mobileNavItems.map((item) => {
-                            const Icon = item.icon;
-                            const count = item.countKey ? sectionCounts[item.countKey] : undefined;
-                            const isActive = item.section === activeSection;
-                            return (
-                                <button
-                                    type="button"
-                                    key={`mob-${item.id}`}
-                                    className={`rdb-bottom-nav-btn${isActive ? ' is-active' : ''}`}
-                                    data-tutorial-id={`dashboard-mobile-${item.section || item.id}`}
-                                    onClick={() => {
-                                        if (item.section) {
-                                            goToSection(item.section);
-                                            setAdminMobileMenuOpen(false);
-                                            return;
-                                        }
-                                        if (item.to) {
-                                            setAdminMobileMenuOpen(false);
-                                            navigate(item.to);
-                                        }
-                                    }}
-                                    aria-current={isActive ? 'page' : undefined}
-                                >
-                                    <span className="rdb-bottom-nav-icon">
-                                        <Icon size={20} />
-                                    </span>
-                                    <span className="rdb-bottom-nav-label">{item.label}</span>
-                                    {typeof count === 'number' && count > 0 && (
-                                        <span className="rdb-bottom-nav-badge">{count}</span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </nav>
+                <LiquidMobileNav
+                    ariaLabel="Mobile dashboard navigation"
+                    items={mobileNavItems.map((item): LiquidNavItem => {
+                        const count = item.countKey ? sectionCounts[item.countKey] : undefined;
+                        return {
+                            id: item.id,
+                            label: item.label,
+                            isActive: item.section === activeSection,
+                            iconSrc: MOBILE_NAV_ICON_SRC[item.id],
+                            icon: item.icon,
+                            badge: typeof count === 'number' ? count : undefined,
+                            dataTutorialId: `dashboard-mobile-${item.section || item.id}`,
+                            onClick: () => {
+                                if (item.section) {
+                                    goToSection(item.section);
+                                    setAdminMobileMenuOpen(false);
+                                    return;
+                                }
+                                if (item.to) {
+                                    setAdminMobileMenuOpen(false);
+                                    navigate(item.to);
+                                }
+                            },
+                        };
+                    })}
+                />
             )}
         </main>
     );

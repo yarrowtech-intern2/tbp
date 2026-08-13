@@ -22,7 +22,6 @@ export const Navbar: React.FC = () => {
     const homePath = '/';
     const logoSrc = isDark ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
     const navSurface = isDark ? 'rgba(0,0,0,0.74)' : 'rgba(242,138,36,0.46)';
-    const navSurfaceSoft = isDark ? 'rgba(10,10,10,0.80)' : 'rgba(242,138,36,0.58)';
     const navBorder = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(138,73,8,0.28)';
     const navInset = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,242,224,0.30)';
     const navText = isDark ? 'rgba(248,250,252,0.82)' : 'rgba(31,18,7,0.86)';
@@ -31,6 +30,10 @@ export const Navbar: React.FC = () => {
     const navDivider = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(63,34,8,0.28)';
     const navActiveBg = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.86)';
     const navActiveText = '#ffffff';
+    const mobileMenuBg = isDark ? '#151515' : '#d2d2d2';
+    const mobileMenuText = isDark ? '#f5f5f5' : '#333333';
+    const mobileMenuUtilityText = isDark ? 'rgba(245,245,245,0.82)' : '#333333';
+    const mobileMenuHover = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.54)';
     const resolvedRole = typeof profile?.role === 'string' && profile.role.trim()
         ? normalizeRoleValue(profile.role)
         : typeof user?.user_metadata?.role === 'string' && user.user_metadata.role.trim()
@@ -213,7 +216,7 @@ export const Navbar: React.FC = () => {
                     <Link to={homePath} aria-label="Home" className="nbr-logo-wrap">
                         <img src={logoSrc} alt="The Better Pass" className="nbr-logo nbr-logo--sm" />
                     </Link>
-                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="nbr-mobile-actions">
                         {user && (
                             <Link to={dashboardPath} className="nbr-avatar-sm-wrap">
                                 <img src={avatarSrc} alt={shortName} className="nbr-avatar-sm" />
@@ -234,25 +237,35 @@ export const Navbar: React.FC = () => {
                 {showMenu && (
                     <div className="nbr-dropdown">
                         {user && navLinks.map((item) => (
-                            <Link key={item.key} to={item.to} className="nbr-drop-item" onClick={() => setShowMenu(false)}>
-                                {item.label}
+                            <Link key={item.key} to={item.to} className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                <span>{item.label}</span>
+                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
                             </Link>
                         ))}
                         {user && adminAccount && (
-                            <Link to="/admin" className="nbr-drop-item" onClick={() => setShowMenu(false)}>Admin</Link>
-                        )}
-                        {user && providerAccount && (
-                            <Link to={providerStudioPath} className="nbr-drop-item" onClick={() => setShowMenu(false)}>Studio</Link>
-                        )}
-                        {user && (
-                            <Link to="/map" className="nbr-drop-item" onClick={() => setShowMenu(false)}>Map</Link>
-                        )}
-                        {!user && (
-                            <Link to="/auth" className="nbr-drop-item nbr-drop-item--accent" onClick={() => setShowMenu(false)}>
-                                Join Membership
+                            <Link to="/admin" className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                <span>Admin</span>
+                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
                             </Link>
                         )}
-                        <div className="nbr-drop-sep" />
+                        {user && providerAccount && (
+                            <Link to={providerStudioPath} className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                <span>Studio</span>
+                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
+                            </Link>
+                        )}
+                        {user && (
+                            <Link to="/map" className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                <span>Map</span>
+                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
+                            </Link>
+                        )}
+                        {!user && (
+                            <Link to="/auth" className="nbr-drop-item nbr-drop-item--main nbr-drop-item--accent" onClick={() => setShowMenu(false)}>
+                                <span>Join Membership</span>
+                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
+                            </Link>
+                        )}
                         <button type="button" className="nbr-drop-item nbr-drop-item--btn" onClick={toggleTheme}>
                             {isDark ? <Sun size={14} /> : <Moon size={14} />}
                             {isDark ? 'Light Mode' : 'Dark Mode'}
@@ -491,6 +504,13 @@ export const Navbar: React.FC = () => {
                     width: 100%;
                 }
 
+                .nbr-mobile-actions {
+                    align-items: center;
+                    display: flex;
+                    gap: 8px;
+                    margin-left: auto;
+                }
+
                 .nbr-avatar-sm-wrap {
                     border: 1.5px solid var(--border-light);
                     border-radius: 50%;
@@ -527,39 +547,68 @@ export const Navbar: React.FC = () => {
                 .nbr-hamburger:hover { background: ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.16)'}; }
 
                 .nbr-dropdown {
-                    animation: fadeInDown 0.18s ease-out;
-                    backdrop-filter: blur(22px) saturate(190%);
-                    -webkit-backdrop-filter: blur(22px) saturate(190%);
-                    background: ${navSurfaceSoft};
-                    border: 1px solid ${navBorder};
-                    border-radius: 20px;
-                    box-shadow: 0 16px 48px rgba(15,23,42,0.18);
+                    animation: nbrMenuIn 0.24s cubic-bezier(0.18, 0.92, 0.22, 1) both;
+                    background: ${mobileMenuBg};
+                    border: none;
+                    border-radius: 22px;
+                    box-shadow: none;
                     display: flex;
                     flex-direction: column;
-                    gap: 2px;
+                    gap: 0;
                     margin-top: 10px;
-                    padding: 8px;
+                    min-height: 330px;
+                    padding: 24px 18px 20px;
                     pointer-events: all;
                     width: 100%;
+                }
+
+                @keyframes nbrMenuIn {
+                    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
                 }
 
                 .nbr-drop-item {
                     align-items: center;
                     border-radius: 12px;
-                    color: ${navTextStrong};
+                    color: ${mobileMenuUtilityText};
                     display: flex;
                     font-family: 'Okine', 'Outfit', sans-serif;
-                    font-size: 0.9rem;
-                    font-weight: 600;
+                    font-size: 1rem;
+                    font-weight: 500;
                     justify-content: space-between;
-                    padding: 10px 14px;
+                    min-height: 32px;
+                    padding: 3px 12px;
                     text-decoration: none;
-                    transition: background 0.14s;
+                    transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
                 }
 
-                .nbr-drop-item:hover { background: ${navHover}; }
+                .nbr-drop-item:hover {
+                    background: ${mobileMenuHover};
+                    transform: translateX(2px);
+                }
+
+                .nbr-drop-item--main {
+                    color: ${mobileMenuText};
+                    font-family: 'Onest', 'Outfit', sans-serif;
+                    font-size: clamp(1.55rem, 7vw, 1.95rem);
+                    font-weight: 500;
+                    letter-spacing: 0;
+                    line-height: 1;
+                    min-height: 41px;
+                    padding: 4px 0 4px 12px;
+                }
+
+                .nbr-drop-arrow {
+                    flex: 0 0 auto;
+                    height: 15px;
+                    margin-right: 8px;
+                    object-fit: contain;
+                    transform: translateY(-1px);
+                    width: 15px;
+                }
+
                 .nbr-drop-item--accent { color: var(--accent); font-weight: 800; }
-                .nbr-drop-item--danger { color: var(--danger-text, #e53e3e); }
+                .nbr-drop-item--danger { color: #ff2b1f; }
 
                 .nbr-drop-item--btn {
                     align-items: center;
@@ -569,14 +618,9 @@ export const Navbar: React.FC = () => {
                     display: flex;
                     font-family: inherit;
                     gap: 10px;
+                    justify-content: flex-start;
                     text-align: left;
                     width: 100%;
-                }
-
-                .nbr-drop-sep {
-                    background: var(--border-light);
-                    height: 1px;
-                    margin: 4px 2px;
                 }
 
                 @media (max-width: 768px) {

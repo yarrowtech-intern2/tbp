@@ -1,6 +1,8 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, ClipboardList, Home, LayoutDashboard, Loader2, Search, UserCircle2, X } from 'lucide-react';
+import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
+import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
@@ -531,28 +533,17 @@ export const TouristExplorePage: React.FC = () => {
         )}
       </div>
 
-      <nav className="txp-bottom-nav" aria-label="Tourist mobile navigation">
-        <div className="txp-bottom-nav-track">
-          {TOURIST_MOBILE_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.key === activeMobileNav;
-            return (
-              <button
-                type="button"
-                key={`txp-mob-${item.key}`}
-                className={`txp-bottom-nav-btn${isActive ? ' is-active' : ''}`}
-                onClick={() => handleMobileNav(item.key)}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span className="txp-bottom-nav-icon">
-                  <Icon size={20} />
-                </span>
-                <span className="txp-bottom-nav-label">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      <LiquidMobileNav
+        ariaLabel="Tourist mobile navigation"
+        items={TOURIST_MOBILE_NAV_ITEMS.map((item): LiquidNavItem => ({
+          id: item.key,
+          label: item.label,
+          isActive: item.key === activeMobileNav,
+          iconSrc: MOBILE_NAV_ICON_SRC[item.key],
+          icon: item.icon,
+          onClick: () => handleMobileNav(item.key),
+        }))}
+      />
     </main>
   );
 };

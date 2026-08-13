@@ -1,0 +1,367 @@
+/* ── Liquid mobile bottom nav ──────────────────────────────
+   Two representations share one grid cell and are cross-faded:
+
+   1. "Rest" layer — a plain solid pill (inactive items) + a plain solid
+      circle (active item), same color and height. No SVG filter, crisp
+      edges, cheap to paint. Each shape carries its own box-shadow (not a
+      shared filter drop-shadow) so no shadow-haze bridges the gap between
+      them into a false "card" background. This is what's on screen almost
+      all the time.
+
+   2. "Goo" layer — the same items as individually filtered circles under
+      an SVG goo filter, animated via framer-motion's `layout` FLIP. Only
+      shown for ~480ms right after the active tab changes, to produce the
+      liquid merge/split motion; then it's hidden again and the rest layer
+      takes back over. Only `transform` changes per frame, so this stays
+      GPU-cheap even while the filter is active. */
+
+.lmn {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 200;
+  display: grid;
+  pointer-events: none;
+  isolation: isolate;
+  contain: layout style paint;
+}
+
+.lmn-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* ── shared tokens ── */
+
+.lmn {
+  --lmn-size: 60px;
+  --lmn-item-size: 42px;
+  --lmn-gap: 10px;
+  --lmn-fill: #FF741D;
+  --lmn-ink: #111111;
+  --lmn-shadow: none;
+}
+
+:root[data-theme='dark'] .lmn {
+  --lmn-fill: #FF741D;
+  --lmn-ink: #101010;
+  --lmn-shadow: none;
+}
+
+/* ── shared button chrome ── */
+
+.lmn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.lmn-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: brightness(0) saturate(100%);
+  image-rendering: auto;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.lmn-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #d63b1f;
+  color: #fff;
+  font-size: 0.5rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── rest layer ── */
+
+.lmn-rest-layer {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: var(--lmn-gap);
+  padding: 7px;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+
+.lmn-rest-layer.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lmn-rest-active {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--lmn-size);
+  height: var(--lmn-size);
+  border: none;
+  border-radius: 999px;
+  background: var(--lmn-fill);
+  box-shadow: var(--lmn-shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--lmn-ink);
+  animation: lmn-active-separate 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.lmn-rest-pill {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: var(--lmn-size);
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--lmn-fill);
+  box-shadow: var(--lmn-shadow);
+  animation: lmn-pill-settle 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.lmn-rest-btn {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--lmn-item-size);
+  height: var(--lmn-size);
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--lmn-ink);
+}
+
+/* ── goo layer ── */
+
+.lmn-goo-wrap {
+  grid-area: 1 / 1;
+  display: grid;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+
+.lmn-goo-wrap.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lmn-blob-layer,
+.lmn-icon-layer {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: var(--lmn-gap);
+  padding: 7px;
+}
+
+.lmn-blob-layer {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  /* goo url is set inline per-instance (unique SVG filter id via useId) */
+}
+
+.lmn-icon-layer {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.lmn-blob-active {
+  position: relative;
+  width: var(--lmn-size);
+  height: var(--lmn-size);
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--lmn-fill);
+  animation: lmn-goo-active-split 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+}
+
+.lmn-blob-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: calc((var(--lmn-gap) + 10px) * -1);
+  width: calc(var(--lmn-gap) + 17px);
+  height: 38px;
+  border-radius: 999px;
+  background: var(--lmn-fill);
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: lmn-goo-neck 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+}
+
+.lmn-blob-pill {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: var(--lmn-size);
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--lmn-fill);
+  animation: lmn-goo-pill-settle 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+}
+
+.lmn-blob-slot {
+  flex: 0 0 auto;
+  width: var(--lmn-item-size);
+  height: 1px;
+}
+
+.lmn-pill-icons {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: var(--lmn-size);
+  padding: 0 9px;
+}
+
+.lmn-btn {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--lmn-item-size);
+  height: var(--lmn-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  color: var(--lmn-ink);
+}
+
+.lmn-btn.is-active {
+  width: var(--lmn-size);
+  margin-right: 0;
+  animation: lmn-goo-active-split 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+}
+
+@keyframes lmn-goo-active-split {
+  0% {
+    transform: translateX(calc(var(--lmn-gap) + 9px)) scaleX(1.16) scaleY(0.92);
+    border-radius: 44% 56% 55% 45%;
+  }
+  48% {
+    transform: translateX(-2px) scaleX(0.96) scaleY(1.04);
+    border-radius: 54% 46% 47% 53%;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    border-radius: 999px;
+  }
+}
+
+@keyframes lmn-goo-neck {
+  0% {
+    opacity: 1;
+    transform: translateY(-50%) scaleX(1.05);
+  }
+  44% {
+    opacity: 0.9;
+    transform: translateY(-50%) scaleX(0.48);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0);
+  }
+}
+
+@keyframes lmn-goo-pill-settle {
+  0% {
+    transform: translateX(-7px) scaleX(0.97);
+    border-radius: 24px 999px 999px 24px;
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+    border-radius: 999px;
+  }
+}
+
+@keyframes lmn-active-separate {
+  0% {
+    transform: translateX(calc(var(--lmn-gap) + 10px)) scale(0.88);
+    border-radius: 42% 58% 52% 48%;
+  }
+  62% {
+    transform: translateX(-2px) scale(1.04);
+    border-radius: 54% 46% 48% 52%;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    border-radius: 999px;
+  }
+}
+
+@keyframes lmn-pill-settle {
+  0% {
+    transform: translateX(-8px) scaleX(0.96);
+    border-radius: 22px 999px 999px 22px;
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+    border-radius: 999px;
+  }
+}
+
+@media (min-width: 901px) {
+  .lmn {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .lmn {
+    --lmn-size: 56px;
+    --lmn-item-size: 39px;
+    --lmn-gap: 9px;
+  }
+
+  .lmn-rest-pill {
+    padding: 0 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lmn-icon {
+    transition: none !important;
+  }
+
+  .lmn-rest-active,
+  .lmn-rest-pill,
+  .lmn-blob-active,
+  .lmn-blob-active::after,
+  .lmn-blob-pill,
+  .lmn-btn.is-active {
+    animation: none !important;
+  }
+}
