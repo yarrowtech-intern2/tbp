@@ -398,6 +398,138 @@
   display: none !important;
 }
 
+@media (min-width: 769px) {
+  .dh-page .listing-card {
+    width: 100%;
+    border-radius: 22px;
+    background: transparent;
+    overflow: hidden;
+  }
+
+  .dh-page .listing-card-media {
+    aspect-ratio: 4 / 5.15;
+    border-radius: inherit;
+  }
+
+  .dh-page .listing-card-media-bg {
+    transform: scale(1.01);
+  }
+
+  .dh-page .listing-card-media-overlay {
+    background:
+      linear-gradient(180deg, rgba(8, 11, 18, 0) 0%, rgba(8, 11, 18, 0.06) 44%, rgba(0, 0, 0, 0.56) 72%, rgba(0, 0, 0, 0.92) 100%);
+  }
+
+  .dh-page .listing-card-media-top {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    align-items: flex-start;
+  }
+
+  .dh-page .listing-card-badge-cluster {
+    max-width: calc(100% - 48px);
+    gap: 6px;
+  }
+
+  .dh-page .listing-card-booked-pill {
+    min-height: 26px;
+    padding: 0 10px;
+    border-color: rgba(255, 255, 255, 0.36);
+    background: rgba(17, 24, 39, 0.74);
+    color: #ffffff;
+    font-size: 0.68rem;
+  }
+
+  .dh-page .listing-card-boost-badge {
+    width: 30px;
+    min-height: 30px;
+    border-color: rgba(255, 255, 255, 0.36);
+    background: rgba(255, 255, 255, 0.94);
+    color: #ff6b00;
+  }
+
+  .dh-page .listing-card-fav-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #ff6b00;
+  }
+
+  .dh-page .listing-card-content-overlay {
+    gap: 6px;
+    padding: 92px 18px 14px;
+  }
+
+  .dh-page .listing-card-title {
+    font-size: 1.28rem;
+    line-height: 1.02;
+    font-weight: 420;
+  }
+
+  .dh-page .listing-card-sub {
+    max-width: 92%;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.78rem;
+    line-height: 1.18;
+    -webkit-line-clamp: 2;
+  }
+
+  .dh-page .listing-card-actions {
+    gap: 8px;
+    margin-top: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .dh-page .listing-card-price {
+    color: #66ff78;
+    font-size: 1.18rem;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .dh-page .listing-card-cta-cluster {
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .dh-page .listing-btn-book,
+  .dh-page .listing-btn-booked {
+    min-height: 31px;
+    padding: 0 14px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #ff6b00;
+    font-size: 0.78rem;
+    font-weight: 680;
+  }
+
+  .dh-page .listing-btn-booked {
+    color: #0f6d47;
+  }
+
+  .dh-page .listing-btn-share {
+    width: 31px;
+    height: 31px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #171717;
+  }
+
+  .dh-page .listing-btn-share svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .dh-page .listing-card-gallery-btn {
+    width: 30px;
+    height: 30px;
+    background: rgba(17, 24, 39, 0.5);
+  }
+
+  .dh-page .listing-card-gallery-dots {
+    bottom: 10px;
+  }
+}
+
 @media (max-width: 768px) {
   .listing-card {
     border-radius: 24px;

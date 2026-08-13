@@ -261,7 +261,7 @@ export const Messages: React.FC = () => {
     if (!user) return null;
 
     return (
-        <main className="msg-page animate-fade">
+        <main className={`msg-page animate-fade${selected ? ' msg-page--thread' : ''}`}>
             <div className="container msg-shell">
                 <header className="msg-page-head">
                     <h1>Messages</h1>
@@ -302,11 +302,17 @@ export const Messages: React.FC = () => {
                             ) : (
                                 filteredConversations.map((item) => {
                                     const isActive = item.conversation.id === selectedConversationId;
+                                    const unreadCount = notifications.filter((notification) => (
+                                        !notification.is_read
+                                        && notification.type === 'message_new'
+                                        && notification.metadata?.conversation_id === item.conversation.id
+                                    )).length;
+                                    const hasUnread = unreadCount > 0;
                                     return (
                                         <button
                                             key={item.conversation.id}
                                             type="button"
-                                            className={`msg-conversation-item${isActive ? ' msg-conversation-item--active' : ''}`}
+                                            className={`msg-conversation-item${isActive ? ' msg-conversation-item--active' : ''}${hasUnread ? ' msg-conversation-item--unread' : ''}`}
                                             onClick={() => setSearchParams({ conversation: item.conversation.id })}
                                         >
                                             <div className="msg-avatar-wrap">
@@ -324,7 +330,11 @@ export const Messages: React.FC = () => {
                                                 </div>
                                                 <div className="msg-conversation-row msg-conversation-row--meta">
                                                     <p>{truncate(item.lastMessageText)}</p>
-                                                    <em>{item.otherProfile?.role || 'member'}</em>
+                                                    {hasUnread ? (
+                                                        <em aria-label={`${unreadCount} unread message${unreadCount === 1 ? '' : 's'}`}>{unreadCount}</em>
+                                                    ) : (
+                                                        <em>{item.otherProfile?.role || 'member'}</em>
+                                                    )}
                                                 </div>
                                             </div>
                                         </button>

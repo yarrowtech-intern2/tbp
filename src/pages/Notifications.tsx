@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bell, BellOff, CheckCheck, Loader2, RefreshCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
@@ -43,6 +43,11 @@ export const Notifications: React.FC = () => {
         markAllAsRead,
     } = useNotifications();
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
+
+    useEffect(() => {
+        if (unreadCount <= 0) return;
+        void markAllAsRead();
+    }, [markAllAsRead, unreadCount]);
 
     const filtered = useMemo(() => (
         filter === 'all'

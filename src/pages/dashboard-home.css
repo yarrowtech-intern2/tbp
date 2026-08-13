@@ -1041,7 +1041,7 @@
   }
 
   .dh-listing-row {
-    grid-auto-columns: minmax(300px, 332px);
+    grid-auto-columns: minmax(244px, 264px);
   }
 }
 

@@ -568,7 +568,7 @@ export const Profile: React.FC = () => {
         if (effectiveRole === 'admin') {
             return [
                 { id: 'dashboard', to: '/dashboard/admin', icon: LayoutDashboard },
-                { id: 'messages', to: '/dashboard/admin?section=messages', icon: MessageSquare },
+                { id: 'messages', to: '/messages', icon: MessageSquare },
                 { id: 'moderation', to: '/dashboard/admin?section=moderation', icon: Shield },
                 { id: 'users', to: '/dashboard/admin?section=users', icon: Users },
                 { id: 'profile', to: '/profile', icon: UserCircle2 },
@@ -579,7 +579,7 @@ export const Profile: React.FC = () => {
                 { id: 'dashboard', to: '/dashboard/provider', icon: LayoutDashboard },
                 { id: 'bookings', to: '/dashboard/provider?section=bookings', icon: ClipboardList },
                 { id: 'listings', to: '/dashboard/provider?section=listings', icon: Package },
-                { id: 'messages', to: '/dashboard/provider?section=messages', icon: MessageSquare },
+                { id: 'messages', to: '/messages', icon: MessageSquare },
                 { id: 'profile', to: '/profile', icon: UserCircle2 },
             ];
         }
@@ -2281,4 +2281,3 @@ export const Profile: React.FC = () => {
         </main>
     );
 };
-

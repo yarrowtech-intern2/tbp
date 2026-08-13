@@ -72,22 +72,42 @@
 
 .lmn-badge {
   position: absolute;
-  top: 2px;
-  right: 4px;
-  min-width: 16px;
-  height: 16px;
+  top: 9px;
+  right: 9px;
+  width: 10px;
+  min-width: 10px;
+  height: 10px;
   border-radius: 999px;
-  background: #d63b1f;
-  color: #fff;
-  font-size: 0.5rem;
-  font-weight: 800;
+  background: var(--lmn-ink);
+  color: transparent;
+  font-size: 0;
+  font-weight: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4px;
-  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  padding: 0;
+  border: 2px solid var(--lmn-fill);
   line-height: 1;
   pointer-events: none;
+  transform-origin: center;
+  animation: lmn-notification-dot-pulse 1.45s ease-in-out infinite;
+}
+
+@keyframes lmn-notification-dot-pulse {
+  0%,
+  100% {
+    background: var(--lmn-ink);
+    border-color: var(--lmn-fill);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--lmn-ink) 32%, transparent);
+    transform: scale(1);
+  }
+
+  48% {
+    background: var(--lmn-fill);
+    border-color: var(--lmn-ink);
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--lmn-ink) 0%, transparent);
+    transform: scale(0.82);
+  }
 }
 
 /* ── rest layer ── */
@@ -361,7 +381,8 @@
   .lmn-blob-active,
   .lmn-blob-active::after,
   .lmn-blob-pill,
-  .lmn-btn.is-active {
+  .lmn-btn.is-active,
+  .lmn-badge {
     animation: none !important;
   }
 }

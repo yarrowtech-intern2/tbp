@@ -142,19 +142,24 @@
 }
 
 .rdb-nav-count {
-    min-width: 24px;
-    height: 20px;
+    position: relative;
+    width: 10px;
+    min-width: 10px;
+    height: 10px;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-light));
+    border: 2px solid var(--surface-main);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.67rem;
-    font-weight: 700;
-    background: color-mix(in srgb, var(--accent) 10%, var(--surface-main));
+    font-size: 0;
+    font-weight: 0;
+    background: currentColor;
     color: var(--text-main);
-    padding: 0 5px;
+    padding: 0;
     flex-shrink: 0;
+    pointer-events: none;
+    transform-origin: center;
+    animation: rdb-section-dot-pulse 1.45s ease-in-out infinite;
 }
 
 /* ─── Profile card in sidebar ────────────────────────────── */
@@ -2120,18 +2125,23 @@
 }
 
 .rdb-admin-shortcut strong {
-    min-width: 18px;
-    height: 18px;
+    width: 10px;
+    min-width: 10px;
+    height: 10px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 20%, transparent);
-    color: var(--accent);
+    border: 2px solid color-mix(in srgb, var(--rdb-admin-card-soft) 82%, var(--rdb-admin-card));
+    background: currentColor;
+    color: var(--rdb-admin-text);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0 6px;
-    font-size: 0.68rem;
-    font-weight: 800;
+    padding: 0;
+    font-size: 0;
+    font-weight: 0;
     line-height: 1;
+    pointer-events: none;
+    transform-origin: center;
+    animation: rdb-admin-section-dot-pulse 1.45s ease-in-out infinite;
 }
 
 .rdb-admin-shortcut.is-active {
@@ -2194,20 +2204,85 @@
 
 .rdb-admin-ctrl-badge {
     position: absolute;
-    top: 4px;
-    right: 2px;
-    min-width: 19px;
-    height: 19px;
-    padding: 0 5px;
+    top: 7px;
+    right: 7px;
+    width: 10px;
+    min-width: 10px;
+    height: 10px;
+    padding: 0;
     border-radius: 999px;
-    background: #ff6b00;
-    color: #ffffff;
+    background: var(--rdb-admin-text-strong);
+    border: 2px solid var(--rdb-admin-chip);
+    color: transparent;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.68rem;
-    font-weight: 800;
+    font-size: 0;
+    font-weight: 0;
     line-height: 1;
+    pointer-events: none;
+    transform-origin: center;
+    animation: rdb-notification-dot-pulse 1.45s ease-in-out infinite;
+}
+
+@keyframes rdb-section-dot-pulse {
+    0%,
+    100% {
+        background: currentColor;
+        border-color: var(--surface-main);
+        box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 34%, transparent);
+        transform: scale(1);
+    }
+
+    48% {
+        background: var(--surface-main);
+        border-color: currentColor;
+        box-shadow: 0 0 0 7px color-mix(in srgb, currentColor 0%, transparent);
+        transform: scale(0.82);
+    }
+}
+
+@keyframes rdb-admin-section-dot-pulse {
+    0%,
+    100% {
+        background: currentColor;
+        border-color: var(--rdb-admin-card);
+        box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 34%, transparent);
+        transform: scale(1);
+    }
+
+    48% {
+        background: var(--rdb-admin-card);
+        border-color: currentColor;
+        box-shadow: 0 0 0 7px color-mix(in srgb, currentColor 0%, transparent);
+        transform: scale(0.82);
+    }
+}
+
+@keyframes rdb-notification-dot-pulse {
+    0%,
+    100% {
+        background: var(--rdb-admin-text-strong);
+        border-color: var(--rdb-admin-chip);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--rdb-admin-text-strong) 34%, transparent);
+        transform: scale(1);
+    }
+
+    48% {
+        background: var(--rdb-admin-chip);
+        border-color: var(--rdb-admin-text-strong);
+        box-shadow: 0 0 0 7px color-mix(in srgb, var(--rdb-admin-text-strong) 0%, transparent);
+        transform: scale(0.82);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rdb-admin-ctrl-badge,
+    .rdb-nav-count,
+    .rdb-admin-shortcut strong,
+    .rdb-admin-mobile-menu-item strong {
+        animation: none;
+    }
 }
 
 .rdb-admin-date-pill {
@@ -2936,9 +3011,17 @@
         stroke-width: 2.05;
     }
 
-    .rdb-shell--admin .rdb-nav-item-content span,
-    .rdb-shell--admin .rdb-nav-count {
+    .rdb-shell--admin .rdb-nav-item-content span {
         display: none;
+    }
+
+    .rdb-shell--admin .rdb-nav-count {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        display: inline-flex;
+        border-color: var(--rdb-admin-icon-surface);
+        color: var(--rdb-admin-text-strong);
     }
 
     .rdb-shell--admin .rdb-nav-item::after {
@@ -3134,47 +3217,128 @@
 
     .rdb-admin-mobile-menu {
         display: grid;
-        gap: 8px;
-        background: var(--rdb-admin-card-soft);
-        border-radius: 20px;
-        padding: 10px;
+        gap: 0;
+        width: calc(100% - 16px);
+        margin: 4px auto 0;
+        background: #c9c9c9;
+        border-radius: 22px;
+        padding: 26px 24px 16px;
+        box-shadow: none;
+    }
+
+    :root[data-theme='dark'] .rdb-admin-mobile-menu {
+        background: #151515;
     }
 
     .rdb-admin-mobile-menu-item {
         width: 100%;
         border: none;
-        background: color-mix(in srgb, var(--rdb-admin-card-soft) 70%, var(--rdb-admin-card));
-        border-radius: 16px;
-        min-height: 40px;
+        background: transparent;
+        border-radius: 10px;
+        min-height: 34px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 14px;
+        gap: 16px;
+        padding: 0;
         font: inherit;
-        font-size: 0.88rem;
-        font-weight: 600;
-        color: var(--rdb-admin-text-strong);
+        font-size: 1.02rem;
+        font-weight: 500;
+        color: #404040;
         cursor: pointer;
+        transition: background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+    }
+
+    :root[data-theme='dark'] .rdb-admin-mobile-menu-item {
+        color: #e8e8e8;
+    }
+
+    .rdb-admin-mobile-menu-item:hover {
+        background: transparent;
+        color: #ff5f00;
+        transform: translateX(2px);
+    }
+
+    :root[data-theme='dark'] .rdb-admin-mobile-menu-item:hover {
+        background: transparent;
+        color: #ff741d;
+    }
+
+    .rdb-admin-mobile-menu-item--section {
+        min-height: 41px;
+        font-family: 'Onest', 'Outfit', sans-serif;
+        font-size: clamp(1.52rem, 6.4vw, 1.72rem);
+        line-height: 1;
+        letter-spacing: 0;
+    }
+
+    .rdb-admin-mobile-menu-item > span:first-child {
+        min-width: 0;
+        text-align: left;
+    }
+
+    .rdb-admin-mobile-menu-meta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 16px;
+        flex: 0 0 auto;
     }
 
     .rdb-admin-mobile-menu-item strong {
-        color: var(--accent);
-        font-size: 0.82rem;
-        font-weight: 700;
+        display: inline-flex;
+        width: 10px;
+        min-width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        border: 2px solid #c9c9c9;
+        background: currentColor;
+        color: #ff741d;
+        font-size: 0;
+        font-weight: 0;
+        padding: 0;
+        pointer-events: none;
+        transform-origin: center;
+        animation: rdb-admin-section-dot-pulse 1.45s ease-in-out infinite;
+    }
+
+    :root[data-theme='dark'] .rdb-admin-mobile-menu-item strong {
+        border-color: #151515;
+    }
+
+    .rdb-admin-mobile-menu-arrow {
+        width: 15px;
+        height: 15px;
+        object-fit: contain;
+        flex: 0 0 auto;
     }
 
     .rdb-admin-mobile-menu-item.is-active {
-        background: var(--rdb-admin-text-strong);
-        color: var(--rdb-admin-bg);
+        background: transparent;
+        color: #ff5f00;
+    }
+
+    :root[data-theme='dark'] .rdb-admin-mobile-menu-item.is-active {
+        background: transparent;
+        color: #ff741d;
     }
 
     .rdb-admin-mobile-menu-item.is-active strong {
-        color: var(--accent);
+        color: #ff741d;
+    }
+
+    .rdb-admin-mobile-menu-item--utility {
+        min-height: 26px;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .rdb-admin-mobile-menu-item--section + .rdb-admin-mobile-menu-item--utility {
+        margin-top: 28px;
     }
 
     .rdb-admin-mobile-menu-item--logout {
-        background: color-mix(in srgb, #ff5f56 24%, var(--rdb-admin-card-soft));
-        color: var(--rdb-admin-text-strong);
+        color: #ff2b1f;
     }
 
     .rdb-admin-kpi-row {

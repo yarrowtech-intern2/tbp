@@ -37,7 +37,12 @@ function NavIcon({ item, size }: { item: LiquidNavItem; size: number }) {
 
 function NavBadge({ badge }: { badge?: number }) {
   if (typeof badge !== 'number' || badge <= 0) return null;
-  return <span className="lmn-badge">{badge > 99 ? '99+' : badge}</span>;
+  return <span className="lmn-badge" aria-hidden="true" />;
+}
+
+function getNavAriaLabel(item: LiquidNavItem) {
+  if (typeof item.badge !== 'number' || item.badge <= 0) return item.label;
+  return `${item.label}, ${item.badge > 99 ? '99+' : item.badge} new`;
 }
 
 export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNavProps) {
@@ -97,7 +102,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
             key={`rest-active-${activeItem.id}`}
             className="lmn-rest-active"
             onClick={activeItem.onClick}
-            aria-label={activeItem.label}
+            aria-label={getNavAriaLabel(activeItem)}
             aria-current="page"
             data-tutorial-id={activeItem.dataTutorialId}
           >
@@ -112,7 +117,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
               key={item.id}
               className="lmn-rest-btn"
               onClick={item.onClick}
-              aria-label={item.label}
+              aria-label={getNavAriaLabel(item)}
               data-tutorial-id={item.dataTutorialId}
             >
               <NavIcon item={item} size={26} />
@@ -139,7 +144,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
               key={`goo-active-btn-${morphCycle}-${activeId}`}
               className="lmn-btn is-active"
               onClick={activeItem.onClick}
-              aria-label={activeItem.label}
+              aria-label={getNavAriaLabel(activeItem)}
               aria-current="page"
               data-tutorial-id={activeItem.dataTutorialId}
             >
@@ -154,7 +159,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
                 key={`goo-btn-${item.id}`}
                 className="lmn-btn"
                 onClick={item.onClick}
-                aria-label={item.label}
+                aria-label={getNavAriaLabel(item)}
                 data-tutorial-id={item.dataTutorialId}
               >
                 <NavIcon item={item} size={26} />

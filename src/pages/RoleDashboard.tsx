@@ -212,16 +212,15 @@ type MobileNavItem = {
 
 const ADMIN_PRIMARY_NAV_KEYS: SidebarKey[] = [
     'overview',
-    'content',
+    'moderation',
     'bookings',
     'revenue',
-    'moderation',
     'messages',
 ];
 
 const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
     'overview',
-    'content',
+    'moderation',
     'bookings',
     'revenue',
     'messages',
@@ -558,6 +557,46 @@ const getSectionParser = (role: DashboardRole) => {
 const normalizeSectionForRole = (role: DashboardRole, value: string | null): SidebarKey => {
     const parser = getSectionParser(role);
     return parser(value) || 'overview';
+};
+
+const getNotificationDashboardSection = (
+    item: AppNotificationRecord,
+    role: DashboardRole,
+): SidebarKey | null => {
+    const route = getNotificationRoute(item, role);
+    if (route?.startsWith('/messages')) return 'messages';
+
+    if (route?.startsWith('/dashboard')) {
+        const routeRole: DashboardRole = route.includes('/dashboard/admin')
+            ? 'admin'
+            : route.includes('/dashboard/provider')
+                ? 'provider'
+                : route.includes('/dashboard/marketing')
+                    ? 'marketing'
+                    : route.includes('/dashboard/tourist')
+                        ? 'tourist'
+                        : role;
+        const sectionMatch = route.match(/[?&]section=([^&]+)/);
+        if (!sectionMatch) return null;
+        const section = decodeURIComponent(sectionMatch[1].replace(/\+/g, ' '));
+        return normalizeSectionForRole(routeRole, section);
+    }
+
+    if (item.type === 'message_new') return 'messages';
+    if (item.type.startsWith('refund_')) return 'bookings';
+    if (item.type.startsWith('booking_')) return 'bookings';
+    if (item.type.startsWith('payment_')) return role === 'admin' ? 'revenue' : 'bookings';
+    if (item.type === 'listing_submitted' || item.type === 'listing_resubmitted') {
+        return role === 'admin' ? 'moderation' : 'studio';
+    }
+    if (item.type === 'listing_approved' || item.type === 'listing_rejected') {
+        return role === 'provider' ? 'studio' : null;
+    }
+    if (item.type === 'verification_submitted' || item.type === 'verification_resubmitted') {
+        return role === 'admin' ? 'moderation' : null;
+    }
+
+    return null;
 };
 
 const getDashboardSectionStorageKey = (role: DashboardRole) => `tbp.dashboard.active-section.${role}`;
@@ -1121,7 +1160,7 @@ export const RoleDashboard: React.FC = () => {
     useEffect(() => {
         if (!routeRole || routeRole !== effectiveRole) return;
 
-        const nextSection = requestedSection
+        const parsedSection = requestedSection
             || (typeof window === 'undefined'
                 ? null
                 : (() => {
@@ -1134,6 +1173,9 @@ export const RoleDashboard: React.FC = () => {
                     }
                 })())
             || (effectiveRole === 'admin' ? adminDefaultSection : 'overview');
+        const nextSection = !requestedSection && parsedSection === 'messages'
+            ? (effectiveRole === 'admin' ? adminDefaultSection : 'overview')
+            : parsedSection;
 
         setActiveSection(nextSection);
 
@@ -1166,6 +1208,43 @@ export const RoleDashboard: React.FC = () => {
             { replace },
         );
     }, [effectiveRole, navigate, searchParams]);
+
+    const openDashboardSection = useCallback((section: SidebarKey) => {
+        if (section === 'messages') {
+            setAdminMobileMenuOpen(false);
+            navigate('/messages');
+            return;
+        }
+        goToSection(section);
+        setAdminMobileMenuOpen(false);
+    }, [goToSection, navigate]);
+
+    const openNotifications = useCallback(() => {
+        setAdminMobileMenuOpen(false);
+        navigate('/notifications');
+    }, [navigate]);
+
+    const unreadActiveSectionNotificationKey = useMemo(() => (
+        centerNotifications
+            .filter((item) => !item.is_read && getNotificationDashboardSection(item, effectiveRole) === activeSection)
+            .map((item) => item.id)
+            .join('|')
+    ), [activeSection, centerNotifications, effectiveRole]);
+
+    useEffect(() => {
+        if (!unreadActiveSectionNotificationKey) return;
+        void Promise.all(
+            unreadActiveSectionNotificationKey
+                .split('|')
+                .filter(Boolean)
+                .map((notificationId) => markAsRead(notificationId)),
+        );
+    }, [markAsRead, unreadActiveSectionNotificationKey]);
+
+    useEffect(() => {
+        if (activeSection !== 'messages') return;
+        navigate('/messages', { replace: true });
+    }, [activeSection, navigate]);
 
     const loadAdminAccountLocations = useCallback(async (force = false) => {
         if (effectiveRole !== 'admin') return;
@@ -1395,7 +1474,7 @@ export const RoleDashboard: React.FC = () => {
             const coreItems = ADMIN_MOBILE_PRIMARY_NAV_KEYS
                 .map((key) => navItems.find((item) => item.key === key))
                 .filter((item): item is NavItem => Boolean(item));
-            const activeItem = activeSection !== 'map'
+            const activeItem = activeSection !== 'map' && activeSection !== 'content'
                 ? navItems.find((item) => item.key === activeSection)
                 : undefined;
             const compactItems = activeItem && !coreItems.some((item) => item.key === activeItem.key)
@@ -2061,68 +2140,14 @@ export const RoleDashboard: React.FC = () => {
     const userAvatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user?.id, profile?.full_name, user?.email);
 
     const sectionCounts: Partial<Record<SidebarKey, number>> = useMemo(() => {
-        if (effectiveRole === 'tourist') {
-            return {
-                bookings: touristRows.length,
-                routes: touristRouteRows.length,
-                revenue: touristRevenueFilteredRows.length,
-                messages: touristNotificationRows.length,
-                favorites: favoriteRows.length,
-            };
-        }
-        if (effectiveRole === 'provider') {
-            return {
-                bookings: providerBookingRows.length,
-                revenue: providerRevenueFilteredRows.length,
-                studio: providerRows.length,
-                listings: providerRows.length,
-                advertisements: providerAdRows.length,
-                messages: providerNotificationRows.length,
-            };
-        }
-        if (effectiveRole === 'marketing') {
-            return {
-                greetings: 1,
-                about: 1,
-                contact: 1,
-                messages: centerNotifications.length,
-            };
-        }
-        return {
-            content: 2,
-            bookings: adminRefundRows.length,
-            revenue: adminRevenueFilteredRows.length,
-            messages: adminNotificationRows.length,
-            moderation: adminQueueRows.length,
-            accepted: adminAcceptedRows.length,
-            rejected: adminRejectedRows.length,
-            users: adminUserRows.length,
-            map: adminAccountLocations.length,
-            audits: adminAuditRows.length,
-        };
-    }, [
-        adminAccountLocations.length,
-        adminAuditRows.length,
-        adminRefundRows.length,
-        adminRevenueFilteredRows.length,
-        adminNotificationRows.length,
-        adminAcceptedRows.length,
-        adminQueueRows.length,
-        adminRejectedRows.length,
-        adminUserRows.length,
-        centerNotifications.length,
-        effectiveRole,
-        favoriteRows.length,
-        providerBookingRows.length,
-        providerRevenueFilteredRows.length,
-        providerNotificationRows.length,
-        providerAdRows.length,
-        providerRows.length,
-        touristNotificationRows.length,
-        touristRevenueFilteredRows.length,
-        touristRouteRows.length,
-        touristRows.length,
-    ]);
+        return centerNotifications.reduce<Partial<Record<SidebarKey, number>>>((counts, item) => {
+            if (item.is_read) return counts;
+            const section = getNotificationDashboardSection(item, effectiveRole);
+            if (!section) return counts;
+            counts[section] = (counts[section] || 0) + 1;
+            return counts;
+        }, {});
+    }, [centerNotifications, effectiveRole]);
 
     const refreshProviderPromotionState = async () => {
         if (!user) return;
@@ -2388,7 +2413,7 @@ export const RoleDashboard: React.FC = () => {
                                         <button
                                             type="button"
                                             className="rdb-row-edit-link"
-                                            onClick={() => goToSection('messages')}
+                                            onClick={() => navigate('/messages')}
                                         >
                                             Open Messages
                                         </button>
@@ -2912,7 +2937,7 @@ export const RoleDashboard: React.FC = () => {
                                         <button
                                             type="button"
                                             className="rdb-row-edit-link"
-                                            onClick={() => goToSection('messages')}
+                                            onClick={() => navigate('/messages')}
                                         >
                                             Open Messages
                                         </button>
@@ -4336,27 +4361,27 @@ export const RoleDashboard: React.FC = () => {
                     <nav className="rdb-nav" aria-label="Dashboard menu">
                         {(effectiveRole === 'admin' ? adminSidebarNavItems : navItems).map((item) => {
                             const Icon = item.icon;
+                            const count = sectionCounts[item.key];
+                            const hasCount = typeof count === 'number' && count > 0;
                             return (
                                 <button
                                     type="button"
                                     key={item.key}
                                     className={`rdb-nav-item${item.key === activeSection ? ' is-active' : ''}`}
                                     onClick={() => {
-                                        goToSection(item.key);
-                                        if (!isDesktopDashboard) {
-                                            setAdminMobileMenuOpen(false);
-                                        }
+                                        openDashboardSection(item.key);
                                     }}
                                     data-tutorial-id={`dashboard-nav-${item.key}`}
                                     data-tooltip={item.label}
-                                    aria-label={item.label}
+                                    aria-label={hasCount ? `${item.label}, ${count} pending` : item.label}
+                                    title={hasCount ? `${item.label}: ${count} pending` : item.label}
                                 >
                                     <span className="rdb-nav-item-content">
                                         <Icon size={18} />
                                         <span>{item.label}</span>
                                     </span>
-                                    {typeof sectionCounts[item.key] === 'number' && (
-                                        <span className="rdb-nav-count">{sectionCounts[item.key]}</span>
+                                    {hasCount && (
+                                        <span className="rdb-nav-count" aria-hidden="true" />
                                     )}
                                 </button>
                             );
@@ -4448,15 +4473,13 @@ export const RoleDashboard: React.FC = () => {
                                     <button
                                         type="button"
                                         className="rdb-admin-ctrl-btn"
-                                        title="Notifications"
-                                        aria-label="Open notifications"
-                                        onClick={() => goToSection('messages')}
+                                        title={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'Notifications'}
+                                        aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : 'Open notifications'}
+                                        onClick={openNotifications}
                                     >
                                         <Bell size={18} />
                                         {unreadCount > 0 && (
-                                            <span className="rdb-admin-ctrl-badge">
-                                                {unreadCount > 99 ? '99+' : unreadCount}
-                                            </span>
+                                            <span className="rdb-admin-ctrl-badge" aria-hidden="true" />
                                         )}
                                     </button>
                                 )}
@@ -4480,17 +4503,20 @@ export const RoleDashboard: React.FC = () => {
                                     const Icon = item.icon;
                                     const isActive = item.key === activeSection;
                                     const count = sectionCounts[item.key];
+                                    const hasCount = typeof count === 'number' && count > 0;
                                     return (
                                         <button
                                             type="button"
                                             key={`topbar-${item.key}`}
                                             className={`rdb-admin-shortcut${isActive ? ' is-active' : ''}`}
-                                            onClick={() => goToSection(item.key)}
+                                            onClick={() => openDashboardSection(item.key)}
+                                            aria-label={hasCount ? `${item.label}, ${count} pending` : item.label}
+                                            title={hasCount ? `${item.label}: ${count} pending` : item.label}
                                         >
                                             <Icon size={15} />
                                             <span>{item.label}</span>
-                                            {typeof count === 'number' && (
-                                                <strong>{count}</strong>
+                                            {hasCount && (
+                                                <strong aria-hidden="true" />
                                             )}
                                         </button>
                                     );
@@ -4502,27 +4528,46 @@ export const RoleDashboard: React.FC = () => {
                             <nav id="rdb-admin-mobile-menu" className="rdb-admin-mobile-menu" aria-label="Dashboard sections">
                                 {navItems.map((item) => {
                                     const isActive = item.key === activeSection;
+                                    const count = sectionCounts[item.key];
+                                    const hasCount = typeof count === 'number' && count > 0;
                                     return (
                                         <button
                                             type="button"
                                             key={`mobile-${item.key}`}
-                                            className={`rdb-admin-mobile-menu-item${isActive ? ' is-active' : ''}`}
+                                            className={`rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--section${isActive ? ' is-active' : ''}`}
                                             data-tutorial-id={`dashboard-mobile-${item.key}`}
+                                            aria-label={hasCount ? `${item.label}, ${count} pending` : item.label}
+                                            title={hasCount ? `${item.label}: ${count} pending` : item.label}
                                             onClick={() => {
-                                                goToSection(item.key);
-                                                setAdminMobileMenuOpen(false);
+                                                openDashboardSection(item.key);
                                             }}
                                         >
                                             <span>{item.label}</span>
-                                            {typeof sectionCounts[item.key] === 'number' && (
-                                                <strong>{sectionCounts[item.key]}</strong>
-                                            )}
+                                            <span className="rdb-admin-mobile-menu-meta">
+                                                {hasCount && (
+                                                    <strong aria-hidden="true" />
+                                                )}
+                                                <img src="/icons/arrow.webp" alt="" className="rdb-admin-mobile-menu-arrow" aria-hidden="true" />
+                                            </span>
                                         </button>
                                     );
                                 })}
                                 <button
                                     type="button"
-                                    className="rdb-admin-mobile-menu-item"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--section"
+                                    onClick={() => {
+                                        setAdminMobileMenuOpen(false);
+                                        navigate('/profile');
+                                    }}
+                                >
+                                    <span>Profile</span>
+                                    <span className="rdb-admin-mobile-menu-meta">
+                                        <img src="/icons/arrow.webp" alt="" className="rdb-admin-mobile-menu-arrow" aria-hidden="true" />
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--utility"
                                     onClick={() => {
                                         setAdminMobileMenuOpen(false);
                                         toggleTheme();
@@ -4533,7 +4578,7 @@ export const RoleDashboard: React.FC = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    className="rdb-admin-mobile-menu-item"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--utility"
                                     onClick={() => {
                                         setAdminMobileMenuOpen(false);
                                         openTutorial();
@@ -4544,7 +4589,7 @@ export const RoleDashboard: React.FC = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--logout"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--utility rdb-admin-mobile-menu-item--logout"
                                     onClick={() => {
                                         setAdminMobileMenuOpen(false);
                                         void handleSignOut();
@@ -4677,18 +4722,18 @@ export const RoleDashboard: React.FC = () => {
                     ariaLabel="Mobile dashboard navigation"
                     items={mobileNavItems.map((item): LiquidNavItem => {
                         const count = item.countKey ? sectionCounts[item.countKey] : undefined;
+                        const badge = typeof count === 'number' && count > 0 ? count : undefined;
                         return {
                             id: item.id,
                             label: item.label,
                             isActive: item.section === activeSection,
                             iconSrc: MOBILE_NAV_ICON_SRC[item.id],
                             icon: item.icon,
-                            badge: typeof count === 'number' ? count : undefined,
+                            badge,
                             dataTutorialId: `dashboard-mobile-${item.section || item.id}`,
                             onClick: () => {
                                 if (item.section) {
-                                    goToSection(item.section);
-                                    setAdminMobileMenuOpen(false);
+                                    openDashboardSection(item.section);
                                     return;
                                 }
                                 if (item.to) {
