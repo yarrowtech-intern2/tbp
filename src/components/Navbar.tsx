@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, X } from 'lucide-react';
-import { Globe2 } from 'reicon-react';
 import { useAppTutorial } from '../context/app-tutorial-context-value';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
@@ -10,12 +9,38 @@ import { normalizeRoleValue } from '../lib/platform';
 
 type NavTab = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
 
+type DesktopLiquidNavItem = {
+    key: string;
+    label: string;
+    to: string;
+    iconSrc: string;
+    active: boolean;
+};
+
+const DESKTOP_NAV_ICON_SRC: Record<string, string> = {
+    home: '/icons/mobile-nav-icons/home.webp',
+    explore: '/icons/mobile-nav-icons/search.webp',
+    dashboard: '/icons/mobile-nav-icons/dashboard.webp',
+    bookings: '/icons/mobile-nav-icons/bookings.webp',
+    messages: '/icons/mobile-nav-icons/chat.webp',
+    favorites: '/icons/mobile-nav-icons/fav.webp',
+    admin: '/icons/mobile-nav-icons/dashboard.webp',
+    studio: '/icons/mobile-nav-icons/studio.webp',
+};
+
+const DESKTOP_NAV_MORPH_MS = 560;
+
 export const Navbar: React.FC = () => {
     const { user, profile, profileLoading, signOut, isAdmin, isProvider, roleLabel } = useAuth();
     const { openTutorial } = useAppTutorial();
     const { theme, toggleTheme } = useTheme();
     const [showMenu, setShowMenu] = useState(false);
+    const [desktopMorphing, setDesktopMorphing] = useState(false);
+    const [desktopMorphCycle, setDesktopMorphCycle] = useState(0);
     const mobileNavRef = useRef<HTMLDivElement | null>(null);
+    const previousDesktopActiveId = useRef<string | null | undefined>(undefined);
+    const rawDesktopGooId = useId().replace(/[^a-zA-Z0-9]/g, '');
+    const desktopGooFilterId = `nbr-goo-${rawDesktopGooId}`;
     const location = useLocation();
 
     const isDark = theme === 'dark';
@@ -73,6 +98,7 @@ export const Navbar: React.FC = () => {
         if (location.pathname.startsWith('/dashboard')) {
             const section = new URLSearchParams(location.search).get('section');
             if (section === 'bookings') return 'bookings';
+            if (section === 'favorites') return null;
             return 'dashboard';
         }
         if (
@@ -107,6 +133,66 @@ export const Navbar: React.FC = () => {
               ]),
     ];
 
+    const locationSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const desktopNavItems: DesktopLiquidNavItem[] = [
+        ...navLinks
+            .filter((item) => item.key !== 'profile')
+            .map((item) => ({
+                key: item.key,
+                label: item.label,
+                to: item.to,
+                iconSrc: DESKTOP_NAV_ICON_SRC[item.key],
+                active: activeTab === item.key,
+            })),
+        ...(adminAccount
+            ? [{
+                key: 'admin',
+                label: 'Admin',
+                to: '/admin',
+                iconSrc: DESKTOP_NAV_ICON_SRC.admin,
+                active: location.pathname === '/admin',
+            }]
+            : []),
+        {
+            key: 'messages',
+            label: 'Messages',
+            to: '/messages',
+            iconSrc: DESKTOP_NAV_ICON_SRC.messages,
+            active: location.pathname === '/messages',
+        },
+        ...(isTourist
+            ? [{
+                key: 'favorites',
+                label: 'Favorites',
+                to: '/dashboard/tourist?section=favorites',
+                iconSrc: DESKTOP_NAV_ICON_SRC.favorites,
+                active: location.pathname.startsWith('/dashboard/tourist') && locationSearchParams.get('section') === 'favorites',
+            }]
+            : []),
+        ...(providerAccount
+            ? [{
+                key: 'studio',
+                label: 'Studio',
+                to: providerStudioPath,
+                iconSrc: DESKTOP_NAV_ICON_SRC.studio,
+                active: location.pathname.startsWith('/dashboard/provider') && locationSearchParams.get('section') === 'studio',
+            }]
+            : []),
+    ];
+    const activeDesktopItem = desktopNavItems.find((item) => item.active) || null;
+    const inactiveDesktopItems = activeDesktopItem
+        ? desktopNavItems.filter((item) => item.key !== activeDesktopItem.key)
+        : desktopNavItems;
+    const activeDesktopId = activeDesktopItem?.key || null;
+
+    if (previousDesktopActiveId.current === undefined) {
+        previousDesktopActiveId.current = activeDesktopId;
+    } else if (previousDesktopActiveId.current !== activeDesktopId) {
+        previousDesktopActiveId.current = activeDesktopId;
+        setDesktopMorphing(true);
+        setDesktopMorphCycle((cycle) => cycle + 1);
+    }
+
     const shortName = (() => {
         const name = profile?.full_name?.trim();
         if (!name || name.includes('@')) {
@@ -119,6 +205,12 @@ export const Navbar: React.FC = () => {
     })();
 
     const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user?.id, profile?.full_name, user?.email);
+
+    useEffect(() => {
+        if (!desktopMorphing) return;
+        const timeoutId = window.setTimeout(() => setDesktopMorphing(false), DESKTOP_NAV_MORPH_MS);
+        return () => window.clearTimeout(timeoutId);
+    }, [desktopMorphCycle, desktopMorphing]);
 
     useEffect(() => {
         if (!showMenu) return;
@@ -149,8 +241,70 @@ export const Navbar: React.FC = () => {
         <>
             {/* ── Desktop nav bar ─────────────────────────────── */}
             <div className="nbr-bar nbr-desktop">
+                <Link to={homePath} aria-label="Home" className="nbr-desktop-logo">
+                    <img src={logoSrc} alt="The Better Pass" className="nbr-logo" />
+                </Link>
+
+                {user && desktopNavItems.length > 0 ? (
+                    <nav className="nbr-liquid-nav" aria-label="Primary navigation">
+                        <svg className="nbr-liquid-defs" aria-hidden="true" focusable="false">
+                            <filter id={desktopGooFilterId} x="-30%" y="-60%" width="160%" height="220%">
+                                <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+                                <feColorMatrix
+                                    in="blur"
+                                    mode="matrix"
+                                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10"
+                                    result="goo"
+                                />
+                                <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+                            </filter>
+                        </svg>
+
+                        <div className={`nbr-liquid-rest${desktopMorphing ? ' is-hidden' : ''}`}>
+                            {activeDesktopItem && (
+                                <Link to={activeDesktopItem.to} className="nbr-liquid-active" aria-label={activeDesktopItem.label} aria-current="page" title={activeDesktopItem.label}>
+                                    <img src={activeDesktopItem.iconSrc} alt="" className="nbr-liquid-icon" aria-hidden="true" />
+                                </Link>
+                            )}
+                            <div className="nbr-liquid-pill">
+                                {inactiveDesktopItems.map((item) => (
+                                    <Link key={`rest-${item.key}`} to={item.to} className="nbr-liquid-btn" aria-label={item.label} title={item.label}>
+                                        <img src={item.iconSrc} alt="" className="nbr-liquid-icon" aria-hidden="true" />
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className={`nbr-liquid-goo${desktopMorphing ? '' : ' is-hidden'}`}>
+                            <div className="nbr-liquid-blob-layer" style={{ filter: `url(#${desktopGooFilterId})` }}>
+                                {activeDesktopItem && <span key={`goo-active-${desktopMorphCycle}-${activeDesktopId}`} className="nbr-liquid-blob-active" />}
+                                <span key={`goo-pill-${desktopMorphCycle}-${activeDesktopId}`} className="nbr-liquid-blob-pill">
+                                    {inactiveDesktopItems.map((item) => (
+                                        <span key={`slot-${item.key}`} className="nbr-liquid-blob-slot" />
+                                    ))}
+                                </span>
+                            </div>
+                            <div className="nbr-liquid-icon-layer">
+                                {activeDesktopItem && (
+                                    <Link to={activeDesktopItem.to} className="nbr-liquid-active" aria-label={activeDesktopItem.label} aria-current="page" title={activeDesktopItem.label}>
+                                        <img src={activeDesktopItem.iconSrc} alt="" className="nbr-liquid-icon" aria-hidden="true" />
+                                    </Link>
+                                )}
+                                <div className="nbr-liquid-pill nbr-liquid-pill--icons">
+                                    {inactiveDesktopItems.map((item) => (
+                                        <Link key={`goo-btn-${item.key}`} to={item.to} className="nbr-liquid-btn" aria-label={item.label} title={item.label}>
+                                            <img src={item.iconSrc} alt="" className="nbr-liquid-icon" aria-hidden="true" />
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+                ) : (
+                    <Link to="/auth" className="nbr-join nbr-join--desktop">Join</Link>
+                )}
                 {/* Centered glass pill */}
-                <div className="nbr-pill">
+                <div className="nbr-pill nbr-pill--legacy">
                     <Link to={homePath} aria-label="Home" className="nbr-logo-wrap">
                         <img src={logoSrc} alt="The Better Pass" className="nbr-logo" />
                     </Link>
@@ -191,15 +345,24 @@ export const Navbar: React.FC = () => {
                 {/* Right: map shortcut and user chip (outside the pill) */}
                 {user && (
                     <div className="nbr-right-actions">
+                        <button
+                            type="button"
+                            className="nbr-theme-button"
+                            onClick={toggleTheme}
+                            aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                            title={isDark ? 'Light theme' : 'Dark theme'}
+                        >
+                            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
                         <Link
                             to="/map"
                             className={`nbr-map-button${location.pathname === '/map' ? ' nbr-map-button--active' : ''}`}
                             aria-label="Open map"
                             title="Map"
                         >
-                            <Globe2 size={24} className="nbr-map-icon" aria-hidden="true" />
+                            <img src="/icons/mobile-nav-icons/gps.svg" alt="" className="nbr-map-icon" aria-hidden="true" />
                         </Link>
-                        <Link to={dashboardPath} className="nbr-user-chip">
+                        <Link to="/profile" className={`nbr-user-chip${location.pathname === '/profile' ? ' nbr-user-chip--active' : ''}`}>
                             <div className="nbr-user-text">
                                 <span className="nbr-user-name">{shortName}</span>
                                 <span className="nbr-user-role">{roleLabel}</span>
@@ -307,6 +470,257 @@ export const Navbar: React.FC = () => {
                 .nbr-desktop {
                     display: grid !important;
                     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+                    align-items: center;
+                    box-sizing: border-box;
+                    left: 50%;
+                    padding: 0 32px;
+                    right: auto;
+                    top: 24px;
+                    transform: translateX(-50%);
+                    width: min(100%, 1440px);
+                }
+
+                .nbr-pill--legacy {
+                    display: none !important;
+                }
+
+                .nbr-desktop-logo {
+                    align-items: center;
+                    display: inline-flex;
+                    grid-column: 1;
+                    justify-self: start;
+                    text-decoration: none;
+                }
+
+                .nbr-desktop-logo .nbr-logo {
+                    height: 38px;
+                }
+
+                .nbr-liquid-nav {
+                    --nbr-liquid-size: 50px;
+                    --nbr-liquid-item: 42px;
+                    --nbr-liquid-gap: 10px;
+                    --nbr-liquid-fill: #FF741D;
+                    --nbr-liquid-ink: #101010;
+                    contain: layout style;
+                    display: grid;
+                    grid-column: 2;
+                    isolation: isolate;
+                    justify-self: center;
+                    overflow: visible;
+                    pointer-events: all;
+                    position: relative;
+                }
+
+                .nbr-liquid-defs {
+                    height: 0;
+                    position: absolute;
+                    width: 0;
+                }
+
+                .nbr-liquid-rest,
+                .nbr-liquid-goo,
+                .nbr-liquid-blob-layer,
+                .nbr-liquid-icon-layer {
+                    align-items: center;
+                    display: flex;
+                    gap: var(--nbr-liquid-gap);
+                    grid-area: 1 / 1;
+                    padding: 6px;
+                }
+
+                .nbr-liquid-rest,
+                .nbr-liquid-goo {
+                    transition: opacity 0.12s ease;
+                }
+
+                .nbr-liquid-rest {
+                    display: flex;
+                }
+
+                .nbr-liquid-goo {
+                    display: grid;
+                }
+
+                .nbr-liquid-rest.is-hidden,
+                .nbr-liquid-goo.is-hidden {
+                    opacity: 0;
+                    pointer-events: none;
+                    visibility: hidden;
+                }
+
+                .nbr-liquid-blob-layer {
+                    pointer-events: none;
+                    position: relative;
+                    z-index: 1;
+                }
+
+                .nbr-liquid-icon-layer {
+                    pointer-events: none;
+                    position: relative;
+                    z-index: 2;
+                }
+
+                .nbr-liquid-active,
+                .nbr-liquid-btn {
+                    align-items: center;
+                    border-radius: 999px;
+                    color: var(--nbr-liquid-ink);
+                    display: inline-flex;
+                    justify-content: center;
+                    position: relative;
+                    text-decoration: none;
+                    -webkit-tap-highlight-color: transparent;
+                }
+
+                .nbr-liquid-active {
+                    animation: nbr-liquid-active-separate 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+                    background: var(--nbr-liquid-fill);
+                    flex: 0 0 auto;
+                    height: var(--nbr-liquid-size);
+                    pointer-events: auto;
+                    width: var(--nbr-liquid-size);
+                }
+
+                .nbr-liquid-pill {
+                    align-items: center;
+                    animation: nbr-liquid-pill-settle 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+                    background: var(--nbr-liquid-fill);
+                    border-radius: 999px;
+                    display: inline-flex;
+                    flex: 0 0 auto;
+                    gap: 1px;
+                    height: var(--nbr-liquid-size);
+                    padding: 0 11px;
+                }
+
+                .nbr-liquid-pill--icons {
+                    pointer-events: auto;
+                }
+
+                .nbr-liquid-btn {
+                    background: transparent;
+                    flex: 0 0 auto;
+                    height: var(--nbr-liquid-size);
+                    pointer-events: auto;
+                    transition: transform 0.18s ease;
+                    width: var(--nbr-liquid-item);
+                }
+
+                .nbr-liquid-btn:hover {
+                    transform: translateY(-1px);
+                }
+
+                .nbr-liquid-icon {
+                    display: block;
+                    filter: brightness(0) saturate(100%);
+                    height: 26px;
+                    object-fit: contain;
+                    width: 26px;
+                }
+
+                .nbr-liquid-active .nbr-liquid-icon {
+                    height: 27px;
+                    width: 27px;
+                }
+
+                .nbr-liquid-blob-active {
+                    animation: nbr-liquid-goo-active 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+                    background: var(--nbr-liquid-fill);
+                    border-radius: 999px;
+                    flex: 0 0 auto;
+                    height: var(--nbr-liquid-size);
+                    position: relative;
+                    width: var(--nbr-liquid-size);
+                }
+
+                .nbr-liquid-blob-active::after {
+                    animation: nbr-liquid-goo-neck 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+                    background: var(--nbr-liquid-fill);
+                    border-radius: 999px;
+                    content: '';
+                    height: 34px;
+                    position: absolute;
+                    right: calc((var(--nbr-liquid-gap) + 8px) * -1);
+                    top: 50%;
+                    transform: translateY(-50%) scaleX(0);
+                    transform-origin: left center;
+                    width: calc(var(--nbr-liquid-gap) + 15px);
+                }
+
+                .nbr-liquid-blob-pill {
+                    align-items: center;
+                    animation: nbr-liquid-goo-pill 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+                    background: var(--nbr-liquid-fill);
+                    border-radius: 999px;
+                    display: inline-flex;
+                    flex: 0 0 auto;
+                    gap: 1px;
+                    height: var(--nbr-liquid-size);
+                    padding: 0 11px;
+                }
+
+                .nbr-liquid-active::after,
+                .nbr-liquid-btn::after {
+                    background: ${isDark ? '#f7f7f7' : '#111111'};
+                    border-radius: 999px;
+                    color: ${isDark ? '#111111' : '#ffffff'};
+                    content: attr(aria-label);
+                    font-family: 'Onest', 'Outfit', sans-serif;
+                    font-size: 0.68rem;
+                    font-weight: 700;
+                    left: 50%;
+                    line-height: 1;
+                    opacity: 0;
+                    padding: 6px 8px;
+                    pointer-events: none;
+                    position: absolute;
+                    top: calc(100% + 8px);
+                    transform: translate(-50%, -4px) scale(0.96);
+                    transition: opacity 0.16s ease, transform 0.16s ease;
+                    white-space: nowrap;
+                    z-index: 20;
+                }
+
+                .nbr-liquid-active:hover::after,
+                .nbr-liquid-btn:hover::after,
+                .nbr-liquid-active:focus-visible::after,
+                .nbr-liquid-btn:focus-visible::after {
+                    opacity: 1;
+                    transform: translate(-50%, 0) scale(1);
+                }
+
+                .nbr-liquid-blob-slot {
+                    flex: 0 0 auto;
+                    height: 1px;
+                    width: var(--nbr-liquid-item);
+                }
+
+                @keyframes nbr-liquid-active-separate {
+                    0% { transform: translateX(10px) scale(0.96); }
+                    100% { transform: translateX(0) scale(1); }
+                }
+
+                @keyframes nbr-liquid-pill-settle {
+                    0% { transform: translateX(-8px) scaleX(1.02); }
+                    100% { transform: translateX(0) scaleX(1); }
+                }
+
+                @keyframes nbr-liquid-goo-active {
+                    0% { transform: translateX(14px) scale(0.9); }
+                    58% { transform: translateX(3px) scale(1.04); }
+                    100% { transform: translateX(0) scale(1); }
+                }
+
+                @keyframes nbr-liquid-goo-pill {
+                    0% { transform: translateX(-12px) scaleX(1.07); }
+                    100% { transform: translateX(0) scaleX(1); }
+                }
+
+                @keyframes nbr-liquid-goo-neck {
+                    0% { opacity: 1; transform: translateY(-50%) scaleX(1); }
+                    58% { opacity: 0.88; transform: translateY(-50%) scaleX(0.62); }
+                    100% { opacity: 0; transform: translateY(-50%) scaleX(0); }
                 }
 
                 /* Glass pill */
@@ -412,6 +826,13 @@ export const Navbar: React.FC = () => {
                     text-decoration: none;
                 }
 
+                .nbr-join--desktop {
+                    background: #FF741D;
+                    color: #101010;
+                    grid-column: 2;
+                    justify-self: center;
+                }
+
                 .nbr-right-actions {
                     align-items: center;
                     display: inline-flex;
@@ -420,23 +841,25 @@ export const Navbar: React.FC = () => {
                     justify-self: end;
                 }
 
+                .nbr-theme-button,
                 .nbr-map-button,
                 .nbr-user-chip {
                     align-items: center;
                     animation: fadeInDown 0.5s cubic-bezier(0.23,1,0.32,1) both;
                     animation-delay: 0.06s;
-                    backdrop-filter: blur(20px) saturate(200%);
-                    -webkit-backdrop-filter: blur(20px) saturate(200%);
-                    background: ${navSurface};
-                    border: 1px solid ${navBorder};
+                    backdrop-filter: none;
+                    -webkit-backdrop-filter: none;
+                    background: ${isDark ? '#2a2a2a' : '#d8d8d8'};
+                    border: none;
                     border-radius: 999px;
-                    box-shadow: 0 4px 24px rgba(15,23,42,0.10), inset 0 1px 0 ${navInset};
+                    box-shadow: none;
                     display: inline-flex;
                     color: ${navTextStrong};
                     text-decoration: none;
                     transition: box-shadow 0.2s, transform 0.2s, background 0.2s;
                 }
 
+                .nbr-theme-button,
                 .nbr-map-button {
                     height: 42px;
                     justify-content: center;
@@ -444,28 +867,38 @@ export const Navbar: React.FC = () => {
                     width: 42px;
                 }
 
+                .nbr-theme-button {
+                    cursor: pointer;
+                }
+
                 .nbr-map-icon {
                     display: block;
                     height: 24px;
                     width: 24px;
-                    color: currentColor;
+                    object-fit: contain;
                 }
 
+                .nbr-theme-button:hover,
                 .nbr-map-button:hover,
                 .nbr-map-button--active {
-                    background: ${navHover};
+                    background: ${isDark ? '#343434' : '#cfcfcf'};
                     transform: translateY(-1px);
                 }
 
                 .nbr-user-chip {
                     gap: 8px;
-                    padding: 5px 5px 5px 12px;
+                    background: ${isDark ? '#2a2a2a' : '#efefef'};
+                    padding: 4px 4px 4px 11px;
                     position: static;
                 }
 
                 .nbr-user-chip:hover {
-                    box-shadow: 0 6px 20px rgba(15,23,42,0.15);
+                    box-shadow: none;
                     transform: translateY(-1px);
+                }
+
+                .nbr-user-chip--active {
+                    background: color-mix(in srgb, #FF741D 24%, ${isDark ? '#2a2a2a' : '#efefef'});
                 }
 
                 .nbr-user-text {
