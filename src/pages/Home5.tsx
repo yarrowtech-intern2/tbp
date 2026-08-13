@@ -1655,6 +1655,7 @@ export const Home5: React.FC = () => {
                       type="button"
                       className="home5-faq-trigger"
                       aria-expanded={isOpen}
+                      aria-controls={`home5-faq-answer-${index}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         setOpenFaqIndex(isOpen ? null : index);
@@ -1664,8 +1665,8 @@ export const Home5: React.FC = () => {
                       <span className="home5-faq-icon" aria-hidden="true" />
                     </button>
                     <div
+                      id={`home5-faq-answer-${index}`}
                       className="home5-faq-body"
-                      style={{ maxHeight: isOpen ? '300px' : '0px' }}
                     >
                       <p>{item.answer}</p>
                     </div>

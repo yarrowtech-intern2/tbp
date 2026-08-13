@@ -223,7 +223,7 @@
   justify-items: end;
   gap: 12px;
   font-family: 'Outfit', sans-serif;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .home5-hero-menu-toggle {
@@ -239,6 +239,7 @@
   background: transparent;
   color: rgba(17, 17, 17, 0.68);
   cursor: pointer;
+  pointer-events: auto;
   transition:
     color 180ms ease,
     transform 180ms ease;
@@ -2207,7 +2208,6 @@
   border-radius: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  cursor: pointer;
   transition: box-shadow 0.2s ease;
 }
 
@@ -2226,6 +2226,7 @@
   background: transparent;
   cursor: pointer;
   text-align: left;
+  font: inherit;
 }
 
 .home5-faq-question {
@@ -2241,6 +2242,7 @@
   flex-shrink: 0;
   width: 20px;
   height: 20px;
+  pointer-events: none;
 }
 
 .home5-faq-icon::before,
@@ -2269,6 +2271,10 @@
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.35s ease;
+}
+
+.home5-faq-card.is-open .home5-faq-body {
+  max-height: 18rem;
 }
 
 .home5-faq-body p {
