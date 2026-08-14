@@ -684,12 +684,15 @@ export const Home5: React.FC = () => {
 
       const entryProgress = phaseProgress(progress, 0, 0.14);
       const expansionProgress = phaseProgress(progress, 0.14, 0.28);
-      const introProgress = smoothStep(phaseProgress(progress, 0.28, 0.38));
-      const theProgress = smoothStep(phaseProgress(progress, 0.38, 0.48));
-      const betterProgress = smoothStep(phaseProgress(progress, 0.48, 0.6));
-      const passProgress = smoothStep(phaseProgress(progress, 0.6, 0.72));
-      const roadProgress = smoothStep(phaseProgress(progress, 0.72, 0.84));
-      const mapProgress = smoothStep(phaseProgress(progress, 0.84, 1));
+      const introProgress = smoothStep(phaseProgress(progress, 0.28, 0.34));
+      const theProgress = smoothStep(phaseProgress(progress, 0.34, 0.4));
+      const betterProgress = smoothStep(phaseProgress(progress, 0.4, 0.46));
+      const passProgress = smoothStep(phaseProgress(progress, 0.46, 0.52));
+      const roadProgress = smoothStep(phaseProgress(progress, 0.56, 0.68));
+      const mapProgress = smoothStep(phaseProgress(progress, 0.68, 0.78));
+      const mapPointProgress = smoothStep(phaseProgress(progress, 0.78, 0.84));
+      const mapLabelProgress = smoothStep(phaseProgress(progress, 0.84, 0.9));
+      const mapRouteProgress = smoothStep(phaseProgress(progress, 0.9, 1));
       const circleY = (1 - easeOutCubic(entryProgress)) * 72;
       const circleScale = 0.07 + (smoothStep(expansionProgress) * 0.93);
       const roadWidthScale = 1 - (mapProgress * 0.62);
@@ -715,6 +718,9 @@ export const Home5: React.FC = () => {
       node.style.setProperty('--home5-blank-road-opacity', roadOpacity.toFixed(4));
       node.style.setProperty('--home5-blank-copy-opacity', copyOpacity.toFixed(4));
       node.style.setProperty('--home5-blank-map-progress', mapProgress.toFixed(4));
+      node.style.setProperty('--home5-blank-map-point-progress', mapPointProgress.toFixed(4));
+      node.style.setProperty('--home5-blank-map-label-progress', mapLabelProgress.toFixed(4));
+      node.style.setProperty('--home5-blank-map-route-progress', mapRouteProgress.toFixed(4));
       node.style.setProperty('--home5-blank-map-scale', mapScale.toFixed(4));
     };
 
@@ -1312,6 +1318,27 @@ export const Home5: React.FC = () => {
           </div>
           <div className="home5-blank-hero-map" aria-hidden="true">
             <img className="home5-blank-hero-map-image" src="/map/kolkata-map-bg.svg" alt="" loading="eager" decoding="async" />
+            <svg className="home5-blank-hero-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+              <path
+                className="home5-blank-map-connection"
+                d="M25 22 C28 22.8, 30.2 24.1, 32.1 26.2 L34.8 29.5 C36.4 31.5, 37.5 34.2, 40.2 36.2 L43.9 39.1 C46.5 41.1, 47.4 43.9, 49.8 46.1 L53.4 49.3 C55.9 51.6, 58.9 52.1, 61.6 54.8 L64.2 57.9 C66.4 60.7, 69.1 61.9, 70.9 64.8 L72.7 69.2 C74.1 72.5, 74.7 75.2, 76 78"
+                pathLength={1}
+              />
+            </svg>
+            <div className="home5-blank-map-marker home5-blank-map-marker-kolkata">
+              <span className="home5-blank-map-ripple" />
+              <span className="home5-blank-map-ripple home5-blank-map-ripple-delay" />
+              <span className="home5-blank-map-dot" />
+            </div>
+            <div className="home5-blank-map-marker home5-blank-map-marker-goa">
+              <span className="home5-blank-map-ripple" />
+              <span className="home5-blank-map-ripple home5-blank-map-ripple-delay" />
+              <span className="home5-blank-map-dot" />
+            </div>
+            <div className="home5-blank-map-labels">
+              <span className="home5-blank-map-label home5-blank-map-label-kolkata">Kolkata</span>
+              <span className="home5-blank-map-label home5-blank-map-label-goa">Goa</span>
+            </div>
           </div>
           <div className="home5-blank-hero-copy">
             <div className="home5-blank-hero-intro">
