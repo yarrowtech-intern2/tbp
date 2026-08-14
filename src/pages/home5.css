@@ -215,6 +215,12 @@
   border-color: rgba(255, 255, 255, 0.14);
 }
 
+.home5-nav-shell .home5-mobile-dock.floating-dock.is-liquid,
+.home5-nav-shell.is-on-dark .home5-mobile-dock.floating-dock.is-liquid {
+  background: transparent;
+  border-color: transparent;
+}
+
 .home5-hero-menu {
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
@@ -2950,6 +2956,10 @@
     top: auto;
     right: auto;
     display: inline-flex;
+  }
+
+  .home5-nav-shell .home5-mobile-dock.floating-dock.is-liquid {
+    display: grid;
   }
 
   .home5-hero-menu {

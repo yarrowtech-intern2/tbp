@@ -12,13 +12,218 @@
   backdrop-filter: blur(18px) saturate(1.2);
 }
 
+.floating-dock.is-liquid {
+  --floating-dock-size: 58px;
+  --floating-dock-item: 46px;
+  --floating-dock-gap: 18px;
+  --floating-dock-fill: #ff741d;
+  --floating-dock-ink: #111111;
+  display: grid;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  isolation: isolate;
+  overflow: visible;
+  contain: layout style;
+}
+
+.floating-dock-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.floating-dock-rest,
+.floating-dock-goo,
+.floating-dock-blob-layer,
+.floating-dock-icon-layer {
+  grid-area: 1 / 1;
+  align-items: center;
+  gap: var(--floating-dock-gap);
+  padding: 6px;
+}
+
+.floating-dock-rest {
+  display: flex;
+  transition: opacity 0.12s ease;
+}
+
+.floating-dock-goo {
+  display: grid;
+  transition: opacity 0.12s ease;
+}
+
+.floating-dock-rest.is-hidden,
+.floating-dock-goo.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.floating-dock-blob-layer,
+.floating-dock-icon-layer {
+  display: flex;
+}
+
+.floating-dock-blob-layer {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.floating-dock-icon-layer {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.floating-dock-active-shell,
+.floating-dock-pill-shell {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--floating-dock-fill);
+}
+
+.floating-dock-active-shell {
+  justify-content: center;
+  min-width: var(--floating-dock-size);
+  min-height: var(--floating-dock-size);
+  animation: floating-dock-active-separate 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.floating-dock-pill-shell {
+  min-height: var(--floating-dock-size);
+  gap: 2px;
+  padding: 0 12px;
+  animation: floating-dock-pill-settle 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.floating-dock-pill-shell--icons {
+  pointer-events: auto;
+}
+
+.floating-dock-blob-active {
+  position: relative;
+  width: var(--floating-dock-size);
+  height: var(--floating-dock-size);
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--floating-dock-fill);
+  animation: floating-dock-goo-active 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+}
+
+.floating-dock-blob-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: calc((var(--floating-dock-gap) + 8px) * -1);
+  width: calc(var(--floating-dock-gap) + 16px);
+  height: 38px;
+  border-radius: 999px;
+  background: var(--floating-dock-fill);
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left center;
+  animation: floating-dock-goo-neck 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+}
+
+.floating-dock-blob-pill {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+  height: var(--floating-dock-size);
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--floating-dock-fill);
+  animation: floating-dock-goo-pill 0.56s cubic-bezier(0.2, 0.92, 0.22, 1) both;
+}
+
+.floating-dock-blob-slot {
+  width: var(--floating-dock-item);
+  height: 1px;
+  flex: 0 0 auto;
+}
+
+@keyframes floating-dock-active-separate {
+  0% {
+    transform: translateX(10px) scale(0.96);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes floating-dock-pill-settle {
+  0% {
+    transform: translateX(-8px) scaleX(1.02);
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@keyframes floating-dock-goo-active {
+  0% {
+    transform: translateX(14px) scale(0.9);
+  }
+  58% {
+    transform: translateX(3px) scale(1.04);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes floating-dock-goo-pill {
+  0% {
+    transform: translateX(-12px) scaleX(1.07);
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@keyframes floating-dock-goo-neck {
+  0% {
+    opacity: 1;
+    transform: translateY(-50%) scaleX(1);
+  }
+  58% {
+    opacity: 0.88;
+    transform: translateY(-50%) scaleX(0.62);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0);
+  }
+}
+
 .floating-dock-link {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   border: 0;
   padding: 0;
   background: none;
+  line-height: 0;
   text-decoration: none;
   cursor: pointer;
+}
+
+.floating-dock.is-liquid .floating-dock-link {
+  position: relative;
+  z-index: 3;
+}
+
+.floating-dock.is-liquid .floating-dock-link--active {
+  width: var(--floating-dock-size);
+  height: var(--floating-dock-size);
 }
 
 .floating-dock-item {
@@ -49,15 +254,31 @@
   box-shadow: 0 10px 22px rgba(255, 106, 0, 0.3);
 }
 
+.floating-dock.is-liquid .floating-dock-item {
+  background: transparent;
+  color: var(--floating-dock-ink);
+  box-shadow: none;
+}
+
+.floating-dock.is-liquid .floating-dock-item:hover,
+.floating-dock.is-liquid .floating-dock-item:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--floating-dock-ink);
+  transform: translateY(-5px);
+  box-shadow: none;
+}
+
 .floating-dock-icon {
   display: grid;
   place-items: center;
+  line-height: 0;
 }
 
 .floating-dock-icon svg {
   display: block;
   width: 100%;
   height: 100%;
+  margin: auto;
 }
 
 .floating-dock-icon svg path {
@@ -66,20 +287,32 @@
   paint-order: stroke fill;
 }
 
+.floating-dock-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  object-fit: contain;
+  object-position: center;
+  filter: brightness(0) saturate(100%);
+  transform: scale(1.08);
+  transform-origin: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 .floating-dock-tooltip {
   position: absolute;
   left: 50%;
-  top: calc(100% + 10px);
-  color: #ffffff;
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.74rem;
-  font-weight: 700;
+  top: calc(100% + 8px);
+  color: #3d3d3d;
+  font-family: 'Onest', 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
-  text-shadow:
-    0 0 2px rgba(0, 0, 0, 0.95),
-    0 0 6px rgba(0, 0, 0, 0.75),
-    0 1px 1px rgba(0, 0, 0, 0.9);
+  text-shadow: none;
   opacity: 0;
   transform: translateX(-50%) translateY(-4px);
   pointer-events: none;
@@ -99,6 +332,17 @@
     gap: 6px;
     padding: 7px;
     border-radius: 999px;
+  }
+
+  .floating-dock.is-liquid {
+    --floating-dock-size: 52px;
+    --floating-dock-item: 40px;
+    --floating-dock-gap: 14px;
+  }
+
+  .floating-dock.is-liquid .floating-dock-pill-shell,
+  .floating-dock.is-liquid .floating-dock-blob-pill {
+    padding: 0 9px;
   }
 }
 

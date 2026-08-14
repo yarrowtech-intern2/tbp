@@ -695,25 +695,43 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         });
     };
 
-    const handleListingImageUpload = async (file: File) => {
+    const handleListingImageUpload = async (files: File[]) => {
         if (!canAccessStudio || !user) return;
-        if (normalizeImageList(form.gallery_images || []).length >= MAX_LISTING_IMAGES) {
+        const currentImages = normalizeImageList(form.gallery_images || []);
+        const remainingSlots = MAX_LISTING_IMAGES - currentImages.length;
+        if (remainingSlots <= 0) {
             setGalleryError(`Add up to ${MAX_LISTING_IMAGES} images only.`);
             return;
         }
-        if (!file.type.startsWith('image/')) {
-            alert('Please select a valid image file.');
+        const selectedFiles = files.filter(Boolean);
+        if (selectedFiles.length === 0) return;
+        if (selectedFiles.length > remainingSlots) {
+            setGalleryError(`You can add ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'} only.`);
             return;
         }
-        if (file.size > MAX_LISTING_IMAGE_MB * 1024 * 1024) {
-            alert(`Image is too large. Max allowed size is ${MAX_LISTING_IMAGE_MB}MB.`);
+
+        const invalidFile = selectedFiles.find((file) => !file.type.startsWith('image/'));
+        if (invalidFile) {
+            alert('Please select image files only.');
             return;
         }
+
+        const oversizedFile = selectedFiles.find((file) => file.size > MAX_LISTING_IMAGE_MB * 1024 * 1024);
+        if (oversizedFile) {
+            alert(`${oversizedFile.name} is too large. Max allowed size is ${MAX_LISTING_IMAGE_MB}MB.`);
+            return;
+        }
+
         setUploadingImage(true);
         try {
-            const uploadedUrl = await uploadListingImage(file);
+            const uploadedUrls: string[] = [];
+            for (const file of selectedFiles) {
+                const uploadedUrl = await uploadListingImage(file);
+                uploadedUrls.push(uploadedUrl);
+            }
             setImgError(false);
-            addGalleryImage(uploadedUrl);
+            applyGallery([...currentImages, ...uploadedUrls]);
+            setGalleryError(null);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error || '');
             console.error('Failed to upload listing image:', error);
@@ -911,10 +929,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     ref={imageInputRef}
                                     type="file"
                                     accept="image/*"
+                                    multiple
                                     className="ps-file-input"
                                     onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) void handleListingImageUpload(file);
+                                        const files = Array.from(e.target.files || []);
+                                        if (files.length > 0) void handleListingImageUpload(files);
                                         e.target.value = '';
                                     }}
                                     disabled={!canAccessStudio || uploadingImage || galleryImages.length >= MAX_LISTING_IMAGES}

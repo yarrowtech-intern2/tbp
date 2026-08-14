@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { Home as HomeIcon, InfoCircle, Globe2, Envelope, CircleBottomUp, Send } from 'reicon-react';
+import { Send } from 'reicon-react';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
 import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
@@ -493,27 +493,28 @@ export const Home5: React.FC = () => {
   const mobileDockItems: FloatingDockItem[] = [
     {
       title: 'Home',
-      icon: <HomeIcon />,
+      iconSrc: '/icons/mobile-nav-icons/home.webp',
       to: '/',
+      isActive: true,
     },
     {
-      title: 'About us',
-      icon: <InfoCircle />,
+      title: 'About',
+      iconSrc: '/icons/mobile-nav-icons/about.webp',
       to: '/about-final',
     },
     {
       title: 'Map',
-      icon: <Globe2 />,
+      iconSrc: '/icons/mobile-nav-icons/map.svg',
       to: '/map',
     },
     {
       title: 'Contact',
-      icon: <Envelope />,
+      iconSrc: '/icons/mobile-nav-icons/chat.webp',
       onClick: openContactModal,
     },
     {
       title: 'Get started',
-      icon: <CircleBottomUp />,
+      iconSrc: '/icons/mobile-nav-icons/login.webp',
       to: '/auth',
       isPrimary: true,
     },
