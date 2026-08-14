@@ -22,8 +22,8 @@ type FloatingDockProps = {
 
 const BASE_SIZE = 46;
 const MAX_SIZE = 62;
-const BASE_ICON = 29;
-const MAX_ICON = 36;
+const BASE_ICON = 27;
+const MAX_ICON = 33;
 const MAGNIFY_RANGE = 90;
 const SPRING = { mass: 0.1, stiffness: 160, damping: 14 };
 

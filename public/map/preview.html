@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Map background preview</title>
+<style>
+  html, body { margin: 0; }
+  section {
+    height: 100vh;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: sans-serif;
+  }
+  #kolkata { background-image: url("./kolkata-map-bg.svg"); }
+  #goa { background-image: url("./goa-map-bg.svg"); }
+  .card {
+    background: rgba(255,255,255,0.85);
+    padding: 24px 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  }
+</style>
+</head>
+<body>
+  <section id="kolkata"><div class="card">kolkata-map-bg.svg</div></section>
+  <section id="goa"><div class="card">goa-map-bg.svg</div></section>
+</body>
+</html>

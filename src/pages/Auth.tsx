@@ -16,17 +16,21 @@ import { signUpWithRole } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
 import {
     DEFAULT_SIGNUP_VALUES,
+    PROVIDER_ROLES,
     ROLE_LABELS,
     ROLE_SIGNUP_CONFIG,
     type RoleFormField,
     type SignupFormValues,
     type UserRole,
 } from '../lib/platform';
+import { COUNTRY_OPTIONS } from '../lib/countries';
 import { getPasswordFormatStatus, PASSWORD_METER_CIRCUMFERENCE, PASSWORD_REQUIREMENTS_ERROR } from '../lib/password';
 import './auth.css';
 
 const TOURIST_EXPLORE_PATH = '/explore';
 type SignupBaseField = 'fullName' | 'email' | 'password';
+const PROVIDER_ROLE_SET = new Set<UserRole>(PROVIDER_ROLES);
+const isProviderSignupRole = (role: UserRole) => PROVIDER_ROLE_SET.has(role);
 
 const normalizeAppUrl = (rawUrl?: string) => {
     if (!rawUrl) return '';
@@ -194,6 +198,7 @@ export const Auth: React.FC = () => {
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [signupStepIndex, setSignupStepIndex] = useState(0);
+    const [countrySearch, setCountrySearch] = useState('');
     const [formValues, setFormValues] = useState<SignupFormValues>(() => ({
         ...DEFAULT_SIGNUP_VALUES,
         ...(initialDraft?.signupValues || {}),
@@ -208,6 +213,7 @@ export const Auth: React.FC = () => {
     const navigate = useNavigate();
 
     const activeRole = formValues.role;
+    const isProviderSignup = isProviderSignupRole(activeRole);
     const passwordFormat = useMemo(() => getPasswordFormatStatus(formValues.password), [formValues.password]);
     const recoveryPasswordFormat = useMemo(() => getPasswordFormatStatus(recoveryPassword), [recoveryPassword]);
     const passwordProgressStyle = {
@@ -227,13 +233,15 @@ export const Auth: React.FC = () => {
             { kind: 'base', key: 'fullName' },
             { kind: 'base', key: 'email' },
             { kind: 'base', key: 'password' },
-            ...roleConfig.fields.map((field) => ({
-                kind: 'role' as const,
-                field: field.key,
-                label: field.label,
-                placeholder: field.placeholder,
-                required: field.required,
-            })),
+            ...roleConfig.fields
+                .filter((field) => field.key !== 'companyName')
+                .map((field) => ({
+                    kind: 'role' as const,
+                    field: field.key,
+                    label: field.label,
+                    placeholder: field.placeholder,
+                    required: field.required,
+                })),
             ...(requiresCompanyToggle
                 ? [{
                     kind: 'toggle' as const,
@@ -247,6 +255,12 @@ export const Auth: React.FC = () => {
     }, [activeRole, roleConfig.fields]);
     const isSignupWizard = !isLogin;
     const currentSignupStep = signupSteps[Math.min(signupStepIndex, signupSteps.length - 1)];
+    const currentRoleField = currentSignupStep?.kind === 'role' ? currentSignupStep.field : null;
+    const filteredCountryOptions = useMemo(() => {
+        const query = countrySearch.trim().toLowerCase();
+        if (!query) return COUNTRY_OPTIONS;
+        return COUNTRY_OPTIONS.filter((country) => country.toLowerCase().startsWith(query));
+    }, [countrySearch]);
 
     const summaryEntries = useMemo(() => {
         const items: Array<{ label: string; value: string }> = [
@@ -254,6 +268,11 @@ export const Auth: React.FC = () => {
             { label: 'Name', value: formValues.fullName || 'Not set' },
             { label: 'Email', value: formValues.email || 'Not set' },
         ];
+
+        const companyName = formValues.companyName.trim();
+        if (isProviderSignup && (activeRole === 'tour_company' || companyName)) {
+            items.push({ label: 'Company', value: companyName || 'Not set' });
+        }
 
         for (const field of roleConfig.fields) {
             const value = String(formValues[field.key] ?? '').trim();
@@ -269,7 +288,7 @@ export const Auth: React.FC = () => {
         }
 
         return items;
-    }, [activeRole, formValues, roleConfig.fields]);
+    }, [activeRole, formValues, isProviderSignup, roleConfig.fields]);
 
     useEffect(() => {
         writeAuthDraft({
@@ -290,6 +309,12 @@ export const Auth: React.FC = () => {
         setSignupStepIndex(0);
         setError(null);
     }, [activeRole]);
+
+    useEffect(() => {
+        if (currentRoleField !== 'country') {
+            setCountrySearch('');
+        }
+    }, [currentRoleField]);
 
     useEffect(() => {
         if (currentQueryIntent.deleted) {
@@ -320,7 +345,7 @@ export const Auth: React.FC = () => {
             switch (step.key) {
                 case 'fullName':
                     return {
-                        label: 'Full Name',
+                        label: 'Your name',
                         placeholder: 'Srijon Karmakar',
                         type: 'text',
                         required: true,
@@ -375,6 +400,20 @@ export const Auth: React.FC = () => {
         if (step.kind === 'toggle') {
             setError(null);
             return true;
+        }
+
+        if (step.kind === 'base' && step.key === 'fullName') {
+            if (!formValues.fullName.trim()) {
+                setError('Your name is required.');
+                setInfo(null);
+                return false;
+            }
+
+            if (activeRole === 'tour_company' && !formValues.companyName.trim()) {
+                setError('Company name is required.');
+                setInfo(null);
+                return false;
+            }
         }
 
         const value = String(getSignupStepValue(step) ?? '').trim();
@@ -509,6 +548,13 @@ export const Auth: React.FC = () => {
 
         if (!acceptTerms) {
             setError('Accept the Terms & Condition before creating an account.');
+            setInfo(null);
+            return;
+        }
+
+        if (activeRole === 'tour_company' && !formValues.companyName.trim()) {
+            setSignupStepIndex(0);
+            setError('Company name is required.');
             setInfo(null);
             return;
         }
@@ -983,6 +1029,11 @@ export const Auth: React.FC = () => {
                                                 const showSkip = currentSignupStep.kind === 'role' && !currentSignupStep.required;
                                                 const isPasswordField = currentSignupStep.kind === 'base' && currentSignupStep.key === 'password';
                                                 const isToggleField = currentSignupStep.kind === 'toggle';
+                                                const isProviderIdentityStep = currentSignupStep.kind === 'base'
+                                                    && currentSignupStep.key === 'fullName'
+                                                    && isProviderSignup;
+                                                const isCountryField = currentSignupStep.kind === 'role' && currentSignupStep.field === 'country';
+                                                const companyNameRequired = activeRole === 'tour_company';
                                                 const icon = currentSignupStep.kind === 'role' ? FIELD_ICONS[currentSignupStep.field] : null;
                                                 const passwordNextDisabled = isPasswordField && !passwordFormat.isComplete;
 
@@ -993,6 +1044,10 @@ export const Auth: React.FC = () => {
                                                             <p>
                                                                 {isToggleField
                                                                     ? meta.description
+                                                                    : isProviderIdentityStep
+                                                                    ? companyNameRequired
+                                                                        ? `Your name and company name are required to create your ${ROLE_LABELS[activeRole].toLowerCase()} account.`
+                                                                        : 'Your name is required. Add a company name only if you want it attached to this profile.'
                                                                     : meta.required
                                                                     ? `This is required to create your ${ROLE_LABELS[activeRole].toLowerCase()} account.`
                                                                     : 'Optional. You can skip this and add it later.'}
@@ -1011,20 +1066,90 @@ export const Auth: React.FC = () => {
                                                                     <span>{meta.description}</span>
                                                                 </div>
                                                             </label>
+                                                        ) : isProviderIdentityStep ? (
+                                                            <div className="auth-provider-identity-grid auth-field-full">
+                                                                <label className="auth-field">
+                                                                    <span>Your name</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        required
+                                                                        placeholder="Srijon Karmakar"
+                                                                        value={formValues.fullName}
+                                                                        onChange={(e) => updateField('fullName', e.target.value)}
+                                                                    />
+                                                                </label>
+                                                                <label className="auth-field">
+                                                                    <span>{companyNameRequired ? 'Company name' : 'Company name (optional)'}</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        required={companyNameRequired}
+                                                                        placeholder="North Ridge Expeditions"
+                                                                        value={formValues.companyName}
+                                                                        onChange={(e) => updateField('companyName', e.target.value)}
+                                                                    />
+                                                                </label>
+                                                            </div>
+                                                        ) : isCountryField ? (
+                                                            <div className="auth-field auth-field-full">
+                                                                <span>{meta.label}</span>
+                                                                <div className="auth-country-picker">
+                                                                    <div className={`auth-country-selected${inputValue ? ' has-value' : ''}`}>
+                                                                        {inputValue || 'Choose a country'}
+                                                                    </div>
+                                                                    <div className="auth-input-icon-wrap auth-country-search">
+                                                                        {icon && <i>{icon}</i>}
+                                                                        <input
+                                                                            type="search"
+                                                                            placeholder={inputValue ? 'Search to change country' : 'Search country'}
+                                                                            value={countrySearch}
+                                                                            onChange={(e) => setCountrySearch(e.target.value)}
+                                                                            onKeyDown={(e) => {
+                                                                                const firstCountry = filteredCountryOptions[0];
+                                                                                if (e.key !== 'Enter' || !firstCountry) return;
+                                                                                e.preventDefault();
+                                                                                updateField('country', firstCountry);
+                                                                                setCountrySearch('');
+                                                                            }}
+                                                                            aria-label="Search country"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="auth-country-options" role="listbox" aria-label="Country options">
+                                                                        {filteredCountryOptions.length > 0 ? (
+                                                                            filteredCountryOptions.map((country) => (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    key={country}
+                                                                                    className={`auth-country-option${formValues.country === country ? ' is-selected' : ''}`}
+                                                                                    onClick={() => {
+                                                                                        updateField('country', country);
+                                                                                        setCountrySearch('');
+                                                                                    }}
+                                                                                    role="option"
+                                                                                    aria-selected={formValues.country === country}
+                                                                                >
+                                                                                    {country}
+                                                                                </button>
+                                                                            ))
+                                                                        ) : (
+                                                                            <div className="auth-country-empty">No countries found</div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         ) : (
                                                             <label className="auth-field auth-field-full">
                                                                 <span>{meta.label}</span>
                                                                 {isPasswordField ? (
                                                                     <div className="auth-password-wrap">
                                                                         <input
-                                                                        type={meta.type}
-                                                                        required={meta.required}
-                                                                        minLength={8}
-                                                                        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,}"
-                                                                        placeholder={meta.placeholder}
-                                                                        value={inputValue}
-                                                                        onChange={(e) => updateField(fieldKey, e.target.value as SignupFormValues[typeof fieldKey])}
-                                                                    />
+                                                                            type={meta.type}
+                                                                            required={meta.required}
+                                                                            minLength={8}
+                                                                            pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,}"
+                                                                            placeholder={meta.placeholder}
+                                                                            value={inputValue}
+                                                                            onChange={(e) => updateField(fieldKey, e.target.value as SignupFormValues[typeof fieldKey])}
+                                                                        />
                                                                         <button
                                                                             type="button"
                                                                             className="auth-eye-btn"

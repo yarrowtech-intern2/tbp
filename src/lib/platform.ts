@@ -129,7 +129,6 @@ export const ROLE_SIGNUP_CONFIG: Record<UserRole, RoleSignupConfig> = {
             { key: 'phone', label: 'Business Phone', placeholder: '+91 98765 43210', required: true },
             { key: 'country', label: 'Country', placeholder: 'India', required: true },
             { key: 'city', label: 'City', placeholder: 'Leh', required: true },
-            { key: 'companyName', label: 'Company Name', placeholder: 'North Ridge Expeditions', required: true },
             { key: 'registrationNumber', label: 'Registration Number', placeholder: 'GST / business registration', required: true },
             { key: 'website', label: 'Website', placeholder: 'https://northridge.travel', required: false },
             { key: 'bio', label: 'Company Overview', placeholder: 'Small-group expeditions focused on remote trails and local hosts', required: true },

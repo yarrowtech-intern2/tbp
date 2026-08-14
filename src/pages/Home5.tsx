@@ -2,7 +2,6 @@ import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Send } from 'reicon-react';
-import { CinematicHero } from '../components/cinematic-hero/CinematicHero';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
 import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
@@ -412,6 +411,9 @@ const getCarouselOffset = (index: number, activeIndex: number, total: number) =>
 };
 
 const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
+const smoothStep = (value: number) => value * value * (3 - (2 * value));
+const phaseProgress = (value: number, start: number, end: number) => clampValue((value - start) / (end - start), 0, 1);
 
 export const Home5: React.FC = () => {
   const [activeCard, setActiveCard] = useState(0);
@@ -450,6 +452,7 @@ export const Home5: React.FC = () => {
   const bookingDragDeltaXRef = useRef(0);
   const stickyLogoRef = useRef<HTMLAnchorElement | null>(null);
   const stickyMenuRef = useRef<HTMLDivElement | null>(null);
+  const blankHeroRef = useRef<HTMLElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroBaseVideoRef = useRef<HTMLVideoElement | null>(null);
   const heroPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -671,6 +674,96 @@ export const Home5: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    let frame = 0;
+    let targetProgress = 0;
+    let currentProgress = 0;
+
+    const applyBlankHeroProgress = (progress: number) => {
+      const node = blankHeroRef.current;
+      if (!node) return;
+
+      const entryProgress = phaseProgress(progress, 0, 0.14);
+      const expansionProgress = phaseProgress(progress, 0.14, 0.28);
+      const introProgress = smoothStep(phaseProgress(progress, 0.28, 0.38));
+      const theProgress = smoothStep(phaseProgress(progress, 0.38, 0.48));
+      const betterProgress = smoothStep(phaseProgress(progress, 0.48, 0.6));
+      const passProgress = smoothStep(phaseProgress(progress, 0.6, 0.72));
+      const roadProgress = smoothStep(phaseProgress(progress, 0.72, 0.84));
+      const mapProgress = smoothStep(phaseProgress(progress, 0.84, 1));
+      const circleY = (1 - easeOutCubic(entryProgress)) * 72;
+      const circleScale = 0.07 + (smoothStep(expansionProgress) * 0.93);
+      const roadWidthScale = 1 - (mapProgress * 0.62);
+      const roadOpacity = roadProgress * (1 - (mapProgress * 0.76));
+      const copyOpacity = 1 - mapProgress;
+      const mapScale = 1.08 - (mapProgress * 0.08);
+      const setTextReveal = (name: string, revealProgress: number) => {
+        const textY = (1 - revealProgress) * 28;
+        const textBlur = (1 - revealProgress) * 8;
+        node.style.setProperty(`--home5-blank-${name}-progress`, revealProgress.toFixed(4));
+        node.style.setProperty(`--home5-blank-${name}-y`, `${textY.toFixed(2)}px`);
+        node.style.setProperty(`--home5-blank-${name}-blur`, `${textBlur.toFixed(2)}px`);
+      };
+
+      node.style.setProperty('--home5-blank-circle-y', `${circleY.toFixed(2)}vh`);
+      node.style.setProperty('--home5-blank-circle-scale', circleScale.toFixed(4));
+      setTextReveal('intro', introProgress);
+      setTextReveal('the', theProgress);
+      setTextReveal('better', betterProgress);
+      setTextReveal('pass', passProgress);
+      node.style.setProperty('--home5-blank-road-progress', roadProgress.toFixed(4));
+      node.style.setProperty('--home5-blank-road-width-scale', roadWidthScale.toFixed(4));
+      node.style.setProperty('--home5-blank-road-opacity', roadOpacity.toFixed(4));
+      node.style.setProperty('--home5-blank-copy-opacity', copyOpacity.toFixed(4));
+      node.style.setProperty('--home5-blank-map-progress', mapProgress.toFixed(4));
+      node.style.setProperty('--home5-blank-map-scale', mapScale.toFixed(4));
+    };
+
+    const animateBlankHeroProgress = () => {
+      const delta = targetProgress - currentProgress;
+
+      if (Math.abs(delta) < 0.001) {
+        currentProgress = targetProgress;
+        applyBlankHeroProgress(currentProgress);
+        frame = 0;
+        return;
+      }
+
+      currentProgress += delta * 0.16;
+      applyBlankHeroProgress(currentProgress);
+      frame = window.requestAnimationFrame(animateBlankHeroProgress);
+    };
+
+    const updateBlankHeroProgress = () => {
+      const node = blankHeroRef.current;
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const scrollRange = Math.max(1, rect.height - viewportHeight);
+      targetProgress = clampValue(-rect.top / scrollRange, 0, 1);
+
+      if (!frame) {
+        frame = window.requestAnimationFrame(animateBlankHeroProgress);
+      }
+    };
+
+    const requestUpdate = () => {
+      updateBlankHeroProgress();
+    };
+
+    updateBlankHeroProgress();
+    applyBlankHeroProgress(currentProgress);
+    window.addEventListener('scroll', requestUpdate, { passive: true });
+    window.addEventListener('resize', requestUpdate);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', requestUpdate);
+      window.removeEventListener('resize', requestUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
     const media = window.matchMedia('(hover: hover) and (pointer: fine)');
     const updateMode = () => {
       const isFinePointer = media.matches;
@@ -814,7 +907,6 @@ export const Home5: React.FC = () => {
       const sampleY = menuRect.top + (menuRect.height / 2);
       const footerRect = footerRef.current?.getBoundingClientRect();
       const heroRect = heroSectionRef.current?.getBoundingClientRect();
-      const cinematicRect = document.getElementById('cinematic-hero-wrapper')?.getBoundingClientRect();
       const overlapsFooter = Boolean(
         footerRect
         && sampleX >= footerRect.left
@@ -829,17 +921,8 @@ export const Home5: React.FC = () => {
         && sampleY >= heroRect.top
         && sampleY <= heroRect.bottom
       );
-      // The cinematic hero's atmospheric backgrounds skew dusky for most of its
-      // duration, so treat it the same as the dark video hero for nav-tone purposes.
-      const overlapsCinematic = Boolean(
-        cinematicRect
-        && sampleX >= cinematicRect.left
-        && sampleX <= cinematicRect.right
-        && sampleY >= cinematicRect.top
-        && sampleY <= cinematicRect.bottom
-      );
-      const nextToneOnDark = overlapsFooter || overlapsCinematic || (overlapsHero && heroSubtitleOnDark);
-      const nextNavInHero = overlapsHero || overlapsCinematic;
+      const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
+      const nextNavInHero = overlapsHero;
 
       if (stickyNavInHeroRef.current !== nextNavInHero) {
         stickyNavInHeroRef.current = nextNavInHero;
@@ -1221,7 +1304,28 @@ export const Home5: React.FC = () => {
         </div>
       </div>
 
-      <CinematicHero />
+      <section ref={blankHeroRef} id="home5-blank-hero" className="home5-blank-hero" aria-labelledby="home5-blank-hero-title">
+        <div className="home5-blank-hero-pin">
+          <div className="home5-blank-hero-circle" aria-hidden="true" />
+          <div className="home5-blank-hero-road" aria-hidden="true">
+            <div className="home5-blank-hero-road-line" />
+          </div>
+          <div className="home5-blank-hero-map" aria-hidden="true">
+            <img className="home5-blank-hero-map-image" src="/map/kolkata-map-bg.svg" alt="" loading="eager" decoding="async" />
+          </div>
+          <div className="home5-blank-hero-copy">
+            <div className="home5-blank-hero-intro">
+              <p className="home5-blank-hero-kicker">Go somewhere worth remembering.</p>
+              <p className="home5-blank-hero-subcopy">Discover experiences, routes and people with</p>
+            </div>
+            <h2 id="home5-blank-hero-title" className="home5-blank-hero-title" aria-label="The Better Pass">
+              <span className="home5-blank-hero-title-the" aria-hidden="true">The</span>
+              <span className="home5-blank-hero-title-better" aria-hidden="true">Better</span>
+              <span className="home5-blank-hero-title-pass" aria-hidden="true">PASS</span>
+            </h2>
+          </div>
+        </div>
+      </section>
 
       <section
         id="home5-hero"

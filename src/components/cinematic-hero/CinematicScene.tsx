@@ -6,6 +6,7 @@ import type { CinematicProxies } from './timelineConfig';
 import type { DeviceQualityTier } from '../../hooks/useDeviceQuality';
 import { CameraController } from './CameraController';
 import { Clouds } from './Clouds';
+import { CloudCurtain } from './CloudCurtain';
 import { Traveler } from './Traveler';
 import { Phone } from './Phone';
 import { TravelBag } from './TravelBag';
@@ -72,6 +73,7 @@ const SceneContents: React.FC<{ proxies: CinematicProxies; quality: DeviceQualit
     />
 
     <Clouds proxies={proxies} quality={quality} />
+    <CloudCurtain proxies={proxies} />
     <Traveler proxies={proxies} />
     <Phone proxies={proxies} />
     <TravelBag proxies={proxies} />
