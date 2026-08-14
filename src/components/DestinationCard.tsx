@@ -123,7 +123,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
         event.stopPropagation();
 
         if (!user) {
-            navigate('/auth');
+            navigate('/login');
             return;
         }
 

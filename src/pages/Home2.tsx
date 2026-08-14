@@ -330,7 +330,7 @@ export const Home2: React.FC = () => {
             title: 'Planning, saved in one place.',
             copy: 'Create an account to manage bookings, revisit destinations, and move through the travel flow with less friction.',
             action: 'Join membership',
-            link: '/auth',
+            link: '/signup',
             image: featuredDestinations[3]?.image_url || companionDestination?.image_url || heroDestination?.image_url || '',
         },
     ];

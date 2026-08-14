@@ -444,7 +444,7 @@ export const Home3: React.FC = () => {
                                 </span>
                             </p>
                             <div className="h3-hero-actions">
-                                <Link to="/auth" className="h3-btn-hero-primary">
+                                <Link to="/login" className="h3-btn-hero-primary">
                                     Explore Journeys <ArrowRight size={18} />
                                 </Link>
                                 <a href="#discover" className="h3-btn-hero-glass">
@@ -549,7 +549,7 @@ export const Home3: React.FC = () => {
                                 wanderers to the world's most extraordinary places. Every journey we craft is a
                                 story waiting to be lived.
                             </p>
-                            <Link to="/auth" className="h3-text-link">
+                            <Link to="/signup" className="h3-text-link">
                                 Join our community <ArrowRight size={16} />
                             </Link>
                         </div>
@@ -582,7 +582,7 @@ export const Home3: React.FC = () => {
                                         <div className="h3-service-icon"><Icon size={20} /></div>
                                         <h3>{svc.title}</h3>
                                         <p>{svc.description}</p>
-                                        <Link to="/auth" className="h3-text-link h3-text-link-sm">
+                                        <Link to="/login" className="h3-text-link h3-text-link-sm">
                                             Learn more <ArrowRight size={14} />
                                         </Link>
                                     </article>
@@ -656,7 +656,7 @@ export const Home3: React.FC = () => {
                                 <div className="h3-mood-panel-body">
                                     <h3>{item.label} <ArrowRight size={16} /></h3>
                                     <p>{item.description}</p>
-                                    <Link to="/auth" className="h3-btn-hero-primary h3-mood-cta">
+                                    <Link to="/login" className="h3-btn-hero-primary h3-mood-cta">
                                         Explore {item.label}
                                     </Link>
                                 </div>
@@ -692,7 +692,7 @@ export const Home3: React.FC = () => {
                             <span className="h3-section-eyebrow">Featured Destinations</span>
                             <h2>Popular right now.</h2>
                         </div>
-                        <Link to="/auth" className="h3-text-link">
+                        <Link to="/login" className="h3-text-link">
                             View all <ArrowRight size={16} />
                         </Link>
                     </Reveal>
@@ -714,7 +714,7 @@ export const Home3: React.FC = () => {
                                         <p>{d.description}</p>
                                         <div className="h3-dest-footer">
                                             <span className="h3-dest-price">{d.price}</span>
-                                            <Link to="/auth" className="h3-btn-pill">
+                                            <Link to="/login" className="h3-btn-pill">
                                                 Book now <ArrowRight size={13} />
                                             </Link>
                                         </div>
@@ -735,7 +735,7 @@ export const Home3: React.FC = () => {
                         "The world is a book, and those who do not travel read only one page."
                     </blockquote>
                     <cite>— Saint Augustine</cite>
-                    <Link to="/auth" className="h3-btn-ghost-white">
+                    <Link to="/signup" className="h3-btn-ghost-white">
                         Start Your Chapter <ArrowRight size={16} />
                     </Link>
                 </Reveal>
@@ -821,10 +821,10 @@ export const Home3: React.FC = () => {
                         Your next extraordinary journey is waiting.
                     </p>
                     <div className="h3-cta-actions">
-                        <Link to="/auth" className="h3-btn-cta-white">
+                        <Link to="/login" className="h3-btn-cta-white">
                             Book Your Journey <ArrowRight size={18} />
                         </Link>
-                        <Link to="/auth" className="h3-btn-hero-glass">
+                        <Link to="/signup" className="h3-btn-hero-glass">
                             Join Membership
                         </Link>
                     </div>

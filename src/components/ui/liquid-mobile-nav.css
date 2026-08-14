@@ -70,6 +70,11 @@
   user-select: none;
 }
 
+.lmn-icon img[src$='spending.webp'] {
+  transform: scale(1.24);
+  transform-origin: center;
+}
+
 .lmn-badge {
   position: absolute;
   top: 9px;

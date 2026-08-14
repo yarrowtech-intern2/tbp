@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { CinematicProxies } from './timelineConfig';
@@ -31,28 +31,33 @@ const vegInland = new THREE.Color(PALETTE.vegetationInland);
 const vegCoastal = new THREE.Color(PALETTE.vegetationCoastal);
 const tmpColor = new THREE.Color();
 
+const generateSeeds = (count: number): VegetationSeed[] => {
+  const arr: VegetationSeed[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const side = i % 2 === 0 ? -1 : 1;
+    arr.push({
+      side,
+      offsetX: 1.9 + Math.random() * 2.4,
+      baseZ: BUS_BASE_POS[2] - i * (ROAD_SEGMENT_LENGTH / 3),
+      height: 0.6 + Math.random() * 0.9,
+    });
+  }
+  return arr;
+};
+
 export const Environment: React.FC<EnvironmentProps> = ({ proxies, quality }) => {
-  const count = quality === 'high' ? VEGETATION_COUNT_HIGH : VEGETATION_COUNT_LOW;
   const groundRef = useRef<THREE.Mesh>(null!);
   const groundMat = useMemo(() => new THREE.MeshStandardMaterial({ color: PALETTE.groundInland, roughness: 1 }), []);
   const vegMat = useMemo(() => new THREE.MeshStandardMaterial({ color: PALETTE.vegetationInland, roughness: 0.9 }), []);
   const vegMeshRef = useRef<THREE.InstancedMesh>(null!);
 
+  // Seeded once via useState's lazy initializer (React's sanctioned one-time
+  // impure init, unlike useMemo) using the quality tier at first mount.
+  const [seeds] = useState<VegetationSeed[]>(() => (
+    generateSeeds(quality === 'high' ? VEGETATION_COUNT_HIGH : VEGETATION_COUNT_LOW)
+  ));
+  const count = seeds.length;
   const segmentSpan = count * (ROAD_SEGMENT_LENGTH / 3);
-
-  const seeds = useMemo<VegetationSeed[]>(() => {
-    const arr: VegetationSeed[] = [];
-    for (let i = 0; i < count; i += 1) {
-      const side = i % 2 === 0 ? -1 : 1;
-      arr.push({
-        side,
-        offsetX: 1.9 + Math.random() * 2.4,
-        baseZ: BUS_BASE_POS[2] - i * (ROAD_SEGMENT_LENGTH / 3),
-        height: 0.6 + Math.random() * 0.9,
-      });
-    }
-    return arr;
-  }, [count]);
 
   useFrame(() => {
     const mix = proxies.environment.mix;

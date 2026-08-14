@@ -1154,3 +1154,437 @@
         grid-template-columns: minmax(0, 1.15fr) minmax(380px, 0.85fr);
     }
 }
+
+/* Compact embedded dashboard layout */
+.ps-page--embedded .ps-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: end;
+    gap: 5px 10px;
+    margin-bottom: 10px;
+}
+
+.ps-page--embedded .ps-badge {
+    margin-bottom: 0;
+    padding: 4px 8px;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+}
+
+.ps-page--embedded .ps-title {
+    margin: 0;
+    font-size: clamp(1.42rem, 3vw, 2rem);
+    line-height: 1;
+}
+
+.ps-page--embedded .ps-subtitle {
+    grid-column: 1 / -1;
+    max-width: 760px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.ps-page--embedded .ps-status-bar {
+    gap: 8px;
+    padding: 9px 12px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+}
+
+.ps-page--embedded .ps-status-bar-avatar {
+    width: 32px;
+    height: 32px;
+}
+
+.ps-page--embedded .ps-status-bar-name {
+    font-size: 0.84rem;
+}
+
+.ps-page--embedded .ps-status-bar-role,
+.ps-page--embedded .ps-status-bar-company {
+    font-size: 0.72rem;
+}
+
+.ps-page--embedded .ps-status-bar-divider {
+    height: 22px;
+    margin: 0 2px;
+}
+
+.ps-page--embedded .ps-status-pill {
+    padding: 4px 9px;
+    font-size: 0.64rem;
+}
+
+.ps-page--embedded .ps-capability-strip {
+    gap: 7px;
+    margin-bottom: 10px;
+}
+
+.ps-page--embedded .ps-capability-chip {
+    min-height: 32px;
+    padding: 7px 11px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    box-shadow: none;
+}
+
+.ps-page--embedded .ps-grid {
+    gap: 10px;
+}
+
+.ps-page--embedded .ps-card {
+    padding: 12px;
+    border-radius: 14px;
+}
+
+.ps-page--embedded .ps-card-head {
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.ps-page--embedded .ps-card-label {
+    margin-bottom: 6px;
+    padding: 4px 8px;
+    font-size: 0.62rem;
+    letter-spacing: 0.07em;
+}
+
+.ps-page--embedded .ps-card-title {
+    margin-bottom: 2px;
+    font-size: 1.02rem;
+}
+
+.ps-page--embedded .ps-card-desc {
+    margin-bottom: 0;
+    font-size: 0.76rem;
+    line-height: 1.42;
+}
+
+.ps-page--embedded .ps-type-picker {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.ps-page--embedded .ps-type-card {
+    flex-direction: row;
+    gap: 6px;
+    padding: 8px 9px;
+    border-width: 1px;
+    border-radius: 10px;
+    font-size: 0.74rem;
+}
+
+.ps-page--embedded .ps-form {
+    gap: 10px;
+}
+
+.ps-page--embedded .ps-two-up {
+    gap: 10px;
+}
+
+.ps-page--embedded .ps-field {
+    gap: 4px;
+}
+
+.ps-page--embedded .ps-field-label {
+    gap: 5px;
+    font-size: 0.66rem;
+    letter-spacing: 0.055em;
+}
+
+.ps-page--embedded .ps-input,
+.ps-page--embedded .ps-select,
+.ps-page--embedded .ps-textarea {
+    min-height: 36px;
+    padding: 8px 10px;
+    border-width: 1px;
+    border-radius: 9px;
+    font-size: 0.82rem;
+}
+
+.ps-page--embedded .ps-textarea {
+    min-height: 96px;
+}
+
+.ps-page--embedded .ps-image-upload-row {
+    gap: 8px;
+}
+
+.ps-page--embedded .ps-upload-btn,
+.ps-page--embedded .ps-consent-link-btn {
+    min-height: 32px;
+    padding: 7px 10px;
+    border-width: 1px;
+    border-radius: 9px;
+    font-size: 0.74rem;
+}
+
+.ps-page--embedded .ps-upload-hint {
+    font-size: 0.66rem;
+}
+
+.ps-page--embedded .ps-gallery-add-row {
+    gap: 7px;
+    margin-top: 6px;
+}
+
+.ps-page--embedded .ps-image-preview {
+    margin-top: 6px;
+    border-width: 1px;
+    border-radius: 10px;
+    aspect-ratio: 16 / 5.5;
+    max-height: 170px;
+}
+
+.ps-page--embedded .ps-gallery-grid {
+    gap: 8px;
+    margin-top: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+}
+
+.ps-page--embedded .ps-gallery-card {
+    border-width: 1px;
+    border-radius: 10px;
+}
+
+.ps-page--embedded .ps-gallery-card img {
+    height: 84px;
+}
+
+.ps-page--embedded .ps-gallery-meta {
+    gap: 4px;
+    padding: 6px 6px 4px;
+}
+
+.ps-page--embedded .ps-gallery-tag {
+    padding: 2px 6px;
+    font-size: 0.56rem;
+}
+
+.ps-page--embedded .ps-gallery-actions {
+    gap: 4px;
+    padding: 0 6px 6px;
+}
+
+.ps-page--embedded .ps-gallery-actions button {
+    min-height: 28px;
+    padding: 4px;
+    font-size: 0.58rem;
+}
+
+.ps-page--embedded .ps-fee-section,
+.ps-page--embedded .ps-consent-block {
+    gap: 8px;
+    padding: 10px;
+    border-width: 1px;
+    border-radius: 11px;
+}
+
+.ps-page--embedded .ps-fee-grid {
+    gap: 7px;
+}
+
+.ps-page--embedded .ps-fee-row {
+    grid-template-columns: minmax(110px, 1.2fr) minmax(72px, 0.55fr) minmax(92px, 0.75fr) minmax(96px, 0.8fr) minmax(110px, 1fr) 34px;
+    gap: 6px;
+}
+
+.ps-page--embedded .ps-fee-remove-btn {
+    width: 36px;
+    height: 36px;
+    border-width: 1px;
+    border-radius: 9px;
+}
+
+.ps-page--embedded .ps-fee-preview {
+    gap: 6px;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+.ps-page--embedded .ps-fee-preview div {
+    padding: 7px 9px;
+    border-radius: 9px;
+}
+
+.ps-page--embedded .ps-fee-preview span {
+    font-size: 0.58rem;
+    letter-spacing: 0.045em;
+}
+
+.ps-page--embedded .ps-fee-preview strong {
+    font-size: 0.82rem;
+}
+
+.ps-page--embedded .ps-price-note {
+    margin-top: 5px;
+    font-size: 0.68rem;
+    line-height: 1.35;
+}
+
+.ps-page--embedded .ps-consent-checks {
+    gap: 7px;
+}
+
+.ps-page--embedded .ps-consent-check-row {
+    gap: 8px;
+    font-size: 0.78rem;
+}
+
+.ps-page--embedded .ps-submit {
+    min-height: 38px;
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-size: 0.84rem;
+}
+
+.ps-page--embedded .ps-listing-grid {
+    gap: 8px;
+}
+
+.ps-page--embedded .ps-listing-card {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 9px;
+    padding: 9px;
+    border-width: 1px;
+    border-radius: 11px;
+}
+
+.ps-page--embedded .ps-listing-thumb {
+    width: 58px;
+    height: 48px;
+    border-radius: 8px;
+}
+
+.ps-page--embedded .ps-listing-name {
+    font-size: 0.8rem;
+}
+
+.ps-page--embedded .ps-listing-loc {
+    margin-bottom: 5px;
+    font-size: 0.68rem;
+}
+
+.ps-page--embedded .ps-listing-footer {
+    gap: 5px;
+}
+
+.ps-page--embedded .ps-type-pill,
+.ps-page--embedded .ps-status-dot {
+    padding: 2px 6px;
+    font-size: 0.56rem;
+}
+
+.ps-page--embedded .ps-price {
+    flex-basis: 100%;
+    margin-left: 0;
+    text-align: left;
+    font-size: 0.68rem;
+}
+
+.ps-page--embedded .ps-edit-btn {
+    padding: 4px 7px;
+    border-width: 1px;
+    font-size: 0.68rem;
+}
+
+.ps-page--embedded .ps-empty,
+.ps-page--embedded .ps-loading {
+    gap: 7px;
+    padding: 26px 14px;
+    border-width: 1px;
+    border-radius: 11px;
+}
+
+@media (min-width: 980px) {
+    .ps-page--embedded .ps-grid {
+        grid-template-columns: minmax(0, 1.18fr) minmax(310px, 0.82fr);
+    }
+}
+
+@media (max-width: 860px) {
+    .ps-page--embedded .ps-fee-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ps-page--embedded .ps-fee-note {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 640px) {
+    .ps-page--embedded .ps-header {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .ps-page--embedded .ps-title {
+        font-size: clamp(1.32rem, 8vw, 1.78rem);
+    }
+
+    .ps-page--embedded .ps-status-bar {
+        align-items: flex-start;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .ps-page--embedded .ps-status-bar-divider {
+        display: none;
+    }
+
+    .ps-page--embedded .ps-status-bar-company {
+        grid-column: 1 / -1;
+        padding-left: 40px;
+    }
+
+    .ps-page--embedded .ps-capability-strip {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+    }
+
+    .ps-page--embedded .ps-capability-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    .ps-page--embedded .ps-capability-chip {
+        flex: 0 0 auto;
+    }
+
+    .ps-page--embedded .ps-type-picker {
+        grid-template-columns: 1fr;
+    }
+
+    .ps-page--embedded .ps-image-preview {
+        aspect-ratio: 16 / 8;
+        max-height: none;
+    }
+
+    .ps-page--embedded .ps-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .ps-page--embedded .ps-fee-row {
+        grid-template-columns: 1fr;
+    }
+
+    .ps-page--embedded .ps-fee-note {
+        grid-column: auto;
+    }
+
+    .ps-page--embedded .ps-fee-remove-btn {
+        width: 100%;
+    }
+
+    .ps-page--embedded .ps-listing-card {
+        grid-template-columns: 52px minmax(0, 1fr);
+    }
+
+    .ps-page--embedded .ps-listing-thumb {
+        width: 52px;
+        height: 46px;
+    }
+}

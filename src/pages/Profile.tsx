@@ -278,7 +278,7 @@ export const Profile: React.FC = () => {
 
     const handleSignOut = async () => {
         await signOut();
-        navigate('/auth', { replace: true });
+        navigate('/login', { replace: true });
     };
 
     const resetSecurityMessages = () => {
@@ -355,7 +355,7 @@ export const Profile: React.FC = () => {
             });
             if (deleteError) throw deleteError;
             await signOut();
-            navigate('/auth?deleted=1', { replace: true });
+            navigate('/login?deleted=1', { replace: true });
         } catch (error) {
             setSecurityError(error instanceof Error ? error.message : 'Account deletion failed. Please try again.');
         } finally {

@@ -278,7 +278,7 @@ export const AboutFinal: React.FC = () => {
         <nav id="about-final-menu-panel" className="about-final-menu-panel" aria-label="About page navigation">
           <Link to="/" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link to="/about-final" onClick={() => setMenuOpen(false)}>About us</Link>
-          <Link to="/auth" onClick={() => setMenuOpen(false)}>Login</Link>
+          <Link to="/login" onClick={() => setMenuOpen(false)}>Login</Link>
           <Link to="/#contact" onClick={() => setMenuOpen(false)}>Contact</Link>
         </nav>
       </div>

@@ -57,7 +57,7 @@ export const SupportChatbot: React.FC = () => {
         container.scrollTop = container.scrollHeight;
     }, [messages, loading, open]);
 
-    if (pathname === '/auth') return null;
+    if (pathname === '/login' || pathname === '/signup') return null;
 
     const submitQuestion = async (question: string) => {
         const normalized = question.trim();

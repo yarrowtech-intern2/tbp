@@ -101,6 +101,12 @@ const buildFullTimeline = (proxies: CinematicProxies): gsap.core.Timeline => {
     CHAPTERS.board.start,
   )
     .to(
+      // Picked up and carried — fades rather than trailing behind on the road.
+      proxies.bag,
+      { opacity: 0, duration: (CHAPTERS.board.end - CHAPTERS.board.start) * 0.25 },
+      CHAPTERS.board.start,
+    )
+    .to(
       proxies.bus,
       { doorOpen: 1, duration: (CHAPTERS.board.end - CHAPTERS.board.start) * 0.4 },
       CHAPTERS.board.start + (CHAPTERS.board.end - CHAPTERS.board.start) * 0.2,

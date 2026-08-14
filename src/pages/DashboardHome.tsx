@@ -322,7 +322,7 @@ const ListingCard: React.FC<{
     event.stopPropagation();
 
     if (!user) {
-      navigate('/auth');
+      navigate('/login');
       return;
     }
 

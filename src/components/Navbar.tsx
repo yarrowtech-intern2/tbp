@@ -24,7 +24,8 @@ const DESKTOP_NAV_ICON_SRC: Record<string, string> = {
     bookings: '/icons/mobile-nav-icons/bookings.webp',
     messages: '/icons/mobile-nav-icons/chat.webp',
     favorites: '/icons/mobile-nav-icons/fav.webp',
-    admin: '/icons/mobile-nav-icons/dashboard.webp',
+    moderation: '/icons/mobile-nav-icons/listings.webp',
+    leads: '/icons/mobile-nav-icons/notification.webp',
     studio: '/icons/mobile-nav-icons/studio.webp',
 };
 
@@ -134,6 +135,7 @@ export const Navbar: React.FC = () => {
     ];
 
     const locationSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const dashboardSection = locationSearchParams.get('section');
     const desktopNavItems: DesktopLiquidNavItem[] = [
         ...navLinks
             .filter((item) => item.key !== 'profile')
@@ -142,16 +144,31 @@ export const Navbar: React.FC = () => {
                 label: item.label,
                 to: item.to,
                 iconSrc: DESKTOP_NAV_ICON_SRC[item.key],
-                active: activeTab === item.key,
+                active: activeTab === item.key || (
+                    item.key === 'dashboard'
+                    && !isTourist
+                    && location.pathname === dashboardPath
+                    && !(adminAccount && (dashboardSection === 'moderation' || dashboardSection === 'inquiries'))
+                    && !(providerAccount && dashboardSection === 'studio')
+                ),
             })),
         ...(adminAccount
-            ? [{
-                key: 'admin',
-                label: 'Admin',
-                to: '/admin',
-                iconSrc: DESKTOP_NAV_ICON_SRC.admin,
-                active: location.pathname === '/admin',
-            }]
+            ? [
+                {
+                    key: 'moderation',
+                    label: 'Moderation',
+                    to: '/dashboard/admin?section=moderation',
+                    iconSrc: DESKTOP_NAV_ICON_SRC.moderation,
+                    active: location.pathname.startsWith('/dashboard/admin') && dashboardSection === 'moderation',
+                },
+                {
+                    key: 'leads',
+                    label: 'Contact Leads',
+                    to: '/dashboard/admin?section=inquiries',
+                    iconSrc: DESKTOP_NAV_ICON_SRC.leads,
+                    active: location.pathname.startsWith('/dashboard/admin') && dashboardSection === 'inquiries',
+                },
+            ]
             : []),
         {
             key: 'messages',
@@ -166,7 +183,7 @@ export const Navbar: React.FC = () => {
                 label: 'Favorites',
                 to: '/dashboard/tourist?section=favorites',
                 iconSrc: DESKTOP_NAV_ICON_SRC.favorites,
-                active: location.pathname.startsWith('/dashboard/tourist') && locationSearchParams.get('section') === 'favorites',
+                active: location.pathname.startsWith('/dashboard/tourist') && dashboardSection === 'favorites',
             }]
             : []),
         ...(providerAccount
@@ -175,7 +192,7 @@ export const Navbar: React.FC = () => {
                 label: 'Studio',
                 to: providerStudioPath,
                 iconSrc: DESKTOP_NAV_ICON_SRC.studio,
-                active: location.pathname.startsWith('/dashboard/provider') && locationSearchParams.get('section') === 'studio',
+                active: location.pathname.startsWith('/dashboard/provider') && dashboardSection === 'studio',
             }]
             : []),
     ];
@@ -301,7 +318,7 @@ export const Navbar: React.FC = () => {
                         </div>
                     </nav>
                 ) : (
-                    <Link to="/auth" className="nbr-join nbr-join--desktop">Join</Link>
+                    <Link to="/signup" className="nbr-join nbr-join--desktop">Join</Link>
                 )}
                 {/* Centered glass pill */}
                 <div className="nbr-pill nbr-pill--legacy">
@@ -322,14 +339,25 @@ export const Navbar: React.FC = () => {
                                 </Link>
                             ))}
                             {adminAccount && (
-                                <Link to="/admin" className={`nbr-link${location.pathname === '/admin' ? ' nbr-link--active' : ''}`}>
-                                    Admin
-                                </Link>
+                                <>
+                                    <Link
+                                        to="/dashboard/admin?section=moderation"
+                                        className={`nbr-link${location.pathname.startsWith('/dashboard/admin') && dashboardSection === 'moderation' ? ' nbr-link--active' : ''}`}
+                                    >
+                                        Moderation
+                                    </Link>
+                                    <Link
+                                        to="/dashboard/admin?section=inquiries"
+                                        className={`nbr-link${location.pathname.startsWith('/dashboard/admin') && dashboardSection === 'inquiries' ? ' nbr-link--active' : ''}`}
+                                    >
+                                        Leads
+                                    </Link>
+                                </>
                             )}
                             {providerAccount && (
                                 <Link
                                     to={providerStudioPath}
-                                    className={`nbr-link${location.pathname.startsWith('/dashboard/provider') && new URLSearchParams(location.search).get('section') === 'studio' ? ' nbr-link--active' : ''}`}
+                                    className={`nbr-link${location.pathname.startsWith('/dashboard/provider') && dashboardSection === 'studio' ? ' nbr-link--active' : ''}`}
                                 >
                                     Studio
                                 </Link>
@@ -338,7 +366,7 @@ export const Navbar: React.FC = () => {
                     )}
 
                     {!user && (
-                        <Link to="/auth" className="nbr-join">Join</Link>
+                        <Link to="/signup" className="nbr-join">Join</Link>
                     )}
                 </div>
 
@@ -406,10 +434,16 @@ export const Navbar: React.FC = () => {
                             </Link>
                         ))}
                         {user && adminAccount && (
-                            <Link to="/admin" className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
-                                <span>Admin</span>
-                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
-                            </Link>
+                            <>
+                                <Link to="/dashboard/admin?section=moderation" className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                    <span>Moderation</span>
+                                    <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
+                                </Link>
+                                <Link to="/dashboard/admin?section=inquiries" className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                    <span>Contact Leads</span>
+                                    <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
+                                </Link>
+                            </>
                         )}
                         {user && providerAccount && (
                             <Link to={providerStudioPath} className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
@@ -424,7 +458,7 @@ export const Navbar: React.FC = () => {
                             </Link>
                         )}
                         {!user && (
-                            <Link to="/auth" className="nbr-drop-item nbr-drop-item--main nbr-drop-item--accent" onClick={() => setShowMenu(false)}>
+                            <Link to="/signup" className="nbr-drop-item nbr-drop-item--main nbr-drop-item--accent" onClick={() => setShowMenu(false)}>
                                 <span>Join Membership</span>
                                 <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
                             </Link>

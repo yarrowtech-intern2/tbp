@@ -19,8 +19,8 @@ const vertexShader = /* glsl */ `
 
   void main() {
     vec3 pos = position;
-    float wave = sin(pos.x * 0.6 + uTime * 1.1) * 0.12
-      + sin(pos.y * 0.9 - uTime * 0.8) * 0.08;
+    float wave = sin(pos.x * 0.35 + uTime * 0.9) * 0.05
+      + sin(pos.y * 0.5 - uTime * 0.6) * 0.035;
     pos.z += wave * uReveal;
     vWave = wave;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -34,7 +34,7 @@ const fragmentShader = /* glsl */ `
   varying float vWave;
 
   void main() {
-    float foamFactor = smoothstep(0.08, 0.2, vWave);
+    float foamFactor = smoothstep(0.03, 0.08, vWave);
     vec3 color = mix(uDeep, uFoam, foamFactor * 0.6);
     gl_FragColor = vec4(color, uReveal);
   }
@@ -64,7 +64,9 @@ export const Ocean: React.FC<OceanProps> = ({ proxies, quality }) => {
     material.uniforms.uReveal.value = proxies.ocean.reveal;
     if (meshRef.current) {
       meshRef.current.visible = proxies.ocean.reveal > 0.01;
-      meshRef.current.position.y = THREE.MathUtils.lerp(-1.2, 0, proxies.ocean.reveal);
+      // Rests slightly above the ground/sand planes so wave-trough vertices
+      // never dip low enough to poke through and reveal the terrain below.
+      meshRef.current.position.y = THREE.MathUtils.lerp(-1.2, 0.12, proxies.ocean.reveal);
     }
   });
 

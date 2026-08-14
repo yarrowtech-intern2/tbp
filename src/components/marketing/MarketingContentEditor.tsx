@@ -117,7 +117,7 @@ const formToAbout = (form: AboutPageContent): AboutPageContent => normalizeAbout
             shortText: card.shortText || fallback.shortText,
             fullText: card.fullText.map((line) => line.trim()).filter(Boolean),
             cta: card.cta?.label || card.cta?.href
-                ? { label: card.cta?.label || fallback.cta?.label || 'Open', href: card.cta?.href || fallback.cta?.href || '/auth' }
+                ? { label: card.cta?.label || fallback.cta?.label || 'Open', href: card.cta?.href || fallback.cta?.href || '/login' }
                 : fallback.cta,
         };
     }),

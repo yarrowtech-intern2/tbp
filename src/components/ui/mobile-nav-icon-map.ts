@@ -13,6 +13,7 @@ export const MOBILE_NAV_ICON_SRC: Record<string, string> = {
   overview: `${BASE}/dashboard.webp`,
   bookings: `${BASE}/bookings.webp`,
   revenue: `${BASE}/money.webp`,
+  spending: `${BASE}/spending.webp`,
   studio: `${BASE}/studio.webp`,
   listings: `${BASE}/listings.webp`,
   advertisements: `${BASE}/advertisement.webp`,

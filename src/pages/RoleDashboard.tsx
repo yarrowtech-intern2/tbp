@@ -200,12 +200,14 @@ type NavItem = {
     key: SidebarKey;
     label: string;
     icon: LucideIcon;
+    iconSrc?: string;
 };
 
 type MobileNavItem = {
     id: string;
     label: string;
     icon: LucideIcon;
+    iconSrc?: string;
     section?: SidebarKey;
     countKey?: SidebarKey;
     to?: string;
@@ -228,12 +230,8 @@ const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
 ];
 
 const ADMIN_TOPBAR_NAV_KEYS: SidebarKey[] = [
+    'moderation',
     'inquiries',
-    'accepted',
-    'rejected',
-    'users',
-    'map',
-    'audits',
 ];
 
 const ADMIN_DEFAULT_SECTION_OPTIONS: SidebarKey[] = [
@@ -889,7 +887,7 @@ export const RoleDashboard: React.FC = () => {
     const navigate = useNavigate();
     const handleSignOut = async () => {
         await signOut();
-        navigate('/auth', { replace: true });
+        navigate('/login', { replace: true });
     };
     const search = '';
     const [activeSection, setActiveSection] = useState<SidebarKey>('overview');
@@ -969,6 +967,7 @@ export const RoleDashboard: React.FC = () => {
     const [selectedRejectedId, setSelectedRejectedId] = useState<string | null>(null);
     const [adminRevenueDb, setAdminRevenueDb] = useState(0);
     const [adminMobileMenuOpen, setAdminMobileMenuOpen] = useState(false);
+    const [adminModerationSearch, setAdminModerationSearch] = useState('');
     const [mapFetching, setMapFetching] = useState(false);
     const [mapLoaded, setMapLoaded] = useState(false);
     const [providerBookingStatusFilter, setProviderBookingStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected'>('all');
@@ -976,6 +975,7 @@ export const RoleDashboard: React.FC = () => {
     const [providerPackageTypeFilter, setProviderPackageTypeFilter] = useState<'all' | 'tour' | 'activity' | 'guide'>('all');
     const [providerBookingDateFrom, setProviderBookingDateFrom] = useState('');
     const [providerBookingDateTo, setProviderBookingDateTo] = useState('');
+    const [providerBookingSearch, setProviderBookingSearch] = useState('');
     const [providerBookingActionId, setProviderBookingActionId] = useState<string | null>(null);
     const [touristRefundActionId, setTouristRefundActionId] = useState<string | null>(null);
     const [touristRefundReasonByBookingId, setTouristRefundReasonByBookingId] = useState<Record<string, string>>({});
@@ -1429,7 +1429,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'content', label: 'Content', icon: Megaphone },
                 { key: 'inquiries', label: 'Contact Leads', icon: Mail },
                 { key: 'bookings', label: 'Refunds', icon: ClipboardList },
-                { key: 'revenue', label: 'Revenue', icon: CalendarDays },
+                { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
                 { key: 'accepted', label: 'Accepted', icon: CheckCircle2 },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
@@ -1443,7 +1443,7 @@ export const RoleDashboard: React.FC = () => {
             return [
                 { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                 { key: 'bookings', label: 'Bookings', icon: ClipboardList },
-                { key: 'revenue', label: 'Revenue', icon: CalendarDays },
+                { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'studio', label: 'Studio', icon: SquarePen },
                 { key: 'listings', label: 'Listings', icon: Package },
                 { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
@@ -1464,7 +1464,7 @@ export const RoleDashboard: React.FC = () => {
             { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
             { key: 'explore', label: 'Explore', icon: Compass },
             { key: 'bookings', label: 'Bookings', icon: ClipboardList },
-            { key: 'revenue', label: 'Spend', icon: CalendarDays },
+            { key: 'revenue', label: 'Spend', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.spending },
             { key: 'messages', label: 'Messages', icon: MessageSquare },
             { key: 'favorites', label: 'Favorites', icon: Heart },
         ];
@@ -1483,22 +1483,22 @@ export const RoleDashboard: React.FC = () => {
                 : coreItems.slice(0, 5);
 
             return compactItems
-                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
+                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, iconSrc: item.iconSrc, section: item.key, countKey: item.key }));
         }
         if (effectiveRole === 'provider') {
             return navItems
-                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
+                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, iconSrc: item.iconSrc, section: item.key, countKey: item.key }));
         }
         if (effectiveRole === 'marketing') {
             return navItems
-                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, section: item.key, countKey: item.key }));
+                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, iconSrc: item.iconSrc, section: item.key, countKey: item.key }));
         }
         return [
             { id: 'home', label: 'Home', icon: Home, to: '/' },
             { id: 'explore', label: 'Explore', icon: Search, to: '/explore' },
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview' },
             { id: 'bookings', label: 'Bookings', icon: ClipboardList, section: 'bookings' },
-            { id: 'revenue', label: 'Spend', icon: CalendarDays, section: 'revenue' },
+            { id: 'spending', label: 'Spend', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.spending, section: 'revenue' },
             { id: 'profile', label: 'Profile', icon: UserCircle2, to: '/profile' },
         ];
     }, [activeSection, effectiveRole, navItems]);
@@ -1831,11 +1831,31 @@ export const RoleDashboard: React.FC = () => {
     const providerBookingFilteredRows = useMemo(() => {
         const fromTime = providerBookingDateFrom ? new Date(`${providerBookingDateFrom}T00:00:00`).getTime() : null;
         const toTime = providerBookingDateTo ? new Date(`${providerBookingDateTo}T23:59:59`).getTime() : null;
+        const bookingSearchQuery = providerBookingSearch.trim().toLowerCase();
 
         return providerBookingRows.filter((item) => {
             if (providerBookingStatusFilter !== 'all' && (item.status || '').toLowerCase() !== providerBookingStatusFilter) return false;
             if (providerPaymentStatusFilter !== 'all' && (item.payment_status || 'pending').toLowerCase() !== providerPaymentStatusFilter) return false;
             if (providerPackageTypeFilter !== 'all' && (item.listing_type || '').toLowerCase() !== providerPackageTypeFilter) return false;
+            if (bookingSearchQuery) {
+                const searchable = [
+                    item.listing_title,
+                    item.listing_type,
+                    item.id,
+                    item.user_id,
+                    item.traveler_name,
+                    item.traveler_email,
+                    item.traveler_phone,
+                    item.payment_order_id,
+                    item.payment_id,
+                    item.payment_currency,
+                    item.status,
+                    item.payment_status,
+                    item.booking_date,
+                    item.created_at,
+                ].filter(Boolean).join(' ').toLowerCase();
+                if (!searchable.includes(bookingSearchQuery)) return false;
+            }
 
             if (fromTime !== null || toTime !== null) {
                 const sourceDate = item.booking_date || item.created_at;
@@ -1850,6 +1870,7 @@ export const RoleDashboard: React.FC = () => {
         providerBookingDateFrom,
         providerBookingDateTo,
         providerBookingRows,
+        providerBookingSearch,
         providerBookingStatusFilter,
         providerPackageTypeFilter,
         providerPaymentStatusFilter,
@@ -2037,9 +2058,25 @@ export const RoleDashboard: React.FC = () => {
 
     const allAdminPackageRows = dedupePostRows([...adminPublishedPosts, ...adminQueuePosts]);
 
+    const adminModerationQuery = adminModerationSearch.trim().toLowerCase();
+
     const adminQueueRows = allAdminPackageRows
         .filter(isModerationPost)
-        .filter((item) => !query || `${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query));
+        .filter((item) => {
+            if (query && !`${titleForPost(item)} ${item.status || ''} ${item.type || ''}`.toLowerCase().includes(query)) return false;
+            if (!adminModerationQuery) return true;
+            return [
+                item.id,
+                item.provider_user_id,
+                item.user_id,
+                titleForPost(item),
+                item.status,
+                item.type,
+                item.location,
+                item.description,
+                item.created_at,
+            ].filter(Boolean).join(' ').toLowerCase().includes(adminModerationQuery);
+        });
 
     const adminAcceptedRows = allAdminPackageRows
         .filter(isAcceptedPost)
@@ -2667,22 +2704,21 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'explore') {
             return (
-                <section className="rdb-content-grid">
-                    <article className="rdb-panel">
+                <section className="rdb-content-grid rdb-tourist-explore-grid">
+                    <article className="rdb-panel rdb-tourist-snapshot-panel">
                         <h2>Travel Snapshot</h2>
-                        <div className="rdb-stat-list">
+                        <div className="rdb-stat-list rdb-tourist-snapshot-list">
                             <div><span>Upcoming Trips</span><strong>{touristMetrics.upcoming}</strong></div>
                             <div><span>Completed Trips</span><strong>{touristMetrics.completed}</strong></div>
                             <div><span>Saved Places</span><strong>{touristFavorites.length}</strong></div>
                             <div><span>Total Spend</span><strong>{formatCurrency(touristMetrics.spend)}</strong></div>
                         </div>
                     </article>
-                    <article className="rdb-panel">
+                    <article className="rdb-panel rdb-tourist-actions-panel">
                         <h2>Quick Actions</h2>
-                        <div className="rdb-action-list">
+                        <div className="rdb-action-list rdb-tourist-action-list">
                             <Link to="/?tab=tours" className="rdb-inline-link">Open tours</Link>
                             <Link to="/?tab=activities" className="rdb-inline-link">Open activities</Link>
-                            <Link to="/profile" className="rdb-inline-link">Open profile bookings</Link>
                         </div>
                     </article>
                 </section>
@@ -2825,13 +2861,24 @@ export const RoleDashboard: React.FC = () => {
     const renderProviderSection = () => {
         if (activeSection === 'bookings') {
             return (
-                <section className="rdb-panel rdb-panel-wide">
+                <section className="rdb-panel rdb-panel-wide rdb-provider-bookings-panel">
                     <div className="rdb-panel-head">
                         <h2>Provider Bookings</h2>
-                        <small>{query ? `Filtered by "${search}"` : `${providerBookingFilteredRows.length} records`}</small>
+                        <small>{providerBookingSearch.trim() ? `Filtered by "${providerBookingSearch.trim()}"` : `${providerBookingFilteredRows.length} records`}</small>
                     </div>
 
                     <div className="rdb-provider-booking-filters">
+                        <label className="rdb-provider-booking-search">
+                            <Search size={15} aria-hidden="true" />
+                            <input
+                                type="search"
+                                value={providerBookingSearch}
+                                onChange={(event) => setProviderBookingSearch(event.target.value)}
+                                placeholder="Search traveler, order ID, email, phone"
+                                aria-label="Search provider bookings"
+                            />
+                        </label>
+
                         <select value={providerBookingStatusFilter} onChange={(e) => setProviderBookingStatusFilter(e.target.value as 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected')}>
                             <option value="all">All Booking Status</option>
                             <option value="pending">Pending</option>
@@ -2935,13 +2982,6 @@ export const RoleDashboard: React.FC = () => {
                                                 Contact Traveler
                                             </button>
                                         )}
-                                        <button
-                                            type="button"
-                                            className="rdb-row-edit-link"
-                                            onClick={() => navigate('/messages')}
-                                        >
-                                            Open Messages
-                                        </button>
                                         {canDecideBooking && (
                                             <>
                                                 <button
@@ -3186,10 +3226,10 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'studio') {
             return (
-                <section className="rdb-content-grid">
-                    <article className="rdb-panel">
-                        <h2>Provider Studio</h2>
-                        <div className="rdb-action-list">
+                <section className="rdb-content-grid rdb-studio-section">
+                    <article className="rdb-panel rdb-panel-wide rdb-studio-actions-panel">
+                        <h2>Quick actions</h2>
+                        <div className="rdb-action-list rdb-studio-action-list">
                             <button type="button" className="rdb-inline-link" onClick={() => goToSection('studio')}>Open Studio</button>
                             <button type="button" className="rdb-inline-link" onClick={() => goToSection('studio')}>Create Listing</button>
                             <button type="button" className="rdb-inline-link" onClick={() => goToSection('advertisements')}>Open ads panel</button>
@@ -4018,22 +4058,29 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'moderation') {
             return (
-                <section className="rdb-content-grid">
-                    <article className="rdb-panel">
-                        <h2>Moderation Totals</h2>
-                        <div className="rdb-stat-list">
-                            <div><span>Approved Posts</span><strong>{adminMetrics.approvedPosts}</strong></div>
-                            <div><span>Pending Posts</span><strong>{adminMetrics.pendingPosts}</strong></div>
-                            <div><span>Rejected Posts</span><strong>{adminMetrics.rejectedPosts}</strong></div>
-                            <div><span>Pending Verifications</span><strong>{adminMetrics.pendingVerifications}</strong></div>
-                        </div>
-                    </article>
-                    <article className="rdb-panel rdb-panel-wide">
+                <section className="rdb-content-grid rdb-moderation-grid">
+                    <article className="rdb-panel rdb-panel-wide rdb-moderation-queue-panel">
                         <div className="rdb-panel-head">
                             <h2>Moderation Queue</h2>
-                            <small>{query ? `Filtered by "${search}"` : `${adminQueueRows.length} records`}</small>
+                            <small>{adminModerationQuery ? `Filtered by "${adminModerationSearch.trim()}"` : `${adminQueueRows.length} records`}</small>
                         </div>
-                        <div className="rdb-list">
+                        <label className="rdb-moderation-search">
+                            <Search size={15} aria-hidden="true" />
+                            <input
+                                type="search"
+                                value={adminModerationSearch}
+                                onChange={(event) => setAdminModerationSearch(event.target.value)}
+                                placeholder="Search package, provider, ID, location"
+                                aria-label="Search pending approval packages"
+                            />
+                        </label>
+                        <div className="rdb-moderation-summary-grid">
+                            <div><span>Pending</span><strong>{adminMetrics.pendingPosts}</strong></div>
+                            <div><span>Approved</span><strong>{adminMetrics.approvedPosts}</strong></div>
+                            <div><span>Rejected</span><strong>{adminMetrics.rejectedPosts}</strong></div>
+                            <div><span>Verifications</span><strong>{adminMetrics.pendingVerifications}</strong></div>
+                        </div>
+                        <div className="rdb-list rdb-moderation-queue-list">
                             {adminQueueRows.slice(0, 16).map((item) => (
                                 <button
                                     key={item.id}
@@ -4043,7 +4090,7 @@ export const RoleDashboard: React.FC = () => {
                                 >
                                     <div>
                                         <p>{titleForPost(item)}</p>
-                                        <small>{item.type || 'listing'} - {formatDate(item.created_at)}</small>
+                                        <small>{item.type || 'listing'} - {item.location || 'No location'} - {formatDate(item.created_at)}</small>
                                     </div>
                                     <span className={`rdb-pill rdb-pill-${(item.status || 'pending').toLowerCase()}`}>{item.status || 'pending'}</span>
                                 </button>
@@ -4052,10 +4099,10 @@ export const RoleDashboard: React.FC = () => {
                         </div>
                     </article>
 
-                    <article className="rdb-panel rdb-panel-wide">
+                    <article className="rdb-panel rdb-panel-wide rdb-moderation-detail-panel">
                         <div className="rdb-panel-head">
                             <h2>Listing Details</h2>
-                            <small>{selectedModerationItem ? `ID: ${selectedModerationItem.id}` : 'Select a listing'}</small>
+                            <small>{selectedModerationItem ? `${selectedModerationItem.type || 'listing'} - ${formatDate(selectedModerationItem.created_at)}` : 'Select a listing'}</small>
                         </div>
                         {selectedModerationItem ? (
                             <div className="rdb-moderation-detail">
@@ -4378,7 +4425,11 @@ export const RoleDashboard: React.FC = () => {
                                     title={hasCount ? `${item.label}: ${count} pending` : item.label}
                                 >
                                     <span className="rdb-nav-item-content">
-                                        <Icon size={18} />
+                                        {item.iconSrc ? (
+                                            <img src={item.iconSrc} alt="" className="rdb-nav-icon-img" aria-hidden="true" />
+                                        ) : (
+                                            <Icon size={18} />
+                                        )}
                                         <span>{item.label}</span>
                                     </span>
                                     {hasCount && (
@@ -4728,7 +4779,7 @@ export const RoleDashboard: React.FC = () => {
                             id: item.id,
                             label: item.label,
                             isActive: item.section === activeSection,
-                            iconSrc: MOBILE_NAV_ICON_SRC[item.id],
+                            iconSrc: item.iconSrc ?? MOBILE_NAV_ICON_SRC[item.id],
                             icon: item.icon,
                             badge,
                             dataTutorialId: `dashboard-mobile-${item.section || item.id}`,

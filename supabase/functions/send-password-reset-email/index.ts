@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
             type: 'recovery',
             email,
             options: {
-                redirectTo: `${appUrl}/auth?mode=recovery`,
+                redirectTo: `${appUrl}/login?mode=recovery`,
             },
         });
 

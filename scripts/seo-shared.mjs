@@ -53,7 +53,8 @@ export const STATIC_ROUTES = [
 ];
 
 export const PRIVATE_ROUTE_PREFIXES = [
-  '/auth',
+  '/login',
+  '/signup',
   '/dashboard',
   '/profile',
   '/users',
@@ -77,7 +78,8 @@ export const NOINDEX_ROUTES = {
 };
 
 export const STATIC_NOINDEX_PATHS = [
-  '/auth',
+  '/login',
+  '/signup',
   '/dashboard',
   '/profile',
   '/messages',

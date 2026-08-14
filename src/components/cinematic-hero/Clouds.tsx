@@ -1,84 +1,101 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Cloud, Clouds as CloudsGroup } from '@react-three/drei';
 import * as THREE from 'three';
+import type { Group } from 'three';
 import type { CinematicProxies } from './timelineConfig';
 import type { DeviceQualityTier } from '../../hooks/useDeviceQuality';
-import { CLOUD_PUFF_COUNT_HIGH, CLOUD_PUFF_COUNT_LOW } from './worldLayout';
+import { getCloudTextureDataUrl } from './cloudTexture';
 
 interface CloudsProps {
   proxies: CinematicProxies;
   quality: DeviceQualityTier;
 }
 
-interface PuffSeed {
-  baseX: number;
-  baseY: number;
-  baseZ: number;
-  side: number;
+interface BlobConfig {
+  base: [number, number, number];
+  parted: [number, number, number];
   scale: number;
-  driftSpeed: number;
-  driftPhase: number;
+  swayPhase: number;
+  // A flat billboard puff can't self-shade like real volumetric geometry, so
+  // each blob gets a slightly different tint (brighter, sun-catching tops vs.
+  // cooler, shadowed lower puffs) to fake dimension across the whole bank.
+  tint: string;
 }
 
-const dummy = new THREE.Object3D();
+// Hand-placed so the bank reads as "filling the frame" at spread=0 (several
+// puffs sit close to the camera's starting position) and disperses outward /
+// upward / back into the sky as spread -> 1, clearing the center for the
+// traveler reveal.
+const BLOBS: BlobConfig[] = [
+  // Low-center pair fills the horizon gap directly in front of the camera.
+  { base: [-0.5, 0.95, 1.8], parted: [-4.5, 0.3, -1.5], scale: 1.15, swayPhase: 2.0, tint: '#e7e9eb' },
+  { base: [0.6, 0.85, 1.9], parted: [4.6, 0.2, -1.6], scale: 1.1, swayPhase: 5.2, tint: '#e9eaec' },
+  { base: [-2.4, 2.1, 1.5], parted: [-8, 3.4, -3], scale: 1.3, swayPhase: 0, tint: '#ffffff' },
+  { base: [2.5, 1.9, 1.3], parted: [8.2, 3.2, -3.2], scale: 1.25, swayPhase: 0.8, tint: '#ffffff' },
+  { base: [-3.4, 0.7, 0.2], parted: [-9.5, 1.4, -2.5], scale: 1.5, swayPhase: 1.6, tint: '#eef0f1' },
+  { base: [3.5, 0.6, 0.1], parted: [9.7, 1.2, -2.7], scale: 1.45, swayPhase: 2.4, tint: '#eef0f1' },
+  { base: [-1.1, 2.9, 0.6], parted: [-6, 4.4, -4], scale: 1.0, swayPhase: 3.2, tint: '#ffffff' },
+  { base: [1.3, 2.7, 0.4], parted: [6.2, 4.2, -4.2], scale: 0.95, swayPhase: 4.0, tint: '#fffdf7' },
+  { base: [-1.6, 1.3, 2.4], parted: [-7.5, 0.6, -1], scale: 1.1, swayPhase: 4.8, tint: '#e5e7e9' },
+  { base: [1.8, 1.2, 2.5], parted: [7.6, 0.5, -1.2], scale: 1.05, swayPhase: 5.6, tint: '#e5e7e9' },
+];
+
+const tmpVec = new THREE.Vector3();
 
 export const Clouds: React.FC<CloudsProps> = ({ proxies, quality }) => {
-  const count = quality === 'high' ? CLOUD_PUFF_COUNT_HIGH : CLOUD_PUFF_COUNT_LOW;
-  const meshRef = useRef<THREE.InstancedMesh>(null!);
-  const materialRef = useRef<THREE.MeshStandardMaterial>(null!);
+  const blobs = quality === 'high' ? BLOBS : BLOBS.slice(0, 6);
+  const segments = quality === 'high' ? 9 : 5;
+  const limit = blobs.length * segments;
 
-  const seeds = useMemo<PuffSeed[]>(() => {
-    const arr: PuffSeed[] = [];
-    for (let i = 0; i < count; i += 1) {
-      const side = i % 2 === 0 ? -1 : 1;
-      arr.push({
-        baseX: side * (0.4 + Math.random() * 2.2),
-        baseY: 0.4 + Math.random() * 3.2,
-        baseZ: -6 + Math.random() * 10,
-        side,
-        scale: 1.1 + Math.random() * 2.1,
-        driftSpeed: 0.06 + Math.random() * 0.08,
-        driftPhase: Math.random() * Math.PI * 2,
-      });
-    }
-    return arr;
-  }, [count]);
+  const groupRefs = useRef<(Group | null)[]>([]);
+  const texture = useMemo(() => getCloudTextureDataUrl(), []);
 
   useFrame((state) => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
     const spread = proxies.clouds.spread;
     const t = state.clock.elapsedTime;
 
-    seeds.forEach((seed, i) => {
-      const partX = seed.side * spread * 7.5;
-      const drift = Math.sin(t * seed.driftSpeed + seed.driftPhase) * 0.3;
-      dummy.position.set(seed.baseX + partX, seed.baseY + drift * 0.4, seed.baseZ + drift);
-      const scaleBoost = 1 + spread * 0.6;
-      dummy.scale.setScalar(seed.scale * scaleBoost);
-      dummy.rotation.set(0, seed.driftPhase, 0);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
+    blobs.forEach((blob, i) => {
+      const group = groupRefs.current[i];
+      if (!group) return;
 
-    if (materialRef.current) {
-      materialRef.current.opacity = Math.max(0.08, 1 - spread * 0.85);
-    }
+      tmpVec.set(
+        THREE.MathUtils.lerp(blob.base[0], blob.parted[0], spread),
+        THREE.MathUtils.lerp(blob.base[1], blob.parted[1], spread),
+        THREE.MathUtils.lerp(blob.base[2], blob.parted[2], spread),
+      );
+
+      const sway = 0.12;
+      tmpVec.x += Math.sin(t * 0.15 + blob.swayPhase) * sway;
+      tmpVec.y += Math.cos(t * 0.12 + blob.swayPhase) * sway * 0.6;
+
+      group.position.copy(tmpVec);
+    });
   });
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
-      <sphereGeometry args={[1, 12, 10]} />
-      <meshStandardMaterial
-        ref={materialRef}
-        color="#ffffff"
-        roughness={1}
-        transparent
-        opacity={1}
-        depthWrite={false}
-        fog
-      />
-    </instancedMesh>
+    <CloudsGroup texture={texture} limit={limit} range={limit} frustumCulled={false}>
+      {blobs.map((blob, i) => (
+        <Cloud
+          key={i}
+          ref={(el: Group | null) => {
+            groupRefs.current[i] = el;
+          }}
+          position={blob.base}
+          scale={blob.scale}
+          segments={segments}
+          bounds={[1.8, 1.1, 1.1]}
+          volume={1.2}
+          smallestVolume={0.4}
+          growth={1.5}
+          speed={0.25}
+          fade={6}
+          opacity={0.85}
+          color={blob.tint}
+          concentrate="inside"
+          seed={i * 17.3}
+        />
+      ))}
+    </CloudsGroup>
   );
 };

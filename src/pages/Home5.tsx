@@ -516,7 +516,7 @@ export const Home5: React.FC = () => {
     {
       title: 'Get started',
       iconSrc: '/icons/mobile-nav-icons/login.webp',
-      to: '/auth',
+      to: '/signup',
       isPrimary: true,
     },
   ];
@@ -1207,7 +1207,7 @@ export const Home5: React.FC = () => {
             <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
             <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
             <Link to="/map" onClick={() => setHeroMenuOpen(false)}>Map</Link>
-            <Link to="/auth" onClick={() => setHeroMenuOpen(false)}>Get started</Link>
+            <Link to="/signup" onClick={() => setHeroMenuOpen(false)}>Get started</Link>
             <button
               type="button"
               onClick={() => {
@@ -1312,7 +1312,7 @@ export const Home5: React.FC = () => {
                 </div>
 
                 <div className="home5-hero-immersive-cta-row">
-                  <Link className="home5-hero-immersive-cta" to="/auth">
+                  <Link className="home5-hero-immersive-cta" to="/login">
                     <span>{activeVideoHeroContent.ctaLabel}</span>
                     <span className="home5-hero-immersive-cta-icon" aria-hidden="true">-&gt;</span>
                   </Link>
@@ -1632,7 +1632,7 @@ export const Home5: React.FC = () => {
                   <span className="home5-final-cta-ripple home5-final-cta-ripple-2" />
                   <span className="home5-final-cta-ripple home5-final-cta-ripple-3" />
                 </div>
-                <Link className="home5-final-orb-cta" to="/auth" aria-label="Login to explore">
+                <Link className="home5-final-orb-cta" to="/login" aria-label="Login to explore">
                   <span>Explore</span>
                 </Link>
                 <div className="home5-final-globe-ground" aria-hidden="true" />

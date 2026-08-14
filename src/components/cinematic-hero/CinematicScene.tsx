@@ -57,6 +57,7 @@ const SceneContents: React.FC<{ proxies: CinematicProxies; quality: DeviceQualit
     <Atmosphere proxies={proxies} />
 
     <ambientLight intensity={0.65} />
+    <hemisphereLight args={['#ffffff', '#9aa1a8', 2.2]} />
     <directionalLight
       position={[8, 14, 6]}
       intensity={1.1}

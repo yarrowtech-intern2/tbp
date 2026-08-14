@@ -472,7 +472,7 @@ export const ListingDetail: React.FC = () => {
         const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
         if (!currentUserId) {
             setBookingError('Please log in to book this package.');
-            navigate('/auth');
+            navigate('/login');
             return;
         }
         if (!listingId) {
@@ -680,7 +680,7 @@ export const ListingDetail: React.FC = () => {
 
     const handleFavoriteToggle = async () => {
         if (!user || !listing?.id) {
-            navigate('/auth');
+            navigate('/login');
             return;
         }
         if (!canFavorite) {
@@ -708,7 +708,7 @@ export const ListingDetail: React.FC = () => {
     const handleReviewSave = async () => {
         const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
         if (!user || !listingId) {
-            navigate('/auth');
+            navigate('/login');
             return;
         }
         if (!canReview) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckSquare, Loader2, Square } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CheckSquare, Loader2, Square, XCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
     getLatestVerification,
@@ -56,6 +56,12 @@ const CHECKLIST = [
     'Location and schedule information are valid',
 ];
 
+type ReviewFeedback = {
+    variant: 'approved' | 'declined' | 'error';
+    title: string;
+    message: string;
+};
+
 export const AdminListingReview: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -63,8 +69,7 @@ export const AdminListingReview: React.FC = () => {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+    const [feedback, setFeedback] = useState<ReviewFeedback | null>(null);
     const [listing, setListing] = useState<PostRecord | null>(null);
     const [providerProfile, setProviderProfile] = useState<Profile | null>(null);
     const [verification, setVerification] = useState<VerificationRecord | null>(null);
@@ -77,7 +82,7 @@ export const AdminListingReview: React.FC = () => {
 
         const load = async () => {
             setLoading(true);
-            setError(null);
+            setFeedback(null);
             try {
                 const listingRow = await getListingById(id);
                 if (!listingRow) throw new Error('Listing not found.');
@@ -100,7 +105,11 @@ export const AdminListingReview: React.FC = () => {
                 setVerification(verificationRow);
             } catch (err: unknown) {
                 if (cancelled) return;
-                setError(err instanceof Error ? err.message : 'Could not load listing review details.');
+                setFeedback({
+                    variant: 'error',
+                    title: 'Could not load listing',
+                    message: err instanceof Error ? err.message : 'Could not load listing review details.',
+                });
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -141,17 +150,26 @@ export const AdminListingReview: React.FC = () => {
         if (!listing?.id || !user?.id || saving) return;
 
         setSaving(true);
-        setError(null);
-        setSuccess(null);
+        setFeedback(null);
         try {
             const updated = await reviewListing(listing.id, decision, {
                 reviewerId: user.id,
                 reason: decision === 'rejected' ? rejectReason.trim() || undefined : undefined,
             });
             if (updated) setListing(updated);
-            setSuccess(decision === 'live' ? 'Listing approved and published.' : 'Listing rejected successfully.');
+            setFeedback({
+                variant: decision === 'live' ? 'approved' : 'declined',
+                title: decision === 'live' ? 'Listing approved' : 'Listing declined',
+                message: decision === 'live'
+                    ? 'The listing was approved and published.'
+                    : 'The listing was rejected and the provider can revise it.',
+            });
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Review action failed.');
+            setFeedback({
+                variant: 'error',
+                title: decision === 'live' ? 'Approval failed' : 'Decline failed',
+                message: err instanceof Error ? err.message : 'Review action failed.',
+            });
         } finally {
             setSaving(false);
         }
@@ -184,8 +202,26 @@ export const AdminListingReview: React.FC = () => {
                     <ArrowLeft size={16} /> Back to Moderation
                 </button>
 
-                {error && <p className="alr-alert alr-alert-error">{error}</p>}
-                {success && <p className="alr-alert alr-alert-success">{success}</p>}
+                {feedback && (
+                    <div className="alr-feedback-backdrop" role="presentation">
+                        <section
+                            className={`alr-feedback-card alr-feedback-card--${feedback.variant}`}
+                            role="status"
+                            aria-live="polite"
+                        >
+                            <div className="alr-feedback-icon" aria-hidden="true">
+                                {feedback.variant === 'approved' ? <CheckCircle2 size={38} /> : <XCircle size={38} />}
+                            </div>
+                            <div className="alr-feedback-copy">
+                                <h2>{feedback.title}</h2>
+                                <p>{feedback.message}</p>
+                            </div>
+                            <button type="button" className="alr-feedback-close" onClick={() => setFeedback(null)}>
+                                Close
+                            </button>
+                        </section>
+                    </div>
+                )}
 
                 <section className="alr-layout">
                     <aside className="alr-checklist">

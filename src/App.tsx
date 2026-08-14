@@ -60,10 +60,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
+};
+
+const LegacyAuthRedirect: React.FC = () => {
+  const location = useLocation();
+  return <Navigate to={`/login${location.search}`} replace />;
 };
 
 const GuestOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -113,7 +118,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (!isAdminAccount) {
@@ -133,7 +138,7 @@ const ProviderRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (!isProvider) {
@@ -155,7 +160,7 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
   }
 
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (providerAccount || isAdminAccount || marketingAccount) {
@@ -188,7 +193,9 @@ function App() {
               <Route path="/about2" element={<Navigate to="/about" replace />} />
               <Route path="/about-final" element={<AboutFinal />} />
               <Route path="/whomadeit" element={<WhoMadeIt />} />
-              <Route path="/auth" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+              <Route path="/login" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+              <Route path="/signup" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+              <Route path="/auth" element={<LegacyAuthRedirect />} />
               <Route path="/terms" element={<TermsAndConditions />} />
               <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
               <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
@@ -220,7 +227,7 @@ function App() {
   );
 }
 
-const HIDE_GLOBAL_CHROME_PATHS = ['/auth', '/home4', '/home5', '/terms', '/about', '/about2', '/about-final', '/whomadeit'];
+const HIDE_GLOBAL_CHROME_PATHS = ['/login', '/signup', '/home4', '/home5', '/terms', '/about', '/about2', '/about-final', '/whomadeit'];
 
 const AppNavbar: React.FC = () => {
   const { user } = useAuth();
@@ -271,10 +278,10 @@ const AppFooter: React.FC<{ homePath: string; footerLogoSrc: string; user: unkno
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <h4 style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-main)' }}>Explore</h4>
                 <Link to={homePath} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Home</Link>
-                <Link to={user ? DASHBOARD_TOURS_PATH : '/auth'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Tours</Link>
-                <Link to={user ? DASHBOARD_ACTIVITIES_PATH : '/auth'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Activities</Link>
-                <Link to={user ? DASHBOARD_EVENTS_PATH : '/auth'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Events</Link>
-                <Link to={user ? '/profile' : '/auth'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Membership</Link>
+                <Link to={user ? DASHBOARD_TOURS_PATH : '/login'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Tours</Link>
+                <Link to={user ? DASHBOARD_ACTIVITIES_PATH : '/login'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Activities</Link>
+                <Link to={user ? DASHBOARD_EVENTS_PATH : '/login'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Events</Link>
+                <Link to={user ? '/profile' : '/login'} style={{ fontSize: '0.92rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Membership</Link>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

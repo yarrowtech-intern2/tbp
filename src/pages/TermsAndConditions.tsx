@@ -60,7 +60,7 @@ export const TermsAndConditions: React.FC = () => (
             </div>
 
             <footer className="terms-footer">
-                <Link to="/auth" className="terms-return-link">Return to login</Link>
+                <Link to="/login" className="terms-return-link">Return to login</Link>
             </footer>
         </article>
     </main>

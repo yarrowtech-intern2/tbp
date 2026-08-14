@@ -178,7 +178,11 @@ export const Auth: React.FC = () => {
     const [sideImage] = useState(
         () => NATURE_SIDE_IMAGES[Math.floor(Math.random() * NATURE_SIDE_IMAGES.length)]
     );
-    const [isLogin, setIsLogin] = useState(() => initialQueryIntent.isLogin ?? initialDraft?.isLogin ?? true);
+    const [isLogin, setIsLogin] = useState(() => {
+        if (initialQueryIntent.isLogin !== undefined) return initialQueryIntent.isLogin;
+        if (typeof window !== 'undefined' && window.location.pathname === '/signup') return false;
+        return initialDraft?.isLogin ?? true;
+    });
     const [loginEmail, setLoginEmail] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -301,6 +305,7 @@ export const Auth: React.FC = () => {
         setIsLogin(login);
         setError(null);
         setInfo(null);
+        navigate(login ? '/login' : '/signup', { replace: true });
     };
 
     const getSignupStepValue = (step: SignupStep) => {
@@ -316,7 +321,7 @@ export const Auth: React.FC = () => {
                 case 'fullName':
                     return {
                         label: 'Full Name',
-                        placeholder: 'Alex Mercer',
+                        placeholder: 'Srijon Karmakar',
                         type: 'text',
                         required: true,
                     };
@@ -483,7 +488,7 @@ export const Auth: React.FC = () => {
             await supabase.auth.signOut();
             setRecoveryPassword('');
             setInfo('Password changed. Log in with your new password.');
-            navigate('/auth?mode=login', { replace: true });
+            navigate('/login', { replace: true });
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Password update failed. Please request a new reset link.');
         } finally {
@@ -558,6 +563,7 @@ export const Auth: React.FC = () => {
             setIsLogin(true);
             setLoginEmail(formValues.email);
             setLoginPassword('');
+            navigate('/login', { replace: true });
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
         } finally {
@@ -627,9 +633,8 @@ export const Auth: React.FC = () => {
 
     return (
         <div className="auth-page">
-            <a href="/" className="auth-back-link">
+            <a href="/" className="auth-back-link" aria-label="Back to home">
                 <ArrowLeft size={16} />
-                <span>Back to home</span>
             </a>
 
             <div className="auth-shell">
@@ -651,7 +656,7 @@ export const Auth: React.FC = () => {
                                 <h1>Set password</h1>
                                 <p>
                                     Enter a new password for your account.{' '}
-                                    <button type="button" onClick={() => navigate('/auth?mode=login', { replace: true })}>
+                                    <button type="button" onClick={() => navigate('/login', { replace: true })}>
                                         Back to login
                                     </button>
                                 </p>

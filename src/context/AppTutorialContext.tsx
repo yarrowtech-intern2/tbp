@@ -353,7 +353,7 @@ export const AppTutorialProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     useEffect(() => {
         if (!user || loading || profileLoading || isOpen) return;
-        if (location.pathname === '/auth') return;
+        if (location.pathname === '/login' || location.pathname === '/signup') return;
         if (!tutorialPending || tutorialCompleted) return;
         if (handledAutoUsersRef.current.has(user.id)) return;
 

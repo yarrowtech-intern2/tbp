@@ -7,7 +7,8 @@ export const ROBOTS_INDEX = 'index, follow, max-image-preview:large, max-snippet
 export const ROBOTS_NOINDEX = 'noindex, nofollow, noarchive';
 
 const PRIVATE_ROUTE_PREFIXES = [
-    '/auth',
+    '/login',
+    '/signup',
     '/dashboard',
     '/profile',
     '/users',

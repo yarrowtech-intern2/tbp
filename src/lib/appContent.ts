@@ -125,7 +125,7 @@ export const DEFAULT_FOOTER_CONTENT: FooterContent = {
             links: [
                 { label: 'hello@thebetterpass.com', href: 'mailto:hello@thebetterpass.com' },
                 { label: '+91 1800 000 000', href: 'tel:+911800000000' },
-                { label: 'Member Login', href: '/auth' },
+                { label: 'Member Login', href: '/login' },
             ],
         },
     ],
@@ -161,7 +161,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'The Better Pass started from a simple gap: travelers can find places everywhere, but understanding what is verified, nearby, bookable, and genuinely worth their time is still fragmented.',
                 'The Better Pass brings destinations, restaurants, brands, services, and guided experiences into one curated layer so each journey starts with clarity instead of scattered tabs.',
             ],
-            cta: { label: 'Start exploring', href: '/auth' },
+            cta: { label: 'Start exploring', href: '/login' },
         },
         {
             id: 'mission',
@@ -172,7 +172,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'Our mission is to help travelers move from seeing a place to experiencing it with confidence.',
                 'We combine public content, verified partners, bookings, promotions, and profile-led discovery so travel decisions become faster and more dependable.',
             ],
-            cta: { label: 'Explore the platform', href: '/auth' },
+            cta: { label: 'Explore the platform', href: '/login' },
         },
         {
             id: 'travelers',
@@ -183,7 +183,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'For tourists, The Better Pass is a discovery surface for nearby activities, routes, restaurants, trusted providers, and destination ideas.',
                 'The experience is designed around scanning, saving, booking, chatting, and returning to one profile instead of rebuilding every trip from scratch.',
             ],
-            cta: { label: 'Join as traveler', href: '/auth' },
+            cta: { label: 'Join as traveler', href: '/signup' },
         },
         {
             id: 'partners',
@@ -194,7 +194,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'Partners can bring listings, posts, promotions, and verified services into the same environment where travelers are already planning.',
                 'The platform gives businesses a clearer path to visibility, trust, and conversion without relying only on social feeds or disconnected directories.',
             ],
-            cta: { label: 'Become a partner', href: '/auth' },
+            cta: { label: 'Become a partner', href: '/signup' },
         },
         {
             id: 'trust',
@@ -205,7 +205,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'The Better Pass is built with admin review, provider approval, booking records, and content moderation as part of the product, not an afterthought.',
                 'That structure helps travelers understand what they are choosing and helps partners compete on quality instead of noise.',
             ],
-            cta: { label: 'See verified listings', href: '/auth' },
+            cta: { label: 'See verified listings', href: '/login' },
         },
         {
             id: 'platform',
@@ -216,7 +216,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'The product is an operating system for travel discovery: public landing content, user dashboards, provider studios, promotions, bookings, messages, and admin controls.',
                 'Each part is designed to support the same loop: discover, trust, book, experience, and come back smarter.',
             ],
-            cta: { label: 'Open dashboard', href: '/auth' },
+            cta: { label: 'Open dashboard', href: '/login' },
         },
         {
             id: 'impact',
@@ -228,7 +228,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'As the partner network grows, The Better Pass becomes a stronger bridge between destination demand and local businesses.',
             ],
             metric: '24/7',
-            cta: { label: 'View ecosystem', href: '/auth' },
+            cta: { label: 'View ecosystem', href: '/login' },
         },
         {
             id: 'future',
@@ -239,7 +239,7 @@ export const DEFAULT_ABOUT_PAGE_CONTENT: AboutPageContent = {
                 'The next stage of The Better Pass is more intelligent discovery: better location context, richer content, stronger partner tools, and smoother planning from mobile.',
                 'We are building toward a travel layer that feels personal without losing the reliability of a managed platform.',
             ],
-            cta: { label: 'Follow the journey', href: '/auth' },
+            cta: { label: 'Follow the journey', href: '/login' },
         },
     ],
 };

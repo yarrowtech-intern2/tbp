@@ -2,8 +2,11 @@
 // in the low-poly world without duplicating magic numbers per file.
 
 export const TRAVELER_BASE_POS: [number, number, number] = [0, 0, 0.4];
-export const BUS_BASE_POS: [number, number, number] = [1.1, 0, -2.4];
-export const BUS_DOOR_POS: [number, number, number] = [0.3, 0, -1.9];
+// Kept off to the side and further down the "road" so the bus stays out of
+// frame during the close-up phone/booking shots and only reads clearly once
+// the camera widens for the pack/board chapters.
+export const BUS_BASE_POS: [number, number, number] = [2.6, 0, -4.2];
+export const BUS_DOOR_POS: [number, number, number] = [1.6, 0, -3.5];
 
 export const ROAD_SEGMENT_LENGTH = 6;
 export const ROAD_SEGMENT_COUNT_HIGH = 10;

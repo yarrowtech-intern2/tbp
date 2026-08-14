@@ -32,7 +32,7 @@ export const Hero: React.FC = () => {
                         <Link to="/tours" className="btn btn-primary" style={{ padding: '14px 32px' }}>
                             Explore Journeys <Search size={16} />
                         </Link>
-                        <Link to="/auth" className="btn btn-soft" style={{ padding: '14px 32px' }}>
+                        <Link to="/signup" className="btn btn-soft" style={{ padding: '14px 32px' }}>
                             Join Membership <ChevronRight size={16} />
                         </Link>
                     </div>

@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
         const role = normalizeLooseString(metadata.role) || normalizeLooseString(body.role);
         const roleLabel = getRoleLabel(role);
         const appUrl = getAppUrl();
-        const authUrl = appUrl ? `${appUrl}/auth?mode=login` : '';
+        const authUrl = appUrl ? `${appUrl}/login` : '';
         const dashboardUrl = appUrl
             ? role === 'tourist'
                 ? `${appUrl}/explore`
