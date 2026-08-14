@@ -25,4 +25,16 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // react-three-fiber's useFrame is a per-frame imperative escape hatch,
+    // the same category as useEffect: mutating useMemo'd Three.js objects
+    // (materials, geometries) inside it is the standard, required R3F
+    // pattern for driving 60fps animation without React re-renders. The
+    // generic react-hooks/immutability rule doesn't recognize useFrame as
+    // an escape hatch, so it's scoped off for this cinematic scene tree only.
+    files: ['src/components/cinematic-hero/**/*.tsx'],
+    rules: {
+      'react-hooks/immutability': 'off',
+    },
+  },
 ])

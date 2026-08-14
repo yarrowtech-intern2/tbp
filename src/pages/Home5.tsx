@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Send } from 'reicon-react';
+import { CinematicHero } from '../components/cinematic-hero/CinematicHero';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
 import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
@@ -813,6 +814,7 @@ export const Home5: React.FC = () => {
       const sampleY = menuRect.top + (menuRect.height / 2);
       const footerRect = footerRef.current?.getBoundingClientRect();
       const heroRect = heroSectionRef.current?.getBoundingClientRect();
+      const cinematicRect = document.getElementById('cinematic-hero-wrapper')?.getBoundingClientRect();
       const overlapsFooter = Boolean(
         footerRect
         && sampleX >= footerRect.left
@@ -827,8 +829,17 @@ export const Home5: React.FC = () => {
         && sampleY >= heroRect.top
         && sampleY <= heroRect.bottom
       );
-      const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
-      const nextNavInHero = overlapsHero;
+      // The cinematic hero's atmospheric backgrounds skew dusky for most of its
+      // duration, so treat it the same as the dark video hero for nav-tone purposes.
+      const overlapsCinematic = Boolean(
+        cinematicRect
+        && sampleX >= cinematicRect.left
+        && sampleX <= cinematicRect.right
+        && sampleY >= cinematicRect.top
+        && sampleY <= cinematicRect.bottom
+      );
+      const nextToneOnDark = overlapsFooter || overlapsCinematic || (overlapsHero && heroSubtitleOnDark);
+      const nextNavInHero = overlapsHero || overlapsCinematic;
 
       if (stickyNavInHeroRef.current !== nextNavInHero) {
         stickyNavInHeroRef.current = nextNavInHero;
@@ -1209,6 +1220,8 @@ export const Home5: React.FC = () => {
           </nav>
         </div>
       </div>
+
+      <CinematicHero />
 
       <section
         id="home5-hero"

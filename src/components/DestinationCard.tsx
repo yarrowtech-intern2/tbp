@@ -102,6 +102,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
         : 'Curated listing with complete details available on open.';
     const priceLabel = formatPrice(price);
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingPathType}/${id}` : '';
+    const bookingCtaLabel = isBooked ? 'BOOK AGAIN' : 'BOOK';
 
     useEffect(() => {
         if (!user || !id || !canFavorite) {
@@ -214,9 +215,10 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                             <Link
                                 to={`/listings/${listingPathType}/${id}`}
                                 className="listing-btn-book"
+                                aria-label={isBooked ? `Book ${title} again` : `Book ${title}`}
                                 onClick={(event) => event.stopPropagation()}
                             >
-                                BOOK
+                                {bookingCtaLabel}
                             </Link>
                             <button
                                 type="button"
@@ -249,8 +251,13 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                 <div className="listing-card-actions">
                     <span className="listing-card-price">{priceLabel}</span>
                     <div className="listing-card-cta-cluster">
-                        <Link to={`/listings/${listingPathType}/${id}`} className="listing-btn-book" onClick={(event) => event.stopPropagation()}>
-                            BOOK
+                        <Link
+                            to={`/listings/${listingPathType}/${id}`}
+                            className="listing-btn-book"
+                            aria-label={isBooked ? `Book ${title} again` : `Book ${title}`}
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            {bookingCtaLabel}
                         </Link>
                         <button
                             type="button"

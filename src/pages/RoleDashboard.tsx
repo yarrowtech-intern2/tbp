@@ -31,6 +31,7 @@ import {
     UserCircle2,
     Users,
     XCircle,
+    type LucideIcon,
 } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
@@ -198,13 +199,13 @@ type AccountRevenueRow = {
 type NavItem = {
     key: SidebarKey;
     label: string;
-    icon: React.ElementType;
+    icon: LucideIcon;
 };
 
 type MobileNavItem = {
     id: string;
     label: string;
-    icon: React.ElementType;
+    icon: LucideIcon;
     section?: SidebarKey;
     countKey?: SidebarKey;
     to?: string;

@@ -297,6 +297,7 @@ const ListingCard: React.FC<{
   const priceLabel = formatPrice(post.price);
   const boosted = hasActiveBoost(post);
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingTypePath}/${post.id}` : '';
+  const bookingCtaLabel = isBooked ? 'BOOK AGAIN' : 'BOOK';
 
   useEffect(() => {
     if (!user || !post.id || !canFavorite) {
@@ -453,9 +454,10 @@ const ListingCard: React.FC<{
               <Link
                 to={`/listings/${listingTypePath}/${post.id}`}
                 className="listing-btn-book"
+                aria-label={isBooked ? `Book ${title} again` : `Book ${title}`}
                 onClick={(event) => event.stopPropagation()}
               >
-                BOOK
+                {bookingCtaLabel}
               </Link>
               <button
                 type="button"
