@@ -23,10 +23,6 @@ export default defineConfig({
             return 'vendor-capacitor'
           }
 
-          if (normalizedId.includes('/three/') || normalizedId.includes('/@react-three/')) {
-            return 'vendor-three'
-          }
-
           return 'vendor'
         },
       },
