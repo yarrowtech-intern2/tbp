@@ -1,12 +1,33 @@
 import { Suspense, useLayoutEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { ContactShadows, Environment, useGLTF } from '@react-three/drei';
+import { ContactShadows, Environment, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import type { DirectionalLight, PerspectiveCamera as PerspectiveCameraType } from 'three';
 
 const MODEL_URL = '/models/tbp-hero-model.glb';
 const CAM_START_NODE = 'cam-start';
 const CAM_END_NODE = 'cam-end';
+
+// The Blender scene referenced this as an "Image Empty" (a viewport-only
+// reference photo) at roughly (-16.8, 5, 0) — glTF has no equivalent, so
+// Image Empties never survive export. This mirrors that same view as a real
+// textured plane so there's actually something to see through the window.
+const BACKDROP_IMAGE_URL = 'https://res.cloudinary.com/dc3qprub3/image/upload/v1786971297/for-betterpass_jswf02.webp';
+const BACKDROP_ASPECT = 5472 / 3648;
+const BACKDROP_DISTANCE = -70;
+const BACKDROP_WIDTH = 260;
+
+const WindowBackdrop: React.FC = () => {
+  const texture = useTexture(BACKDROP_IMAGE_URL);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  return (
+    <mesh position={[BACKDROP_DISTANCE, 8, 0]} rotation={[0, Math.PI / 2, 0]}>
+      <planeGeometry args={[BACKDROP_WIDTH, BACKDROP_WIDTH / BACKDROP_ASPECT]} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
+    </mesh>
+  );
+};
 
 export type CameraProgress = { t: number };
 
@@ -89,6 +110,7 @@ const SceneModel: React.FC<SceneModelProps> = ({ progressRef }) => {
       />
       <primitive object={scene} />
       <ContactShadows position={[0, 0, 0]} opacity={0.5} scale={40} blur={2.4} far={20} />
+      <WindowBackdrop />
     </>
   );
 };
@@ -120,3 +142,4 @@ export const RoomModelStage: React.FC<RoomModelStageProps> = ({ progressRef }) =
 );
 
 useGLTF.preload(MODEL_URL);
+useTexture.preload(BACKDROP_IMAGE_URL);
