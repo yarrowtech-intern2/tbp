@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Send } from 'reicon-react';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
+import { CinematicHero } from '../components/cinematic-hero/CinematicHero';
+import { NewAnimatedHero } from '../components/NewAnimatedHero';
 import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
 import WorldMap, { type WorldMapDot } from '../components/ui/world-map';
@@ -411,9 +413,6 @@ const getCarouselOffset = (index: number, activeIndex: number, total: number) =>
 };
 
 const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
-const smoothStep = (value: number) => value * value * (3 - (2 * value));
-const phaseProgress = (value: number, start: number, end: number) => clampValue((value - start) / (end - start), 0, 1);
 
 export const Home5: React.FC = () => {
   const [activeCard, setActiveCard] = useState(0);
@@ -441,7 +440,7 @@ export const Home5: React.FC = () => {
   const [contactStatus, setContactStatus] = useState<string | null>(null);
   const [contactError, setContactError] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-  const [stickyLogoVisible, setStickyLogoVisible] = useState(false);
+  const [stickyLogoVisible, setStickyLogoVisible] = useState(true);
   const stickyLogoOnDarkRef = useRef(false);
   const stickyMenuOnDarkRef = useRef(false);
   const stickyNavInHeroRef = useRef(true);
@@ -452,7 +451,6 @@ export const Home5: React.FC = () => {
   const bookingDragDeltaXRef = useRef(0);
   const stickyLogoRef = useRef<HTMLAnchorElement | null>(null);
   const stickyMenuRef = useRef<HTMLDivElement | null>(null);
-  const blankHeroRef = useRef<HTMLElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroBaseVideoRef = useRef<HTMLVideoElement | null>(null);
   const heroPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -461,7 +459,7 @@ export const Home5: React.FC = () => {
   const heroCursorPointRef = useRef({ x: 0, y: 0 });
   const heroCursorTargetRef = useRef({ x: 0, y: 0 });
   const valueSectionRef = useRef<HTMLElement | null>(null);
-  const logoActivatedRef = useRef(false);
+  const logoActivatedRef = useRef(true);
   const howSectionRef = useRef<HTMLElement | null>(null);
   const finalSectionRef = useRef<HTMLElement | null>(null);
   const footerRef = useRef<HTMLElement | null>(null);
@@ -674,102 +672,6 @@ export const Home5: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    let frame = 0;
-    let targetProgress = 0;
-    let currentProgress = 0;
-
-    const applyBlankHeroProgress = (progress: number) => {
-      const node = blankHeroRef.current;
-      if (!node) return;
-
-      const entryProgress = phaseProgress(progress, 0, 0.14);
-      const expansionProgress = phaseProgress(progress, 0.14, 0.28);
-      const introProgress = smoothStep(phaseProgress(progress, 0.28, 0.34));
-      const theProgress = smoothStep(phaseProgress(progress, 0.34, 0.4));
-      const betterProgress = smoothStep(phaseProgress(progress, 0.4, 0.46));
-      const passProgress = smoothStep(phaseProgress(progress, 0.46, 0.52));
-      const roadProgress = smoothStep(phaseProgress(progress, 0.56, 0.68));
-      const mapProgress = smoothStep(phaseProgress(progress, 0.68, 0.78));
-      const mapPointProgress = smoothStep(phaseProgress(progress, 0.78, 0.84));
-      const mapLabelProgress = smoothStep(phaseProgress(progress, 0.84, 0.9));
-      const mapRouteProgress = smoothStep(phaseProgress(progress, 0.9, 1));
-      const circleY = (1 - easeOutCubic(entryProgress)) * 72;
-      const circleScale = 0.07 + (smoothStep(expansionProgress) * 0.93);
-      const roadWidthScale = 1 - (mapProgress * 0.62);
-      const roadOpacity = roadProgress * (1 - (mapProgress * 0.76));
-      const copyOpacity = 1 - mapProgress;
-      const mapScale = 1.08 - (mapProgress * 0.08);
-      const setTextReveal = (name: string, revealProgress: number) => {
-        const textY = (1 - revealProgress) * 28;
-        const textBlur = (1 - revealProgress) * 8;
-        node.style.setProperty(`--home5-blank-${name}-progress`, revealProgress.toFixed(4));
-        node.style.setProperty(`--home5-blank-${name}-y`, `${textY.toFixed(2)}px`);
-        node.style.setProperty(`--home5-blank-${name}-blur`, `${textBlur.toFixed(2)}px`);
-      };
-
-      node.style.setProperty('--home5-blank-circle-y', `${circleY.toFixed(2)}vh`);
-      node.style.setProperty('--home5-blank-circle-scale', circleScale.toFixed(4));
-      setTextReveal('intro', introProgress);
-      setTextReveal('the', theProgress);
-      setTextReveal('better', betterProgress);
-      setTextReveal('pass', passProgress);
-      node.style.setProperty('--home5-blank-road-progress', roadProgress.toFixed(4));
-      node.style.setProperty('--home5-blank-road-width-scale', roadWidthScale.toFixed(4));
-      node.style.setProperty('--home5-blank-road-opacity', roadOpacity.toFixed(4));
-      node.style.setProperty('--home5-blank-copy-opacity', copyOpacity.toFixed(4));
-      node.style.setProperty('--home5-blank-map-progress', mapProgress.toFixed(4));
-      node.style.setProperty('--home5-blank-map-point-progress', mapPointProgress.toFixed(4));
-      node.style.setProperty('--home5-blank-map-label-progress', mapLabelProgress.toFixed(4));
-      node.style.setProperty('--home5-blank-map-route-progress', mapRouteProgress.toFixed(4));
-      node.style.setProperty('--home5-blank-map-scale', mapScale.toFixed(4));
-    };
-
-    const animateBlankHeroProgress = () => {
-      const delta = targetProgress - currentProgress;
-
-      if (Math.abs(delta) < 0.001) {
-        currentProgress = targetProgress;
-        applyBlankHeroProgress(currentProgress);
-        frame = 0;
-        return;
-      }
-
-      currentProgress += delta * 0.16;
-      applyBlankHeroProgress(currentProgress);
-      frame = window.requestAnimationFrame(animateBlankHeroProgress);
-    };
-
-    const updateBlankHeroProgress = () => {
-      const node = blankHeroRef.current;
-      if (!node) return;
-
-      const rect = node.getBoundingClientRect();
-      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-      const scrollRange = Math.max(1, rect.height - viewportHeight);
-      targetProgress = clampValue(-rect.top / scrollRange, 0, 1);
-
-      if (!frame) {
-        frame = window.requestAnimationFrame(animateBlankHeroProgress);
-      }
-    };
-
-    const requestUpdate = () => {
-      updateBlankHeroProgress();
-    };
-
-    updateBlankHeroProgress();
-    applyBlankHeroProgress(currentProgress);
-    window.addEventListener('scroll', requestUpdate, { passive: true });
-    window.addEventListener('resize', requestUpdate);
-
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', requestUpdate);
-      window.removeEventListener('resize', requestUpdate);
-    };
-  }, []);
-
-  useEffect(() => {
     const media = window.matchMedia('(hover: hover) and (pointer: fine)');
     const updateMode = () => {
       const isFinePointer = media.matches;
@@ -913,6 +815,7 @@ export const Home5: React.FC = () => {
       const sampleY = menuRect.top + (menuRect.height / 2);
       const footerRect = footerRef.current?.getBoundingClientRect();
       const heroRect = heroSectionRef.current?.getBoundingClientRect();
+      const cinematicRect = document.getElementById('room-to-world-hero')?.getBoundingClientRect();
       const overlapsFooter = Boolean(
         footerRect
         && sampleX >= footerRect.left
@@ -927,8 +830,15 @@ export const Home5: React.FC = () => {
         && sampleY >= heroRect.top
         && sampleY <= heroRect.bottom
       );
-      const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
-      const nextNavInHero = overlapsHero;
+      const overlapsCinematic = Boolean(
+        cinematicRect
+        && sampleX >= cinematicRect.left
+        && sampleX <= cinematicRect.right
+        && sampleY >= cinematicRect.top
+        && sampleY <= cinematicRect.bottom
+      );
+      const nextToneOnDark = overlapsFooter || overlapsCinematic || (overlapsHero && heroSubtitleOnDark);
+      const nextNavInHero = overlapsHero || overlapsCinematic;
 
       if (stickyNavInHeroRef.current !== nextNavInHero) {
         stickyNavInHeroRef.current = nextNavInHero;
@@ -1310,49 +1220,9 @@ export const Home5: React.FC = () => {
         </div>
       </div>
 
-      <section ref={blankHeroRef} id="home5-blank-hero" className="home5-blank-hero" aria-labelledby="home5-blank-hero-title">
-        <div className="home5-blank-hero-pin">
-          <div className="home5-blank-hero-circle" aria-hidden="true" />
-          <div className="home5-blank-hero-road" aria-hidden="true">
-            <div className="home5-blank-hero-road-line" />
-          </div>
-          <div className="home5-blank-hero-map" aria-hidden="true">
-            <img className="home5-blank-hero-map-image" src="/map/kolkata-map-bg.svg" alt="" loading="eager" decoding="async" />
-            <svg className="home5-blank-hero-map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
-              <path
-                className="home5-blank-map-connection"
-                d="M25 22 C28 22.8, 30.2 24.1, 32.1 26.2 L34.8 29.5 C36.4 31.5, 37.5 34.2, 40.2 36.2 L43.9 39.1 C46.5 41.1, 47.4 43.9, 49.8 46.1 L53.4 49.3 C55.9 51.6, 58.9 52.1, 61.6 54.8 L64.2 57.9 C66.4 60.7, 69.1 61.9, 70.9 64.8 L72.7 69.2 C74.1 72.5, 74.7 75.2, 76 78"
-                pathLength={1}
-              />
-            </svg>
-            <div className="home5-blank-map-marker home5-blank-map-marker-kolkata">
-              <span className="home5-blank-map-ripple" />
-              <span className="home5-blank-map-ripple home5-blank-map-ripple-delay" />
-              <span className="home5-blank-map-dot" />
-            </div>
-            <div className="home5-blank-map-marker home5-blank-map-marker-goa">
-              <span className="home5-blank-map-ripple" />
-              <span className="home5-blank-map-ripple home5-blank-map-ripple-delay" />
-              <span className="home5-blank-map-dot" />
-            </div>
-            <div className="home5-blank-map-labels">
-              <span className="home5-blank-map-label home5-blank-map-label-kolkata">Kolkata</span>
-              <span className="home5-blank-map-label home5-blank-map-label-goa">Goa</span>
-            </div>
-          </div>
-          <div className="home5-blank-hero-copy">
-            <div className="home5-blank-hero-intro">
-              <p className="home5-blank-hero-kicker">Go somewhere worth remembering.</p>
-              <p className="home5-blank-hero-subcopy">Discover experiences, routes and people with</p>
-            </div>
-            <h2 id="home5-blank-hero-title" className="home5-blank-hero-title" aria-label="The Better Pass">
-              <span className="home5-blank-hero-title-the" aria-hidden="true">The</span>
-              <span className="home5-blank-hero-title-better" aria-hidden="true">Better</span>
-              <span className="home5-blank-hero-title-pass" aria-hidden="true">PASS</span>
-            </h2>
-          </div>
-        </div>
-      </section>
+      <NewAnimatedHero />
+
+      <CinematicHero />
 
       <section
         id="home5-hero"
