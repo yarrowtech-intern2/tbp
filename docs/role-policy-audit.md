@@ -26,7 +26,7 @@ Scope: static review of role-aware frontend routing and Supabase policy SQL for 
 | Marketing content | Public read | Public read | Insert/update/delete | Insert/update/delete |
 | Ads/promotions | Public active ads through Edge Function | Own ads/payment records | Owner/admin read policies | Read-only ad/payment policy |
 
-Provider roles are `tour_company`, `tour_instructor`, and `tour_guide`. The legacy `provider` role remains allowed by the profile constraint for compatibility but is not part of the current frontend provider role set in `src/lib/platform.ts`.
+Provider roles are `tour_company`, `tour_instructor`, `tour_guide`, and `local_guide`. The legacy `provider` role remains allowed by the profile constraint for compatibility but is not part of the current frontend provider role set in `src/lib/platform.ts`.
 
 ## Fixes Applied
 

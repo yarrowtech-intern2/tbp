@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MacbookScroll } from './ui/macbook-scroll';
 
@@ -6,19 +5,6 @@ const MACBOOK_SCREEN_SRC = 'https://res.cloudinary.com/dc3qprub3/image/upload/f_
 const MACBOOK_SCREEN_SRC_2X = 'https://res.cloudinary.com/dc3qprub3/image/upload/f_auto,q_100,w_2200/v1786360243/Screenshot_2026-08-10_163753_ximwo0.png';
 
 export default function MacbookScrollDemo() {
-  useEffect(() => {
-    if (document.head.querySelector(`link[rel="preload"][href="${MACBOOK_SCREEN_SRC_2X}"]`)) return;
-
-    const link = document.createElement('link');
-    link.rel = 'preload';
-    link.as = 'image';
-    link.href = MACBOOK_SCREEN_SRC_2X;
-    link.setAttribute('imagesrcset', `${MACBOOK_SCREEN_SRC} 1x, ${MACBOOK_SCREEN_SRC_2X} 2x`);
-    link.setAttribute('imagesizes', '(max-width: 768px) 88vw, 36rem');
-    link.setAttribute('fetchpriority', 'high');
-    document.head.appendChild(link);
-  }, []);
-
   return (
     <MacbookScroll
       title={(

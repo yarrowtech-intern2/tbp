@@ -218,6 +218,14 @@ const buildProfileChecklist = (
         );
     }
 
+    if (role === 'local_guide') {
+        checks.push(
+            { key: 'provider_specialties', label: 'Live tour setup', complete: hasText(form.provider_specialties), required: true },
+            { key: 'years_experience', label: 'Local experience', complete: hasText(form.years_experience), required: true },
+            { key: 'languages', label: 'Languages', complete: hasText(form.languages), required: true },
+        );
+    }
+
     return checks;
 };
 
@@ -553,6 +561,13 @@ export const Profile: React.FC = () => {
                 { label: 'Experience', value: profile.years_experience ? `${profile.years_experience} years` : '', icon: Users },
             );
         }
+        if (profile?.role === 'local_guide') {
+            rows.push(
+                { label: 'Languages', value: formatLanguagesInput(profile.languages), icon: Languages },
+                { label: 'Live Setup', value: profile.provider_specialties || '', icon: Sparkles },
+                { label: 'Experience', value: profile.years_experience ? `${profile.years_experience} years` : '', icon: Users },
+            );
+        }
 
         return rows.filter((item) => hasText(item.value));
     }, [locationStr, profile]);
@@ -857,6 +872,38 @@ export const Profile: React.FC = () => {
                                                     value={editForm.languages}
                                                     onChange={e => setEditForm(f => ({ ...f, languages: e.target.value }))}
                                                     placeholder="English, Hindi, Nepali"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                    {profile?.role === 'local_guide' && (
+                                        <>
+                                            <div className="prf-field prf-field--full">
+                                                <label className="prf-label">Live Tour Setup</label>
+                                                <input
+                                                    className="prf-input"
+                                                    value={editForm.provider_specialties}
+                                                    onChange={e => setEditForm(f => ({ ...f, provider_specialties: e.target.value }))}
+                                                    placeholder="360 camera, mobile gimbal, old city walks"
+                                                />
+                                            </div>
+                                            <div className="prf-field">
+                                                <label className="prf-label">Local Experience</label>
+                                                <input
+                                                    className="prf-input"
+                                                    value={editForm.years_experience}
+                                                    onChange={e => setEditForm(f => ({ ...f, years_experience: e.target.value }))}
+                                                    placeholder="4"
+                                                    inputMode="numeric"
+                                                />
+                                            </div>
+                                            <div className="prf-field prf-field--full">
+                                                <label className="prf-label">Languages</label>
+                                                <input
+                                                    className="prf-input"
+                                                    value={editForm.languages}
+                                                    onChange={e => setEditForm(f => ({ ...f, languages: e.target.value }))}
+                                                    placeholder="English, Hindi, Spanish"
                                                 />
                                             </div>
                                         </>

@@ -20,6 +20,7 @@ import {
     Menu,
     MapPin,
     Package,
+    RadioTower,
     Search,
     Settings2,
     Star,
@@ -75,7 +76,7 @@ import {
     type UnifiedBooking,
     type VerificationRecord,
 } from '../lib/destinations';
-import { isProviderRole, normalizeRoleValue } from '../lib/platform';
+import { isProviderRole, normalizeRoleValue, resolveEffectiveAccountRole } from '../lib/platform';
 import { deriveBookingAmounts } from '../lib/pricing';
 import {
     confirmPromotionPurchase,
@@ -106,6 +107,7 @@ type SidebarKey =
     | 'overview'
     | 'revenue'
     | 'explore'
+    | 'virtualTours'
     | 'bookings'
     | 'routes'
     | 'favorites'
@@ -440,6 +442,40 @@ const listingTypeLabel = (type: string | null | undefined) => {
     if (normalized === 'guide') return 'Events';
     return 'Activities';
 };
+const VIRTUAL_TOUR_TAGS = ['virtual tour', 'live 360', '360', 'vr tour', 'ar tour', 'virtual', 'remote tour'];
+const LIVE_ROOM_STATUSES = new Set(['confirmed', 'completed', 'accepted']);
+const textValue = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+const hasVirtualTourSignal = (value: string) => {
+    const normalized = value.toLowerCase();
+    return VIRTUAL_TOUR_TAGS.some((tag) => normalized.includes(tag));
+};
+const isVirtualTourListing = (item: PostRecord) => {
+    const flagged = item.is_virtual_tour === true
+        || item.virtual_tour === true
+        || textValue(item.experience_mode).toLowerCase() === 'virtual'
+        || textValue(item.delivery_mode).toLowerCase() === 'virtual';
+    if (flagged) return true;
+    return hasVirtualTourSignal([
+        item.sub_category,
+        item.category,
+        titleForPost(item),
+        item.description,
+        item.location,
+    ].map(textValue).filter(Boolean).join(' '));
+};
+const isVirtualTourBooking = (item: UnifiedBooking, listing?: PostRecord) => (
+    Boolean(listing && isVirtualTourListing(listing))
+    || hasVirtualTourSignal([
+        item.listing_title,
+        item.listing_type,
+    ].map(textValue).filter(Boolean).join(' '))
+);
+const isLiveRoomUnlocked = (item: UnifiedBooking) => {
+    const paymentStatus = String(item.payment_status || '').trim().toLowerCase();
+    const paid = paymentStatus === 'paid' || Boolean(item.paid_at) || Boolean(item.payment_id);
+    return paid && LIVE_ROOM_STATUSES.has(String(item.status || '').trim().toLowerCase());
+};
+const getVirtualTourRoomPath = (item: UnifiedBooking) => `/virtual-tours/live/${encodeURIComponent(item.id)}`;
 const postStatus = (item: PostRecord) => (item.status || '').toLowerCase();
 const isModerationPost = (item: PostRecord) => {
     const status = postStatus(item);
@@ -492,6 +528,7 @@ const parseTouristSection = (value: string | null): SidebarKey | null => {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview') return 'overview';
     if (normalized === 'explore') return 'explore';
+    if (normalized === 'virtual' || normalized === 'virtualtours' || normalized === 'virtual-tours' || normalized === 'virtual_tours' || normalized === 'live' || normalized === 'live-tours' || normalized === 'live_tours') return 'virtualTours';
     if (normalized === 'bookings') return 'bookings';
     if (normalized === 'routes' || normalized === 'history' || normalized === 'route-history') return 'routes';
     if (normalized === 'revenue' || normalized === 'spend') return 'revenue';
@@ -505,6 +542,7 @@ const parseProviderSection = (value: string | null): SidebarKey | null => {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'bookings') return 'bookings';
+    if (normalized === 'virtual' || normalized === 'virtualtours' || normalized === 'virtual-tours' || normalized === 'virtual_tours' || normalized === 'live' || normalized === 'live-tours' || normalized === 'live_tours') return 'virtualTours';
     if (normalized === 'revenue') return 'revenue';
     if (normalized === 'listings') return 'listings';
     if (normalized === 'studio' || normalized === 'create') return 'studio';
@@ -912,17 +950,27 @@ export const RoleDashboard: React.FC = () => {
         () => parseMarketingSection(searchParams.get('section')),
         [searchParams],
     );
+    const requestedLocalGuideCreate = searchParams.get('create') === 'live-tour';
     const metadataRole = typeof user?.user_metadata?.role === 'string' ? user.user_metadata.role : null;
-    const effectiveRole = useMemo(
-        () => effectiveRoleFromProfile(profile?.role || metadataRole),
+    const resolvedAccountRole = useMemo(
+        () => resolveEffectiveAccountRole(profile?.role, metadataRole),
         [metadataRole, profile?.role],
+    );
+    const effectiveRole = useMemo(
+        () => effectiveRoleFromProfile(resolvedAccountRole),
+        [resolvedAccountRole],
     );
     const requestedSection = useMemo(() => {
         if (effectiveRole === 'admin') return requestedAdminSection;
-        if (effectiveRole === 'provider') return requestedProviderSection;
+        if (effectiveRole === 'provider') {
+            if (resolvedAccountRole === 'local_guide' && requestedProviderSection === 'studio') {
+                return 'virtualTours';
+            }
+            return requestedProviderSection;
+        }
         if (effectiveRole === 'marketing') return requestedMarketingSection;
         return requestedTouristSection;
-    }, [effectiveRole, requestedAdminSection, requestedMarketingSection, requestedProviderSection, requestedTouristSection]);
+    }, [effectiveRole, requestedAdminSection, requestedMarketingSection, requestedProviderSection, requestedTouristSection, resolvedAccountRole]);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -1009,6 +1057,12 @@ export const RoleDashboard: React.FC = () => {
         }
     });
     const [showAdminRecentActivity, setShowAdminRecentActivity] = useState(false);
+    const [localGuideBuilderOpen, setLocalGuideBuilderOpen] = useState(false);
+    const defaultDashboardSection: SidebarKey = effectiveRole === 'admin'
+        ? adminDefaultSection
+        : effectiveRole === 'provider' && resolvedAccountRole === 'local_guide'
+            ? 'virtualTours'
+            : 'overview';
 
     const fetchAdminDashboardSnapshot = useCallback(async (): Promise<AdminDashboardSnapshot> => {
         const [posts, queuePosts, verifications, audits, usersResult, bookingsResult, revenueResult, activeAds, adminBookings] = await Promise.all([
@@ -1166,16 +1220,24 @@ export const RoleDashboard: React.FC = () => {
                 ? null
                 : (() => {
                     try {
-                        return getSectionParser(effectiveRole)(
+                        const savedSection = getSectionParser(effectiveRole)(
                             window.localStorage.getItem(getDashboardSectionStorageKey(effectiveRole)),
                         );
+                        if (
+                            effectiveRole === 'provider'
+                            && resolvedAccountRole === 'local_guide'
+                            && savedSection === 'overview'
+                        ) {
+                            return null;
+                        }
+                        return savedSection;
                     } catch {
                         return null;
                     }
                 })())
-            || (effectiveRole === 'admin' ? adminDefaultSection : 'overview');
+            || defaultDashboardSection;
         const nextSection = !requestedSection && parsedSection === 'messages'
-            ? (effectiveRole === 'admin' ? adminDefaultSection : 'overview')
+            ? defaultDashboardSection
             : parsedSection;
 
         setActiveSection(nextSection);
@@ -1188,7 +1250,26 @@ export const RoleDashboard: React.FC = () => {
                 { replace: true },
             );
         }
-    }, [adminDefaultSection, effectiveRole, navigate, requestedSection, routeRole, searchParams]);
+    }, [defaultDashboardSection, effectiveRole, navigate, requestedSection, resolvedAccountRole, routeRole, searchParams]);
+
+    useEffect(() => {
+        if (
+            !routeRole
+            || routeRole !== effectiveRole
+            || effectiveRole !== 'provider'
+            || resolvedAccountRole !== 'local_guide'
+            || requestedProviderSection !== 'studio'
+        ) {
+            return;
+        }
+
+        const nextSearchParams = new URLSearchParams(searchParams);
+        nextSearchParams.set('section', 'virtual-tours');
+        navigate(
+            { pathname: '/dashboard/provider', search: `?${nextSearchParams.toString()}` },
+            { replace: true },
+        );
+    }, [effectiveRole, navigate, requestedProviderSection, resolvedAccountRole, routeRole, searchParams]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -1199,8 +1280,20 @@ export const RoleDashboard: React.FC = () => {
         }
     }, [activeSection, effectiveRole]);
 
+    useEffect(() => {
+        if (
+            resolvedAccountRole === 'local_guide'
+            && activeSection === 'virtualTours'
+            && requestedLocalGuideCreate
+        ) {
+            setLocalGuideBuilderOpen(true);
+        }
+    }, [activeSection, requestedLocalGuideCreate, resolvedAccountRole]);
+
     const goToSection = useCallback((section: SidebarKey, replace = true) => {
-        const normalizedSection = normalizeSectionForRole(effectiveRole, section);
+        const normalizedSection = effectiveRole === 'provider' && resolvedAccountRole === 'local_guide' && section === 'studio'
+            ? 'virtualTours'
+            : normalizeSectionForRole(effectiveRole, section);
         const nextSearchParams = new URLSearchParams(searchParams);
         nextSearchParams.set('section', normalizedSection);
         setActiveSection(normalizedSection);
@@ -1208,7 +1301,7 @@ export const RoleDashboard: React.FC = () => {
             { pathname: `/dashboard/${effectiveRole}`, search: `?${nextSearchParams.toString()}` },
             { replace },
         );
-    }, [effectiveRole, navigate, searchParams]);
+    }, [effectiveRole, navigate, resolvedAccountRole, searchParams]);
 
     const openDashboardSection = useCallback((section: SidebarKey) => {
         if (section === 'messages') {
@@ -1440,15 +1533,29 @@ export const RoleDashboard: React.FC = () => {
             ];
         }
         if (effectiveRole === 'provider') {
-            return [
+            const providerNavItems: NavItem[] = [
                 { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                 { key: 'bookings', label: 'Bookings', icon: ClipboardList },
+                { key: 'virtualTours', label: 'Live Tours', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours },
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'studio', label: 'Studio', icon: SquarePen },
                 { key: 'listings', label: 'Listings', icon: Package },
                 { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
+
+            if (resolvedAccountRole === 'local_guide') {
+                return [
+                    providerNavItems[2],
+                    providerNavItems[1],
+                    providerNavItems[3],
+                    { ...providerNavItems[5], label: 'Live Listings' },
+                    providerNavItems[7],
+                    providerNavItems[0],
+                ];
+            }
+
+            return providerNavItems;
         }
         if (effectiveRole === 'marketing') {
             return [
@@ -1463,12 +1570,13 @@ export const RoleDashboard: React.FC = () => {
         return [
             { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
             { key: 'explore', label: 'Explore', icon: Compass },
+            { key: 'virtualTours', label: 'Live Tours', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours },
             { key: 'bookings', label: 'Bookings', icon: ClipboardList },
             { key: 'revenue', label: 'Spend', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.spending },
             { key: 'messages', label: 'Messages', icon: MessageSquare },
             { key: 'favorites', label: 'Favorites', icon: Heart },
         ];
-    }, [effectiveRole]);
+    }, [effectiveRole, resolvedAccountRole]);
 
     const mobileNavItems = useMemo<MobileNavItem[]>(() => {
         if (effectiveRole === 'admin') {
@@ -1496,6 +1604,7 @@ export const RoleDashboard: React.FC = () => {
         return [
             { id: 'home', label: 'Home', icon: Home, to: '/' },
             { id: 'explore', label: 'Explore', icon: Search, to: '/explore' },
+            { id: 'virtualTours', label: 'Live', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours, section: 'virtualTours' },
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview' },
             { id: 'bookings', label: 'Bookings', icon: ClipboardList, section: 'bookings' },
             { id: 'spending', label: 'Spend', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.spending, section: 'revenue' },
@@ -1559,6 +1668,7 @@ export const RoleDashboard: React.FC = () => {
         let companyCount = 0;
         let instructorCount = 0;
         let guideCount = 0;
+        let localGuideCount = 0;
         for (const row of adminUsers) {
             const role = normalizeRoleValue(row.role || null);
             if (role === 'admin') {
@@ -1574,6 +1684,9 @@ export const RoleDashboard: React.FC = () => {
             } else if (role === 'tour_guide') {
                 providerCount += 1;
                 guideCount += 1;
+            } else if (role === 'local_guide') {
+                providerCount += 1;
+                localGuideCount += 1;
             } else if (isProviderRole(role)) {
                 providerCount += 1;
             } else {
@@ -1596,6 +1709,7 @@ export const RoleDashboard: React.FC = () => {
             companyCount,
             instructorCount,
             guideCount,
+            localGuideCount,
             pendingPosts,
             rejectedPosts,
             approvedPosts,
@@ -1823,6 +1937,35 @@ export const RoleDashboard: React.FC = () => {
 
     const providerBookingRows = providerBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''} ${item.traveler_name || ''} ${item.traveler_email || ''} ${item.traveler_phone || ''}`.toLowerCase().includes(query));
+
+    const touristVirtualBookingRows = touristRows
+        .filter((item) => isVirtualTourBooking(item));
+
+    const providerVirtualListingRows = providerRows
+        .filter((item) => isVirtualTourListing(item));
+
+    const providerVirtualListingIds = useMemo(
+        () => new Set(providerVirtualListingRows.map((item) => String(item.id || '').trim()).filter(Boolean)),
+        [providerVirtualListingRows],
+    );
+
+    const providerVirtualBookingRows = providerBookingRows
+        .filter((item) => (
+            providerVirtualListingIds.has(String(item.listing_id || '').trim())
+            || isVirtualTourBooking(item, providerListingMap.get(String(item.listing_id || '').trim()))
+        ));
+
+    const touristVirtualMetrics = {
+        total: touristVirtualBookingRows.length,
+        paid: touristVirtualBookingRows.filter(hasPaidSignalForBooking).length,
+        ready: touristVirtualBookingRows.filter(isLiveRoomUnlocked).length,
+    };
+
+    const providerVirtualMetrics = {
+        listings: providerVirtualListingRows.length,
+        paidRequests: providerVirtualBookingRows.filter(hasPaidSignalForBooking).length,
+        ready: providerVirtualBookingRows.filter(isLiveRoomUnlocked).length,
+    };
 
     const providerRevenueRows = providerBookings.map((item) => buildAccountRevenueRow(item, 'provider'));
     const providerRevenueFilteredRows = providerRevenueRows
@@ -2394,6 +2537,76 @@ export const RoleDashboard: React.FC = () => {
     };
 
     const renderTouristSection = () => {
+        if (activeSection === 'virtualTours') {
+            return (
+                <section className="rdb-content-grid rdb-virtual-tour-section">
+                    <article className="rdb-panel">
+                        <h2>Live 360 Tours</h2>
+                        <div className="rdb-stat-list">
+                            <div><span>Virtual Slots</span><strong>{touristVirtualMetrics.total}</strong></div>
+                            <div><span>Paid Slots</span><strong>{touristVirtualMetrics.paid}</strong></div>
+                            <div><span>Ready Rooms</span><strong>{touristVirtualMetrics.ready}</strong></div>
+                            <div><span>Status</span><strong>{touristVirtualMetrics.ready > 0 ? 'Join' : 'Book'}</strong></div>
+                        </div>
+                        <div className="rdb-action-list">
+                            <Link to="/virtual-tours" className="rdb-inline-link">Open Live Tours</Link>
+                            <Link to="/explore?tab=guides" className="rdb-inline-link">Book Slot</Link>
+                        </div>
+                    </article>
+
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>My Virtual Slots</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${touristVirtualBookingRows.length} records`}</small>
+                        </div>
+                        <div className="rdb-provider-bookings-grid rdb-virtual-tour-list">
+                            {touristVirtualBookingRows.slice(0, 10).map((item) => {
+                                const bookingPath = getBookingDetailPath(item);
+                                const bookingStatus = String(item.status || 'pending').toLowerCase();
+                                const paymentStatus = String(item.payment_status || 'pending').toLowerCase();
+                                const liveUnlocked = isLiveRoomUnlocked(item);
+                                return (
+                                    <article key={item.id} className="rdb-provider-booking-card rdb-virtual-tour-card">
+                                        <div className="rdb-provider-booking-head">
+                                            <div>
+                                                <p>{item.listing_title || 'Live virtual tour'}</p>
+                                                <small>{formatDateTime(item.booking_date || item.created_at)}</small>
+                                            </div>
+                                            <div className="rdb-provider-booking-pills">
+                                                <span className={`rdb-pill rdb-pill-${bookingStatus}`}>{bookingStatus}</span>
+                                                <span className={`rdb-pill rdb-pill-${paymentStatus}`}>{paymentStatus}</span>
+                                            </div>
+                                        </div>
+                                        <div className="rdb-provider-booking-meta">
+                                            <div><span>Travelers</span><strong>{item.number_of_people || 1}</strong></div>
+                                            <div><span>Total Paid</span><strong>{formatCurrency(item.total_price || 0)}</strong></div>
+                                            <div><span>Booking ID</span><strong>{item.id || 'N/A'}</strong></div>
+                                            <div><span>Room</span><strong>{liveUnlocked ? 'Unlocked' : 'Locked'}</strong></div>
+                                        </div>
+                                        <div className="rdb-provider-booking-actions">
+                                            {liveUnlocked ? (
+                                                <Link to={getVirtualTourRoomPath(item)} className="rdb-row-edit-link rdb-row-edit-link--approve">
+                                                    Join Live Room
+                                                </Link>
+                                            ) : bookingPath ? (
+                                                <Link to={bookingPath} className="rdb-row-edit-link">
+                                                    View Booking
+                                                </Link>
+                                            ) : null}
+                                            <Link to="/messages" className="rdb-row-edit-link">Open Messages</Link>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                            {touristVirtualBookingRows.length === 0 && (
+                                <p className="rdb-empty">No virtual tour slots yet. Book a Live 360 event to unlock this area.</p>
+                            )}
+                        </div>
+                    </article>
+                </section>
+            );
+        }
+
         if (activeSection === 'bookings') {
             return (
                 <section className="rdb-panel rdb-panel-wide">
@@ -2859,6 +3072,122 @@ export const RoleDashboard: React.FC = () => {
     };
 
     const renderProviderSection = () => {
+        if (activeSection === 'virtualTours') {
+            return (
+                <section className="rdb-content-grid rdb-virtual-tour-section">
+                    <article className="rdb-panel">
+                        <h2>Live 360 Console</h2>
+                        <div className="rdb-stat-list">
+                            <div><span>Virtual Listings</span><strong>{providerVirtualMetrics.listings}</strong></div>
+                            <div><span>Paid Requests</span><strong>{providerVirtualMetrics.paidRequests}</strong></div>
+                            <div><span>Ready Rooms</span><strong>{providerVirtualMetrics.ready}</strong></div>
+                            <div><span>Role</span><strong>{resolvedAccountRole === 'local_guide' ? 'Local Guide' : 'Provider'}</strong></div>
+                        </div>
+                        <div className="rdb-action-list">
+                            <Link to="/virtual-tours" className="rdb-inline-link">Open Live Console</Link>
+                            {resolvedAccountRole === 'local_guide' ? (
+                                <button
+                                    type="button"
+                                    className="rdb-inline-link"
+                                    onClick={() => setLocalGuideBuilderOpen((open) => !open)}
+                                >
+                                    {localGuideBuilderOpen ? 'Hide Live Tour Form' : 'Create Live AR/VR Tour'}
+                                </button>
+                            ) : (
+                                <button type="button" className="rdb-inline-link" onClick={() => goToSection('studio')}>Create Virtual Listing</button>
+                            )}
+                        </div>
+                    </article>
+
+                    {resolvedAccountRole === 'local_guide' && localGuideBuilderOpen && (
+                        <div id="create-live-tour" className="rdb-panel-wide rdb-live-tour-builder">
+                            <Suspense fallback={<div className="rdb-loading"><Loader2 size={28} className="animate-spin" /><p>Loading live tour form...</p></div>}>
+                                <LazyProviderStudio embedded />
+                            </Suspense>
+                        </div>
+                    )}
+
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Virtual Tour Requests</h2>
+                            <small>{query ? `Filtered by "${search}"` : `${providerVirtualBookingRows.length} records`}</small>
+                        </div>
+                        <div className="rdb-provider-bookings-grid rdb-virtual-tour-list">
+                            {providerVirtualBookingRows.slice(0, 12).map((item) => {
+                                const bookingPath = getBookingDetailPath(item);
+                                const bookingStatus = String(item.status || 'pending').toLowerCase();
+                                const paymentStatus = String(item.payment_status || 'pending').toLowerCase();
+                                const travelerId = typeof item.user_id === 'string' ? item.user_id.trim() : '';
+                                const hasPaidSignal = hasPaidSignalForBooking(item);
+                                const canDecideBooking = bookingStatus === 'pending' && hasPaidSignal;
+                                const liveUnlocked = isLiveRoomUnlocked(item);
+                                const actionLoading = providerBookingActionId === item.id;
+                                return (
+                                    <article key={item.id} className="rdb-provider-booking-card rdb-virtual-tour-card">
+                                        <div className="rdb-provider-booking-head">
+                                            <div>
+                                                <p>{item.listing_title || 'Live virtual tour'}</p>
+                                                <small>{formatDateTime(item.booking_date || item.created_at)}</small>
+                                            </div>
+                                            <div className="rdb-provider-booking-pills">
+                                                <span className={`rdb-pill rdb-pill-${bookingStatus}`}>{bookingStatus}</span>
+                                                <span className={`rdb-pill rdb-pill-${paymentStatus}`}>{paymentStatus}</span>
+                                            </div>
+                                        </div>
+                                        <div className="rdb-provider-booking-meta">
+                                            <div><span>Traveler</span><strong>{item.traveler_name || 'N/A'}</strong></div>
+                                            <div><span>Email</span><strong>{item.traveler_email || 'N/A'}</strong></div>
+                                            <div><span>Guests</span><strong>{item.number_of_people || 1}</strong></div>
+                                            <div><span>Total Paid</span><strong>{formatCurrency(item.total_price || 0)}</strong></div>
+                                            <div><span>Booking ID</span><strong>{item.id || 'N/A'}</strong></div>
+                                            <div><span>Room</span><strong>{liveUnlocked ? 'Unlocked' : hasPaidSignal ? 'Accept' : 'Payment'}</strong></div>
+                                        </div>
+                                        <div className="rdb-provider-booking-actions">
+                                            {bookingPath && (
+                                                <Link to={bookingPath} className="rdb-row-edit-link">
+                                                    View Package
+                                                </Link>
+                                            )}
+                                            {travelerId && travelerId !== user?.id && (
+                                                <Link
+                                                    to={`/messages?user=${encodeURIComponent(travelerId)}`}
+                                                    className="rdb-row-edit-link"
+                                                >
+                                                    Contact Traveler
+                                                </Link>
+                                            )}
+                                            {canDecideBooking && (
+                                                <button
+                                                    type="button"
+                                                    className="rdb-row-edit-link rdb-row-edit-link--approve"
+                                                    onClick={() => void handleProviderBookingDecision(item, 'accept')}
+                                                    disabled={actionLoading}
+                                                >
+                                                    {actionLoading ? <Loader2 size={14} className="animate-spin" /> : 'Accept Request'}
+                                                </button>
+                                            )}
+                                            {liveUnlocked && (
+                                                <Link to={getVirtualTourRoomPath(item)} className="rdb-row-edit-link rdb-row-edit-link--approve">
+                                                    Go Live
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                            {providerVirtualBookingRows.length === 0 && (
+                                <p className="rdb-empty">
+                                    {resolvedAccountRole === 'local_guide'
+                                        ? 'No virtual tour requests yet. Create a Live AR/VR tour and tourists can book paid slots.'
+                                        : 'No virtual tour requests yet. Create an event listing tagged as Live 360 Virtual Tour.'}
+                                </p>
+                            )}
+                        </div>
+                    </article>
+                </section>
+            );
+        }
+
         if (activeSection === 'bookings') {
             return (
                 <section className="rdb-panel rdb-panel-wide rdb-provider-bookings-panel">
@@ -4350,6 +4679,7 @@ export const RoleDashboard: React.FC = () => {
                                 <div>Tour Companies <span>{adminMetrics.companyCount}</span></div>
                                 <div>Instructors <span>{adminMetrics.instructorCount}</span></div>
                                 <div>Tour guides <span>{adminMetrics.guideCount}</span></div>
+                                <div>Local guides <span>{adminMetrics.localGuideCount}</span></div>
                             </div>
                         </div>
                     </article>
@@ -4396,10 +4726,15 @@ export const RoleDashboard: React.FC = () => {
     const dashboardRoleLabel = effectiveRole === 'admin'
         ? 'Admin'
         : effectiveRole === 'provider'
-            ? 'Provider'
+            ? resolvedAccountRole === 'local_guide' ? 'Local Guide' : 'Provider'
             : effectiveRole === 'marketing'
                 ? 'Sales'
                 : 'Tourist';
+    const dashboardTitle = activeSection === 'virtualTours'
+        ? 'Live Tours'
+        : effectiveRole === 'marketing'
+            ? 'Sales Dashboard'
+            : 'Dashboard';
     const isDarkTheme = theme === 'dark';
 
     return (
@@ -4483,7 +4818,7 @@ export const RoleDashboard: React.FC = () => {
                         <div className="rdb-admin-topbar-main">
                             <div className="rdb-admin-topbar-title">
                                 <small>{dashboardRoleLabel}</small>
-                                <h1>{effectiveRole === 'marketing' ? 'Sales Dashboard' : 'Dashboard'}</h1>
+                                <h1>{dashboardTitle}</h1>
                             </div>
                             <div className="rdb-admin-topbar-controls">
                                 {!isDesktopDashboard && (

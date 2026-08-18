@@ -73,6 +73,8 @@ const getRoleLabel = (role: string): string => {
             return 'Tour Instructor';
         case 'tour_guide':
             return 'Tour Guide';
+        case 'local_guide':
+            return 'Local Guide';
         case 'tourist':
             return 'Tourist';
         default:

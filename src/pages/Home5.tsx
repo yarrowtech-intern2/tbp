@@ -3,16 +3,17 @@ import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Send } from 'reicon-react';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
-import { CinematicHero } from '../components/cinematic-hero/CinematicHero';
 import { NewAnimatedHero } from '../components/NewAnimatedHero';
-import MacbookScrollDemo from '../components/macbook-scroll-demo';
 import { TextReveal } from '../components/ui/text-reveal';
-import WorldMap, { type WorldMapDot } from '../components/ui/world-map';
+import type { WorldMapDot } from '../components/ui/world-map';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterContent, type FooterLink } from '../lib/appContent';
 import { submitContactSubmission } from '../lib/contactSubmissions';
 import './home5.css';
 
+const LazyCinematicHero = lazy(async () => ({ default: (await import('../components/cinematic-hero/CinematicHero')).CinematicHero }));
 const LazyGlobe = lazy(async () => ({ default: (await import('../components/ui/globe')).Globe }));
+const LazyMacbookScrollDemo = lazy(() => import('../components/macbook-scroll-demo'));
+const LazyWorldMap = lazy(() => import('../components/ui/world-map'));
 
 type ScrollRevealProps = {
   children: React.ReactNode;
@@ -1222,7 +1223,16 @@ export const Home5: React.FC = () => {
 
       <NewAnimatedHero />
 
-      <CinematicHero />
+      <DeferredMount
+        className="home5-deferred-shell home5-cinematic-deferred-shell"
+        minHeight="100svh"
+        placeholderClassName="home5-deferred-placeholder home5-deferred-placeholder-cinematic"
+        rootMargin="0px"
+      >
+        <Suspense fallback={<div className="home5-deferred-placeholder home5-deferred-placeholder-cinematic" aria-hidden="true" />}>
+          <LazyCinematicHero nextSectionRef={heroSectionRef} />
+        </Suspense>
+      </DeferredMount>
 
       <section
         id="home5-hero"
@@ -1289,9 +1299,15 @@ export const Home5: React.FC = () => {
 
               <div className="home5-globe-stage" aria-hidden="true">
                 <div className="home5-globe-ground" />
-                <Suspense fallback={<div className="home5-globe home5-globe-placeholder" aria-hidden="true" />}>
-                  <LazyGlobe className="home5-globe" />
-                </Suspense>
+                <DeferredMount
+                  className="home5-globe-mount"
+                  placeholderClassName="home5-globe home5-globe-placeholder"
+                  rootMargin="30% 0px"
+                >
+                  <Suspense fallback={<div className="home5-globe home5-globe-placeholder" aria-hidden="true" />}>
+                    <LazyGlobe className="home5-globe" />
+                  </Suspense>
+                </DeferredMount>
                 <div className="home5-globe-fade" />
               </div>
             </>
@@ -1428,12 +1444,20 @@ export const Home5: React.FC = () => {
       <section ref={howSectionRef} className="home5-how-section" id="home5-flow">
         <div className="home5-how-track">
           <div className="home5-how-sticky">
-            <WorldMap
-              className="home5-how-map-bg"
-              dots={HOW_SECTION_MAP_DOTS}
-              lineColor="#ff6a00"
-              aria-hidden="true"
-            />
+            <DeferredMount
+              className="home5-how-map-mount"
+              placeholderClassName="home5-how-map-placeholder"
+              rootMargin="45% 0px"
+            >
+              <Suspense fallback={<div className="home5-how-map-placeholder" aria-hidden="true" />}>
+                <LazyWorldMap
+                  className="home5-how-map-bg"
+                  dots={HOW_SECTION_MAP_DOTS}
+                  lineColor="#ff6a00"
+                  aria-hidden="true"
+                />
+              </Suspense>
+            </DeferredMount>
             <div className="container home5-how-content-layer">
               <div ref={howSceneRef} className="home5-how-scene" style={{ opacity: 0.22, transform: 'translateY(30px)' }}>
                 <div className="home5-how-shell">
@@ -1604,7 +1628,16 @@ export const Home5: React.FC = () => {
         </div>
       </section>
 
-      <MacbookScrollDemo />
+      <DeferredMount
+        className="home5-deferred-shell"
+        minHeight="235vh"
+        placeholderClassName="home5-deferred-placeholder home5-deferred-placeholder-macbook"
+        rootMargin="45% 0px"
+      >
+        <Suspense fallback={<div className="home5-deferred-placeholder home5-deferred-placeholder-macbook" aria-hidden="true" />}>
+          <LazyMacbookScrollDemo />
+        </Suspense>
+      </DeferredMount>
 
       <section ref={finalSectionRef} className="home5-final-section">
         <div className="container">

@@ -12,6 +12,39 @@
         var(--bg-main);
 }
 
+.rdb-virtual-tour-section .rdb-stat-list div {
+    min-height: 72px;
+}
+
+.rdb-virtual-tour-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rdb-virtual-tour-card {
+    min-width: 0;
+}
+
+.rdb-virtual-tour-card .rdb-provider-booking-head p,
+.rdb-virtual-tour-card .rdb-provider-booking-head small,
+.rdb-virtual-tour-card .rdb-provider-booking-meta strong {
+    overflow-wrap: anywhere;
+}
+
+.rdb-virtual-tour-card .rdb-provider-booking-actions {
+    align-items: center;
+}
+
+.rdb-live-tour-builder {
+    grid-column: 1 / -1;
+    scroll-margin-top: 96px;
+}
+
+@media (max-width: 920px) {
+    .rdb-virtual-tour-list {
+        grid-template-columns: 1fr;
+    }
+}
+
 :root[data-theme='dark'] .rdb-page {
     background: #000;
 }

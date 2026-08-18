@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import './new-animated-hero.css';
 
-const TRAVELER_IMAGE = 'https://res.cloudinary.com/dc3qprub3/image/upload/v1786955397/tbp-hero-boy_v9n8fd.webp';
+const HERO_BACKGROUND_VIDEO = 'https://res.cloudinary.com/dc3qprub3/video/upload/v1779877968/tbp-hero4_dmbfr5.mp4';
+const HERO_BACKGROUND_POSTER = 'https://res.cloudinary.com/dc3qprub3/video/upload/f_jpg,q_auto/v1779877968/tbp-hero4_dmbfr5.jpg';
 const PHASE_COUNT = 4;
 
 type FlipTileProps = {
@@ -13,8 +13,32 @@ type FlipTileProps = {
   back: React.ReactNode;
 };
 
+const getPrefersReducedMotion = () => (
+  typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false
+);
+
+const usePrefersReducedMotion = () => {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(getPrefersReducedMotion);
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => setPrefersReducedMotion(query.matches);
+
+    updatePreference();
+    query.addEventListener('change', updatePreference);
+
+    return () => {
+      query.removeEventListener('change', updatePreference);
+    };
+  }, []);
+
+  return prefersReducedMotion;
+};
+
 export const NewAnimatedHero: React.FC = () => {
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -41,7 +65,7 @@ export const NewAnimatedHero: React.FC = () => {
         <HeroIntro />
         <ProviderCount />
         <HeroCTA />
-        <AnimatedCardGrid reducedMotion={Boolean(prefersReducedMotion)} />
+        <AnimatedCardGrid />
       </div>
 
       <GridOverlay />
@@ -50,7 +74,20 @@ export const NewAnimatedHero: React.FC = () => {
 };
 
 const HeroBackground: React.FC = () => (
-  <div className="tbp-editorial-bg" aria-hidden="true" />
+  <div className="tbp-editorial-bg" aria-hidden="true">
+    <video
+      className="tbp-editorial-bg-video"
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="auto"
+      poster={HERO_BACKGROUND_POSTER}
+      disablePictureInPicture
+    >
+      <source src={HERO_BACKGROUND_VIDEO} type="video/mp4" />
+    </video>
+  </div>
 );
 
 const GridOverlay: React.FC = () => (
@@ -69,7 +106,7 @@ const HeroIntro: React.FC = () => (
 );
 
 const ProviderCount: React.FC = () => (
-  <motion.div
+  <div
     className="tbp-editorial-provider"
     aria-label="12K plus providers"
   >
@@ -81,7 +118,7 @@ const ProviderCount: React.FC = () => (
       <strong>12K+</strong>
       <span>Providers</span>
     </div>
-  </motion.div>
+  </div>
 );
 
 const HeroCTA: React.FC = () => (
@@ -91,7 +128,7 @@ const HeroCTA: React.FC = () => (
   </Link>
 );
 
-const AnimatedCardGrid: React.FC<{ reducedMotion: boolean }> = ({ reducedMotion }) => (
+const AnimatedCardGrid: React.FC = () => (
   <div className="tbp-editorial-card-field" aria-label="The Better Pass highlights">
     <FlipTile
       className="tbp-editorial-tile tbp-editorial-tile--verified"
@@ -111,7 +148,23 @@ const AnimatedCardGrid: React.FC<{ reducedMotion: boolean }> = ({ reducedMotion 
       )}
     />
 
-    <ExploreTile reducedMotion={reducedMotion} />
+    <FlipTile
+      className="tbp-editorial-tile tbp-editorial-tile--explore"
+      front={(
+        <>
+          Explore
+          <br />
+          Places
+        </>
+      )}
+      back={(
+        <>
+          Hidden Gems
+          <br />
+          With Locals
+        </>
+      )}
+    />
   </div>
 );
 
@@ -125,32 +178,5 @@ const FlipTile: React.FC<FlipTileProps> = ({ className, front, back }) => (
         <span>{back}</span>
       </div>
     </div>
-  </article>
-);
-
-const ExploreTile: React.FC<{ reducedMotion: boolean }> = ({ reducedMotion }) => (
-  <article className="tbp-editorial-tile tbp-editorial-tile--explore">
-    <div className="tbp-editorial-explore-copy">
-      Explore
-      <br />
-      places, find
-      <br />
-      hidden gems,
-      <br />
-      explore with
-      <br />
-      locals
-    </div>
-    <motion.img
-      className="tbp-editorial-traveler"
-      src={TRAVELER_IMAGE}
-      alt="Traveler with backpack"
-      width={420}
-      height={620}
-      decoding="async"
-      loading="eager"
-      animate={reducedMotion ? undefined : { y: [0, -7, 0] }}
-      transition={reducedMotion ? undefined : { duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
-    />
   </article>
 );

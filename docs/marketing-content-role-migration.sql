@@ -6,7 +6,7 @@ alter table public.profiles
 
 alter table public.profiles
     add constraint profiles_role_check
-    check (role in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'admin', 'provider', 'marketing')) not valid;
+    check (role in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'local_guide', 'admin', 'provider', 'marketing')) not valid;
 
 alter table public.profiles
     validate constraint profiles_role_check;

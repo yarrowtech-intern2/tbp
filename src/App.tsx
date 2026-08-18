@@ -6,7 +6,7 @@ import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
 import { AppSEO } from './components/SEO';
 import { AppTutorialProvider } from './context/AppTutorialContext';
-import { normalizeRoleValue } from './lib/platform';
+import { resolveEffectiveAccountRole } from './lib/platform';
 
 const Home5 = lazy(async () => ({ default: (await import('./pages/Home5')).Home5 }));
 const About2 = lazy(async () => ({ default: (await import('./pages/About2')).About2 }));
@@ -27,6 +27,7 @@ const UserProfile = lazy(async () => ({ default: (await import('./pages/UserProf
 const Messages = lazy(async () => ({ default: (await import('./pages/Messages')).Messages }));
 const Notifications = lazy(async () => ({ default: (await import('./pages/Notifications')).Notifications }));
 const MapPage = lazy(async () => ({ default: (await import('./pages/MapPage')).MapPage }));
+const VirtualTours = lazy(async () => ({ default: (await import('./pages/VirtualTours')).VirtualTours }));
 
 const APP_HOME_PATH = '/';
 const DASHBOARD_TOURS_PATH = '/explore?tab=tours';
@@ -35,19 +36,20 @@ const DASHBOARD_EVENTS_PATH = '/explore?tab=guides';
 const SHOW_SUPPORT_CHATBOT = false;
 
 const resolveUserRole = (user: { user_metadata?: Record<string, unknown> } | null, profileRole?: string | null) => {
-  if (typeof profileRole === 'string' && profileRole.trim()) return normalizeRoleValue(profileRole);
   const metadataRole = user?.user_metadata?.role;
-  if (typeof metadataRole === 'string' && metadataRole.trim()) return normalizeRoleValue(metadataRole);
-  return null;
+  return resolveEffectiveAccountRole(
+    profileRole,
+    typeof metadataRole === 'string' ? metadataRole : null,
+  );
 };
 
 const isProviderAccount = (role?: string | null) => (
-  role === 'tour_company' || role === 'tour_instructor' || role === 'tour_guide' || role === 'provider' || role === 'vendor'
+  role === 'tour_company' || role === 'tour_instructor' || role === 'tour_guide' || role === 'local_guide' || role === 'provider' || role === 'vendor'
 );
 
 const isProviderLabel = (label?: string | null) => {
   const normalized = (label || '').trim().toLowerCase();
-  return normalized === 'tour company' || normalized === 'tour instructor' || normalized === 'tour guide' || normalized === 'provider' || normalized === 'vendor';
+  return normalized === 'tour company' || normalized === 'tour instructor' || normalized === 'tour guide' || normalized === 'local guide' || normalized === 'provider' || normalized === 'vendor';
 };
 
 const isMarketingAccount = (role?: string | null) => role === 'marketing';
@@ -100,7 +102,7 @@ const HomeRoute: React.FC = () => {
 
   if (user) {
     if (providerAccount || isAdminAccount || marketingAccount) {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to={role === 'local_guide' ? '/dashboard/provider?section=virtual-tours' : '/dashboard'} replace />;
     }
     return <DashboardHome />;
   }
@@ -209,6 +211,8 @@ function App() {
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
               <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+              <Route path="/virtual-tours" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
+              <Route path="/virtual-tours/live/:bookingId" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
               <Route path="/map" element={<MapPage />} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />

@@ -7,7 +7,7 @@ import { useTheme } from '../hooks/useTheme';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { normalizeRoleValue } from '../lib/platform';
 
-type NavTab = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
+type NavTab = 'home' | 'explore' | 'virtualTours' | 'dashboard' | 'bookings' | 'profile';
 
 type DesktopLiquidNavItem = {
     key: string;
@@ -20,6 +20,7 @@ type DesktopLiquidNavItem = {
 const DESKTOP_NAV_ICON_SRC: Record<string, string> = {
     home: '/icons/mobile-nav-icons/home.webp',
     explore: '/icons/mobile-nav-icons/search.webp',
+    virtualTours: '/icons/mobile-nav-icons/gps.svg',
     dashboard: '/icons/mobile-nav-icons/dashboard.webp',
     bookings: '/icons/mobile-nav-icons/bookings.webp',
     messages: '/icons/mobile-nav-icons/chat.webp',
@@ -69,6 +70,7 @@ export const Navbar: React.FC = () => {
     const providerByLabel = normalizedRoleLabel === 'tour company'
         || normalizedRoleLabel === 'tour instructor'
         || normalizedRoleLabel === 'tour guide'
+        || normalizedRoleLabel === 'local guide'
         || normalizedRoleLabel === 'provider'
         || normalizedRoleLabel === 'vendor';
     const adminByLabel = normalizedRoleLabel === 'admin';
@@ -78,6 +80,7 @@ export const Navbar: React.FC = () => {
         || resolvedRole === 'tour_company'
         || resolvedRole === 'tour_instructor'
         || resolvedRole === 'tour_guide'
+        || resolvedRole === 'local_guide'
         || resolvedRole === 'provider'
         || resolvedRole === 'vendor'
         || location.pathname.startsWith('/dashboard/provider')
@@ -93,6 +96,7 @@ export const Navbar: React.FC = () => {
     const activeTab: NavTab | null = (() => {
         const tab = new URLSearchParams(location.search).get('tab');
         if (location.pathname === '/profile') return 'profile';
+        if (location.pathname === '/virtual-tours' || location.pathname.startsWith('/virtual-tours/')) return 'virtualTours';
         if (!isTourist) return null;
         if (location.pathname === '/') return 'home';
         if (location.pathname === '/explore') return 'explore';
@@ -124,12 +128,14 @@ export const Navbar: React.FC = () => {
             ? [
                 { key: 'home' as NavTab, label: 'Home', to: '/' },
                 { key: 'explore' as NavTab, label: 'Explore', to: touristExplorePath },
+                { key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' },
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: touristDashboardPath },
                 { key: 'bookings' as NavTab, label: 'Bookings', to: touristBookingsPath },
                 { key: 'profile' as NavTab, label: 'Profile', to: '/profile' },
               ]
             : [
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: dashboardPath },
+                { key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' },
                 { key: 'profile' as NavTab, label: 'Profile', to: '/profile' },
               ]),
     ];

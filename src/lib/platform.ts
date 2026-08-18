@@ -1,7 +1,7 @@
-export const USER_ROLES = ['tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'admin', 'marketing'] as const;
+export const USER_ROLES = ['tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'local_guide', 'admin', 'marketing'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
-export const PROVIDER_ROLES = ['tour_company', 'tour_instructor', 'tour_guide'] as const;
+export const PROVIDER_ROLES = ['tour_company', 'tour_instructor', 'tour_guide', 'local_guide'] as const;
 export type ProviderRole = (typeof PROVIDER_ROLES)[number];
 
 export const LISTING_TYPES = ['tour', 'activity', 'guide'] as const;
@@ -24,6 +24,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
     tour_company: 'Tour Company',
     tour_instructor: 'Tour Instructor',
     tour_guide: 'Tour Guide',
+    local_guide: 'Local Guide',
     admin: 'Admin',
     marketing: 'Marketing',
 };
@@ -165,6 +166,21 @@ export const ROLE_SIGNUP_CONFIG: Record<UserRole, RoleSignupConfig> = {
             { key: 'bio', label: 'Guide Summary', placeholder: 'Local route guide focused on heritage, trekking, and small-group touring', required: true },
         ],
     },
+    local_guide: {
+        summary: 'Host paid live 360 virtual tour sessions from real locations using a 360 camera, phone rig, or field streaming setup.',
+        requiresVerification: false,
+        allowedListingTypes: ['guide'],
+        fields: [
+            { key: 'phone', label: 'Phone', placeholder: '+91 98765 43210', required: true },
+            { key: 'country', label: 'Country', placeholder: 'India', required: true },
+            { key: 'city', label: 'Base Location', placeholder: 'Jaipur', required: true },
+            { key: 'languages', label: 'Languages', placeholder: 'English, Hindi, Spanish', required: true },
+            { key: 'specialties', label: 'Live Tour Setup', placeholder: '360 camera, mobile gimbal, heritage walks, street food', required: true },
+            { key: 'yearsExperience', label: 'Local Experience', placeholder: '4', required: true },
+            { key: 'governmentId', label: 'Government ID', placeholder: 'Passport / national ID / driving license ref', required: true },
+            { key: 'bio', label: 'Local Guide Summary', placeholder: 'I host live virtual walks through old markets, temples, and viewpoints', required: true },
+        ],
+    },
     admin: {
         summary: 'Internal role for post moderation and operations.',
         requiresVerification: false,
@@ -185,6 +201,23 @@ export const isProviderRole = (role?: string | null): role is ProviderRole => (
         return Boolean(normalized && (PROVIDER_ROLES as readonly string[]).includes(normalized));
     })()
 );
+
+export const resolveEffectiveAccountRole = (
+    profileRole?: string | null,
+    authMetadataRole?: string | null,
+): string | null => {
+    const normalizedProfileRole = normalizeRoleValue(profileRole);
+    const normalizedAuthRole = normalizeRoleValue(authMetadataRole);
+
+    if (
+        isProviderRole(normalizedAuthRole)
+        && (!normalizedProfileRole || normalizedProfileRole === 'tourist')
+    ) {
+        return normalizedAuthRole;
+    }
+
+    return normalizedProfileRole || normalizedAuthRole;
+};
 
 export const isTouristRole = (role?: string | null): role is 'tourist' => normalizeRoleValue(role) === 'tourist';
 

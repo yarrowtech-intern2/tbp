@@ -76,7 +76,7 @@ export const AdminConsole: React.FC = () => {
     const [verificationRejectReason, setVerificationRejectReason] = useState<Record<string, string>>({});
     const [listingRejectReason, setListingRejectReason] = useState<Record<string, string>>({});
     const [verificationStatusFilter, setVerificationStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'resubmitted'>('all');
-    const [verificationRoleFilter, setVerificationRoleFilter] = useState<'all' | 'tour_company' | 'tour_instructor' | 'tour_guide'>('all');
+    const [verificationRoleFilter, setVerificationRoleFilter] = useState<'all' | 'tour_company' | 'tour_instructor' | 'tour_guide' | 'local_guide'>('all');
     const [listingStatusFilter, setListingStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
     const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'tour' | 'activity' | 'guide'>('all');
     const [verificationSearch, setVerificationSearch] = useState('');
@@ -490,6 +490,7 @@ export const AdminConsole: React.FC = () => {
                                     <option value="tour_company">Tour Company</option>
                                     <option value="tour_instructor">Tour Instructor</option>
                                     <option value="tour_guide">Tour Guide</option>
+                                    <option value="local_guide">Local Guide</option>
                                 </select>
                             </div>
                             <div className="ac-filter-group">

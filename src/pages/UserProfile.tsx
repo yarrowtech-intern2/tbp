@@ -134,6 +134,13 @@ export const UserProfile: React.FC = () => {
                 { label: 'Experience', value: profile.years_experience ? `${profile.years_experience} years` : '', icon: Users },
             );
         }
+        if (profile.role === 'local_guide') {
+            cards.push(
+                { label: 'Languages', value: formatLanguages(profile.languages), icon: Languages },
+                { label: 'Live Setup', value: profile.provider_specialties || '', icon: Sparkles },
+                { label: 'Experience', value: profile.years_experience ? `${profile.years_experience} years` : '', icon: Users },
+            );
+        }
 
         return cards.filter((item) => item.value.trim().length > 0);
     }, [location, profile]);

@@ -4,7 +4,13 @@ import type { User } from '@supabase/supabase-js';
 import { createOrUpdateProfileFromSignup, getProfile } from '../lib/destinations';
 import type { Profile, SignupInput } from '../lib/destinations';
 import { clearOAuthIntent, getOAuthIntent, isGoogleTouristSignupIntent } from '../lib/oauthIntent';
-import { getRoleLabel, getVerificationLabel, isProviderRole, type UserRole } from '../lib/platform';
+import {
+    getRoleLabel,
+    getVerificationLabel,
+    isProviderRole,
+    resolveEffectiveAccountRole,
+    type UserRole,
+} from '../lib/platform';
 import { AuthContext } from './auth-context';
 
 const parseAuthRole = (value: unknown): UserRole | null => {
@@ -13,6 +19,7 @@ const parseAuthRole = (value: unknown): UserRole | null => {
         || value === 'tour_company'
         || value === 'tour_instructor'
         || value === 'tour_guide'
+        || value === 'local_guide'
         || value === 'admin'
         || value === 'marketing'
     ) {
@@ -232,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const authMetadataRole = typeof user?.user_metadata?.role === 'string'
         ? user.user_metadata.role
         : null;
+    const effectiveAccountRole = resolveEffectiveAccountRole(profile?.role, authMetadataRole);
 
     return (
         <AuthContext.Provider
@@ -240,10 +248,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 profile,
                 loading,
                 profileLoading,
-                roleLabel: getRoleLabel(profile?.role || authMetadataRole),
+                roleLabel: getRoleLabel(effectiveAccountRole),
                 verificationLabel: getVerificationLabel(profile?.verification_status),
-                isProvider: isProviderRole(profile?.role),
-                isAdmin: profile?.role === 'admin',
+                isProvider: isProviderRole(effectiveAccountRole),
+                isAdmin: effectiveAccountRole === 'admin',
                 refreshProfile,
                 signOut,
             }}

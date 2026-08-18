@@ -13,7 +13,7 @@ update public.profiles
 set
     verification_status = 'not_required',
     is_verified = true
-where role in ('tour_company', 'tour_instructor', 'tour_guide');
+where role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide');
 
 -- Allow post moderation states required by the new flow.
 alter table public.posts
@@ -43,7 +43,7 @@ as $$
         select 1
         from public.profiles
         where id = check_user_id
-          and role in ('tour_company', 'tour_instructor', 'tour_guide')
+          and role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')
     );
 $$;
 

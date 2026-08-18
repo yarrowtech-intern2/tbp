@@ -40,7 +40,7 @@ with check (
         select 1
         from public.profiles provider
         where provider.id = followed_user_id
-          and provider.role in ('tour_company', 'tour_instructor', 'tour_guide')
+          and provider.role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')
     )
 );
 

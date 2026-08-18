@@ -42,7 +42,15 @@ import {
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { uploadCloudinaryImage } from '../lib/cloudinaryUpload';
-import { LISTING_LABELS, getRoleLabel, type ListingType, canRolePublish } from '../lib/platform';
+import {
+    LISTING_LABELS,
+    ROLE_SIGNUP_CONFIG,
+    canRolePublish,
+    getRoleLabel,
+    resolveEffectiveAccountRole,
+    type ListingType,
+    type UserRole,
+} from '../lib/platform';
 import './provider-studio.css';
 
 const MAX_LISTING_IMAGE_MB = 8;
@@ -185,6 +193,23 @@ const EMPTY_FORM = (type: ListingType): ListingInput => ({
     status: 'pending',
 });
 
+const LOCAL_GUIDE_VIRTUAL_SUBCATEGORY = 'Live 360 Virtual Tour';
+
+const resolveStudioRole = (
+    profileRole?: string | null,
+    authMetadataRole?: string | null,
+): UserRole | null => {
+    const resolvedRole = resolveEffectiveAccountRole(profileRole, authMetadataRole);
+    return resolvedRole && resolvedRole in ROLE_SIGNUP_CONFIG ? resolvedRole as UserRole : null;
+};
+
+const getDefaultListingForm = (type: ListingType, role?: string | null): ListingInput => ({
+    ...EMPTY_FORM(type),
+    sub_category: role === 'local_guide' && type === 'guide'
+        ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY
+        : '',
+});
+
 const PROVIDER_STUDIO_DRAFT_STORAGE_PREFIX = 'tbp:provider-studio-draft:v1:';
 
 type ProviderStudioDraft = {
@@ -273,6 +298,24 @@ const getPrimaryActionCopy = (type: ListingType) => {
     }
 };
 
+const getListingCopy = (type: ListingType, role?: string | null) => (
+    role === 'local_guide' && type === 'guide' ? 'Live AR/VR Tours' : LISTING_LABELS[type]
+);
+
+const getListingSingularCopy = (type: ListingType, role?: string | null) => (
+    role === 'local_guide' && type === 'guide'
+        ? 'Live AR/VR Tour'
+        : type === 'tour'
+            ? 'Tour'
+            : type === 'activity'
+                ? 'Activity'
+                : 'Event'
+);
+
+const getSubmitCopy = (type: ListingType, role?: string | null) => (
+    role === 'local_guide' && type === 'guide' ? 'Submit Live AR/VR Tour' : getPrimaryActionCopy(type)
+);
+
 const normalizeImageList = (values: Array<unknown>): string[] => Array.from(new Set(
     values
         .map((value) => (typeof value === 'string' ? value.trim() : ''))
@@ -321,12 +364,18 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const imageInputRef = useRef<HTMLInputElement>(null);
     const draftRestoredRef = useRef(false);
 
+    const currentUserId = user?.id || null;
+    const metadataRole = typeof user?.user_metadata?.role === 'string' ? user.user_metadata.role : null;
+    const studioRole = useMemo(
+        () => resolveStudioRole(profile?.role, metadataRole),
+        [metadataRole, profile?.role],
+    );
     const allowedTypes = useMemo(
-        () => (['tour', 'activity', 'guide'] as ListingType[]).filter((type) => canRolePublish(profile?.role, type)),
-        [profile?.role]
+        () => (['tour', 'activity', 'guide'] as ListingType[]).filter((type) => canRolePublish(studioRole, type)),
+        [studioRole]
     );
     const canAccessStudio = isProvider && allowedTypes.length > 0;
-    const currentUserId = user?.id || null;
+    const localGuideStudio = studioRole === 'local_guide';
 
     const loadListings = useCallback(async () => {
         if (!currentUserId) return;
@@ -338,12 +387,17 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 setForm((current) => ({
                     ...current,
                     type: allowedTypes.includes(current.type) ? current.type : allowedTypes[0],
+                    sub_category: studioRole === 'local_guide'
+                        && (allowedTypes.includes(current.type) ? current.type : allowedTypes[0]) === 'guide'
+                        && !current.sub_category
+                            ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY
+                            : current.sub_category,
                 }));
             }
         } finally {
             setLoading(false);
         }
-    }, [allowedTypes, currentUserId]);
+    }, [allowedTypes, currentUserId, studioRole]);
 
     useEffect(() => {
         if (!currentUserId || !isProvider) return;
@@ -386,7 +440,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setAcceptTerms(false);
         setAcceptAgreement(false);
         setConsentError(null);
-        setForm(EMPTY_FORM(allowedTypes[0] || 'tour'));
+        setForm(getDefaultListingForm(allowedTypes[0] || 'tour', studioRole));
         if (currentUserId) clearProviderStudioDraft(currentUserId);
     };
 
@@ -420,7 +474,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             cover_image_url: coverImage,
             gallery_images: galleryImages,
             type: listingType,
-            sub_category: listing.sub_category || '',
+            sub_category: localGuideStudio && listingType === 'guide' && !listing.sub_category
+                ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY
+                : listing.sub_category || '',
             price: typeof listing.price === 'number' ? listing.price : null,
             fee_breakdown: buildDraftFeeBreakdown(
                 normalizeFeeDraftItems(listing.fee_breakdown, typeof listing.price === 'number' ? listing.price : null),
@@ -429,7 +485,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             starts_at: listing.starts_at || '',
             status: (listing.status as ListingInput['status']) || 'pending',
         });
-    }, [allowedTypes, currentUserId, platformFeeRate]);
+    }, [allowedTypes, currentUserId, localGuideStudio, platformFeeRate]);
 
     useEffect(() => {
         const editId = searchParams.get('edit');
@@ -601,7 +657,12 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         if (!canAccessStudio || uploadingImage) return;
         const wasEditing = Boolean(editingListingId);
         const submittedType = form.type;
-        const submittedTitle = form.title.trim() || `Untitled ${LISTING_LABELS[form.type]}`;
+        const submittedTitle = form.title.trim() || `Untitled ${getListingSingularCopy(form.type, studioRole)}`;
+        const submittedSubcategory = studioRole === 'local_guide'
+            && form.type === 'guide'
+            && !String(form.sub_category || '').trim()
+                ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY
+                : form.sub_category;
         const normalizedGallery = normalizeImageList(form.gallery_images || []);
         const primaryImage = (form.image_url || '').trim();
         const coverImage = (form.cover_image_url || '').trim();
@@ -654,6 +715,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 image_url: primaryImage,
                 cover_image_url: coverImage,
                 gallery_images: normalizedGallery,
+                sub_category: submittedSubcategory,
                 fee_breakdown: submissionFeeBreakdown,
                 status: 'pending',
                 rejection_reason: null,
@@ -757,11 +819,13 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 <div className="ps-header">
                     <span className="ps-badge">
                         <Sparkles size={12} />
-                        Provider Studio
+                        {localGuideStudio ? 'Live AR/VR Tours' : 'Provider Studio'}
                     </span>
-                    <h1 className="ps-title">Your Posting Studio</h1>
+                    <h1 className="ps-title">{localGuideStudio ? 'Create Live AR/VR Tour' : 'Your Posting Studio'}</h1>
                     <p className="ps-subtitle">
-                        Submit tours, activities, and events for admin review, then track each post until it goes live.
+                        {localGuideStudio
+                            ? 'List paid live virtual sessions from real locations, then accept bookings and go live from the guide console.'
+                            : 'Submit tours, activities, and events for admin review, then track each post until it goes live.'}
                     </p>
                 </div>
 
@@ -770,7 +834,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     <img className="ps-status-bar-avatar" src={avatarSrc} alt={profile?.full_name || user.email || 'Provider'} />
                     <div>
                         <p className="ps-status-bar-name">{profile?.full_name || user.email}</p>
-                        <p className="ps-status-bar-role">{getRoleLabel(profile?.role)} account</p>
+                        <p className="ps-status-bar-role">{getRoleLabel(studioRole || profile?.role)} account</p>
                     </div>
                     <div className="ps-status-bar-divider" />
                     <span className={getStatusPillClass(profile?.verification_status)}>
@@ -789,14 +853,14 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     <div className="ps-lock-banner">
                         <ShieldAlert size={20} />
                         <div>
-                            <strong>Provider publishing is not available for this role</strong>
-                            <p>Your current role cannot create tours, activities, or events.</p>
+                            <strong>{localGuideStudio ? 'Live tour publishing is unavailable' : 'Provider publishing is not available for this role'}</strong>
+                            <p>{localGuideStudio ? 'This account can only publish Live AR/VR tour slots.' : 'Your current role cannot create tours, activities, or events.'}</p>
                         </div>
                     </div>
                 )}
 
                 {/* Quick-start capability chips */}
-                {allowedTypes.length > 0 && (
+                {allowedTypes.length > 0 && !localGuideStudio && (
                     <div className="ps-capability-strip">
                         {allowedTypes.map((type) => (
                             <button
@@ -812,11 +876,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     setAcceptTerms(false);
                                     setAcceptAgreement(false);
                                     setConsentError(null);
-                                    setForm({ ...EMPTY_FORM(type), type });
+                                    setForm(getDefaultListingForm(type, studioRole));
                                 }}
                             >
                                 {TYPE_META[type].icon}
-                                New {LISTING_LABELS[type]}
+                                New {getListingCopy(type, studioRole)}
                             </button>
                         ))}
                     </div>
@@ -831,13 +895,15 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                             <div>
                                 <span className="ps-card-label">
                                     <FileText size={11} />
-                                    {editingListingId ? 'Editing' : 'Create Listing'}
+                                    {editingListingId ? 'Editing' : localGuideStudio ? 'Create Live Tour' : 'Create Listing'}
                                 </span>
                                 <h2 className="ps-card-title">
-                                    {editingListingId ? 'Update listing for review' : getPrimaryActionCopy(form.type)}
+                                    {editingListingId ? 'Update listing for review' : getSubmitCopy(form.type, studioRole)}
                                 </h2>
                                 <p className="ps-card-desc">
-                                    New and edited listings are sent to admin moderation before they go live.
+                                    {localGuideStudio
+                                        ? 'Live AR/VR tour listings are sent to admin moderation before tourists can book slots.'
+                                        : 'New and edited listings are sent to admin moderation before they go live.'}
                                 </p>
                             </div>
                             {editingListingId && (
@@ -856,10 +922,16 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                         type="button"
                                         className={`ps-type-card${form.type === type ? ' ps-type-card--active' : ''}`}
                                         disabled={!canAccessStudio}
-                                        onClick={() => setForm((f) => ({ ...f, type }))}
+                                        onClick={() => setForm((f) => ({
+                                            ...f,
+                                            type,
+                                            sub_category: studioRole === 'local_guide' && type === 'guide' && !f.sub_category
+                                                ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY
+                                                : f.sub_category,
+                                        }))}
                                     >
                                         {TYPE_META[type].icon}
-                                        <span>{LISTING_LABELS[type]}</span>
+                                        <span>{getListingCopy(type, studioRole)}</span>
                                     </button>
                                 ))}
                             </div>
@@ -891,12 +963,12 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     />
                                 </label>
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><Tag size={13} /> Subcategory</span>
+                                    <span className="ps-field-label"><Tag size={13} /> {localGuideStudio ? 'Tour Format' : 'Subcategory'}</span>
                                     <input
                                         className="ps-input"
                                         value={form.sub_category || ''}
                                         onChange={(e) => setForm((f) => ({ ...f, sub_category: e.target.value }))}
-                                        placeholder="e.g. Hiking, Cooking class"
+                                        placeholder={studioRole === 'local_guide' ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY : 'e.g. Hiking, Cooking class'}
                                         disabled={!canAccessStudio}
                                     />
                                 </label>
@@ -1082,7 +1154,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                                 <div className="ps-fee-preview">
                                     <div>
-                                        <span>Vendor package fee</span>
+                                        <span>{localGuideStudio ? 'Guide live-session fee' : 'Vendor package fee'}</span>
                                         <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong>
                                     </div>
                                     <div>
@@ -1110,7 +1182,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                             <div className="ps-two-up">
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><DollarSign size={13} /> Vendor package fee (Rs)</span>
+                                    <span className="ps-field-label"><DollarSign size={13} /> {localGuideStudio ? 'Guide live-session fee (Rs)' : 'Vendor package fee (Rs)'}</span>
                                     <input
                                         className="ps-input"
                                         type="number"
@@ -1120,12 +1192,13 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                         readOnly
                                     />
                                     <p className="ps-price-note">
-                                        Package cards show <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong> including platform fee.
-                                        You receive <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong> for one traveler/package selection.
+                                        {localGuideStudio ? 'Tourists see ' : 'Package cards show '}
+                                        <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong> including platform fee.
+                                        You receive <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong> for one {localGuideStudio ? 'live virtual slot' : 'traveler/package selection'}.
                                     </p>
                                 </label>
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><Clock size={13} /> Start Date</span>
+                                    <span className="ps-field-label"><Clock size={13} /> {localGuideStudio ? 'Live Date' : 'Start Date'}</span>
                                     <input
                                         className="ps-input"
                                         type="date"
@@ -1142,7 +1215,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     className="ps-textarea"
                                     value={form.description}
                                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                                    placeholder="Describe the experience, what's included, meeting point..."
+                                    placeholder={localGuideStudio ? 'Describe the live route, AR/VR setup, language, duration, and what tourists can request.' : "Describe the experience, what's included, meeting point..."}
                                     disabled={!canAccessStudio}
                                     required
                                 />
@@ -1187,7 +1260,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                             <button type="submit" className="ps-submit" disabled={!canAccessStudio || saving}>
                                 {saving ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
-                                {editingListingId ? 'Update & Re-submit' : getPrimaryActionCopy(form.type)}
+                                {editingListingId ? 'Update & Re-submit' : getSubmitCopy(form.type, studioRole)}
                             </button>
                         </form>
                     </article>
@@ -1198,16 +1271,19 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                             <div>
                                 <span className="ps-card-label">
                                     <Sparkles size={11} />
-                                    Posting History
+                                    {localGuideStudio ? 'Live Tour History' : 'Posting History'}
                                 </span>
-                                <h2 className="ps-card-title">Your listings</h2>
+                                <h2 className="ps-card-title">{localGuideStudio ? 'Your live tours' : 'Your listings'}</h2>
                                 <p className="ps-card-desc">
                                     {listings.length > 0
-                                        ? `${listings.length} listing${listings.length === 1 ? '' : 's'} submitted`
+                                        ? `${listings.length} ${localGuideStudio ? 'live tour' : 'listing'}${listings.length === 1 ? '' : 's'} submitted`
                                         : 'No posts yet'}
                                 </p>
                             </div>
-                            <Link to={embedded ? '/dashboard/provider?section=overview' : '/dashboard'} className="ps-inventory-link">
+                            <Link
+                                to={localGuideStudio ? '/dashboard/provider?section=virtual-tours' : embedded ? '/dashboard/provider?section=overview' : '/dashboard'}
+                                className="ps-inventory-link"
+                            >
                                 View dashboard →
                             </Link>
                         </div>
@@ -1247,7 +1323,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                                     {listing.location || 'No location'}
                                                 </p>
                                                 <div className="ps-listing-footer">
-                                                    <span className="ps-type-pill">{LISTING_LABELS[listingType] || 'Listing'}</span>
+                                                    <span className="ps-type-pill">{getListingSingularCopy(listingType, studioRole)}</span>
                                                     <span className={getStatusDotClass(listing.status)}>
                                                         {getListingStatusLabel(listing.status)}
                                                     </span>
@@ -1265,9 +1341,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                         ) : (
                             <div className="ps-empty">
                                 <Sparkles size={26} />
-                                <strong>No listings yet</strong>
+                                <strong>{localGuideStudio ? 'No live tours yet' : 'No listings yet'}</strong>
                                 <p>
-                                    Create your first {allowedTypes[0] ? LISTING_LABELS[allowedTypes[0]].toLowerCase() : 'listing'} and track pending, approved, live, or rejected states here.
+                                    Create your first {allowedTypes[0] ? getListingSingularCopy(allowedTypes[0], studioRole).toLowerCase() : 'listing'} and track pending, approved, live, or rejected states here.
                                 </p>
                             </div>
                         )}
@@ -1287,14 +1363,16 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                 <CheckCircle2 size={24} />
                             </div>
                             <h3 id="ps-submit-modal-title" className="ps-modal-title">
-                                {submissionModal.mode === 'updated' ? 'Listing re-submitted' : 'Listing submitted'}
+                                {localGuideStudio
+                                    ? submissionModal.mode === 'updated' ? 'Live tour re-submitted' : 'Live tour submitted'
+                                    : submissionModal.mode === 'updated' ? 'Listing re-submitted' : 'Listing submitted'}
                             </h3>
                             <p className="ps-modal-copy">
                                 <strong>{submissionModal.listingTitle}</strong> was sent for admin review.
                                 You can track status changes in your listing history and notifications.
                             </p>
                             <div className="ps-modal-meta">
-                                <span>{LISTING_LABELS[submissionModal.listingType]} listing</span>
+                                <span>{getListingSingularCopy(submissionModal.listingType, studioRole)}</span>
                                 <span>{submissionModal.mode === 'updated' ? 'Awaiting re-approval' : 'Awaiting approval'}</span>
                             </div>
                             <div className="ps-modal-actions">
@@ -1302,7 +1380,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     Continue editing
                                 </button>
                                 <Link
-                                    to="/dashboard/provider?section=listings"
+                                    to={localGuideStudio ? '/dashboard/provider?section=virtual-tours' : '/dashboard/provider?section=listings'}
                                     className="ps-modal-btn ps-modal-btn--primary"
                                     onClick={() => setSubmissionModal(null)}
                                 >

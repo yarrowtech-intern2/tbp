@@ -50,7 +50,7 @@ alter table public.profiles
 
 alter table public.profiles
     add constraint profiles_role_check
-    check (role in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'admin', 'provider')) not valid;
+    check (role in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'local_guide', 'admin', 'provider', 'marketing')) not valid;
 
 alter table public.profiles
     drop constraint if exists profiles_verification_status_check;
@@ -73,7 +73,7 @@ where verification_status is null;
 create table if not exists public.verification (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references auth.users(id) on delete cascade,
-    role text not null check (role in ('tour_company', 'tour_instructor', 'tour_guide')),
+    role text not null check (role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')),
     status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'resubmitted')),
     company_name text,
     owner_name text default 'Provider',
@@ -197,7 +197,7 @@ alter table public.verification
 
 alter table public.verification
     add constraint verification_role_check
-    check (role in ('tour_company', 'tour_instructor', 'tour_guide')) not valid;
+    check (role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')) not valid;
 
 alter table public.verification
     drop constraint if exists verification_status_check;
@@ -216,11 +216,11 @@ security definer
 set search_path = public
 as $$
 declare
-    signup_role text := coalesce(new.raw_user_meta_data->>'role', 'tourist');
+    signup_role text := lower(replace(replace(coalesce(new.raw_user_meta_data->>'role', 'tourist'), '-', '_'), ' ', '_'));
     signup_languages text[];
     signup_years_experience integer;
 begin
-    if signup_role not in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide') then
+    if signup_role not in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'local_guide') then
         signup_role := 'tourist';
     end if;
 
@@ -295,7 +295,7 @@ begin
         years_experience = excluded.years_experience,
         languages = excluded.languages;
 
-    if signup_role in ('tour_company', 'tour_instructor', 'tour_guide') then
+    if signup_role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide') then
         insert into public.verification (
             user_id,
             role,
@@ -353,6 +353,25 @@ create trigger on_auth_user_provider_signup
 after insert on auth.users
 for each row execute function public.handle_new_auth_user_provider_signup();
 
+update public.profiles profiles
+set
+    role = 'local_guide',
+    is_verified = true,
+    verification_status = 'not_required',
+    provider_specialties = coalesce(
+        nullif(profiles.provider_specialties, ''),
+        nullif(auth_users.raw_user_meta_data->>'specialties', '')
+    ),
+    government_id_ref = coalesce(
+        nullif(profiles.government_id_ref, ''),
+        nullif(auth_users.raw_user_meta_data->>'government_id_ref', '')
+    ),
+    updated_at = now()
+from auth.users auth_users
+where auth_users.id = profiles.id
+  and lower(replace(replace(coalesce(auth_users.raw_user_meta_data->>'role', ''), '-', '_'), ' ', '_')) = 'local_guide'
+  and coalesce(profiles.role, 'tourist') = 'tourist';
+
 insert into public.verification (
     user_id,
     role,
@@ -389,7 +408,7 @@ select
     profiles.government_id_ref,
     profiles.bio
 from public.profiles
-where profiles.role in ('tour_company', 'tour_instructor', 'tour_guide')
+where profiles.role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')
   and coalesce(profiles.verification_status, 'pending') in ('pending', 'rejected', 'resubmitted')
   and not exists (
       select 1
@@ -743,7 +762,7 @@ as $$
         select 1
         from public.profiles
         where id = check_user_id
-          and role in ('tour_company', 'tour_instructor', 'tour_guide')
+          and role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')
           and verification_status = 'approved'
     );
 $$;
@@ -774,7 +793,7 @@ as $$
             select 1
             from public.profiles target
             where target.id = target_user_id
-              and target.role in ('tour_company', 'tour_instructor', 'tour_guide')
+              and target.role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')
               and coalesce(target.verification_status, 'not_required') in ('not_required', 'approved')
         )
         or exists (
@@ -956,7 +975,7 @@ for insert
 to authenticated
 with check (
     id = auth.uid()
-    and role in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'provider')
+    and role in ('tourist', 'tour_company', 'tour_instructor', 'tour_guide', 'local_guide', 'provider')
 );
 
 drop policy if exists "profiles_update_self_or_admin" on public.profiles;
@@ -993,7 +1012,7 @@ for insert
 to authenticated
 with check (
     user_id = auth.uid()
-    and role in ('tour_company', 'tour_instructor', 'tour_guide')
+    and role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')
     and status = 'pending'
 );
 
@@ -1010,7 +1029,7 @@ with check (
     public.is_admin_user()
     or (
         user_id = auth.uid()
-        and role in ('tour_company', 'tour_instructor', 'tour_guide')
+        and role in ('tour_company', 'tour_instructor', 'tour_guide', 'local_guide')
         and status = 'resubmitted'
     )
 );

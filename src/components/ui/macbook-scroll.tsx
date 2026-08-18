@@ -190,9 +190,9 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
                   srcSet={srcSet}
                   sizes={sizes}
                   alt="The Better Pass platform preview"
-                  loading="eager"
-                  decoding="sync"
-                  fetchPriority="high"
+                  loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                   className="macbook-scroll-hero-img"
                 />
               </div>

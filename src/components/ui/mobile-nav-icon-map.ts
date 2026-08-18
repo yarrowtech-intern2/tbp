@@ -8,6 +8,8 @@ const BASE = '/icons/mobile-nav-icons';
 export const MOBILE_NAV_ICON_SRC: Record<string, string> = {
   home: `${BASE}/home.webp`,
   explore: `${BASE}/search.webp`,
+  virtualTours: `${BASE}/gps.svg`,
+  liveTours: `${BASE}/gps.svg`,
   search: `${BASE}/search.webp`,
   dashboard: `${BASE}/dashboard.webp`,
   overview: `${BASE}/dashboard.webp`,

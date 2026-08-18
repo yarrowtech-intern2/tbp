@@ -5,6 +5,9 @@
   --tbp-cream: #eee8de;
   --tbp-coral: #f2847e;
   --tbp-grid-line: rgba(255, 255, 255, 0.65);
+  --tbp-card-glass-bg: rgba(255, 255, 255, 0.2);
+  --tbp-card-glass-border: rgba(255, 255, 255, 0.48);
+  --tbp-card-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 18px 44px rgba(0, 0, 0, 0.14);
   --tbp-ease: cubic-bezier(0.65, 0, 0.35, 1);
   position: relative;
   min-height: 100vh;
@@ -28,15 +31,23 @@
   inset: 0;
   z-index: 0;
   background-color: #8dcdeb;
-  background-image:
-    url("https://source.unsplash.com/_qwH-z_P0WU/2400x1600"),
-    url("/images/home4/desert-1920.jpg");
+  background-image: url("https://res.cloudinary.com/dc3qprub3/video/upload/f_jpg,q_auto/v1779877968/tbp-hero4_dmbfr5.jpg");
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center 52%;
   transform: scale(1.01);
   filter: saturate(1.03) contrast(1.01);
   transform-origin: center;
+}
+
+.tbp-editorial-bg-video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 52%;
 }
 
 .tbp-editorial-grid-overlay {
@@ -274,12 +285,12 @@
 
 .tbp-editorial-face span {
   display: block;
-  max-width: 10ch;
+  max-width: 11ch;
   color: inherit;
   font-family: "Onest", sans-serif;
-  font-size: clamp(18px, 1.62vw, 29px);
-  font-weight: 600;
-  line-height: 0.91;
+  font-size: clamp(30px, 3vw, 56px);
+  font-weight: 800;
+  line-height: 0.84;
   letter-spacing: 0;
   text-align: right;
 }
@@ -291,52 +302,43 @@
 .tbp-editorial-tile--verified {
   grid-column: 1;
   grid-row: 3;
-  color: var(--tbp-orange);
-  background: #030303;
+  color: #020202;
+  border: 1px solid var(--tbp-card-glass-border);
+  background: var(--tbp-card-glass-bg);
+  box-shadow: var(--tbp-card-glass-shadow);
+  backdrop-filter: blur(18px) saturate(1.28);
+  -webkit-backdrop-filter: blur(18px) saturate(1.28);
 }
 
 .tbp-editorial-tile--verified .tbp-editorial-face {
-  background: #030303;
+  background: transparent;
 }
 
 .tbp-editorial-tile--explore {
   grid-column: 2;
   grid-row: 4;
-  overflow: visible;
-  background: var(--tbp-lime);
+  overflow: hidden;
+  border: 1px solid var(--tbp-card-glass-border);
+  background: var(--tbp-card-glass-bg);
   color: #020202;
+  box-shadow: var(--tbp-card-glass-shadow);
+  backdrop-filter: blur(18px) saturate(1.28);
+  -webkit-backdrop-filter: blur(18px) saturate(1.28);
   isolation: isolate;
-  transform: perspective(1100px) rotateY(var(--tbp-explore-rotate, 0deg));
   transform-origin: center;
-  transition: transform 860ms var(--tbp-ease);
 }
 
-.tbp-editorial-explore-copy {
-  position: relative;
-  z-index: 2;
-  width: 62%;
-  padding: clamp(8px, 1.2vw, 14px) 6px 10px;
-  color: #020202;
-  font-family: "Onest", sans-serif;
-  font-size: clamp(19px, 1.8vw, 31px);
-  font-weight: 500;
-  line-height: 0.93;
-  letter-spacing: 0;
+.tbp-editorial-tile--explore .tbp-editorial-face {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: clamp(12px, 1.5vw, 22px);
 }
 
-.tbp-editorial-traveler {
-  position: absolute;
-  right: clamp(-66px, -8vw, -24px);
-  bottom: clamp(-34px, -4vh, -10px);
-  z-index: 3;
-  display: block;
-  width: auto;
-  height: clamp(172px, 29vw, 390px);
-  max-width: none;
-  object-fit: contain;
-  pointer-events: none;
-  transform-origin: 50% 78%;
-  will-change: transform;
+.tbp-editorial-tile--explore .tbp-editorial-face span {
+  max-width: 11ch;
+  font-size: clamp(34px, 3.1vw, 58px);
+  line-height: 0.84;
+  text-align: left;
 }
 
 .tbp-editorial-provider,
@@ -371,18 +373,20 @@
   transform: rotateY(180deg);
 }
 
+.tbp-editorial-hero--phase-2 .tbp-editorial-tile--explore .tbp-editorial-flipper,
+.tbp-editorial-hero--phase-3 .tbp-editorial-tile--explore .tbp-editorial-flipper {
+  transform: rotateY(180deg);
+}
+
 .tbp-editorial-hero--phase-1 {
-  --tbp-explore-rotate: -7deg;
   --tbp-cta-rotate: 8deg;
 }
 
 .tbp-editorial-hero--phase-2 {
-  --tbp-explore-rotate: 7deg;
   --tbp-cta-rotate: -7deg;
 }
 
 .tbp-editorial-hero--phase-3 {
-  --tbp-explore-rotate: -4deg;
   --tbp-cta-rotate: 5deg;
 }
 
@@ -391,7 +395,6 @@
 }
 
 .tbp-editorial-hero--phase-0 {
-  --tbp-explore-rotate: 0deg;
   --tbp-cta-rotate: 0deg;
 }
 @media (min-width: 1440px) {
@@ -409,10 +412,10 @@
     background-position: center 54%;
   }
 
-  .tbp-editorial-traveler {
-    right: clamp(-78px, -7vw, -34px);
-    height: clamp(182px, 30vw, 360px);
+  .tbp-editorial-bg-video {
+    object-position: center 54%;
   }
+
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
@@ -469,10 +472,6 @@
     grid-column: 2 / span 2;
   }
 
-  .tbp-editorial-traveler {
-    right: clamp(-46px, -5vw, -18px);
-    height: clamp(245px, 34vw, 350px);
-  }
 }
 
 @media (max-width: 767px) {
@@ -486,6 +485,10 @@
     background-size: cover;
     background-position: center 50%;
     transform: scale(1.01);
+  }
+
+  .tbp-editorial-bg-video {
+    object-position: center 50%;
   }
 
   .tbp-editorial-layout,
@@ -745,21 +748,17 @@
   }
 
   .tbp-editorial-face span {
-    font-size: clamp(14px, 4.2vw, 20px);
-    line-height: 0.96;
+    font-size: clamp(17px, 5.2vw, 26px);
+    line-height: 0.9;
   }
 
-  .tbp-editorial-explore-copy {
-    width: 54%;
-    padding: 9px 5px 10px;
-    font-size: clamp(20px, 6.1vw, 28px);
-    line-height: 0.93;
+  .tbp-editorial-tile--explore .tbp-editorial-face {
+    padding: 10px 8px 11px;
   }
 
-  .tbp-editorial-traveler {
-    right: clamp(-18px, -2.8vw, -8px);
-    bottom: clamp(-18px, -2.8vh, -8px);
-    height: clamp(172px, 56vw, 250px);
+  .tbp-editorial-tile--explore .tbp-editorial-face span {
+    font-size: clamp(25px, 7.4vw, 36px);
+    line-height: 0.86;
   }
 }
 
@@ -799,6 +798,10 @@
   .tbp-editorial-bg {
     background-position: center 52%;
   }
+
+  .tbp-editorial-bg-video {
+    object-position: center 52%;
+  }
 }
 
 @media (max-width: 359px) {
@@ -816,12 +819,8 @@
     font-size: 24px;
   }
 
-  .tbp-editorial-explore-copy {
-    font-size: 19px;
-  }
-
-  .tbp-editorial-traveler {
-    height: 170px;
+  .tbp-editorial-tile--explore .tbp-editorial-face span {
+    font-size: 23px;
   }
 }
 

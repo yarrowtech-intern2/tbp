@@ -12,13 +12,16 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CircleBottomUp } from 'reicon-react';
 import { supabase } from '../lib/supabase';
-import { signUpWithRole } from '../lib/destinations';
+import { getProfile, signUpWithRole } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
 import {
     DEFAULT_SIGNUP_VALUES,
     PROVIDER_ROLES,
     ROLE_LABELS,
     ROLE_SIGNUP_CONFIG,
+    isProviderRole,
+    normalizeRoleValue,
+    resolveEffectiveAccountRole,
     type RoleFormField,
     type SignupFormValues,
     type UserRole,
@@ -41,6 +44,17 @@ const getOAuthRedirectBaseUrl = () => {
     const fromEnv = normalizeAppUrl(import.meta.env.VITE_PUBLIC_APP_URL);
     if (fromEnv) return fromEnv;
     return normalizeAppUrl(window.location.origin);
+};
+
+const getPostLoginDestination = (role?: string | null) => {
+    const normalizedRole = normalizeRoleValue(role);
+    if (normalizedRole === 'admin') return '/dashboard/admin';
+    if (normalizedRole === 'marketing') return '/dashboard/marketing';
+    if (normalizedRole === 'local_guide') return '/dashboard/provider?section=virtual-tours';
+    if (isProviderRole(normalizedRole) || normalizedRole === 'provider' || normalizedRole === 'vendor') {
+        return '/dashboard/provider';
+    }
+    return TOURIST_EXPLORE_PATH;
 };
 
 const getFunctionErrorMessage = async (err: unknown, fallback: string): Promise<string> => {
@@ -468,12 +482,22 @@ export const Auth: React.FC = () => {
         setInfo(null);
 
         try {
-            const { error: signInError } = await supabase.auth.signInWithPassword({
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
                 email: loginEmail,
                 password: loginPassword,
             });
             if (signInError) throw signInError;
-            navigate(TOURIST_EXPLORE_PATH);
+
+            const signedInUser = signInData.user;
+            const metadataRole = typeof signedInUser?.user_metadata?.role === 'string'
+                ? signedInUser.user_metadata.role
+                : null;
+            const profileData = signedInUser?.id ? await getProfile(signedInUser.id) : null;
+            const destination = getPostLoginDestination(
+                resolveEffectiveAccountRole(profileData?.role, metadataRole)
+            );
+
+            navigate(destination);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
         } finally {
@@ -598,7 +622,7 @@ export const Auth: React.FC = () => {
                 : '';
 
             setInfo(
-                (activeRole === 'tour_company' || activeRole === 'tour_instructor' || activeRole === 'tour_guide'
+                (isProviderSignup
                     ? 'Account created. Check your email verification link, then sign in to submit listings for admin approval.'
                     : 'Account created. Check your email verification link to continue.')
                 + emailDeliveryNote
@@ -932,6 +956,7 @@ export const Auth: React.FC = () => {
                                         <option value="tour_company">Tour Company</option>
                                         <option value="tour_guide">Tour Guide</option>
                                         <option value="tour_instructor">Tour Instructor</option>
+                                        <option value="local_guide">Local Guide</option>
                                     </select>
                                 </div>
                             )}

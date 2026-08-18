@@ -1,0 +1,547 @@
+.vto-page {
+    min-height: 100vh;
+    padding: 112px 18px 40px;
+    background:
+        linear-gradient(180deg, rgba(244, 142, 42, 0.10), transparent 260px),
+        var(--surface-main, #f7f5f0);
+    color: var(--text-main, #181512);
+}
+
+.vto-shell {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: 16px;
+}
+
+.vto-header,
+.vto-action-band,
+.vto-list-panel,
+.vto-room,
+.vto-metric {
+    border: 1px solid var(--border-light, rgba(24, 21, 18, 0.12));
+    background: color-mix(in srgb, var(--surface-main, #fff) 88%, #ffffff 12%);
+    box-shadow: 0 16px 48px rgba(24, 21, 18, 0.07);
+}
+
+.vto-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 14px;
+}
+
+.vto-kicker,
+.vto-panel-kicker {
+    margin: 0 0 6px;
+    color: #a05710;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.vto-header h1,
+.vto-action-band h2,
+.vto-list-panel h2,
+.vto-room-panel h2 {
+    margin: 0;
+    letter-spacing: 0;
+    line-height: 1.12;
+}
+
+.vto-header h1 {
+    font-size: 1.9rem;
+}
+
+.vto-header-actions,
+.vto-action-row,
+.vto-room-actions,
+.vto-request-actions,
+.vto-card-topline,
+.vto-panel-heading,
+.vto-request-status,
+.vto-room-facts {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.vto-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.vto-role-chip,
+.vto-request-status span,
+.vto-card-topline span,
+.vto-card-topline strong,
+.vto-room-facts span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(24, 21, 18, 0.08);
+    color: var(--text-main, #181512);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.vto-request-status .is-paid {
+    background: rgba(18, 128, 86, 0.12);
+    color: #0b7650;
+}
+
+.vto-primary-btn,
+.vto-secondary-btn,
+.vto-ghost-btn,
+.vto-card-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 0.84rem;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.vto-primary-btn {
+    background: #181512;
+    color: #ffffff;
+}
+
+.vto-secondary-btn,
+.vto-ghost-btn,
+.vto-card-link {
+    background: rgba(24, 21, 18, 0.06);
+    color: var(--text-main, #181512);
+    border-color: rgba(24, 21, 18, 0.12);
+}
+
+.vto-primary-btn:hover,
+.vto-secondary-btn:hover,
+.vto-ghost-btn:hover,
+.vto-card-link:hover {
+    transform: translateY(-1px);
+}
+
+.vto-primary-btn:disabled,
+.vto-secondary-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.vto-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.vto-metric {
+    min-height: 78px;
+    padding: 14px;
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.vto-metric svg {
+    color: #a05710;
+}
+
+.vto-metric span {
+    min-width: 0;
+    color: var(--text-muted, #746b60);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.vto-metric strong {
+    font-size: 1.45rem;
+}
+
+.vto-action-band {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 14px;
+}
+
+.vto-list-panel {
+    padding: 16px;
+    border-radius: 14px;
+    display: grid;
+    gap: 14px;
+}
+
+.vto-panel-heading {
+    justify-content: space-between;
+}
+
+.vto-panel-heading h2,
+.vto-action-band h2,
+.vto-room-panel h2 {
+    font-size: 1.02rem;
+}
+
+.vto-panel-heading span {
+    color: var(--text-muted, #746b60);
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.vto-card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.vto-listing-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid rgba(24, 21, 18, 0.10);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.76);
+}
+
+.vto-listing-card img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+}
+
+.vto-card-body {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+}
+
+.vto-card-topline {
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.vto-card-topline strong {
+    background: rgba(244, 142, 42, 0.16);
+    color: #8a470b;
+}
+
+.vto-card-body h3 {
+    margin: 0;
+    min-width: 0;
+    font-size: 0.98rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.vto-card-body p {
+    margin: 0;
+    color: var(--text-muted, #746b60);
+    font-size: 0.84rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.vto-card-link {
+    justify-self: start;
+}
+
+.vto-request-list {
+    display: grid;
+    gap: 10px;
+}
+
+.vto-request-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 74px;
+    padding: 8px;
+    border: 1px solid rgba(24, 21, 18, 0.10);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.68);
+}
+
+.vto-request-row img {
+    width: 58px;
+    height: 58px;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.vto-request-row strong,
+.vto-request-row span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.vto-request-row > div:nth-child(2) {
+    display: grid;
+    gap: 4px;
+}
+
+.vto-request-row > div:nth-child(2) span {
+    color: var(--text-muted, #746b60);
+    font-size: 0.8rem;
+}
+
+.vto-request-status {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.vto-request-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.vto-room {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+    gap: 0;
+    overflow: hidden;
+    border-radius: 16px;
+}
+
+.vto-room-video {
+    position: relative;
+    min-height: 300px;
+    background:
+        linear-gradient(135deg, rgba(24, 21, 18, 0.94), rgba(46, 52, 60, 0.92)),
+        #181512;
+}
+
+.vto-room-video video {
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    display: block;
+    object-fit: cover;
+    opacity: 0;
+}
+
+.vto-room-video video.is-live {
+    opacity: 1;
+}
+
+.vto-room-placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    padding: 24px;
+    color: #ffffff;
+    text-align: center;
+}
+
+.vto-room-placeholder span {
+    max-width: 260px;
+    color: rgba(255, 255, 255, 0.74);
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+
+.vto-room-panel {
+    padding: 18px;
+    display: grid;
+    align-content: center;
+    gap: 12px;
+}
+
+.vto-room-facts {
+    flex-wrap: wrap;
+}
+
+.vto-alert,
+.vto-camera-error {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.vto-alert--error,
+.vto-camera-error {
+    border: 1px solid rgba(204, 65, 65, 0.24);
+    background: rgba(204, 65, 65, 0.08);
+    color: #a12727;
+}
+
+.vto-loading,
+.vto-empty {
+    min-height: 150px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    color: var(--text-muted, #746b60);
+    text-align: center;
+}
+
+.vto-empty strong {
+    color: var(--text-main, #181512);
+}
+
+.vto-empty span {
+    max-width: 360px;
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+:root[data-theme='dark'] .vto-page,
+html.dark .vto-page {
+    background:
+        linear-gradient(180deg, rgba(244, 142, 42, 0.12), transparent 260px),
+        #111111;
+}
+
+:root[data-theme='dark'] .vto-header,
+:root[data-theme='dark'] .vto-action-band,
+:root[data-theme='dark'] .vto-list-panel,
+:root[data-theme='dark'] .vto-room,
+:root[data-theme='dark'] .vto-metric,
+html.dark .vto-header,
+html.dark .vto-action-band,
+html.dark .vto-list-panel,
+html.dark .vto-room,
+html.dark .vto-metric {
+    background: rgba(23, 23, 23, 0.92);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme='dark'] .vto-listing-card,
+:root[data-theme='dark'] .vto-request-row,
+html.dark .vto-listing-card,
+html.dark .vto-request-row {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.10);
+}
+
+:root[data-theme='dark'] .vto-role-chip,
+:root[data-theme='dark'] .vto-request-status span,
+:root[data-theme='dark'] .vto-card-topline span,
+:root[data-theme='dark'] .vto-room-facts span,
+:root[data-theme='dark'] .vto-secondary-btn,
+:root[data-theme='dark'] .vto-ghost-btn,
+:root[data-theme='dark'] .vto-card-link,
+html.dark .vto-role-chip,
+html.dark .vto-request-status span,
+html.dark .vto-card-topline span,
+html.dark .vto-room-facts span,
+html.dark .vto-secondary-btn,
+html.dark .vto-ghost-btn,
+html.dark .vto-card-link {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+:root[data-theme='dark'] .vto-card-topline strong,
+html.dark .vto-card-topline strong {
+    background: rgba(244, 142, 42, 0.18);
+    color: #ffc17d;
+}
+
+:root[data-theme='dark'] .vto-request-status .is-paid,
+html.dark .vto-request-status .is-paid {
+    background: rgba(34, 197, 94, 0.14);
+    color: #86efac;
+}
+
+:root[data-theme='dark'] .vto-empty strong,
+html.dark .vto-empty strong {
+    color: rgba(255, 255, 255, 0.94);
+}
+
+@media (max-width: 900px) {
+    .vto-page {
+        padding-top: 94px;
+    }
+
+    .vto-header,
+    .vto-action-band {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .vto-header h1 {
+        font-size: 1.55rem;
+    }
+
+    .vto-header-actions,
+    .vto-action-row {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .vto-card-grid,
+    .vto-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .vto-request-row {
+        grid-template-columns: 52px minmax(0, 1fr);
+    }
+
+    .vto-request-status,
+    .vto-request-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+
+    .vto-room {
+        grid-template-columns: 1fr;
+    }
+
+    .vto-room-video,
+    .vto-room-video video {
+        min-height: 240px;
+    }
+}
+
+@media (max-width: 520px) {
+    .vto-page {
+        padding-inline: 12px;
+    }
+
+    .vto-header,
+    .vto-action-band,
+    .vto-list-panel,
+    .vto-room-panel {
+        padding: 14px;
+    }
+
+    .vto-primary-btn,
+    .vto-secondary-btn,
+    .vto-ghost-btn,
+    .vto-card-link {
+        width: 100%;
+    }
+
+    .vto-request-actions,
+    .vto-action-row,
+    .vto-room-actions {
+        width: 100%;
+    }
+}

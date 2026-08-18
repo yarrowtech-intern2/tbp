@@ -36,6 +36,7 @@ const resolveTutorialRole = (role?: string | null): TutorialRole => {
         || normalized === 'tour_company'
         || normalized === 'tour_guide'
         || normalized === 'tour_instructor'
+        || normalized === 'local_guide'
     ) {
         return 'provider';
     }

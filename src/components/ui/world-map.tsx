@@ -1,5 +1,4 @@
-import React, { useId, useMemo } from 'react';
-import DottedMap from 'dotted-map';
+import React, { useId } from 'react';
 import './world-map.css';
 
 type MapPoint = {
@@ -18,6 +17,8 @@ type WorldMapProps = React.HTMLAttributes<HTMLDivElement> & {
   lineColor?: string;
 };
 
+const WORLD_MAP_MASK_SRC = '/images/home4/tbp-map.webp';
+
 const projectPoint = (lat: number, lng: number) => {
   const x = (lng + 180) * (800 / 360);
   const y = (90 - lat) * (400 / 180);
@@ -30,8 +31,6 @@ const createCurvedPath = (start: { x: number; y: number }, end: { x: number; y: 
   return `M ${start.x} ${start.y} Q ${midX} ${midY} ${end.x} ${end.y}`;
 };
 
-const encodeSvg = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-
 export default function WorldMap({
   dots = [],
   lineColor = '#ff6a00',
@@ -39,28 +38,30 @@ export default function WorldMap({
   ...props
 }: WorldMapProps) {
   const gradientId = useId().replace(/:/g, '');
-
-  const svgMap = useMemo(() => {
-    const map = new DottedMap({ height: 100, grid: 'diagonal' });
-
-    return map.getSVG({
-      radius: 0.22,
-      color: 'rgba(255, 106, 0, 1)',
-      shape: 'circle',
-      backgroundColor: 'transparent',
-    });
-  }, []);
+  const mapMaskId = `${gradientId}-map-mask`;
+  const mapFillId = `${gradientId}-map-fill`;
 
   return (
     <div className={className ? `ui-world-map ${className}` : 'ui-world-map'} {...props}>
-      <img
-        src={encodeSvg(svgMap)}
+      <svg
         className="ui-world-map-image"
-        alt=""
-        width="1056"
-        height="495"
-        draggable={false}
-      />
+        viewBox="0 0 800 400"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <defs>
+          <mask id={mapMaskId} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse">
+            <rect width="800" height="400" fill="black" />
+            <image href={WORLD_MAP_MASK_SRC} x="0" y="0" width="800" height="400" preserveAspectRatio="none" />
+          </mask>
+          <linearGradient id={mapFillId} x1="0" x2="1" y1="0.15" y2="0.88">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.22" />
+            <stop offset="50%" stopColor={lineColor} stopOpacity="0.46" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0.18" />
+          </linearGradient>
+        </defs>
+        <rect width="800" height="400" fill={`url(#${mapFillId})`} mask={`url(#${mapMaskId})`} />
+      </svg>
       <svg className="ui-world-map-lines" viewBox="0 0 800 400" aria-hidden="true">
         <defs>
           {dots.map((_, index) => (
