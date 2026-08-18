@@ -6,3 +6,22 @@ tourist flow:
 tourists can see live tours in home page and explore pages -> book the virtual tour with payments -> notification received by every end(priority) -> once book gets confirmed, tourists and guide can contact each other(through the inbuilt chat system) -> o time the tour starts live(also allow phone cameras along with 360 cams) 
 the UI/UX should be compact and match the current design logic.
 before implementation if u need any decisions ask me to prevent guessing
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+for loader screen:
+1. dont show the loading screen in every refresh, it will be used for loading components(like 3d model, images, assets etc), the 3d model should not load again when comes to viewport, (this loader screen should be dynamic, end to end , not just dummy static loader
+2. make the loader animation bigger, and make the loading message dynamic -> like almost there, please wait a bit, thanks for your patience(when its almost loaded), and such random texts

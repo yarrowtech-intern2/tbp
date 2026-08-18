@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
+import { AppPreloader } from './components/AppPreloader';
 import { AppSEO } from './components/SEO';
 import { AppTutorialProvider } from './context/AppTutorialContext';
 import { resolveEffectiveAccountRole } from './lib/platform';
@@ -179,55 +180,57 @@ function App() {
   const footerLogoSrc = theme === 'dark' ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
 
   return (
-    <Router>
-      <AppTutorialProvider>
-        <div className={`app${user ? ' app-authenticated' : ''}`}>
-          <AppSEO />
-          <AppNavbar />
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/" element={<HomeRoute />} />
-              <Route path="/home2" element={<Navigate to="/" replace />} />
-              <Route path="/home3" element={<Navigate to="/" replace />} />
-              <Route path="/home4" element={<Navigate to="/" replace />} />
-              <Route path="/home5" element={<Navigate to="/" replace />} />
-              <Route path="/about" element={<GuestOnlyRoute><About2 /></GuestOnlyRoute>} />
-              <Route path="/about2" element={<Navigate to="/about" replace />} />
-              <Route path="/about-final" element={<AboutFinal />} />
-              <Route path="/whomadeit" element={<WhoMadeIt />} />
-              <Route path="/login" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
-              <Route path="/signup" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
-              <Route path="/auth" element={<LegacyAuthRedirect />} />
-              <Route path="/terms" element={<TermsAndConditions />} />
-              <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
-              <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
-              <Route path="/explore" element={<TouristOnlyRoute><TouristExplorePage /></TouristOnlyRoute>} />
-              <Route path="/activities" element={<TouristOnlyRoute><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
-              <Route path="/tours" element={<TouristOnlyRoute><Navigate to={DASHBOARD_TOURS_PATH} replace /></TouristOnlyRoute>} />
-              <Route path="/guides" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
-              <Route path="/events" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
-              <Route path="/listings/:type/:id" element={<ListingDetail />} />
-              <Route path="/destination/:id" element={<TouristOnlyRoute><DestinationDetail /></TouristOnlyRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-              <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-              <Route path="/virtual-tours" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
-              <Route path="/virtual-tours/live/:bookingId" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-              <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
-              <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />
-              <Route path="/provider/studio" element={<ProviderRoute><Navigate to="/dashboard/provider?section=studio" replace /></ProviderRoute>} />
-              <Route path="/provider/terms" element={<ProviderRoute><ProviderTerms /></ProviderRoute>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+    <AppPreloader>
+      <Router>
+        <AppTutorialProvider>
+          <div className={`app${user ? ' app-authenticated' : ''}`}>
+            <AppSEO />
+            <AppNavbar />
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/" element={<HomeRoute />} />
+                <Route path="/home2" element={<Navigate to="/" replace />} />
+                <Route path="/home3" element={<Navigate to="/" replace />} />
+                <Route path="/home4" element={<Navigate to="/" replace />} />
+                <Route path="/home5" element={<Navigate to="/" replace />} />
+                <Route path="/about" element={<GuestOnlyRoute><About2 /></GuestOnlyRoute>} />
+                <Route path="/about2" element={<Navigate to="/about" replace />} />
+                <Route path="/about-final" element={<AboutFinal />} />
+                <Route path="/whomadeit" element={<WhoMadeIt />} />
+                <Route path="/login" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+                <Route path="/signup" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+                <Route path="/auth" element={<LegacyAuthRedirect />} />
+                <Route path="/terms" element={<TermsAndConditions />} />
+                <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
+                <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
+                <Route path="/explore" element={<TouristOnlyRoute><TouristExplorePage /></TouristOnlyRoute>} />
+                <Route path="/activities" element={<TouristOnlyRoute><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
+                <Route path="/tours" element={<TouristOnlyRoute><Navigate to={DASHBOARD_TOURS_PATH} replace /></TouristOnlyRoute>} />
+                <Route path="/guides" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
+                <Route path="/events" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
+                <Route path="/listings/:type/:id" element={<ListingDetail />} />
+                <Route path="/destination/:id" element={<TouristOnlyRoute><DestinationDetail /></TouristOnlyRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+                <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                <Route path="/virtual-tours" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
+                <Route path="/virtual-tours/live/:bookingId" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
+                <Route path="/map" element={<MapPage />} />
+                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
+                <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />
+                <Route path="/provider/studio" element={<ProviderRoute><Navigate to="/dashboard/provider?section=studio" replace /></ProviderRoute>} />
+                <Route path="/provider/terms" element={<ProviderRoute><ProviderTerms /></ProviderRoute>} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
 
-          <AppFooter homePath={homePath} footerLogoSrc={footerLogoSrc} user={user} />
-          {SHOW_SUPPORT_CHATBOT ? <SupportChatbot /> : null}
-        </div>
-      </AppTutorialProvider>
-    </Router>
+            <AppFooter homePath={homePath} footerLogoSrc={footerLogoSrc} user={user} />
+            {SHOW_SUPPORT_CHATBOT ? <SupportChatbot /> : null}
+          </div>
+        </AppTutorialProvider>
+      </Router>
+    </AppPreloader>
   );
 }
 
