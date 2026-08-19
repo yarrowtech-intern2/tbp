@@ -625,7 +625,10 @@ export const Home5: React.FC = () => {
   }, [heroMenuOpen]);
 
   useEffect(() => {
+    let frame = 0;
+
     const updateStickyLogo = () => {
+      frame = 0;
       if (logoActivatedRef.current) return;
 
       const node = valueSectionRef.current;
@@ -639,13 +642,19 @@ export const Home5: React.FC = () => {
       }
     };
 
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateStickyLogo);
+    };
+
     updateStickyLogo();
-    window.addEventListener('scroll', updateStickyLogo, { passive: true });
-    window.addEventListener('resize', updateStickyLogo);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
 
     return () => {
-      window.removeEventListener('scroll', updateStickyLogo);
-      window.removeEventListener('resize', updateStickyLogo);
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
     };
   }, []);
 
@@ -767,7 +776,10 @@ export const Home5: React.FC = () => {
   }, [activeHeroLayer.kind, heroInView, heroPreviewActive, revealHeroLayer.kind]);
 
   useEffect(() => {
+    let frame = 0;
+
     const updateStickyLogoTone = () => {
+      frame = 0;
       const logoNode = stickyLogoRef.current;
       const footerNode = footerRef.current;
       if (!stickyLogoVisible || !logoNode || !footerNode) {
@@ -795,18 +807,27 @@ export const Home5: React.FC = () => {
       }
     };
 
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateStickyLogoTone);
+    };
+
     updateStickyLogoTone();
-    window.addEventListener('scroll', updateStickyLogoTone, { passive: true });
-    window.addEventListener('resize', updateStickyLogoTone);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
 
     return () => {
-      window.removeEventListener('scroll', updateStickyLogoTone);
-      window.removeEventListener('resize', updateStickyLogoTone);
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
     };
   }, [stickyLogoVisible]);
 
   useEffect(() => {
+    let frame = 0;
+
     const updateStickyMenuTone = () => {
+      frame = 0;
       const menuNode = stickyMenuRef.current;
       if (!menuNode) return;
 
@@ -815,7 +836,6 @@ export const Home5: React.FC = () => {
       const sampleY = menuRect.top + (menuRect.height / 2);
       const footerRect = footerRef.current?.getBoundingClientRect();
       const heroRect = heroSectionRef.current?.getBoundingClientRect();
-      const cinematicRect = document.getElementById('room-to-world-hero')?.getBoundingClientRect();
       const overlapsFooter = Boolean(
         footerRect
         && sampleX >= footerRect.left
@@ -830,15 +850,8 @@ export const Home5: React.FC = () => {
         && sampleY >= heroRect.top
         && sampleY <= heroRect.bottom
       );
-      const overlapsCinematic = Boolean(
-        cinematicRect
-        && sampleX >= cinematicRect.left
-        && sampleX <= cinematicRect.right
-        && sampleY >= cinematicRect.top
-        && sampleY <= cinematicRect.bottom
-      );
-      const nextToneOnDark = overlapsFooter || overlapsCinematic || (overlapsHero && heroSubtitleOnDark);
-      const nextNavInHero = overlapsHero || overlapsCinematic;
+      const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
+      const nextNavInHero = overlapsHero;
 
       if (stickyNavInHeroRef.current !== nextNavInHero) {
         stickyNavInHeroRef.current = nextNavInHero;
@@ -851,13 +864,19 @@ export const Home5: React.FC = () => {
       }
     };
 
+    const handleScroll = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(updateStickyMenuTone);
+    };
+
     updateStickyMenuTone();
-    window.addEventListener('scroll', updateStickyMenuTone, { passive: true });
-    window.addEventListener('resize', updateStickyMenuTone);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
 
     return () => {
-      window.removeEventListener('scroll', updateStickyMenuTone);
-      window.removeEventListener('resize', updateStickyMenuTone);
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
     };
   }, [heroSubtitleOnDark]);
 
