@@ -1,0 +1,493 @@
+/* CRM panel — mobile-first. Shared by CrmPanel (tab shell), CrmLeadsPanel, and
+   CrmTravelersPanel. Reuses rdb-panel/rdb-list-row/rdb-pill/rdb-stat-list tokens
+   and colors from role-dashboard.css so this reads as part of the same dashboard. */
+
+.crm-root {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.crm-root-head {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.crm-root-head h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.crm-root-head small {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+}
+
+.crm-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border-radius: var(--radius-full, 9999px);
+    border: 1px solid var(--border-light);
+    background: var(--bg-main);
+    width: fit-content;
+}
+
+.crm-tab {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: var(--radius-full, 9999px);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.crm-tab.is-active {
+    background: var(--primary);
+    color: #fff;
+}
+
+.crm-booking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.crm-booking-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm, 8px);
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+}
+
+.crm-booking-row strong {
+    display: block;
+    font-size: 0.84rem;
+    color: var(--text-main);
+}
+
+.crm-booking-row small {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.crm-booking-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.crm-booking-row-meta strong {
+    font-size: 0.82rem;
+}
+
+/* Compact overrides for the shared rdb-* panel chrome, scoped to .crm-panel only
+   so other dashboard sections (revenue, moderation, etc.) are unaffected. */
+.crm-panel.rdb-content-grid {
+    gap: 8px;
+}
+
+.crm-panel .rdb-panel {
+    padding: 12px;
+    gap: 8px;
+}
+
+.crm-panel .rdb-stat-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.crm-panel .rdb-stat-list div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 8px;
+}
+
+.crm-panel .rdb-stat-list span {
+    font-size: 0.65rem;
+}
+
+.crm-panel .rdb-stat-list strong {
+    font-size: 0.98rem;
+}
+
+.crm-panel .rdb-list {
+    gap: 5px;
+}
+
+.crm-panel .rdb-empty {
+    padding: 14px 12px;
+}
+
+@media (min-width: 480px) {
+    .crm-panel .rdb-stat-list {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.crm-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.crm-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm, 8px);
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-muted);
+}
+
+.crm-search input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    min-width: 0;
+}
+
+.crm-status-filter {
+    padding: 7px 10px;
+    border-radius: var(--radius-sm, 8px);
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-size: 0.82rem;
+}
+
+.crm-lead-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.crm-lead-item {
+    border-radius: var(--radius-md, 16px);
+    overflow: hidden;
+}
+
+.crm-lead-row {
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+}
+
+.crm-lead-row > div:first-child {
+    min-width: 0;
+    flex: 1;
+}
+
+.crm-lead-row strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.crm-lead-row small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+}
+
+.crm-chevron {
+    color: var(--text-muted);
+    transition: transform 0.18s ease;
+    flex-shrink: 0;
+}
+
+.crm-chevron.is-open {
+    transform: rotate(180deg);
+}
+
+.crm-lead-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-light);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm, 8px) var(--radius-sm, 8px);
+    background: var(--bg-card);
+}
+
+.crm-lead-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.crm-lead-contact a,
+.crm-lead-contact span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.crm-lead-message {
+    margin: 0;
+    color: var(--text-main);
+    line-height: 1.5;
+    font-size: 0.86rem;
+}
+
+.crm-lead-source {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    text-transform: capitalize;
+}
+
+.crm-status-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.crm-status-row label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.crm-status-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.crm-status-control select {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm, 8px);
+    border: 1px solid var(--border-light);
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-size: 0.84rem;
+}
+
+.crm-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-light);
+}
+
+.crm-notes h3 {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.crm-inline-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin: 0;
+}
+
+.crm-notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.crm-note {
+    padding: 7px 10px;
+    border-radius: var(--radius-sm, 8px);
+    background: var(--bg-main);
+    border: 1px solid var(--border-light);
+}
+
+.crm-note-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 2px;
+    font-size: 0.74rem;
+}
+
+.crm-note-meta strong {
+    color: var(--text-main);
+}
+
+.crm-note-meta small {
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.crm-note p {
+    margin: 0;
+    color: var(--text-main);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.crm-note-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.crm-note-form textarea {
+    resize: vertical;
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm, 8px);
+    border: 1px solid var(--border-light);
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.84rem;
+}
+
+.crm-note-submit {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius-full, 9999px);
+    border: none;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.crm-note-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Status pills — mirrors the color-mix pattern used by .rdb-pill-* in role-dashboard.css */
+.crm-pill-new {
+    background: color-mix(in srgb, #64748b 16%, var(--surface-main));
+    color: #334155;
+    border-color: color-mix(in srgb, #64748b 28%, transparent);
+}
+
+:root[data-theme='dark'] .crm-pill-new {
+    background: color-mix(in srgb, #64748b 18%, #111);
+    color: #cbd5e1;
+    border-color: color-mix(in srgb, #64748b 26%, transparent);
+}
+
+.crm-pill-contacted {
+    background: color-mix(in srgb, #f59e0b 16%, var(--surface-main));
+    color: #92400e;
+    border-color: color-mix(in srgb, #f59e0b 28%, transparent);
+}
+
+:root[data-theme='dark'] .crm-pill-contacted {
+    background: color-mix(in srgb, #f59e0b 16%, #111);
+    color: #fbbf24;
+    border-color: color-mix(in srgb, #f59e0b 24%, transparent);
+}
+
+.crm-pill-qualified {
+    background: color-mix(in srgb, #8b5cf6 16%, var(--surface-main));
+    color: #4c1d95;
+    border-color: color-mix(in srgb, #8b5cf6 28%, transparent);
+}
+
+:root[data-theme='dark'] .crm-pill-qualified {
+    background: color-mix(in srgb, #8b5cf6 18%, #111);
+    color: #c4b5fd;
+    border-color: color-mix(in srgb, #8b5cf6 26%, transparent);
+}
+
+.crm-pill-converted {
+    background: color-mix(in srgb, #22c55e 16%, var(--surface-main));
+    color: #14532d;
+    border-color: color-mix(in srgb, #22c55e 28%, transparent);
+}
+
+:root[data-theme='dark'] .crm-pill-converted {
+    background: color-mix(in srgb, #22c55e 16%, #111);
+    color: #4ade80;
+    border-color: color-mix(in srgb, #22c55e 24%, transparent);
+}
+
+.crm-pill-closed {
+    background: color-mix(in srgb, #6b7280 16%, var(--surface-main));
+    color: #374151;
+    border-color: color-mix(in srgb, #6b7280 28%, transparent);
+}
+
+:root[data-theme='dark'] .crm-pill-closed {
+    background: color-mix(in srgb, #6b7280 18%, #111);
+    color: #d1d5db;
+    border-color: color-mix(in srgb, #6b7280 26%, transparent);
+}
+
+/* Desktop enhancement — matches the dashboard's own 700px sidebar/topbar switch */
+@media (min-width: 700px) {
+    .crm-toolbar {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .crm-search {
+        flex: 1;
+    }
+
+    .crm-status-filter {
+        width: 220px;
+    }
+
+    .crm-lead-contact {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px 20px;
+    }
+
+    .crm-status-row {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .crm-status-control {
+        max-width: 280px;
+    }
+}

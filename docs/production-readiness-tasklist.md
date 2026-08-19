@@ -10,6 +10,8 @@ Current release target: staging/beta first, production after the blockers below 
 
 Completion: 30% (26 of 86 checklist items complete).
 
+Note: internal CRM work (lead pipeline, traveler/provider relationship views) is tracked separately in `docs/crm-implementation-plan.md`, not in this list — it's an admin/marketing tool addition, not a production-launch blocker.
+
 ## 0. Operating Rules
 
 - [x] Keep this document updated after every completed task.

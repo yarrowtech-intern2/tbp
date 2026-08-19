@@ -7,6 +7,7 @@ import {
     ClipboardList,
     CircleHelp,
     Compass,
+    Contact2,
     ExternalLink,
     FileText,
     Heart,
@@ -91,6 +92,7 @@ import {
 } from '../lib/promotions';
 import { DEFAULT_SALES_SETTINGS, getPublicAppContent, type SalesSettingsContent } from '../lib/appContent';
 import { ContactSubmissionsPanel } from '../components/contact/ContactSubmissionsPanel';
+import { CrmPanel } from '../components/admin/CrmPanel';
 import { MarketingContentEditor, SalesSettingsEditor } from '../components/marketing/MarketingContentEditor';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import {
@@ -119,6 +121,7 @@ type SidebarKey =
     | 'greetings'
     | 'contact'
     | 'inquiries'
+    | 'crm'
     | 'about'
     | 'moderation'
     | 'accepted'
@@ -244,6 +247,7 @@ const ADMIN_DEFAULT_SECTION_OPTIONS: SidebarKey[] = [
     'messages',
     'content',
     'inquiries',
+    'crm',
 ];
 
 const ADMIN_REFRESH_INTERVAL_OPTIONS = [
@@ -559,6 +563,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'bookings' || normalized === 'refunds' || normalized === 'refund') return 'bookings';
     if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'content';
     if (normalized === 'inquiries' || normalized === 'leads' || normalized === 'contact-leads' || normalized === 'contact-submissions') return 'inquiries';
+    if (normalized === 'crm' || normalized === 'pipeline') return 'crm';
     if (normalized === 'messages') return 'messages';
     if (normalized === 'notifications') return 'messages';
     if (normalized === 'revenue') return 'revenue';
@@ -578,6 +583,7 @@ const parseMarketingSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'greetings' || normalized === 'edit-greetings' || normalized === 'edit_greetings') return 'greetings';
     if (normalized === 'contact' || normalized === 'contact-info' || normalized === 'edit-contact-info' || normalized === 'informatics') return 'contact';
     if (normalized === 'inquiries' || normalized === 'leads' || normalized === 'contact-leads' || normalized === 'contact-submissions') return 'inquiries';
+    if (normalized === 'crm' || normalized === 'pipeline') return 'crm';
     if (normalized === 'about' || normalized === 'about-us' || normalized === 'about_us' || normalized === 'edit-about') return 'about';
     if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'greetings';
     if (normalized === 'messages' || normalized === 'notifications') return 'messages';
@@ -1521,6 +1527,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'overview', label: 'Dashboard', icon: FileText },
                 { key: 'content', label: 'Content', icon: Megaphone },
                 { key: 'inquiries', label: 'Contact Leads', icon: Mail },
+                { key: 'crm', label: 'CRM', icon: Contact2 },
                 { key: 'bookings', label: 'Refunds', icon: ClipboardList },
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
@@ -1564,6 +1571,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'about', label: 'Edit About', icon: FileText },
                 { key: 'contact', label: 'Edit Contact Info', icon: Megaphone },
                 { key: 'inquiries', label: 'Contact Leads', icon: Mail },
+                { key: 'crm', label: 'CRM', icon: Contact2 },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
         }
@@ -3816,6 +3824,10 @@ export const RoleDashboard: React.FC = () => {
             return <ContactSubmissionsPanel />;
         }
 
+        if (activeSection === 'crm') {
+            return <CrmPanel />;
+        }
+
         if (activeSection === 'about') {
             return <MarketingContentEditor userId={user?.id} mode="about" />;
         }
@@ -4070,6 +4082,10 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'inquiries') {
             return <ContactSubmissionsPanel />;
+        }
+
+        if (activeSection === 'crm') {
+            return <CrmPanel />;
         }
 
         if (activeSection === 'bookings') {
