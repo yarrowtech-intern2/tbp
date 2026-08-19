@@ -10,7 +10,6 @@ import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterContent, type F
 import { submitContactSubmission } from '../lib/contactSubmissions';
 import './home5.css';
 
-const LazyCinematicHero = lazy(async () => ({ default: (await import('../components/cinematic-hero/CinematicHero')).CinematicHero }));
 const LazyGlobe = lazy(async () => ({ default: (await import('../components/ui/globe')).Globe }));
 const LazyMacbookScrollDemo = lazy(() => import('../components/macbook-scroll-demo'));
 const LazyWorldMap = lazy(() => import('../components/ui/world-map'));
@@ -1222,17 +1221,6 @@ export const Home5: React.FC = () => {
       </div>
 
       <NewAnimatedHero />
-
-      <DeferredMount
-        className="home5-deferred-shell home5-cinematic-deferred-shell"
-        minHeight="100svh"
-        placeholderClassName="home5-deferred-placeholder home5-deferred-placeholder-cinematic"
-        rootMargin="0px"
-      >
-        <Suspense fallback={<div className="home5-deferred-placeholder home5-deferred-placeholder-cinematic" aria-hidden="true" />}>
-          <LazyCinematicHero nextSectionRef={heroSectionRef} />
-        </Suspense>
-      </DeferredMount>
 
       <section
         id="home5-hero"
