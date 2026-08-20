@@ -229,7 +229,7 @@ export const CrmLeadsPanel: React.FC = () => {
                                             <strong>{lead.name}</strong>
                                             <small>{lead.email} &middot; {formatTimestamp(lead.created_at)}</small>
                                         </div>
-                                        <span className={`rdb-pill crm-pill-${lead.status}`}>{CRM_LEAD_STATUS_LABELS[lead.status]}</span>
+                                        <span className={`rdb-pill crm-pill-${getDisplayStatus(lead)}`}>{CRM_LEAD_STATUS_LABELS[getDisplayStatus(lead)]}</span>
                                         <ChevronDown size={16} className={`crm-chevron${isExpanded ? ' is-open' : ''}`} />
                                     </button>
 
@@ -245,19 +245,26 @@ export const CrmLeadsPanel: React.FC = () => {
 
                                             <div className="crm-status-row">
                                                 <label htmlFor={`crm-status-${lead.id}`}>Status</label>
-                                                <div className="crm-status-control">
-                                                    <select
-                                                        id={`crm-status-${lead.id}`}
-                                                        value={lead.status}
-                                                        disabled={statusUpdating[lead.id]}
-                                                        onChange={(event) => void handleStatusChange(lead, event.target.value as CrmLeadStatus)}
-                                                    >
-                                                        {CRM_LEAD_STATUSES.map((status) => (
-                                                            <option key={status} value={status}>{CRM_LEAD_STATUS_LABELS[status]}</option>
-                                                        ))}
-                                                    </select>
-                                                    {statusUpdating[lead.id] && <Loader2 size={14} className="animate-spin" />}
-                                                </div>
+                                                {lead.is_converted ? (
+                                                    <p className="crm-converted-note">
+                                                        <CheckCircle2 size={14} />
+                                                        Automatically marked Converted — this email has a paid booking.
+                                                    </p>
+                                                ) : (
+                                                    <div className="crm-status-control">
+                                                        <select
+                                                            id={`crm-status-${lead.id}`}
+                                                            value={lead.status}
+                                                            disabled={statusUpdating[lead.id]}
+                                                            onChange={(event) => void handleStatusChange(lead, event.target.value as CrmLeadStatus)}
+                                                        >
+                                                            {CRM_LEAD_MANUAL_STATUSES.map((status) => (
+                                                                <option key={status} value={status}>{CRM_LEAD_STATUS_LABELS[status]}</option>
+                                                            ))}
+                                                        </select>
+                                                        {statusUpdating[lead.id] && <Loader2 size={14} className="animate-spin" />}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <CrmNotesTimeline

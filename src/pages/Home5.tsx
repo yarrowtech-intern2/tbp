@@ -463,6 +463,87 @@ export const Home5: React.FC = () => {
   const howSectionRef = useRef<HTMLElement | null>(null);
   const finalSectionRef = useRef<HTMLElement | null>(null);
   const footerRef = useRef<HTMLElement | null>(null);
+  const logoBoundsRef = useRef({ sampleX: 0, sampleY: 0 });
+  const menuBoundsRef = useRef({ sampleX: 0, sampleY: 0 });
+  const footerBoundsRef = useRef({ absoluteTop: 0, height: 0, left: 0, right: 0 });
+  const heroBoundsRef = useRef({ absoluteTop: 0, height: 0, left: 0, right: 0 });
+  const howBoundsRef = useRef({ absoluteTop: 0, height: 0 });
+  const finalBoundsRef = useRef({ absoluteTop: 0, height: 0 });
+
+  const syncAllBounds = useCallback(() => {
+    const logoNode = stickyLogoRef.current;
+    if (logoNode) {
+      const rect = logoNode.getBoundingClientRect();
+      logoBoundsRef.current = {
+        sampleX: rect.left + rect.width / 2,
+        sampleY: rect.top + rect.height / 2,
+      };
+    }
+
+    const menuNode = stickyMenuRef.current;
+    if (menuNode) {
+      const rect = menuNode.getBoundingClientRect();
+      menuBoundsRef.current = {
+        sampleX: rect.left + rect.width / 2,
+        sampleY: rect.top + rect.height / 2,
+      };
+    }
+
+    const footerNode = footerRef.current;
+    if (footerNode) {
+      const rect = footerNode.getBoundingClientRect();
+      footerBoundsRef.current = {
+        absoluteTop: rect.top + window.scrollY,
+        height: rect.height,
+        left: rect.left,
+        right: rect.right,
+      };
+    }
+
+    const heroNode = heroSectionRef.current;
+    if (heroNode) {
+      const rect = heroNode.getBoundingClientRect();
+      heroBoundsRef.current = {
+        absoluteTop: rect.top + window.scrollY,
+        height: rect.height,
+        left: rect.left,
+        right: rect.right,
+      };
+    }
+
+    const howNode = howSectionRef.current;
+    if (howNode) {
+      const rect = howNode.getBoundingClientRect();
+      howBoundsRef.current = {
+        absoluteTop: rect.top + window.scrollY,
+        height: rect.height,
+      };
+    }
+
+    const finalNode = finalSectionRef.current;
+    if (finalNode) {
+      const rect = finalNode.getBoundingClientRect();
+      finalBoundsRef.current = {
+        absoluteTop: rect.top + window.scrollY,
+        height: rect.height,
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(syncAllBounds, 150);
+    return () => clearTimeout(timer);
+  }, [syncAllBounds]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      syncAllBounds();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [syncAllBounds]);
   const activeHeroLayer = HERO_HERO_LAYERS[heroVideoIndex] ?? HERO_HERO_LAYERS[0];
   const nextHeroVideoIndex = (heroVideoIndex + 1) % HERO_HERO_LAYERS.length;
   const previewHeroLayer = HERO_HERO_LAYERS[nextHeroVideoIndex] ?? HERO_HERO_LAYERS[0];
@@ -532,6 +613,7 @@ export const Home5: React.FC = () => {
       ([entry]) => {
         if (!entry?.isIntersecting) return;
         setShouldLoadFooterContent(true);
+        syncAllBounds();
         observer.disconnect();
       },
       { rootMargin: '35% 0px', threshold: 0.01 },
@@ -542,7 +624,7 @@ export const Home5: React.FC = () => {
     return () => {
       observer.disconnect();
     };
-  }, [shouldLoadFooterContent]);
+  }, [shouldLoadFooterContent, syncAllBounds]);
 
   useEffect(() => {
     return () => {
@@ -559,7 +641,12 @@ export const Home5: React.FC = () => {
 
     getPublicAppContent()
       .then((content) => {
-        if (!cancelled) setFooterContent(content.footer);
+        if (!cancelled) {
+          setFooterContent(content.footer);
+          requestAnimationFrame(() => {
+            syncAllBounds();
+          });
+        }
       })
       .catch((error) => {
         console.error('Failed to load landing footer content:', error);
@@ -568,7 +655,7 @@ export const Home5: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [shouldLoadFooterContent]);
+  }, [shouldLoadFooterContent, syncAllBounds]);
 
   useEffect(() => {
     if (contactModalOpen) {
@@ -781,8 +868,7 @@ export const Home5: React.FC = () => {
     const updateStickyLogoTone = () => {
       frame = 0;
       const logoNode = stickyLogoRef.current;
-      const footerNode = footerRef.current;
-      if (!stickyLogoVisible || !logoNode || !footerNode) {
+      if (!stickyLogoVisible || !logoNode) {
         if (stickyLogoOnDarkRef.current) {
           stickyLogoOnDarkRef.current = false;
           logoNode?.querySelector('img')?.setAttribute('src', '/logo/final-logo.png');
@@ -790,15 +876,17 @@ export const Home5: React.FC = () => {
         return;
       }
 
-      const logoRect = logoNode.getBoundingClientRect();
-      const footerRect = footerNode.getBoundingClientRect();
-      const sampleX = logoRect.left + (logoRect.width / 2);
-      const sampleY = logoRect.top + (logoRect.height / 2);
+      const sampleX = logoBoundsRef.current.sampleX;
+      const sampleY = logoBoundsRef.current.sampleY;
+      const footerTop = footerBoundsRef.current.absoluteTop - window.scrollY;
+      const footerBottom = footerTop + footerBoundsRef.current.height;
+      const footerLeft = footerBoundsRef.current.left;
+      const footerRight = footerBoundsRef.current.right;
       const overlapsFooter = (
-        sampleX >= footerRect.left
-        && sampleX <= footerRect.right
-        && sampleY >= footerRect.top
-        && sampleY <= footerRect.bottom
+        sampleX >= footerLeft
+        && sampleX <= footerRight
+        && sampleY >= footerTop
+        && sampleY <= footerBottom
       );
 
       if (stickyLogoOnDarkRef.current !== overlapsFooter) {
@@ -831,25 +919,31 @@ export const Home5: React.FC = () => {
       const menuNode = stickyMenuRef.current;
       if (!menuNode) return;
 
-      const menuRect = menuNode.getBoundingClientRect();
-      const sampleX = menuRect.left + (menuRect.width / 2);
-      const sampleY = menuRect.top + (menuRect.height / 2);
-      const footerRect = footerRef.current?.getBoundingClientRect();
-      const heroRect = heroSectionRef.current?.getBoundingClientRect();
-      const overlapsFooter = Boolean(
-        footerRect
-        && sampleX >= footerRect.left
-        && sampleX <= footerRect.right
-        && sampleY >= footerRect.top
-        && sampleY <= footerRect.bottom
+      const sampleX = menuBoundsRef.current.sampleX;
+      const sampleY = menuBoundsRef.current.sampleY;
+
+      const footerTop = footerBoundsRef.current.absoluteTop - window.scrollY;
+      const footerBottom = footerTop + footerBoundsRef.current.height;
+      const footerLeft = footerBoundsRef.current.left;
+      const footerRight = footerBoundsRef.current.right;
+      const overlapsFooter = (
+        sampleX >= footerLeft
+        && sampleX <= footerRight
+        && sampleY >= footerTop
+        && sampleY <= footerBottom
       );
-      const overlapsHero = Boolean(
-        heroRect
-        && sampleX >= heroRect.left
-        && sampleX <= heroRect.right
-        && sampleY >= heroRect.top
-        && sampleY <= heroRect.bottom
+
+      const heroTop = heroBoundsRef.current.absoluteTop - window.scrollY;
+      const heroBottom = heroTop + heroBoundsRef.current.height;
+      const heroLeft = heroBoundsRef.current.left;
+      const heroRight = heroBoundsRef.current.right;
+      const overlapsHero = (
+        sampleX >= heroLeft
+        && sampleX <= heroRight
+        && sampleY >= heroTop
+        && sampleY <= heroBottom
       );
+
       const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
       const nextNavInHero = overlapsHero;
 
@@ -1086,10 +1180,11 @@ export const Home5: React.FC = () => {
       const node = howSectionRef.current;
       if (!node) return;
 
-      const rect = node.getBoundingClientRect();
+      const bounds = howBoundsRef.current;
       const viewportHeight = window.innerHeight || 1;
-      const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
-      const nextProgress = clampValue((-rect.top) / scrollableDistance, 0, 1);
+      const scrollableDistance = Math.max(bounds.height - viewportHeight, 1);
+      const relativeTop = bounds.absoluteTop - window.scrollY;
+      const nextProgress = clampValue((-relativeTop) / scrollableDistance, 0, 1);
 
       if (Math.abs(howProgressRef.current - nextProgress) < 0.001) return;
       howProgressRef.current = nextProgress;
@@ -1150,10 +1245,11 @@ export const Home5: React.FC = () => {
       const node = finalSectionRef.current;
       if (!node) return;
 
-      const rect = node.getBoundingClientRect();
+      const bounds = finalBoundsRef.current;
       const viewportHeight = window.innerHeight || 1;
-      const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
-      const nextProgress = clampValue((-rect.top) / scrollableDistance, 0, 1);
+      const scrollableDistance = Math.max(bounds.height - viewportHeight, 1);
+      const relativeTop = bounds.absoluteTop - window.scrollY;
+      const nextProgress = clampValue((-relativeTop) / scrollableDistance, 0, 1);
       const nextWordIndex = Math.min(
         FINAL_CTA_WORDS.length,
         Math.floor(nextProgress * (FINAL_CTA_WORDS.length + 1)),
@@ -1714,6 +1810,9 @@ export const Home5: React.FC = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         setOpenFaqIndex(isOpen ? null : index);
+                        requestAnimationFrame(() => {
+                          syncAllBounds();
+                        });
                       }}
                     >
                       <span className="home5-faq-question">{item.question}</span>

@@ -285,6 +285,26 @@
     gap: 8px;
 }
 
+.crm-converted-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm, 8px);
+    background: color-mix(in srgb, #22c55e 12%, var(--surface-main));
+    color: #14532d;
+    border: 1px solid color-mix(in srgb, #22c55e 24%, transparent);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+:root[data-theme='dark'] .crm-converted-note {
+    background: color-mix(in srgb, #22c55e 14%, #111);
+    color: #4ade80;
+    border-color: color-mix(in srgb, #22c55e 22%, transparent);
+}
+
 .crm-status-control select {
     flex: 1;
     padding: 6px 10px;

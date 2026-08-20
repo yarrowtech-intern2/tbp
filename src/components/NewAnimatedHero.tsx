@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import './new-animated-hero.css';
@@ -40,6 +40,8 @@ const usePrefersReducedMotion = () => {
 export const NewAnimatedHero: React.FC = () => {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [phase, setPhase] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+  const containerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (prefersReducedMotion) return undefined;
@@ -53,13 +55,32 @@ export const NewAnimatedHero: React.FC = () => {
     };
   }, [prefersReducedMotion]);
 
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.01 }
+    );
+
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
     <section
+      ref={containerRef}
       id="tbp-editorial-hero"
       className={`tbp-editorial-hero tbp-editorial-hero--phase-${phase}`}
       aria-labelledby="tbp-editorial-title"
     >
-      <HeroBackground />
+      <HeroBackground isVisible={isVisible} />
 
       <div className="tbp-editorial-layout">
         <HeroIntro />
@@ -73,22 +94,40 @@ export const NewAnimatedHero: React.FC = () => {
   );
 };
 
-const HeroBackground: React.FC = () => (
-  <div className="tbp-editorial-bg" aria-hidden="true">
-    <video
-      className="tbp-editorial-bg-video"
-      autoPlay
-      muted
-      loop
-      playsInline
-      preload="auto"
-      poster={HERO_BACKGROUND_POSTER}
-      disablePictureInPicture
-    >
-      <source src={HERO_BACKGROUND_VIDEO} type="video/mp4" />
-    </video>
-  </div>
-);
+const HeroBackground: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isVisible) {
+      const playAttempt = video.play();
+      if (playAttempt && typeof playAttempt.catch === 'function') {
+        playAttempt.catch(() => {});
+      }
+    } else {
+      video.pause();
+    }
+  }, [isVisible]);
+
+  return (
+    <div className="tbp-editorial-bg" aria-hidden="true">
+      <video
+        ref={videoRef}
+        className="tbp-editorial-bg-video"
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster={HERO_BACKGROUND_POSTER}
+        disablePictureInPicture
+      >
+        <source src={HERO_BACKGROUND_VIDEO} type="video/mp4" />
+      </video>
+    </div>
+  );
+};
 
 const GridOverlay: React.FC = () => (
   <div className="tbp-editorial-grid-overlay" aria-hidden="true" />

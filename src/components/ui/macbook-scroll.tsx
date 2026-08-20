@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import './macbook-scroll.css';
 
 const KEY_ROWS = [
@@ -87,12 +87,30 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
   const isMobileRef = useRef(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isNearViewport, setIsNearViewport] = useState(false);
+  const sectionBoundsRef = useRef({ absoluteTop: 0, height: 0 });
+
+  const syncBounds = useCallback(() => {
+    const node = sectionRef.current;
+    if (node) {
+      const rect = node.getBoundingClientRect();
+      sectionBoundsRef.current = {
+        absoluteTop: rect.top + window.scrollY,
+        height: rect.height,
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(syncBounds, 150);
+    return () => clearTimeout(timer);
+  }, [syncBounds]);
 
   useEffect(() => {
     const updateViewportMode = () => {
       const nextIsMobile = window.innerWidth < 768;
       isMobileRef.current = nextIsMobile;
       setIsMobile(nextIsMobile);
+      syncBounds();
       if (sectionRef.current) {
         applyMacbookVars(sectionRef.current, progressRef.current, nextIsMobile);
       }
@@ -104,7 +122,7 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
     return () => {
       window.removeEventListener('resize', updateViewportMode);
     };
-  }, []);
+  }, [syncBounds]);
 
   useEffect(() => {
     const node = sectionRef.current;
@@ -114,6 +132,9 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
       ([entry]) => {
         if (!entry) return;
         setIsNearViewport(entry.isIntersecting);
+        if (entry.isIntersecting) {
+          syncBounds();
+        }
       },
       { rootMargin: '28% 0px', threshold: 0.01 },
     );
@@ -123,7 +144,7 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [syncBounds]);
 
   useEffect(() => {
     if (!isNearViewport) return undefined;
@@ -135,10 +156,11 @@ export const MacbookScroll: React.FC<MacbookScrollProps> = ({
       const node = sectionRef.current;
       if (!node) return;
 
-      const rect = node.getBoundingClientRect();
+      const bounds = sectionBoundsRef.current;
       const viewportHeight = window.innerHeight || 1;
-      const scrollableDistance = Math.max(rect.height - viewportHeight, 1);
-      const nextProgress = clampValue((-rect.top) / scrollableDistance, 0, 1);
+      const scrollableDistance = Math.max(bounds.height - viewportHeight, 1);
+      const relativeTop = bounds.absoluteTop - window.scrollY;
+      const nextProgress = clampValue((-relativeTop) / scrollableDistance, 0, 1);
 
       if (Math.abs(progressRef.current - nextProgress) <= 0.001) return;
 
