@@ -1,4 +1,4 @@
-import React, { useId, useRef } from 'react';
+import React, { useId, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useMotionValue, useSpring, useTransform, type MotionValue } from 'framer-motion';
 import './floating-dock.css';
@@ -81,9 +81,37 @@ export function FloatingDock({ items, className, ariaLabel = 'Floating navigatio
 
 function DockItem({ item, mouseX, variant }: { item: FloatingDockItem; mouseX: MotionValue<number>; variant: 'active' | 'pill' }) {
   const ref = useRef<HTMLDivElement>(null);
+  const boundsRef = useRef({ x: 0, width: 0 });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (ref.current) {
+        const rect = ref.current.getBoundingClientRect();
+        boundsRef.current = { x: rect.x, width: rect.width };
+      }
+    }, 150);
+
+    const handleResize = () => {
+      if (ref.current) {
+        const rect = ref.current.getBoundingClientRect();
+        boundsRef.current = { x: rect.x, width: rect.width };
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   const distance = useTransform(mouseX, (val) => {
-    const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
+    let bounds = boundsRef.current;
+    if (bounds.width === 0 && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      boundsRef.current = { x: rect.x, width: rect.width };
+      bounds = boundsRef.current;
+    }
     return val - bounds.x - bounds.width / 2;
   });
 

@@ -96,7 +96,7 @@ export const Globe: React.FC<GlobeProps> = ({ className, config, overlayMarkers 
   const phiRef = useRef(0);
   const [size, setSize] = useState(0);
   const [isInView, setIsInView] = useState(false);
-  const defaultMapSamples = config?.mapSamples ?? (size >= 720 ? 12000 : size >= 480 ? 8000 : 4000);
+  const defaultMapSamples = config?.mapSamples ?? (size >= 720 ? 6000 : size >= 480 ? 4000 : 2000);
   const resolvedConfig = useMemo(() => ({
     ...DEFAULT_CONFIG,
     ...config,

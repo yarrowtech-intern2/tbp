@@ -119,7 +119,7 @@ const HeroBackground: React.FC<{ isVisible: boolean }> = ({ isVisible }) => {
         muted
         loop
         playsInline
-        preload="auto"
+        preload="metadata"
         poster={HERO_BACKGROUND_POSTER}
         disablePictureInPicture
       >

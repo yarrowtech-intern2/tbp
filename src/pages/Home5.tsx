@@ -423,6 +423,7 @@ export const Home5: React.FC = () => {
   const [heroTouchMode, setHeroTouchMode] = useState(false);
   const [heroCursorVisible, setHeroCursorVisible] = useState(false);
   const [heroInView, setHeroInView] = useState(true);
+  const [heroPreviewReady, setHeroPreviewReady] = useState(false);
   const howProgressRef = useRef(0);
   const finalWordIndexRef = useRef(0);
   const howSceneRef = useRef<HTMLDivElement | null>(null);
@@ -553,6 +554,10 @@ export const Home5: React.FC = () => {
   const heroSubtitleOnDark = activeHeroLayer.kind === 'video'
     || (heroVideoTransitioning && revealHeroLayer.kind === 'video');
   const heroPreviewActive = heroInView && (heroCursorVisible || heroVideoTransitioning);
+
+  useEffect(() => {
+    if (heroPreviewActive) setHeroPreviewReady(true);
+  }, [heroPreviewActive]);
   const activeVideoHeroContent = activeHeroLayer.kind === 'video' && isVideoHeroLayerId(activeHeroLayer.id)
     ? HERO_VIDEO_CONTENT[activeHeroLayer.id]
     : null;
@@ -998,10 +1003,13 @@ export const Home5: React.FC = () => {
     const node = heroSectionRef.current;
     if (!node) return;
 
-    const rect = node.getBoundingClientRect();
+    const bounds = heroBoundsRef.current;
+    const viewportTop = bounds.absoluteTop - window.scrollY;
+    const width = bounds.right - bounds.left;
+
     heroCursorTargetRef.current = {
-      x: clampValue(clientX - rect.left, 0, rect.width),
-      y: clampValue(clientY - rect.top, 0, rect.height),
+      x: clampValue(clientX - bounds.left, 0, width),
+      y: clampValue(clientY - viewportTop, 0, bounds.height),
     };
 
     if (heroCursorFrameRef.current === null) {
@@ -1013,16 +1021,19 @@ export const Home5: React.FC = () => {
     const node = heroSectionRef.current;
     if (!node || heroVideoTransitioning) return;
 
-    const rect = node.getBoundingClientRect();
+    const bounds = heroBoundsRef.current;
+    const width = bounds.right - bounds.left;
+    const height = bounds.height;
+
     const origin = heroCursorPointRef.current.x || heroCursorPointRef.current.y
       ? heroCursorPointRef.current
-      : { x: rect.width * 0.5, y: rect.height * 0.5 };
+      : { x: width * 0.5, y: height * 0.5 };
     const nextIndex = (heroVideoIndex + 1) % HERO_HERO_LAYERS.length;
     const maxRadius = Math.max(
       Math.hypot(origin.x, origin.y),
-      Math.hypot(rect.width - origin.x, origin.y),
-      Math.hypot(origin.x, rect.height - origin.y),
-      Math.hypot(rect.width - origin.x, rect.height - origin.y),
+      Math.hypot(width - origin.x, origin.y),
+      Math.hypot(origin.x, height - origin.y),
+      Math.hypot(width - origin.x, height - origin.y),
     );
 
     if (heroTransitionTimerRef.current !== null) {
@@ -1369,7 +1380,7 @@ export const Home5: React.FC = () => {
             <div
               className={`home5-hero-bg-white home5-hero-bg-white-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
             />
-          ) : (
+          ) : heroPreviewReady ? (
             <video
               ref={heroPreviewVideoRef}
               key={`hero-preview-${revealHeroLayer.id}-${heroRevealIndex ?? nextHeroVideoIndex}`}
@@ -1382,6 +1393,14 @@ export const Home5: React.FC = () => {
               playsInline
               preload="metadata"
               disablePictureInPicture
+            />
+          ) : (
+            // Avoids mounting an off-screen <video> that autoplays on page load: the reveal
+            // layer stays a static poster image until the user actually hovers/touches the hero.
+            <div
+              className={`home5-hero-bg-video home5-hero-bg-video-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
+              style={revealHeroLayer.poster ? { backgroundImage: `url(${revealHeroLayer.poster})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              aria-hidden="true"
             />
           )}
           <div className={`home5-hero-video-cursor${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`} />
