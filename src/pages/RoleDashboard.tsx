@@ -101,6 +101,7 @@ import {
     getTouristRouteHistory,
     type RouteHistoryRecord,
 } from '../lib/routePlanner';
+import { isVirtualTourRecord } from '../lib/virtualTours';
 import './role-dashboard.css';
 
 type DashboardRole = 'tourist' | 'provider' | 'admin' | 'marketing';
@@ -454,11 +455,7 @@ const hasVirtualTourSignal = (value: string) => {
     return VIRTUAL_TOUR_TAGS.some((tag) => normalized.includes(tag));
 };
 const isVirtualTourListing = (item: PostRecord) => {
-    const flagged = item.is_virtual_tour === true
-        || item.virtual_tour === true
-        || textValue(item.experience_mode).toLowerCase() === 'virtual'
-        || textValue(item.delivery_mode).toLowerCase() === 'virtual';
-    if (flagged) return true;
+    if (isVirtualTourRecord(item)) return true;
     return hasVirtualTourSignal([
         item.sub_category,
         item.category,
@@ -468,7 +465,8 @@ const isVirtualTourListing = (item: PostRecord) => {
     ].map(textValue).filter(Boolean).join(' '));
 };
 const isVirtualTourBooking = (item: UnifiedBooking, listing?: PostRecord) => (
-    Boolean(listing && isVirtualTourListing(listing))
+    item.is_virtual_tour === true
+    || Boolean(listing && isVirtualTourListing(listing))
     || hasVirtualTourSignal([
         item.listing_title,
         item.listing_type,

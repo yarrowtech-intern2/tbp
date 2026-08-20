@@ -70,6 +70,7 @@ export interface BookingPaymentDraft {
     platform_fee_amount?: number;
     provider_payout_amount?: number;
     booking_date?: string | null;
+    is_virtual_tour?: boolean;
 }
 
 export interface RazorpayOrderPayload {

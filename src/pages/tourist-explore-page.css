@@ -443,6 +443,12 @@
   letter-spacing: 0;
 }
 
+.txp-card-booked--live {
+  background: rgba(244, 142, 42, 0.9);
+  border-color: rgba(160, 87, 16, 0.62);
+  color: #271407;
+}
+
 .txp-card-rating {
   display: inline-flex;
   align-items: center;

@@ -12,6 +12,7 @@ import {
     type VerificationRecord,
 } from '../lib/destinations';
 import { getRoleLabel } from '../lib/platform';
+import { CAMERA_TYPE_LABELS, getVirtualTourDetailsFromRecord, isVirtualTourRecord } from '../lib/virtualTours';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import './admin-listing-review.css';
 
@@ -125,6 +126,8 @@ export const AdminListingReview: React.FC = () => {
     const listingType = String(listing?.type || 'listing');
     const listingTypePath = toListingPathType(listing?.type);
     const listingImage = listing?.image_url || listing?.cover_image_url || listing?.thumbnail_url || '';
+    const isVirtualTour = isVirtualTourRecord(listing as Record<string, unknown> | null);
+    const virtualDetails = getVirtualTourDetailsFromRecord(listing as Record<string, unknown> | null);
 
     const providerAccountType = useMemo(() => {
         const role = verification?.role || providerProfile?.role;
@@ -237,7 +240,7 @@ export const AdminListingReview: React.FC = () => {
                     </aside>
 
                     <article className="alr-detail">
-                        <h2>Tour package details</h2>
+                        <h2>{isVirtualTour ? 'Live virtual tour details' : 'Tour package details'}</h2>
 
                         <div className="alr-hero">
                             <div className="alr-image" style={listingImage ? { backgroundImage: `url(${listingImage})` } : undefined} />
@@ -272,6 +275,59 @@ export const AdminListingReview: React.FC = () => {
                             <div><span>Government ID Ref</span><strong>{governmentId}</strong></div>
                             <div><span>Verification Status</span><strong>{verification?.status || providerProfile?.verification_status || 'N/A'}</strong></div>
                         </div>
+
+                        {isVirtualTour && virtualDetails && (
+                            <section className="alr-virtual-panel">
+                                <div className="alr-virtual-head">
+                                    <div>
+                                        <span>Local guide live proof</span>
+                                        <h3>{virtualDetails.duration_minutes} min virtual slot</h3>
+                                    </div>
+                                    <strong>{CAMERA_TYPE_LABELS[virtualDetails.camera_type]}</strong>
+                                </div>
+                                <div className="alr-provider-grid">
+                                    <div><span>Live Spot</span><strong>{virtualDetails.spot_location || listing.location || 'N/A'}</strong></div>
+                                    <div><span>Meeting Point</span><strong>{virtualDetails.meeting_point || 'N/A'}</strong></div>
+                                    <div><span>Max Guests</span><strong>{virtualDetails.max_guests}</strong></div>
+                                    <div><span>Languages</span><strong>{virtualDetails.languages.join(', ') || 'N/A'}</strong></div>
+                                    <div><span>Timing Windows</span><strong>{virtualDetails.available_windows.join(', ') || 'N/A'}</strong></div>
+                                    <div><span>Network Plan</span><strong>{virtualDetails.network_plan || 'N/A'}</strong></div>
+                                </div>
+                                <div className="alr-virtual-list-grid">
+                                    <div>
+                                        <span>Places shown</span>
+                                        <p>{virtualDetails.places_shown.join(', ') || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <span>Included</span>
+                                        <p>{virtualDetails.included_items.join(', ') || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <span>Camera setup</span>
+                                        <p>{virtualDetails.camera_notes || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <span>Tourist requirements</span>
+                                        <p>{virtualDetails.tourist_requirements || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                {virtualDetails.verification_photo_urls.length > 0 && (
+                                    <div className="alr-proof-grid">
+                                        {virtualDetails.verification_photo_urls.map((url) => (
+                                            <a key={url} href={url} target="_blank" rel="noreferrer">
+                                                <img src={url} alt="Virtual tour proof" />
+                                            </a>
+                                        ))}
+                                    </div>
+                                )}
+                                {virtualDetails.verification_video_url && (
+                                    <video className="alr-proof-video" src={virtualDetails.verification_video_url} controls />
+                                )}
+                                {virtualDetails.proof_notes && (
+                                    <p className="alr-proof-note">{virtualDetails.proof_notes}</p>
+                                )}
+                            </section>
+                        )}
 
                         <FeeBreakdownView
                             feeBreakdown={listing.fee_breakdown}

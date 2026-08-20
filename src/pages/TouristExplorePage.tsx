@@ -20,11 +20,12 @@ import {
 } from '../lib/destinations';
 import { calculatePricingFromProviderUnit } from '../lib/pricing';
 import { isProviderRole, normalizeRoleValue, type ListingType } from '../lib/platform';
+import { isVirtualTourRecord } from '../lib/virtualTours';
 import { onBookingSync } from '../lib/bookingSync';
 import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './tourist-explore-page.css';
 
-type ExploreFilter = 'all' | 'tours' | 'activities' | 'guides';
+type ExploreFilter = 'all' | 'live' | 'tours' | 'activities' | 'guides';
 type TouristMobileNavKey = 'home' | 'explore' | 'dashboard' | 'bookings' | 'profile';
 
 type ExploreCardRecord = PostRecord & {
@@ -33,6 +34,7 @@ type ExploreCardRecord = PostRecord & {
 
 const FILTERS: Array<{ id: ExploreFilter; label: string }> = [
   { id: 'all', label: 'All' },
+  { id: 'live', label: 'Live Tours' },
   { id: 'tours', label: 'Tours' },
   { id: 'activities', label: 'Activities' },
   { id: 'guides', label: 'Guides' },
@@ -132,6 +134,7 @@ const ExploreListingCard: React.FC<{
   const displayTitle = limitWords(title, 6);
   const subtitle = getPostSubtitle(post);
   const boosted = hasActiveBoost(post);
+  const isLiveTour = isVirtualTourRecord(post);
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -251,6 +254,7 @@ const ExploreListingCard: React.FC<{
           <div className="txp-card-top">
             <div className="txp-card-badges">
               {isBooked && <span className="txp-card-booked">Booked</span>}
+              {isLiveTour && <span className="txp-card-booked txp-card-booked--live">Live</span>}
               {boosted && (
                 <span className="txp-card-boosted" aria-label="Boosted listing" title="Boosted">
                   <ArrowUpRight size={15} />
@@ -315,6 +319,7 @@ export const TouristExplorePage: React.FC = () => {
 
   const activeFilter = useMemo<ExploreFilter>(() => {
     const tab = (searchParams.get('tab') || '').toLowerCase();
+    if (tab === 'live' || tab === 'virtual' || tab === 'virtual-tours') return 'live';
     if (tab === 'tours') return 'tours';
     if (tab === 'activities') return 'activities';
     if (tab === 'guides' || tab === 'events') return 'guides';
@@ -402,6 +407,7 @@ export const TouristExplorePage: React.FC = () => {
   }
 
   const filteredPosts = posts.filter((post) => {
+    if (activeFilter === 'live') return isVirtualTourRecord(post);
     if (activeFilter !== 'all' && post.exploreType !== activeFilter) return false;
     if (!deferredSearchQuery) return true;
 

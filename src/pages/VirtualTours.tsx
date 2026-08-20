@@ -24,10 +24,11 @@ import {
     type UnifiedBooking,
 } from '../lib/destinations';
 import { getRoleLabel, isProviderRole, resolveEffectiveAccountRole } from '../lib/platform';
+import { supabase } from '../lib/supabase';
+import { isVirtualTourRecord } from '../lib/virtualTours';
 import './virtual-tours.css';
 
 const FALLBACK_IMAGE = '/images/home4/forrest.jpg';
-const VIRTUAL_TAGS = ['virtual tour', 'live 360', '360', 'vr tour', 'ar tour', 'virtual', 'remote tour'];
 const JOINABLE_STATUSES = new Set(['confirmed', 'completed', 'accepted']);
 
 const getText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
@@ -50,31 +51,14 @@ const canJoinBooking = (booking: UnifiedBooking): boolean => (
     isPaidBooking(booking) && JOINABLE_STATUSES.has(String(booking.status || '').toLowerCase())
 );
 
-const isVirtualText = (value: string): boolean => {
-    const normalized = value.toLowerCase();
-    return VIRTUAL_TAGS.some((tag) => normalized.includes(tag));
-};
-
 const isVirtualTourListing = (post: PostRecord): boolean => {
-    const flagged = post.is_virtual_tour === true
-        || post.virtual_tour === true
-        || getText(post.experience_mode).toLowerCase() === 'virtual'
-        || getText(post.delivery_mode).toLowerCase() === 'virtual';
-
-    if (flagged) return true;
-
-    return isVirtualText([
-        post.sub_category,
-        post.category,
-        post.title,
-        post.name,
-        post.description,
-    ].map(getText).filter(Boolean).join(' '));
+    return isVirtualTourRecord(post);
 };
 
 const isVirtualTourBooking = (booking: UnifiedBooking, listing?: PostRecord): boolean => (
-    Boolean(listing && isVirtualTourListing(listing))
-    || isVirtualText([booking.listing_title, booking.listing_type].map(getText).filter(Boolean).join(' '))
+    booking.is_virtual_tour === true
+    || Boolean(listing && isVirtualTourListing(listing))
+    || ['virtual', '360', 'vr', 'ar'].some((tag) => [booking.listing_title, booking.listing_type].map(getText).filter(Boolean).join(' ').toLowerCase().includes(tag))
 );
 
 const dedupePosts = (posts: PostRecord[]): PostRecord[] => {
@@ -139,10 +123,6 @@ export const VirtualTours: React.FC = () => {
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [activeLiveBookingId, setActiveLiveBookingId] = useState<string | null>(bookingId || null);
-    const [cameraReady, setCameraReady] = useState(false);
-    const [cameraError, setCameraError] = useState<string | null>(null);
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
 
     const role = useMemo(() => {
         const profileRole = typeof profile?.role === 'string' ? profile.role : null;
@@ -158,48 +138,6 @@ export const VirtualTours: React.FC = () => {
     useEffect(() => {
         setActiveLiveBookingId(bookingId || null);
     }, [bookingId]);
-
-    const stopCamera = useCallback(() => {
-        streamRef.current?.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-        setCameraReady(false);
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-    }, []);
-
-    const startCamera = useCallback(async () => {
-        setCameraError(null);
-        if (streamRef.current) {
-            setCameraReady(true);
-            return;
-        }
-        if (!navigator.mediaDevices?.getUserMedia) {
-            setCameraError('Camera access is unavailable in this browser.');
-            return;
-        }
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
-                audio: true,
-            });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
-            setCameraReady(true);
-        } catch (error) {
-            setCameraError(error instanceof Error ? error.message : 'Camera permission was blocked.');
-        }
-    }, []);
-
-    useEffect(() => {
-        if (videoRef.current && streamRef.current) {
-            videoRef.current.srcObject = streamRef.current;
-        }
-    }, [activeLiveBookingId]);
-
-    useEffect(() => () => stopCamera(), [stopCamera]);
 
     const refreshData = useCallback(async () => {
         if (!user?.id) return;
@@ -295,7 +233,6 @@ export const VirtualTours: React.FC = () => {
 
     const goLiveForBooking = (booking: UnifiedBooking | null) => {
         setActiveLiveBookingId(booking?.id || 'instant');
-        if (providerAccount) void startCamera();
     };
 
     if (loading || profileLoading) return null;
@@ -330,11 +267,7 @@ export const VirtualTours: React.FC = () => {
                     <LiveRoom
                         booking={activeBooking}
                         providerAccount={providerAccount}
-                        cameraReady={cameraReady}
-                        cameraError={cameraError}
-                        videoRef={videoRef}
-                        onStartCamera={startCamera}
-                        onStopCamera={stopCamera}
+                        userId={user.id}
                     />
                 )}
 
@@ -367,61 +300,259 @@ export const VirtualTours: React.FC = () => {
 const LiveRoom: React.FC<{
     booking: UnifiedBooking | null;
     providerAccount: boolean;
-    cameraReady: boolean;
-    cameraError: string | null;
-    videoRef: React.RefObject<HTMLVideoElement | null>;
-    onStartCamera: () => void;
-    onStopCamera: () => void;
-}> = ({ booking, providerAccount, cameraReady, cameraError, videoRef, onStartCamera, onStopCamera }) => (
-    <section className="vto-room" aria-label="Live virtual tour room">
-        <div className="vto-room-video">
-            {providerAccount && (
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className={cameraReady ? 'is-live' : ''}
-                />
-            )}
-            {(!providerAccount || !cameraReady) && (
-                <div className="vto-room-placeholder">
-                    <RadioTower size={26} />
-                    <strong>{providerAccount ? 'Camera standby' : 'Room unlocked'}</strong>
-                    <span>{providerAccount ? 'Start camera when the tourist joins.' : 'The guide feed appears here when live.'}</span>
+    userId: string;
+}> = ({ booking, providerAccount, userId }) => {
+    const localVideoRef = useRef<HTMLVideoElement | null>(null);
+    const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+    const localStreamRef = useRef<MediaStream | null>(null);
+    const remoteStreamRef = useRef<MediaStream | null>(null);
+    const peerRef = useRef<RTCPeerConnection | null>(null);
+    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+    const [cameraReady, setCameraReady] = useState(false);
+    const [remoteReady, setRemoteReady] = useState(false);
+    const [cameraError, setCameraError] = useState<string | null>(null);
+    const [roomStatus, setRoomStatus] = useState('Connecting room');
+    const roomId = booking?.id || `instant-${userId}`;
+
+    const sendSignal = useCallback((event: string, payload: Record<string, unknown> = {}) => {
+        void channelRef.current?.send({
+            type: 'broadcast',
+            event,
+            payload: {
+                ...payload,
+                senderId: userId,
+                senderRole: providerAccount ? 'guide' : 'tourist',
+                roomId,
+            },
+        });
+    }, [providerAccount, roomId, userId]);
+
+    const getPeer = useCallback(() => {
+        if (peerRef.current) return peerRef.current;
+        const peer = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+        });
+        peer.onicecandidate = (event) => {
+            if (event.candidate) {
+                sendSignal('ice-candidate', { candidate: event.candidate.toJSON() });
+            }
+        };
+        peer.ontrack = (event) => {
+            const [stream] = event.streams;
+            const nextStream = stream || remoteStreamRef.current || new MediaStream();
+            if (!stream) nextStream.addTrack(event.track);
+            remoteStreamRef.current = nextStream;
+            if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = nextStream;
+            }
+            setRemoteReady(true);
+            setRoomStatus('Guide feed live');
+        };
+        peer.onconnectionstatechange = () => {
+            const state = peer.connectionState;
+            if (state === 'connected') setRoomStatus('Connected');
+            if (state === 'disconnected') setRoomStatus('Reconnecting');
+            if (state === 'failed') setRoomStatus('Connection failed. Rejoin the room.');
+        };
+        peerRef.current = peer;
+        return peer;
+    }, [sendSignal]);
+
+    const makeOffer = useCallback(async () => {
+        if (!providerAccount || !localStreamRef.current) return;
+        const peer = getPeer();
+        const offer = await peer.createOffer();
+        await peer.setLocalDescription(offer);
+        sendSignal('offer', { sdp: offer });
+        setRoomStatus('Live offer sent');
+    }, [getPeer, providerAccount, sendSignal]);
+
+    const stopCamera = useCallback(() => {
+        localStreamRef.current?.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
+        setCameraReady(false);
+        setRoomStatus(providerAccount ? 'Camera stopped' : 'Room connected');
+        sendSignal('guide-stopped');
+    }, [providerAccount, sendSignal]);
+
+    const startCamera = useCallback(async () => {
+        setCameraError(null);
+        if (!providerAccount) return;
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setCameraError('Camera access is unavailable in this browser.');
+            return;
+        }
+        if (localStreamRef.current) {
+            setCameraReady(true);
+            await makeOffer();
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: true,
+            });
+            localStreamRef.current = stream;
+            if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+            const peer = getPeer();
+            for (const track of stream.getTracks()) {
+                peer.addTrack(track, stream);
+            }
+            setCameraReady(true);
+            setRoomStatus('Camera live. Waiting for tourist connection.');
+            sendSignal('guide-ready');
+            await makeOffer();
+        } catch (error) {
+            setCameraError(error instanceof Error ? error.message : 'Camera permission was blocked.');
+        }
+    }, [getPeer, makeOffer, providerAccount, sendSignal]);
+
+    useEffect(() => {
+        const channel = supabase.channel(`virtual-tour:${roomId}`);
+        channelRef.current = channel;
+        channel
+            .on('broadcast', { event: 'viewer-ready' }, (message) => {
+                const payload = message.payload as { senderId?: string } | null;
+                if (payload?.senderId === userId) return;
+                if (providerAccount && localStreamRef.current) void makeOffer();
+            })
+            .on('broadcast', { event: 'guide-ready' }, (message) => {
+                const payload = message.payload as { senderId?: string } | null;
+                if (payload?.senderId === userId) return;
+                if (!providerAccount) setRoomStatus('Guide camera is live. Connecting feed.');
+            })
+            .on('broadcast', { event: 'guide-stopped' }, (message) => {
+                const payload = message.payload as { senderId?: string } | null;
+                if (payload?.senderId === userId) return;
+                if (!providerAccount) {
+                    setRemoteReady(false);
+                    setRoomStatus('Guide paused the camera');
+                }
+            })
+            .on('broadcast', { event: 'offer' }, (message) => {
+                void (async () => {
+                    const payload = message.payload as { senderId?: string; sdp?: RTCSessionDescriptionInit } | null;
+                    if (providerAccount || payload?.senderId === userId || !payload?.sdp) return;
+                    const peer = getPeer();
+                    await peer.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                    const answer = await peer.createAnswer();
+                    await peer.setLocalDescription(answer);
+                    sendSignal('answer', { sdp: answer });
+                    setRoomStatus('Connecting guide feed');
+                })();
+            })
+            .on('broadcast', { event: 'answer' }, (message) => {
+                void (async () => {
+                    const payload = message.payload as { senderId?: string; sdp?: RTCSessionDescriptionInit } | null;
+                    if (!providerAccount || payload?.senderId === userId || !payload?.sdp) return;
+                    const peer = getPeer();
+                    if (!peer.currentRemoteDescription) {
+                        await peer.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                    }
+                    setRoomStatus('Tourist connected');
+                })();
+            })
+            .on('broadcast', { event: 'ice-candidate' }, (message) => {
+                void (async () => {
+                    const payload = message.payload as { senderId?: string; candidate?: RTCIceCandidateInit } | null;
+                    if (payload?.senderId === userId || !payload?.candidate) return;
+                    try {
+                        await getPeer().addIceCandidate(new RTCIceCandidate(payload.candidate));
+                    } catch {
+                        // ICE can arrive before descriptions settle; the next candidate normally succeeds.
+                    }
+                })();
+            })
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    setRoomStatus(providerAccount ? 'Guide room ready' : 'Waiting for guide camera');
+                    sendSignal(providerAccount ? 'guide-room-open' : 'viewer-ready');
+                }
+            });
+
+        return () => {
+            channel.unsubscribe();
+            channelRef.current = null;
+            peerRef.current?.close();
+            peerRef.current = null;
+            localStreamRef.current?.getTracks().forEach((track) => track.stop());
+            localStreamRef.current = null;
+            remoteStreamRef.current = null;
+        };
+    }, [getPeer, makeOffer, providerAccount, roomId, sendSignal, userId]);
+
+    useEffect(() => {
+        if (localVideoRef.current && localStreamRef.current) {
+            localVideoRef.current.srcObject = localStreamRef.current;
+        }
+        if (remoteVideoRef.current && remoteStreamRef.current) {
+            remoteVideoRef.current.srcObject = remoteStreamRef.current;
+        }
+    }, [roomId]);
+
+    return (
+        <section className="vto-room" aria-label="Live virtual tour room">
+            <div className="vto-room-video">
+                {providerAccount ? (
+                    <video
+                        ref={localVideoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className={cameraReady ? 'is-live' : ''}
+                    />
+                ) : (
+                    <video
+                        ref={remoteVideoRef}
+                        autoPlay
+                        playsInline
+                        className={remoteReady ? 'is-live' : ''}
+                    />
+                )}
+                {(providerAccount ? !cameraReady : !remoteReady) && (
+                    <div className="vto-room-placeholder">
+                        <RadioTower size={26} />
+                        <strong>{providerAccount ? 'Camera standby' : 'Room unlocked'}</strong>
+                        <span>{providerAccount ? 'Start the phone or 360 camera when the tourist joins.' : 'The guide feed appears here when live.'}</span>
+                    </div>
+                )}
+            </div>
+            <div className="vto-room-panel">
+                <p className="vto-panel-kicker">{booking ? formatDateTime(booking.booking_date || booking.created_at) : 'Instant live'}</p>
+                <h2>{booking ? titleForBooking(booking) : 'Open virtual room'}</h2>
+                {booking && (
+                    <div className="vto-room-facts">
+                        <span>{formatMoney(booking.total_price)}</span>
+                        <span>{booking.number_of_people || 1} guest{booking.number_of_people === 1 ? '' : 's'}</span>
+                        <span>{booking.payment_status || 'payment pending'}</span>
+                    </div>
+                )}
+                <div className="vto-room-status">
+                    <span className={providerAccount && cameraReady || !providerAccount && remoteReady ? 'is-live' : ''} />
+                    {roomStatus}
                 </div>
-            )}
-        </div>
-        <div className="vto-room-panel">
-            <p className="vto-panel-kicker">{booking ? formatDateTime(booking.booking_date || booking.created_at) : 'Instant live'}</p>
-            <h2>{booking ? titleForBooking(booking) : 'Open virtual room'}</h2>
-            {booking && (
-                <div className="vto-room-facts">
-                    <span>{formatMoney(booking.total_price)}</span>
-                    <span>{booking.number_of_people || 1} guest{booking.number_of_people === 1 ? '' : 's'}</span>
-                    <span>{booking.payment_status || 'payment pending'}</span>
-                </div>
-            )}
-            {providerAccount ? (
-                <div className="vto-room-actions">
-                    <button type="button" className="vto-primary-btn" onClick={onStartCamera}>
-                        <Video size={16} /> {cameraReady ? 'Camera Live' : 'Start Camera'}
-                    </button>
-                    {cameraReady && (
-                        <button type="button" className="vto-secondary-btn" onClick={onStopCamera}>
-                            <XCircle size={16} /> Stop
+                {providerAccount ? (
+                    <div className="vto-room-actions">
+                        <button type="button" className="vto-primary-btn" onClick={() => void startCamera()}>
+                            <Video size={16} /> {cameraReady ? 'Restart Camera' : 'Start Camera'}
                         </button>
-                    )}
-                </div>
-            ) : (
-                <Link className="vto-primary-btn" to="/messages">
-                    <Headphones size={16} /> Open Chat
-                </Link>
-            )}
-            {cameraError && <p className="vto-camera-error">{cameraError}</p>}
-        </div>
-    </section>
-);
+                        {cameraReady && (
+                            <button type="button" className="vto-secondary-btn" onClick={stopCamera}>
+                                <XCircle size={16} /> Stop
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <Link className="vto-primary-btn" to="/messages">
+                        <Headphones size={16} /> Open Chat
+                    </Link>
+                )}
+                {cameraError && <p className="vto-camera-error">{cameraError}</p>}
+            </div>
+        </section>
+    );
+};
 
 const ProviderLiveTourHub: React.FC<{
     dataLoading: boolean;

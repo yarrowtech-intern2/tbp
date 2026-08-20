@@ -37,6 +37,7 @@ import { isProviderRole, normalizeRoleValue } from '../lib/platform';
 import { onBookingSync } from '../lib/bookingSync';
 import { DEFAULT_HERO_MESSAGES, getDynamicHeroMessage, getPublicAppContent, type HeroMessagesContent } from '../lib/appContent';
 import { getListingImages } from '../lib/listingImages';
+import { isVirtualTourRecord } from '../lib/virtualTours';
 import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './dashboard-home.css';
 import '../components/listing-card.css';
@@ -296,6 +297,7 @@ const ListingCard: React.FC<{
   const listingTypeValue = toListingTypeValue(type);
   const priceLabel = formatPrice(post.price);
   const boosted = hasActiveBoost(post);
+  const isLiveTour = isVirtualTourRecord(post);
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingTypePath}/${post.id}` : '';
   const bookingCtaLabel = isBooked ? 'BOOK AGAIN' : 'BOOK';
 
@@ -416,6 +418,7 @@ const ListingCard: React.FC<{
         <div className="listing-card-media-top">
           <div className="listing-card-badge-cluster">
             {isBooked && <span className="listing-card-booked-pill">Booked</span>}
+            {isLiveTour && <span className="listing-card-booked-pill listing-card-booked-pill--live">Live</span>}
             {boosted && (
               <span className="listing-card-boost-badge" aria-label="Boosted listing" title="Boosted">
                 <ArrowUpRight size={15} />
@@ -804,6 +807,10 @@ export const DashboardHome: React.FC = () => {
     () => filterPostsByQuery(eventPosts, searchQueryNormalized),
     [eventPosts, searchQueryNormalized]
   );
+  const filteredLivePosts = useMemo(
+    () => filterPostsByQuery(dedupePosts([...tourPosts, ...activityPosts, ...eventPosts]).filter(isVirtualTourRecord), searchQueryNormalized),
+    [activityPosts, eventPosts, searchQueryNormalized, tourPosts],
+  );
 
   const recommendedPosts = useMemo(() => {
     const filteredSuggested = filterPostsByQuery(suggestedPosts, searchQueryNormalized);
@@ -1091,6 +1098,29 @@ export const DashboardHome: React.FC = () => {
                 activeTab={activeTab}
                 onToggleFilter={handleTab}
               />
+            )}
+
+            {showAll && filteredLivePosts.length > 0 && (
+              <Reveal delay={180}>
+                <section className="dh-listing-section">
+                  <div className="dh-section-top">
+                    <div className="dh-section-heading">
+                      <p className="dh-section-kicker">Live from location</p>
+                      <h2 className="dh-listing-section-title">Live Virtual Tours</h2>
+                      <p className="dh-listing-section-sub">Book paid AR/VR slots with local guides and join from home.</p>
+                    </div>
+                    <Link to="/virtual-tours" className="dh-section-link">
+                      Open Live Tours <ArrowRight size={15} />
+                    </Link>
+                  </div>
+                  <CarouselRow
+                    posts={filteredLivePosts}
+                    bookedLookup={bookedLookup}
+                    reviewSummaryByPostId={reviewSummaryByPostId}
+                    indexOffset={sectionIndexOffset++}
+                  />
+                </section>
+              </Reveal>
             )}
 
             {showActivities && (

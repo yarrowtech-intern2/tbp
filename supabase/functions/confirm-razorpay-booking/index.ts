@@ -56,6 +56,7 @@ interface BookingPayload {
     platform_fee_amount?: number;
     provider_payout_amount?: number;
     booking_date?: string | null;
+    is_virtual_tour?: boolean;
 }
 
 interface PaymentPayload {
@@ -456,10 +457,14 @@ const createPaymentNotifications = async (args: {
     travelersCount: number;
     totalPrice: number;
     bookingDate?: string | null;
+    isVirtualTour?: boolean;
     travelerName: string;
     travelerEmail: string;
     travelerPhone: string;
 }) => {
+    const touristRoute = args.isVirtualTour ? `/virtual-tours/live/${args.bookingId}` : '/dashboard/tourist?section=bookings';
+    const providerRoute = args.isVirtualTour ? `/virtual-tours/live/${args.bookingId}` : '/dashboard/provider?section=bookings';
+    const priorityMetadata = args.isVirtualTour ? { priority: 'live_tour' } : {};
     const providerBody = [
         `${args.travelerName} booked ${args.listingTitle}.`,
         `Travelers: ${args.travelersCount}.`,
@@ -474,15 +479,18 @@ const createPaymentNotifications = async (args: {
             user_id: args.travelerId,
             actor_user_id: args.travelerId,
             type: 'booking_created',
-            title: 'Booking request submitted',
-            body: `Payment received for ${args.listingTitle}. Waiting for provider confirmation.`,
+            title: args.isVirtualTour ? 'Live tour request submitted' : 'Booking request submitted',
+            body: args.isVirtualTour
+                ? `Payment received for ${args.listingTitle}. Waiting for the local guide to accept your live slot.`
+                : `Payment received for ${args.listingTitle}. Waiting for provider confirmation.`,
             metadata: {
                 booking_id: args.bookingId,
                 listing_id: args.listingId,
-                route: '/dashboard/tourist?section=bookings',
+                route: touristRoute,
                 traveler_name: args.travelerName,
                 traveler_email: args.travelerEmail,
                 traveler_phone: args.travelerPhone,
+                ...priorityMetadata,
             },
             is_read: false,
             read_at: null,
@@ -496,7 +504,8 @@ const createPaymentNotifications = async (args: {
                 metadata: {
                     booking_id: args.bookingId,
                     listing_id: args.listingId,
-                    route: '/dashboard/tourist?section=bookings',
+                    route: touristRoute,
+                    ...priorityMetadata,
                 },
             is_read: false,
             read_at: null,
@@ -509,17 +518,18 @@ const createPaymentNotifications = async (args: {
                 user_id: args.providerId,
                 actor_user_id: args.travelerId,
                 type: 'booking_created',
-                title: 'New booking received',
+                title: args.isVirtualTour ? 'Priority live tour booking' : 'New booking received',
                 body: providerBody,
                 metadata: {
                     booking_id: args.bookingId,
                     listing_id: args.listingId,
-                    route: '/dashboard/provider?section=bookings',
+                    route: providerRoute,
                     traveler_name: args.travelerName,
                     traveler_email: args.travelerEmail,
                     traveler_phone: args.travelerPhone,
                     amount_paid: args.totalPrice,
                     booking_date: args.bookingDate || null,
+                    ...priorityMetadata,
                 },
                 is_read: false,
                 read_at: null,
@@ -533,10 +543,11 @@ const createPaymentNotifications = async (args: {
                 metadata: {
                     booking_id: args.bookingId,
                     listing_id: args.listingId,
-                    route: '/dashboard/provider?section=bookings',
+                    route: providerRoute,
                     traveler_name: args.travelerName,
                     traveler_email: args.travelerEmail,
                     traveler_phone: args.travelerPhone,
+                    ...priorityMetadata,
                 },
                 is_read: false,
                 read_at: null,
@@ -820,6 +831,7 @@ Deno.serve(async (req) => {
         let providerPayoutAmount = toOptionalPositiveNumber(booking?.provider_payout_amount);
         let bookingDateRaw = normalizeLooseString(booking?.booking_date);
         let bookingDate = bookingDateRaw || null;
+        let isVirtualTour = booking?.is_virtual_tour === true;
 
         const hydrateFromPending = await admin
             .from('bookings')
@@ -846,6 +858,7 @@ Deno.serve(async (req) => {
                 bookingDateRaw = normalizeLooseString(pending.booking_date);
                 bookingDate = bookingDateRaw || null;
             }
+            isVirtualTour = isVirtualTour || pending.is_virtual_tour === true;
             if (!booking?.number_of_people && pending.number_of_people !== undefined && pending.number_of_people !== null) {
                 numberOfPeople = normalizePeopleCount(pending.number_of_people);
             }
@@ -881,6 +894,8 @@ Deno.serve(async (req) => {
                     bookingDateRaw = normalizeLooseString(notes.booking_date);
                     bookingDate = bookingDateRaw || null;
                 }
+                const noteVirtual = normalizeLooseString(notes.is_virtual_tour).toLowerCase();
+                isVirtualTour = isVirtualTour || noteVirtual === 'true' || noteVirtual === '1';
                 if (!booking?.number_of_people) {
                     numberOfPeople = normalizePeopleCount(notes.number_of_people);
                 }
@@ -1000,6 +1015,7 @@ Deno.serve(async (req) => {
             user_name: travelerName,
             user_email: travelerEmail || null,
             user_phone: travelerPhone || null,
+            is_virtual_tour: isVirtualTour,
         };
 
         const pendingMatch = await admin
@@ -1097,6 +1113,7 @@ Deno.serve(async (req) => {
                     travelersCount: numberOfPeople,
                     totalPrice,
                     bookingDate,
+                    isVirtualTour,
                     travelerName,
                     travelerEmail,
                     travelerPhone,
@@ -1200,11 +1217,12 @@ Deno.serve(async (req) => {
                 listingId,
                 listingTitle,
                 travelersCount: numberOfPeople,
-                totalPrice,
-                bookingDate,
-                travelerName,
-                travelerEmail,
-                travelerPhone,
+                    totalPrice,
+                    bookingDate,
+                    isVirtualTour,
+                    travelerName,
+                    travelerEmail,
+                    travelerPhone,
             });
             const emailDelivery = await safeSendBookingEmails({
                 travelerEmail,
@@ -1274,6 +1292,7 @@ Deno.serve(async (req) => {
             travelersCount: numberOfPeople,
             totalPrice,
             bookingDate,
+            isVirtualTour,
             travelerName,
             travelerEmail,
             travelerPhone,

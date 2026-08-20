@@ -190,6 +190,12 @@
   letter-spacing: 0;
 }
 
+.listing-card-booked-pill--live {
+  border-color: rgba(160, 87, 16, 0.62);
+  background: rgba(244, 142, 42, 0.9);
+  color: #271407;
+}
+
 .listing-card-boost-badge {
   justify-content: center;
   width: 30px;

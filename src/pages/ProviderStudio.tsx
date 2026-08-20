@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Calendar,
+    Camera,
     CheckCircle2,
     Clock,
     Compass,
@@ -12,6 +13,7 @@ import {
     MapPin,
     Plus,
     ReceiptText,
+    RadioTower,
     ShieldAlert,
     Sparkles,
     Star,
@@ -19,6 +21,9 @@ import {
     Trash2,
     Type,
     Upload,
+    Users,
+    Video,
+    Wifi,
     Zap,
 } from 'lucide-react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -41,7 +46,7 @@ import {
 } from '../lib/pricing';
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
-import { uploadCloudinaryImage } from '../lib/cloudinaryUpload';
+import { uploadCloudinaryImage, uploadCloudinaryVideo } from '../lib/cloudinaryUpload';
 import {
     LISTING_LABELS,
     ROLE_SIGNUP_CONFIG,
@@ -51,6 +56,17 @@ import {
     type ListingType,
     type UserRole,
 } from '../lib/platform';
+import {
+    CAMERA_TYPE_LABELS,
+    DEFAULT_VIRTUAL_TOUR_DETAILS,
+    LOCAL_GUIDE_VIRTUAL_SUBCATEGORY,
+    buildVirtualTourDescription,
+    joinLines,
+    normalizeVirtualTourDetails,
+    splitLines,
+    type VirtualTourCameraType,
+    type VirtualTourDetails,
+} from '../lib/virtualTours';
 import './provider-studio.css';
 
 const MAX_LISTING_IMAGE_MB = 8;
@@ -58,7 +74,7 @@ const MIN_LISTING_IMAGES = 3;
 const MAX_LISTING_IMAGES = 10;
 
 const PRESET_FEE_ITEMS = [
-    'Base package fee',
+    'Base fee',
     'Transport',
     'Meals',
     'Accommodation',
@@ -68,7 +84,7 @@ const PRESET_FEE_ITEMS = [
 
 const FEE_BASIS_OPTIONS: Array<{ value: ListingFeeBreakdownBasis; label: string }> = [
     { value: 'per_person', label: 'Per person' },
-    { value: 'per_package', label: 'Per package' },
+    { value: 'per_package', label: 'Per booking' },
 ];
 
 const FEE_STATUS_OPTIONS: Array<{ value: ListingFeeBreakdownStatus; label: string }> = [
@@ -193,8 +209,6 @@ const EMPTY_FORM = (type: ListingType): ListingInput => ({
     status: 'pending',
 });
 
-const LOCAL_GUIDE_VIRTUAL_SUBCATEGORY = 'Live 360 Virtual Tour';
-
 const resolveStudioRole = (
     profileRole?: string | null,
     authMetadataRole?: string | null,
@@ -214,6 +228,8 @@ const PROVIDER_STUDIO_DRAFT_STORAGE_PREFIX = 'tbp:provider-studio-draft:v1:';
 
 type ProviderStudioDraft = {
     form: ListingInput;
+    virtualDetails?: VirtualTourDetails;
+    proofPhotoInput?: string;
     galleryInput: string;
     acceptTerms: boolean;
     acceptAgreement: boolean;
@@ -244,6 +260,8 @@ const readProviderStudioDraft = (userId: string, allowedTypes: ListingType[]): P
                     PLATFORM_FEE_RATE,
                 ),
             },
+            virtualDetails: normalizeVirtualTourDetails(parsed.virtualDetails),
+            proofPhotoInput: typeof parsed.proofPhotoInput === 'string' ? parsed.proofPhotoInput : '',
             galleryInput: typeof parsed.galleryInput === 'string' ? parsed.galleryInput : '',
             acceptTerms: parsed.acceptTerms === true,
             acceptAgreement: parsed.acceptAgreement === true,
@@ -350,18 +368,25 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [uploadingProofPhoto, setUploadingProofPhoto] = useState(false);
+    const [uploadingProofVideo, setUploadingProofVideo] = useState(false);
     const [editingListingId, setEditingListingId] = useState<string | null>(null);
     const [form, setForm] = useState<ListingInput>(EMPTY_FORM('tour'));
+    const [virtualDetails, setVirtualDetails] = useState<VirtualTourDetails>(DEFAULT_VIRTUAL_TOUR_DETAILS);
     const [platformFeeRate, setPlatformFeeRate] = useState(PLATFORM_FEE_RATE);
     const [imgError, setImgError] = useState(false);
     const [galleryInput, setGalleryInput] = useState('');
+    const [proofPhotoInput, setProofPhotoInput] = useState('');
     const [galleryError, setGalleryError] = useState<string | null>(null);
+    const [virtualDetailsError, setVirtualDetailsError] = useState<string | null>(null);
     const [feeBreakdownError, setFeeBreakdownError] = useState<string | null>(null);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptAgreement, setAcceptAgreement] = useState(false);
     const [consentError, setConsentError] = useState<string | null>(null);
     const [submissionModal, setSubmissionModal] = useState<SubmissionModalState | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const proofPhotoInputRef = useRef<HTMLInputElement>(null);
+    const proofVideoInputRef = useRef<HTMLInputElement>(null);
     const draftRestoredRef = useRef(false);
 
     const currentUserId = user?.id || null;
@@ -416,7 +441,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setFeeBreakdownError(null);
         setConsentError(null);
         setForm(draft.form);
+        setVirtualDetails(draft.virtualDetails || DEFAULT_VIRTUAL_TOUR_DETAILS);
         setGalleryInput(draft.galleryInput);
+        setProofPhotoInput(draft.proofPhotoInput || '');
         setAcceptTerms(draft.acceptTerms);
         setAcceptAgreement(draft.acceptAgreement);
     }, [allowedTypes, currentUserId]);
@@ -425,21 +452,26 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         if (!currentUserId || !draftRestoredRef.current || editingListingId) return;
         writeProviderStudioDraft(currentUserId, {
             form,
+            virtualDetails,
+            proofPhotoInput,
             galleryInput,
             acceptTerms,
             acceptAgreement,
         });
-    }, [acceptAgreement, acceptTerms, currentUserId, editingListingId, form, galleryInput]);
+    }, [acceptAgreement, acceptTerms, currentUserId, editingListingId, form, galleryInput, proofPhotoInput, virtualDetails]);
 
     const resetForm = () => {
         setEditingListingId(null);
         setImgError(false);
         setGalleryInput('');
+        setProofPhotoInput('');
         setGalleryError(null);
+        setVirtualDetailsError(null);
         setFeeBreakdownError(null);
         setAcceptTerms(false);
         setAcceptAgreement(false);
         setConsentError(null);
+        setVirtualDetails(DEFAULT_VIRTUAL_TOUR_DETAILS);
         setForm(getDefaultListingForm(allowedTypes[0] || 'tour', studioRole));
         if (currentUserId) clearProviderStudioDraft(currentUserId);
     };
@@ -456,7 +488,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setEditingListingId(listing.id);
         setImgError(false);
         setGalleryInput('');
+        setProofPhotoInput('');
         setGalleryError(null);
+        setVirtualDetailsError(null);
         setFeeBreakdownError(null);
         setAcceptTerms(false);
         setAcceptAgreement(false);
@@ -485,6 +519,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             starts_at: listing.starts_at || '',
             status: (listing.status as ListingInput['status']) || 'pending',
         });
+        setVirtualDetails(normalizeVirtualTourDetails(listing.virtual_tour_details));
     }, [allowedTypes, currentUserId, localGuideStudio, platformFeeRate]);
 
     useEffect(() => {
@@ -647,6 +682,29 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setGalleryError(null);
     }, []);
 
+    const updateVirtualDetails = useCallback((patch: Partial<VirtualTourDetails>) => {
+        setVirtualDetails((current) => normalizeVirtualTourDetails({ ...current, ...patch }));
+        setVirtualDetailsError(null);
+    }, []);
+
+    const addProofPhotoUrl = useCallback((url: string) => {
+        const normalized = url.trim();
+        if (!normalized) return;
+        updateVirtualDetails({
+            verification_photo_urls: normalizeImageList([
+                ...virtualDetails.verification_photo_urls,
+                normalized,
+            ]),
+        });
+        setProofPhotoInput('');
+    }, [updateVirtualDetails, virtualDetails.verification_photo_urls]);
+
+    const removeProofPhotoUrl = useCallback((url: string) => {
+        updateVirtualDetails({
+            verification_photo_urls: virtualDetails.verification_photo_urls.filter((item) => item !== url),
+        });
+    }, [updateVirtualDetails, virtualDetails.verification_photo_urls]);
+
     if (!user || !isProvider) {
         if (embedded) return null;
         return <Navigate to="/dashboard" replace />;
@@ -654,7 +712,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!canAccessStudio || uploadingImage) return;
+        if (!canAccessStudio || uploadingImage || uploadingProofPhoto || uploadingProofVideo) return;
         const wasEditing = Boolean(editingListingId);
         const submittedType = form.type;
         const submittedTitle = form.title.trim() || `Untitled ${getListingSingularCopy(form.type, studioRole)}`;
@@ -700,10 +758,38 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             setFeeBreakdownError('Add at least one included fee item before posting.');
             return;
         }
+        const submittedVirtualDetails = normalizeVirtualTourDetails(virtualDetails);
+        if (localGuideStudio) {
+            if (!form.location.trim() || !submittedVirtualDetails.spot_location.trim()) {
+                setVirtualDetailsError('Add the live-tour spot and listing location.');
+                return;
+            }
+            if (submittedVirtualDetails.places_shown.length === 0) {
+                setVirtualDetailsError('Add at least one place the guide will show live.');
+                return;
+            }
+            if (submittedVirtualDetails.available_windows.length === 0) {
+                setVirtualDetailsError('Add at least one available timing window.');
+                return;
+            }
+            if (submittedVirtualDetails.included_items.length === 0) {
+                setVirtualDetailsError('Add what is included in the live virtual slot.');
+                return;
+            }
+            if (!submittedVirtualDetails.camera_notes.trim() || !submittedVirtualDetails.network_plan.trim()) {
+                setVirtualDetailsError('Add camera setup and network backup details.');
+                return;
+            }
+            if (submittedVirtualDetails.verification_photo_urls.length === 0 || !submittedVirtualDetails.verification_video_url.trim()) {
+                setVirtualDetailsError('Upload camera/location proof photos and one short live proof video for admin review.');
+                return;
+            }
+        }
         const submissionPricing = calculatePricingFromFeeBreakdown(submissionFeeBreakdown, 1, platformFeeRate);
         setConsentError(null);
         setGalleryError(null);
         setFeeBreakdownError(null);
+        setVirtualDetailsError(null);
         setSaving(true);
         try {
             await createOrUpdateListing({
@@ -717,10 +803,17 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 gallery_images: normalizedGallery,
                 sub_category: submittedSubcategory,
                 fee_breakdown: submissionFeeBreakdown,
+                is_virtual_tour: localGuideStudio,
+                virtual_tour_details: localGuideStudio ? submittedVirtualDetails : null,
+                delivery_mode: localGuideStudio ? 'virtual_live' : null,
+                experience_mode: localGuideStudio ? 'virtual' : null,
                 status: 'pending',
                 rejection_reason: null,
                 price: submissionPricing.provider_subtotal,
                 starts_at: form.starts_at || null,
+                description: localGuideStudio
+                    ? buildVirtualTourDescription(form.description, submittedVirtualDetails)
+                    : form.description,
             });
             await loadListings();
             resetForm();
@@ -754,6 +847,24 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             folder: `${user.id}/listings`,
             fileNamePrefix: `listing-${safeType}`,
             tags: ['tbp', 'listing', safeType],
+        });
+    };
+
+    const uploadProofPhoto = async (file: File): Promise<string> => {
+        if (!user) throw new Error('You must be logged in to upload proof photos.');
+        return uploadCloudinaryImage(file, {
+            folder: `${user.id}/virtual-tour-proof`,
+            fileNamePrefix: 'proof-photo',
+            tags: ['tbp', 'virtual-tour', 'proof-photo'],
+        });
+    };
+
+    const uploadProofVideo = async (file: File): Promise<string> => {
+        if (!user) throw new Error('You must be logged in to upload a proof video.');
+        return uploadCloudinaryVideo(file, {
+            folder: `${user.id}/virtual-tour-proof`,
+            fileNamePrefix: 'proof-video',
+            tags: ['tbp', 'virtual-tour', 'proof-video'],
         });
     };
 
@@ -806,6 +917,52 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             }
         } finally {
             setUploadingImage(false);
+        }
+    };
+
+    const handleProofPhotoUpload = async (files: File[]) => {
+        if (!canAccessStudio || !user || files.length === 0) return;
+        const selectedFiles = files.filter(Boolean).slice(0, 6);
+        const invalidFile = selectedFiles.find((file) => !file.type.startsWith('image/'));
+        if (invalidFile) {
+            setVirtualDetailsError('Proof photos must be image files.');
+            return;
+        }
+        setUploadingProofPhoto(true);
+        setVirtualDetailsError(null);
+        try {
+            const uploadedUrls: string[] = [];
+            for (const file of selectedFiles) {
+                uploadedUrls.push(await uploadProofPhoto(file));
+            }
+            updateVirtualDetails({
+                verification_photo_urls: normalizeImageList([
+                    ...virtualDetails.verification_photo_urls,
+                    ...uploadedUrls,
+                ]),
+            });
+        } catch (error) {
+            setVirtualDetailsError(error instanceof Error ? error.message : 'Proof photo upload failed.');
+        } finally {
+            setUploadingProofPhoto(false);
+        }
+    };
+
+    const handleProofVideoUpload = async (file: File) => {
+        if (!canAccessStudio || !user) return;
+        if (!file.type.startsWith('video/')) {
+            setVirtualDetailsError('Proof video must be a video file.');
+            return;
+        }
+        setUploadingProofVideo(true);
+        setVirtualDetailsError(null);
+        try {
+            const uploadedUrl = await uploadProofVideo(file);
+            updateVirtualDetails({ verification_video_url: uploadedUrl });
+        } catch (error) {
+            setVirtualDetailsError(error instanceof Error ? error.message : 'Proof video upload failed.');
+        } finally {
+            setUploadingProofVideo(false);
         }
     };
 
@@ -973,6 +1130,271 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     />
                                 </label>
                             </div>
+
+                            {localGuideStudio && (
+                                <section className="ps-live-details" aria-label="Live virtual tour details">
+                                    <div className="ps-live-details-head">
+                                        <span className="ps-field-label"><RadioTower size={13} /> Live tour details</span>
+                                        <span>{virtualDetails.duration_minutes} min</span>
+                                    </div>
+
+                                    <div className="ps-two-up">
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><MapPin size={13} /> Live spot</span>
+                                            <input
+                                                className="ps-input"
+                                                value={virtualDetails.spot_location}
+                                                onChange={(event) => updateVirtualDetails({ spot_location: event.target.value })}
+                                                placeholder="Exact area where the live tour happens"
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Clock size={13} /> Duration minutes</span>
+                                            <input
+                                                className="ps-input"
+                                                type="number"
+                                                min="15"
+                                                step="5"
+                                                value={virtualDetails.duration_minutes}
+                                                onChange={(event) => updateVirtualDetails({ duration_minutes: Number(event.target.value) })}
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="ps-two-up">
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Calendar size={13} /> Timing windows</span>
+                                            <textarea
+                                                className="ps-textarea ps-textarea--compact"
+                                                value={joinLines(virtualDetails.available_windows)}
+                                                onChange={(event) => updateVirtualDetails({ available_windows: splitLines(event.target.value) })}
+                                                placeholder="Mon-Fri 8 AM-10 AM&#10;Saturday golden hour"
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Compass size={13} /> Places shown</span>
+                                            <textarea
+                                                className="ps-textarea ps-textarea--compact"
+                                                value={joinLines(virtualDetails.places_shown)}
+                                                onChange={(event) => updateVirtualDetails({ places_shown: splitLines(event.target.value) })}
+                                                placeholder="Main gate&#10;Viewpoint&#10;Local market lane"
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="ps-two-up">
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Type size={13} /> Included</span>
+                                            <textarea
+                                                className="ps-textarea ps-textarea--compact"
+                                                value={joinLines(virtualDetails.included_items)}
+                                                onChange={(event) => updateVirtualDetails({ included_items: splitLines(event.target.value) })}
+                                                placeholder="Live narration&#10;Q&A&#10;Photo stops"
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Type size={13} /> Not included</span>
+                                            <textarea
+                                                className="ps-textarea ps-textarea--compact"
+                                                value={joinLines(virtualDetails.excluded_items)}
+                                                onChange={(event) => updateVirtualDetails({ excluded_items: splitLines(event.target.value) })}
+                                                placeholder="Physical entry ticket&#10;Recorded copy"
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="ps-two-up">
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Type size={13} /> Languages</span>
+                                            <input
+                                                className="ps-input"
+                                                value={virtualDetails.languages.join(', ')}
+                                                onChange={(event) => updateVirtualDetails({ languages: splitLines(event.target.value) })}
+                                                placeholder="English, Hindi, Bengali"
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Camera size={13} /> Camera type</span>
+                                            <select
+                                                className="ps-select"
+                                                value={virtualDetails.camera_type}
+                                                onChange={(event) => updateVirtualDetails({ camera_type: event.target.value as VirtualTourCameraType })}
+                                                disabled={!canAccessStudio}
+                                            >
+                                                {(Object.entries(CAMERA_TYPE_LABELS) as Array<[VirtualTourCameraType, string]>).map(([value, label]) => (
+                                                    <option key={value} value={value}>{label}</option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    <div className="ps-two-up">
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Camera size={13} /> Camera setup</span>
+                                            <textarea
+                                                className="ps-textarea ps-textarea--compact"
+                                                value={virtualDetails.camera_notes}
+                                                onChange={(event) => updateVirtualDetails({ camera_notes: event.target.value })}
+                                                placeholder="Phone/360 camera, stabilizer, audio mic, backup device"
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Wifi size={13} /> Network backup</span>
+                                            <textarea
+                                                className="ps-textarea ps-textarea--compact"
+                                                value={virtualDetails.network_plan}
+                                                onChange={(event) => updateVirtualDetails({ network_plan: event.target.value })}
+                                                placeholder="Primary 5G SIM, backup hotspot, route signal notes"
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="ps-two-up">
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Users size={13} /> Max guests</span>
+                                            <input
+                                                className="ps-input"
+                                                type="number"
+                                                min="1"
+                                                max="25"
+                                                value={virtualDetails.max_guests}
+                                                onChange={(event) => updateVirtualDetails({ max_guests: Number(event.target.value) })}
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Type size={13} /> Tourist requirements</span>
+                                            <input
+                                                className="ps-input"
+                                                value={virtualDetails.tourist_requirements}
+                                                onChange={(event) => updateVirtualDetails({ tourist_requirements: event.target.value })}
+                                                placeholder="Stable internet, headphones, browser camera optional"
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </label>
+                                    </div>
+
+                                    <div className="ps-proof-block">
+                                        <div className="ps-live-details-head">
+                                            <span className="ps-field-label"><ShieldAlert size={13} /> Admin proof</span>
+                                            <span>{virtualDetails.verification_photo_urls.length} photos</span>
+                                        </div>
+                                        <div className="ps-image-upload-row">
+                                            <button
+                                                type="button"
+                                                className="ps-upload-btn"
+                                                onClick={() => proofPhotoInputRef.current?.click()}
+                                                disabled={!canAccessStudio || uploadingProofPhoto}
+                                            >
+                                                {uploadingProofPhoto ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                                                Proof photos
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="ps-upload-btn"
+                                                onClick={() => proofVideoInputRef.current?.click()}
+                                                disabled={!canAccessStudio || uploadingProofVideo}
+                                            >
+                                                {uploadingProofVideo ? <Loader2 className="animate-spin" size={14} /> : <Video size={14} />}
+                                                Proof video
+                                            </button>
+                                            <span className="ps-upload-hint">Upload camera/location photos and one short live video for admin approval.</span>
+                                        </div>
+                                        <input
+                                            ref={proofPhotoInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            className="ps-file-input"
+                                            onChange={(event) => {
+                                                const files = Array.from(event.target.files || []);
+                                                if (files.length > 0) void handleProofPhotoUpload(files);
+                                                event.target.value = '';
+                                            }}
+                                            disabled={!canAccessStudio || uploadingProofPhoto}
+                                        />
+                                        <input
+                                            ref={proofVideoInputRef}
+                                            type="file"
+                                            accept="video/*"
+                                            className="ps-file-input"
+                                            onChange={(event) => {
+                                                const file = event.target.files?.[0];
+                                                if (file) void handleProofVideoUpload(file);
+                                                event.target.value = '';
+                                            }}
+                                            disabled={!canAccessStudio || uploadingProofVideo}
+                                        />
+                                        <div className="ps-gallery-add-row">
+                                            <input
+                                                className="ps-input"
+                                                value={proofPhotoInput}
+                                                onChange={(event) => setProofPhotoInput(event.target.value)}
+                                                placeholder="Paste proof photo URL"
+                                                disabled={!canAccessStudio}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="ps-upload-btn"
+                                                onClick={() => addProofPhotoUrl(proofPhotoInput)}
+                                                disabled={!canAccessStudio || !proofPhotoInput.trim()}
+                                            >
+                                                Add proof URL
+                                            </button>
+                                        </div>
+                                        {virtualDetails.verification_photo_urls.length > 0 && (
+                                            <div className="ps-proof-grid">
+                                                {virtualDetails.verification_photo_urls.map((url) => (
+                                                    <div key={url} className="ps-proof-card">
+                                                        <img src={url} alt="Virtual tour proof" />
+                                                        <button type="button" onClick={() => removeProofPhotoUrl(url)} disabled={!canAccessStudio}>
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Video size={13} /> Proof video URL</span>
+                                            <input
+                                                className="ps-input"
+                                                value={virtualDetails.verification_video_url}
+                                                onChange={(event) => updateVirtualDetails({ verification_video_url: event.target.value })}
+                                                placeholder="Upload or paste a short live proof video URL"
+                                                disabled={!canAccessStudio}
+                                                required
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label">Proof notes</span>
+                                            <input
+                                                className="ps-input"
+                                                value={virtualDetails.proof_notes}
+                                                onChange={(event) => updateVirtualDetails({ proof_notes: event.target.value })}
+                                                placeholder="Anything admin should check before approving"
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </label>
+                                        {virtualDetailsError && <p className="ps-gallery-error">{virtualDetailsError}</p>}
+                                    </div>
+                                </section>
+                            )}
 
                             <div className="ps-field">
                                 <span className="ps-field-label"><Image size={13} /> Listing Images ({galleryImages.length}/{MAX_LISTING_IMAGES})</span>

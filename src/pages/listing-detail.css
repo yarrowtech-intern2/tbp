@@ -200,6 +200,76 @@
   margin-top: 14px;
 }
 
+.listing-virtual-panel {
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--surface-muted);
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.listing-virtual-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.listing-virtual-head span,
+.listing-virtual-grid span,
+.listing-virtual-lists span {
+  color: var(--text-muted);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.listing-virtual-head strong {
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--surface-main);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
+
+.listing-virtual-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.listing-virtual-grid > div {
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--surface-main);
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.listing-virtual-grid strong {
+  font-size: 0.92rem;
+}
+
+.listing-virtual-lists {
+  display: grid;
+  gap: 8px;
+}
+
+.listing-virtual-lists p {
+  margin: 0;
+  color: var(--text-main);
+  line-height: 1.45;
+}
+
+.listing-virtual-lists span {
+  margin-bottom: 2px;
+}
+
 .listing-detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -575,5 +645,11 @@
 
   .listing-review-section {
     padding: 20px;
+  }
+}
+
+@media (max-width: 520px) {
+  .listing-virtual-grid {
+    grid-template-columns: 1fr;
   }
 }

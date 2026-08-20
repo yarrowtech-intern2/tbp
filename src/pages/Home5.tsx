@@ -258,131 +258,6 @@ const FAQ_ITEMS = [
   },
 ] as const;
 
-type HeroHeroLayer = {
-  id: 'default' | 'beaches' | 'mountains' | 'deserts' | 'cities' | 'forests';
-  title: string;
-  poster?: string;
-  video?: string;
-  kind: 'white' | 'video';
-};
-
-const HERO_HERO_LAYERS: readonly HeroHeroLayer[] = [
-  {
-    id: 'default',
-    title: 'Default',
-    kind: 'white',
-  },
-  {
-    id: 'beaches',
-    title: 'Beaches',
-    kind: 'video',
-    poster: '/images/home4/beach-1600.jpg',
-    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1779877968/tbp-hero4_dmbfr5.mp4',
-  },
-  {
-    id: 'forests',
-    title: 'Forests',
-    kind: 'video',
-    poster: '/images/home4/forrest-1920.jpg',
-    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246935/forrest_ho0dak.mp4',
-  },
-  {
-    id: 'mountains',
-    title: 'Mountains',
-    kind: 'video',
-    poster: '/images/home5/mountain.png',
-    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246933/mountains_hbuxhy.mp4',
-  },
-  {
-    id: 'cities',
-    title: 'Cities',
-    kind: 'video',
-    poster: '/images/home4/city-1600.jpg',
-    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246934/cities_sg61vy.mp4',
-  },
-  {
-    id: 'deserts',
-    title: 'Deserts',
-    kind: 'video',
-    poster: '/images/home4/desert-1920.jpg',
-    video: 'https://res.cloudinary.com/dc3qprub3/video/upload/v1781246931/desert_b5tdn9.mp4',
-  },
-] as const;
-
-type VideoHeroContent = {
-  eyebrow: string;
-  title: string;
-  stats: readonly {
-    value: string;
-    label: string;
-  }[];
-  description: string;
-  ctaLabel: string;
-};
-
-type VideoHeroLayerId = Exclude<HeroHeroLayer['id'], 'default'>;
-type VideoHeroStat = VideoHeroContent['stats'][number];
-
-const isVideoHeroLayerId = (id: HeroHeroLayer['id']): id is VideoHeroLayerId => id !== 'default';
-
-const HERO_VIDEO_CONTENT: Record<VideoHeroLayerId, VideoHeroContent> = {
-  beaches: {
-    eyebrow: 'Beach escapes',
-    title: 'Beaches',
-    stats: [
-      { value: '18K+', label: 'Ocean travellers' },
-      { value: '1.4K+', label: 'Coastal stays' },
-      { value: '320+', label: 'Island routes' },
-    ],
-    description: 'Book sea-facing stays, boat days, and slow coastal plans that keep the trip easy from sunrise swims to sunset dinners.',
-    ctaLabel: 'Book beach stays',
-  },
-  forests: {
-    eyebrow: 'Forest journeys',
-    title: 'Forests',
-    stats: [
-      { value: '9K+', label: 'Nature seekers' },
-      { value: '860+', label: 'Cabin nights' },
-      { value: '210+', label: 'Guided trails' },
-    ],
-    description: 'Move through hidden lodges, jungle trails, and local-led routes designed for quieter, deeper trips with less guesswork.',
-    ctaLabel: 'Plan forest stays',
-  },
-  mountains: {
-    eyebrow: 'Mountain stays',
-    title: 'Mountains',
-    stats: [
-      { value: '12K+', label: 'Highland travellers' },
-      { value: '980+', label: 'Chalet stays' },
-      { value: '270+', label: 'Scenic routes' },
-    ],
-    description: 'Compare ridge-view hotels, alpine experiences, and transport support in one mountain plan built for altitude and ease.',
-    ctaLabel: 'Explore mountain trips',
-  },
-  cities: {
-    eyebrow: 'City breaks',
-    title: 'Cityscapes',
-    stats: [
-      { value: '22K+', label: 'Urban travellers' },
-      { value: '2.1K+', label: 'Boutique rooms' },
-      { value: '540+', label: 'Curated experiences' },
-    ],
-    description: 'From design hotels to food trails and late-night culture, shape faster city itineraries without splitting bookings across tabs.',
-    ctaLabel: 'Build a city trip',
-  },
-  deserts: {
-    eyebrow: 'Desert routes',
-    title: 'Dunes',
-    stats: [
-      { value: '7K+', label: 'Adventure travellers' },
-      { value: '640+', label: 'Camp stays' },
-      { value: '190+', label: 'Sunset experiences' },
-    ],
-    description: 'Plan camp nights, dune drives, and slow desert moments with trusted hosts and cleaner logistics from arrival to checkout.',
-    ctaLabel: 'Start desert journeys',
-  },
-};
-
 const getFooterHref = (link: FooterLink) => link.href?.trim() || '#';
 
 const isRouteHref = (href: string) => href.startsWith('/');
@@ -417,13 +292,6 @@ const clampValue = (value: number, min: number, max: number) => Math.min(max, Ma
 export const Home5: React.FC = () => {
   const [activeCard, setActiveCard] = useState(0);
   const [activeBookingCard, setActiveBookingCard] = useState(0);
-  const [heroVideoIndex, setHeroVideoIndex] = useState(0);
-  const [heroRevealIndex, setHeroRevealIndex] = useState<number | null>(null);
-  const [heroVideoTransitioning, setHeroVideoTransitioning] = useState(false);
-  const [heroTouchMode, setHeroTouchMode] = useState(false);
-  const [heroCursorVisible, setHeroCursorVisible] = useState(false);
-  const [heroInView, setHeroInView] = useState(true);
-  const [heroPreviewReady, setHeroPreviewReady] = useState(false);
   const howProgressRef = useRef(0);
   const finalWordIndexRef = useRef(0);
   const howSceneRef = useRef<HTMLDivElement | null>(null);
@@ -453,12 +321,6 @@ export const Home5: React.FC = () => {
   const stickyLogoRef = useRef<HTMLAnchorElement | null>(null);
   const stickyMenuRef = useRef<HTMLDivElement | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
-  const heroBaseVideoRef = useRef<HTMLVideoElement | null>(null);
-  const heroPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
-  const heroCursorFrameRef = useRef<number | null>(null);
-  const heroTransitionTimerRef = useRef<number | null>(null);
-  const heroCursorPointRef = useRef({ x: 0, y: 0 });
-  const heroCursorTargetRef = useRef({ x: 0, y: 0 });
   const valueSectionRef = useRef<HTMLElement | null>(null);
   const logoActivatedRef = useRef(true);
   const howSectionRef = useRef<HTMLElement | null>(null);
@@ -545,22 +407,6 @@ export const Home5: React.FC = () => {
       window.removeEventListener('resize', handleResize);
     };
   }, [syncAllBounds]);
-  const activeHeroLayer = HERO_HERO_LAYERS[heroVideoIndex] ?? HERO_HERO_LAYERS[0];
-  const nextHeroVideoIndex = (heroVideoIndex + 1) % HERO_HERO_LAYERS.length;
-  const previewHeroLayer = HERO_HERO_LAYERS[nextHeroVideoIndex] ?? HERO_HERO_LAYERS[0];
-  const revealHeroLayer = heroRevealIndex !== null
-    ? (HERO_HERO_LAYERS[heroRevealIndex] ?? previewHeroLayer)
-    : previewHeroLayer;
-  const heroSubtitleOnDark = activeHeroLayer.kind === 'video'
-    || (heroVideoTransitioning && revealHeroLayer.kind === 'video');
-  const heroPreviewActive = heroInView && (heroCursorVisible || heroVideoTransitioning);
-
-  useEffect(() => {
-    if (heroPreviewActive) setHeroPreviewReady(true);
-  }, [heroPreviewActive]);
-  const activeVideoHeroContent = activeHeroLayer.kind === 'video' && isVideoHeroLayerId(activeHeroLayer.id)
-    ? HERO_VIDEO_CONTENT[activeHeroLayer.id]
-    : null;
   const openContactModal = useCallback(() => {
     if (contactModalOpenFrameRef.current !== null) {
       window.cancelAnimationFrame(contactModalOpenFrameRef.current);
@@ -751,123 +597,6 @@ export const Home5: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const node = heroSectionRef.current;
-    if (!node) return undefined;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-        setHeroInView(entry.isIntersecting);
-      },
-      {
-        threshold: 0.02,
-        rootMargin: '20% 0px 20% 0px',
-      },
-    );
-
-    observer.observe(node);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    const media = window.matchMedia('(hover: hover) and (pointer: fine)');
-    const updateMode = () => {
-      const isFinePointer = media.matches;
-      setHeroTouchMode(!isFinePointer);
-      setHeroCursorVisible(false);
-    };
-
-    updateMode();
-    media.addEventListener('change', updateMode);
-
-    return () => {
-      media.removeEventListener('change', updateMode);
-    };
-  }, []);
-
-  useEffect(() => {
-    const syncHeroCursorDefaults = () => {
-      const node = heroSectionRef.current;
-      if (!node) return;
-
-      const rect = node.getBoundingClientRect();
-      const fallbackPoint = {
-        x: rect.width * (heroTouchMode ? 0.82 : 0.26),
-        y: rect.height * 0.52,
-      };
-
-      heroCursorPointRef.current = fallbackPoint;
-      heroCursorTargetRef.current = fallbackPoint;
-      node.style.setProperty('--home5-hero-cursor-x', `${fallbackPoint.x}px`);
-      node.style.setProperty('--home5-hero-cursor-y', `${fallbackPoint.y}px`);
-      node.style.setProperty('--home5-hero-reveal-x', `${fallbackPoint.x}px`);
-      node.style.setProperty('--home5-hero-reveal-y', `${fallbackPoint.y}px`);
-      node.style.setProperty('--home5-hero-reveal-radius', '0px');
-    };
-
-    syncHeroCursorDefaults();
-    window.addEventListener('resize', syncHeroCursorDefaults);
-
-    return () => {
-      window.removeEventListener('resize', syncHeroCursorDefaults);
-    };
-  }, [heroTouchMode]);
-
-  useEffect(() => {
-    const syncVideoPlayback = (video: HTMLVideoElement | null, shouldPlay: boolean) => {
-      if (!video) return;
-      if (shouldPlay) {
-        const playAttempt = video.play();
-        if (playAttempt && typeof playAttempt.catch === 'function') {
-          playAttempt.catch(() => {});
-        }
-        return;
-      }
-
-      video.pause();
-    };
-
-    syncVideoPlayback(heroBaseVideoRef.current, heroInView && activeHeroLayer.kind === 'video');
-    syncVideoPlayback(
-      heroPreviewVideoRef.current,
-      heroPreviewActive && revealHeroLayer.kind === 'video',
-    );
-  }, [activeHeroLayer.kind, heroInView, heroPreviewActive, revealHeroLayer.kind]);
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const pageVisible = document.visibilityState === 'visible';
-      if (!pageVisible) {
-        heroBaseVideoRef.current?.pause();
-        heroPreviewVideoRef.current?.pause();
-        return;
-      }
-
-      if (heroInView && activeHeroLayer.kind === 'video') {
-        const playAttempt = heroBaseVideoRef.current?.play();
-        if (playAttempt && typeof playAttempt.catch === 'function') {
-          playAttempt.catch(() => {});
-        }
-      }
-      if (heroPreviewActive && revealHeroLayer.kind === 'video') {
-        const playAttempt = heroPreviewVideoRef.current?.play();
-        if (playAttempt && typeof playAttempt.catch === 'function') {
-          playAttempt.catch(() => {});
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [activeHeroLayer.kind, heroInView, heroPreviewActive, revealHeroLayer.kind]);
-
-  useEffect(() => {
     let frame = 0;
 
     const updateStickyLogoTone = () => {
@@ -949,7 +678,7 @@ export const Home5: React.FC = () => {
         && sampleY <= heroBottom
       );
 
-      const nextToneOnDark = overlapsFooter || (overlapsHero && heroSubtitleOnDark);
+      const nextToneOnDark = overlapsFooter;
       const nextNavInHero = overlapsHero;
 
       if (stickyNavInHeroRef.current !== nextNavInHero) {
@@ -977,119 +706,7 @@ export const Home5: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
     };
-  }, [heroSubtitleOnDark]);
-
-  useEffect(() => () => {
-    if (heroCursorFrameRef.current !== null) {
-      window.cancelAnimationFrame(heroCursorFrameRef.current);
-    }
-    if (heroTransitionTimerRef.current !== null) {
-      window.clearTimeout(heroTransitionTimerRef.current);
-    }
   }, []);
-
-  const flushHeroCursorPosition = () => {
-    heroCursorFrameRef.current = null;
-    const node = heroSectionRef.current;
-    if (!node) return;
-
-    const point = heroCursorTargetRef.current;
-    heroCursorPointRef.current = point;
-    node.style.setProperty('--home5-hero-cursor-x', `${point.x}px`);
-    node.style.setProperty('--home5-hero-cursor-y', `${point.y}px`);
-  };
-
-  const updateHeroCursorPosition = (clientX: number, clientY: number) => {
-    const node = heroSectionRef.current;
-    if (!node) return;
-
-    const bounds = heroBoundsRef.current;
-    const viewportTop = bounds.absoluteTop - window.scrollY;
-    const width = bounds.right - bounds.left;
-
-    heroCursorTargetRef.current = {
-      x: clampValue(clientX - bounds.left, 0, width),
-      y: clampValue(clientY - viewportTop, 0, bounds.height),
-    };
-
-    if (heroCursorFrameRef.current === null) {
-      heroCursorFrameRef.current = window.requestAnimationFrame(flushHeroCursorPosition);
-    }
-  };
-
-  const triggerHeroVideoReveal = () => {
-    const node = heroSectionRef.current;
-    if (!node || heroVideoTransitioning) return;
-
-    const bounds = heroBoundsRef.current;
-    const width = bounds.right - bounds.left;
-    const height = bounds.height;
-
-    const origin = heroCursorPointRef.current.x || heroCursorPointRef.current.y
-      ? heroCursorPointRef.current
-      : { x: width * 0.5, y: height * 0.5 };
-    const nextIndex = (heroVideoIndex + 1) % HERO_HERO_LAYERS.length;
-    const maxRadius = Math.max(
-      Math.hypot(origin.x, origin.y),
-      Math.hypot(width - origin.x, origin.y),
-      Math.hypot(origin.x, height - origin.y),
-      Math.hypot(width - origin.x, height - origin.y),
-    );
-
-    if (heroTransitionTimerRef.current !== null) {
-      window.clearTimeout(heroTransitionTimerRef.current);
-    }
-
-    node.style.setProperty('--home5-hero-reveal-x', `${origin.x}px`);
-    node.style.setProperty('--home5-hero-reveal-y', `${origin.y}px`);
-    node.style.setProperty('--home5-hero-reveal-radius', '0px');
-    setHeroRevealIndex(nextIndex);
-    setHeroVideoTransitioning(true);
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        node.style.setProperty('--home5-hero-reveal-radius', `${maxRadius}px`);
-      });
-    });
-
-    heroTransitionTimerRef.current = window.setTimeout(() => {
-      setHeroVideoIndex(nextIndex);
-      setHeroRevealIndex(null);
-      setHeroVideoTransitioning(false);
-      node.style.setProperty('--home5-hero-reveal-radius', '0px');
-    }, 920);
-  };
-
-  const handleHeroPointerEnter = (event: React.PointerEvent<HTMLElement>) => {
-    if (heroTouchMode) return;
-    setHeroCursorVisible(true);
-    updateHeroCursorPosition(event.clientX, event.clientY);
-  };
-
-  const handleHeroPointerMove = (event: React.PointerEvent<HTMLElement>) => {
-    if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
-      setHeroCursorVisible(true);
-    }
-    updateHeroCursorPosition(event.clientX, event.clientY);
-  };
-
-  const handleHeroPointerLeave = () => {
-    if (!heroTouchMode) {
-      setHeroCursorVisible(false);
-    }
-  };
-
-  const handleHeroPointerDown = (event: React.PointerEvent<HTMLElement>) => {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.home5-mobile-dock') || target?.closest('.home5-hero-menu')) return;
-    updateHeroCursorPosition(event.clientX, event.clientY);
-  };
-
-  const handleHeroClick = (event: React.MouseEvent<HTMLElement>) => {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.home5-mobile-dock') || target?.closest('.home5-hero-menu') || target?.closest('.home5-hero-immersive-cta')) return;
-    triggerHeroVideoReveal();
-  };
 
   const goToCard = (index: number) => {
     const total = VALUE_IMAGE_CARDS.length;
@@ -1351,115 +968,34 @@ export const Home5: React.FC = () => {
       <section
         id="home5-hero"
         ref={heroSectionRef}
-        className={`home5-hero${heroVideoTransitioning ? ' is-video-transitioning' : ''}${activeHeroLayer.kind === 'white' ? ' is-default-hero-layer' : ''}`}
-        onPointerEnter={handleHeroPointerEnter}
-        onPointerMove={handleHeroPointerMove}
-        onPointerLeave={handleHeroPointerLeave}
-        onPointerDown={handleHeroPointerDown}
-        onClick={handleHeroClick}
+        className="home5-hero is-default-hero-layer"
       >
         <div className="home5-hero-media-stack" aria-hidden="true">
-          {activeHeroLayer.kind === 'white' ? (
-            <div className="home5-hero-bg-white home5-hero-bg-white-base" />
-          ) : (
-            <video
-              ref={heroBaseVideoRef}
-              key={`hero-base-${activeHeroLayer.id}`}
-              className="home5-hero-bg-video home5-hero-bg-video-base"
-              src={activeHeroLayer.video}
-              poster={activeHeroLayer.poster}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              disablePictureInPicture
-            />
-          )}
-          {revealHeroLayer.kind === 'white' ? (
-            <div
-              className={`home5-hero-bg-white home5-hero-bg-white-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
-            />
-          ) : heroPreviewReady ? (
-            <video
-              ref={heroPreviewVideoRef}
-              key={`hero-preview-${revealHeroLayer.id}-${heroRevealIndex ?? nextHeroVideoIndex}`}
-              className={`home5-hero-bg-video home5-hero-bg-video-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
-              src={revealHeroLayer.video}
-              poster={revealHeroLayer.poster}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              disablePictureInPicture
-            />
-          ) : (
-            // Avoids mounting an off-screen <video> that autoplays on page load: the reveal
-            // layer stays a static poster image until the user actually hovers/touches the hero.
-            <div
-              className={`home5-hero-bg-video home5-hero-bg-video-preview${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`}
-              style={revealHeroLayer.poster ? { backgroundImage: `url(${revealHeroLayer.poster})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-              aria-hidden="true"
-            />
-          )}
-          <div className={`home5-hero-video-cursor${heroCursorVisible ? ' is-visible' : ''}${heroTouchMode ? ' is-touch' : ''}`} />
-          <div className="home5-hero-media-vignette" />
-          <div className="home5-hero-media-noise" />
+          <div className="home5-hero-bg-white home5-hero-bg-white-base" />
         </div>
 
         <div className="home5-hero-shell">
-          {activeHeroLayer.kind === 'white' ? (
-            <>
-              <div key={`copy-${activeHeroLayer.id}`} className="home5-copy">
-                <h1 className="home5-title">The Better Pass</h1>
-                <h2 className={`home5-subtitle${heroSubtitleOnDark ? ' is-light' : ''}`}>
-                  <span>travel made</span>
-                  <span>simple</span>
-                </h2>
-              </div>
+          <div className="home5-copy">
+            <h1 className="home5-title">The Better Pass</h1>
+            <h2 className="home5-subtitle">
+              <span>travel made</span>
+              <span>simple</span>
+            </h2>
+          </div>
 
-              <div className="home5-globe-stage" aria-hidden="true">
-                <div className="home5-globe-ground" />
-                <DeferredMount
-                  className="home5-globe-mount"
-                  placeholderClassName="home5-globe home5-globe-placeholder"
-                  rootMargin="30% 0px"
-                >
-                  <Suspense fallback={<div className="home5-globe home5-globe-placeholder" aria-hidden="true" />}>
-                    <LazyGlobe className="home5-globe" />
-                  </Suspense>
-                </DeferredMount>
-                <div className="home5-globe-fade" />
-              </div>
-            </>
-          ) : activeVideoHeroContent ? (
-            <div key={`immersive-${activeHeroLayer.id}`} className="home5-hero-immersive">
-              <div className="home5-hero-immersive-head">
-                <span className="home5-hero-immersive-eyebrow">{activeVideoHeroContent.eyebrow}</span>
-                <h1 className="home5-hero-immersive-title">{activeVideoHeroContent.title}</h1>
-              </div>
-
-              <div className="home5-hero-immersive-bottom">
-                <div className="home5-hero-immersive-stats" aria-label={`${activeVideoHeroContent.eyebrow} highlights`}>
-                  {activeVideoHeroContent.stats.map((stat: VideoHeroStat) => (
-                    <div className="home5-hero-immersive-stat" key={`${activeVideoHeroContent.title}-${stat.label}`}>
-                      <strong>{stat.value}</strong>
-                      <span>{stat.label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="home5-hero-immersive-cta-row">
-                  <Link className="home5-hero-immersive-cta" to="/login">
-                    <span>{activeVideoHeroContent.ctaLabel}</span>
-                    <span className="home5-hero-immersive-cta-icon" aria-hidden="true">-&gt;</span>
-                  </Link>
-                  <p>{activeVideoHeroContent.description}</p>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          <div className="home5-globe-stage" aria-hidden="true">
+            <div className="home5-globe-ground" />
+            <DeferredMount
+              className="home5-globe-mount"
+              placeholderClassName="home5-globe home5-globe-placeholder"
+              rootMargin="30% 0px"
+            >
+              <Suspense fallback={<div className="home5-globe home5-globe-placeholder" aria-hidden="true" />}>
+                <LazyGlobe className="home5-globe" />
+              </Suspense>
+            </DeferredMount>
+            <div className="home5-globe-fade" />
+          </div>
         </div>
       </section>
 

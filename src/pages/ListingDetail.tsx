@@ -32,6 +32,7 @@ import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
 import { SEOHead } from '../components/SEO';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import { buildListingJsonLd } from '../lib/seo';
+import { CAMERA_TYPE_LABELS, getVirtualTourDetailsFromRecord, isVirtualTourRecord } from '../lib/virtualTours';
 import {
     clearPendingBookingConfirmation,
     getPendingBookingConfirmation,
@@ -238,6 +239,8 @@ export const ListingDetail: React.FC = () => {
         ? (toInternalListingType(listingTypeValue || undefined) as ListingType)
         : (listingType || 'activity');
     const displayType = effectiveType === 'guide' ? 'event' : effectiveType;
+    const isVirtualTour = isVirtualTourRecord(listing as Record<string, unknown> | null);
+    const virtualDetails = getVirtualTourDetailsFromRecord(listing as Record<string, unknown> | null);
     const pricing = useMemo(
         () => feeBreakdown
             ? calculatePricingFromFeeBreakdown(feeBreakdown, guests, platformFeeRate)
@@ -248,7 +251,11 @@ export const ListingDetail: React.FC = () => {
     const canFavorite = profile?.role === 'tourist';
     const canReview = profile?.role === 'tourist';
     const bookingButtonDisabled = bookingLoading || Boolean(user && !canBook);
-    const bookingButtonLabel = !user ? 'Login to Book' : canBook ? 'Pay & Book' : 'Tourist Only';
+    const bookingButtonLabel = !user ? 'Login to Book' : canBook ? (isVirtualTour ? 'Pay & Book Live Slot' : 'Pay & Book') : 'Tourist Only';
+    const guestOptions = Array.from(
+        { length: Math.min(Math.max(virtualDetails?.max_guests || 6, 1), 25) },
+        (_, index) => index + 1,
+    );
     const shareUrl = useMemo(() => {
         if (typeof window === 'undefined') return '';
         return `${window.location.origin}/listings/${effectiveType}/${listing?.id || id || ''}`;
@@ -513,6 +520,7 @@ export const ListingDetail: React.FC = () => {
                 platform_fee_amount: pricing.platform_fee_amount,
                 provider_payout_amount: pricing.provider_payout_amount,
                 booking_date: checkIn || null,
+                is_virtual_tour: isVirtualTour,
             };
 
             const order = await createRazorpayOrder(bookingDraft);
@@ -829,6 +837,27 @@ export const ListingDetail: React.FC = () => {
                             </div>
                             <h1 className="listing-detail-title">{title}</h1>
                             <p className="listing-detail-description">{description}</p>
+                            {isVirtualTour && virtualDetails && (
+                                <section className="listing-virtual-panel" aria-label="Live virtual tour details">
+                                    <div className="listing-virtual-head">
+                                        <span>Live AR/VR tour</span>
+                                        <strong>{virtualDetails.duration_minutes} min</strong>
+                                    </div>
+                                    <div className="listing-virtual-grid">
+                                        <div><span>Live spot</span><strong>{virtualDetails.spot_location || location}</strong></div>
+                                        <div><span>Camera</span><strong>{CAMERA_TYPE_LABELS[virtualDetails.camera_type]}</strong></div>
+                                        <div><span>Languages</span><strong>{virtualDetails.languages.join(', ') || 'Ask guide'}</strong></div>
+                                        <div><span>Max guests</span><strong>{virtualDetails.max_guests}</strong></div>
+                                    </div>
+                                    <div className="listing-virtual-lists">
+                                        <p><span>Places shown</span>{virtualDetails.places_shown.join(', ') || 'Shared after booking'}</p>
+                                        <p><span>Included</span>{virtualDetails.included_items.join(', ') || 'Live guide session'}</p>
+                                        {virtualDetails.available_windows.length > 0 && (
+                                            <p><span>Timing</span>{virtualDetails.available_windows.join(', ')}</p>
+                                        )}
+                                    </div>
+                                </section>
+                            )}
                             <FeeBreakdownView
                                 feeBreakdown={feeBreakdown}
                                 peopleCount={guests}
@@ -868,8 +897,8 @@ export const ListingDetail: React.FC = () => {
                                 <p>
                                     {confirmingBooking || bookingPendingSync
                                         ? 'Payment received. We are finalizing your booking now.'
-                                        : bookingAwaitingProvider && !hasConfirmedBooking
-                                            ? 'Payment is complete. The provider will review your booking request shortly.'
+                                    : bookingAwaitingProvider && !hasConfirmedBooking
+                                            ? isVirtualTour ? 'Payment is complete. The local guide will accept your live slot shortly.' : 'Payment is complete. The provider will review your booking request shortly.'
                                             : 'Your spot is already reserved for this listing.'}
                                 </p>
                                 {bookingError && (
@@ -903,15 +932,15 @@ export const ListingDetail: React.FC = () => {
                         ) : (
                             <form onSubmit={handleBooking} className="listing-book-form">
                                 <div className="listing-book-head">
-                                    <h3>Reserve</h3>
+                                    <h3>{isVirtualTour ? 'Reserve Live Slot' : 'Reserve'}</h3>
                                     <strong>Rs {pricing.total_price.toLocaleString()}</strong>
                                 </div>
 
                                 <label className="listing-book-field">
-                                    <span>Date</span>
+                                    <span>{isVirtualTour ? 'Live Slot' : 'Date'}</span>
                                     <span className="listing-book-input-wrap">
                                         <Calendar size={16} />
-                                        <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required type="date" />
+                                        <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required type={isVirtualTour ? 'datetime-local' : 'date'} />
                                     </span>
                                 </label>
 
@@ -920,7 +949,7 @@ export const ListingDetail: React.FC = () => {
                                     <span className="listing-book-input-wrap">
                                         <Users size={16} />
                                         <select value={guests} onChange={(e) => setGuests(Number(e.target.value))}>
-                                            {[1, 2, 3, 4, 5, 6].map((count) => (
+                                            {guestOptions.map((count) => (
                                                 <option key={count} value={count}>{count}</option>
                                             ))}
                                         </select>

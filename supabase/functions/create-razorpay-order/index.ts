@@ -29,6 +29,7 @@ interface CreateOrderBody {
     platform_fee_amount?: number;
     provider_payout_amount?: number;
     booking_date?: string | null;
+    is_virtual_tour?: boolean;
     currency?: string;
 }
 
@@ -242,10 +243,11 @@ Deno.serve(async (req) => {
         let listingImage = '';
         let providerUserId = normalizeLooseString(body.provider_user_id);
         let providerUnitPrice = requestedUnitPrice;
+        let isVirtualTour = body.is_virtual_tour === true;
 
         const listingLookup = await admin
             .from('posts')
-            .select('id, title, name, type, price, image_url, cover_image_url, thumbnail_url, provider_user_id, user_id')
+            .select('id, title, name, type, price, image_url, cover_image_url, thumbnail_url, provider_user_id, user_id, is_virtual_tour, delivery_mode, experience_mode, sub_category')
             .eq('id', listingId)
             .maybeSingle();
 
@@ -268,6 +270,12 @@ Deno.serve(async (req) => {
                 || providerUserId;
             const dbPrice = toPositiveNumber(listingRow.price);
             if (dbPrice) providerUnitPrice = dbPrice;
+            isVirtualTour = isVirtualTour
+                || listingRow.is_virtual_tour === true
+                || normalizeLooseString(listingRow.delivery_mode).toLowerCase().includes('virtual')
+                || normalizeLooseString(listingRow.experience_mode).toLowerCase().includes('virtual')
+                || normalizeLooseString(listingRow.sub_category).toLowerCase().includes('virtual')
+                || normalizeLooseString(listingRow.sub_category).toLowerCase().includes('360');
         }
 
         const pricing = calculatePricing(
@@ -310,6 +318,7 @@ Deno.serve(async (req) => {
                 platform_fee_amount: String(pricing.platformFeeAmount),
                 provider_payout_amount: String(pricing.providerSubtotal),
                 booking_date: body.booking_date || '',
+                is_virtual_tour: isVirtualTour ? 'true' : 'false',
             },
         };
 
@@ -379,6 +388,7 @@ Deno.serve(async (req) => {
             payment_order_id: orderId,
             payment_currency: 'INR',
             booking_date: body.booking_date || null,
+            is_virtual_tour: isVirtualTour,
         };
 
         let pendingInserted = false;

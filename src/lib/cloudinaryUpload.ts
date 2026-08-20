@@ -18,6 +18,8 @@ type CloudinaryImageUploadOptions = {
     tags?: string[];
 };
 
+type CloudinaryVideoUploadOptions = CloudinaryImageUploadOptions;
+
 const getImageElement = (file: File): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
     const imageUrl = URL.createObjectURL(file);
     const image = new window.Image();
@@ -115,6 +117,42 @@ export const uploadCloudinaryImage = async (
     const uploadedUrl = data?.secure_url || data?.url || '';
     if (!uploadedUrl) {
         throw new Error('Cloudinary upload completed but did not return an image URL.');
+    }
+
+    return uploadedUrl;
+};
+
+export const uploadCloudinaryVideo = async (
+    file: File,
+    options: CloudinaryVideoUploadOptions = {},
+): Promise<string> => {
+    const setupError = getCloudinarySetupError();
+    if (setupError) throw new Error(setupError);
+
+    const payload = new FormData();
+    const folder = [CLOUDINARY_UPLOAD_FOLDER, options.folder].filter(Boolean).join('/');
+    payload.append('file', file);
+    payload.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    if (folder) payload.append('folder', folder);
+    if (options.fileNamePrefix) {
+        payload.append('public_id', `${options.fileNamePrefix}-${Date.now()}`);
+    }
+    if (options.tags?.length) {
+        payload.append('tags', options.tags.join(','));
+    }
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+        method: 'POST',
+        body: payload,
+    });
+    const data = await response.json().catch(() => null) as CloudinaryUploadResponse | null;
+    if (!response.ok) {
+        throw new Error(data?.error?.message || 'Cloudinary video upload failed. Check your unsigned upload preset.');
+    }
+
+    const uploadedUrl = data?.secure_url || data?.url || '';
+    if (!uploadedUrl) {
+        throw new Error('Cloudinary upload completed but did not return a video URL.');
     }
 
     return uploadedUrl;

@@ -23,6 +23,7 @@ import {
     deriveBookingAmounts,
     type ListingFeeBreakdown,
 } from './pricing';
+import type { VirtualTourDetails } from './virtualTours';
 
 export interface Destination {
     id: string;
@@ -100,6 +101,10 @@ export interface PostRecord {
     created_at?: string;
     starts_at?: string;
     status?: ListingStatus | string | null;
+    is_virtual_tour?: boolean | null;
+    virtual_tour_details?: VirtualTourDetails | Record<string, unknown> | null;
+    delivery_mode?: string | null;
+    experience_mode?: string | null;
     is_boosted?: boolean | null;
     boost_start?: string | null;
     boost_end?: string | null;
@@ -124,6 +129,10 @@ export interface ListingInput {
     sub_category?: string;
     price?: number | null;
     fee_breakdown?: ListingFeeBreakdown | null;
+    is_virtual_tour?: boolean;
+    virtual_tour_details?: VirtualTourDetails | null;
+    delivery_mode?: string | null;
+    experience_mode?: string | null;
     starts_at?: string | null;
     status?: ListingStatus;
     rejection_reason?: string | null;
@@ -388,6 +397,7 @@ export interface UnifiedBooking {
     source_listing_id?: string | null;
     paid_at?: string | null;
     booking_date?: string | null;
+    is_virtual_tour?: boolean | null;
     traveler_name?: string | null;
     traveler_email?: string | null;
     traveler_phone?: string | null;
@@ -1078,6 +1088,7 @@ const mapUnifiedBooking = (row: Record<string, unknown>): UnifiedBooking => ({
     payment_currency: typeof row.payment_currency === 'string' ? row.payment_currency : null,
     paid_at: typeof row.paid_at === 'string' ? row.paid_at : null,
     booking_date: typeof row.booking_date === 'string' ? row.booking_date : null,
+    is_virtual_tour: row.is_virtual_tour === true,
     rejection_reason: typeof row.rejection_reason === 'string' ? row.rejection_reason : null,
     refund_requested_at: typeof row.refund_requested_at === 'string' ? row.refund_requested_at : null,
     refund_requested_by: typeof row.refund_requested_by === 'string' ? row.refund_requested_by : null,
@@ -2046,6 +2057,7 @@ export const createBooking = async (booking: {
     payment_currency?: string | null;
     paid_at?: string | null;
     booking_date?: string | null;
+    is_virtual_tour?: boolean;
 }) => {
     const { data: travelerProfile, error: travelerProfileError } = await supabase
         .from('profiles')
@@ -2088,6 +2100,7 @@ export const createBooking = async (booking: {
         payment_currency: booking.payment_currency || 'INR',
         paid_at: booking.paid_at || null,
         booking_date: booking.booking_date || null,
+        is_virtual_tour: booking.is_virtual_tour === true,
     };
 
     const unifiedPayloadWithFallback: Record<string, unknown> = { ...unifiedPayload };
@@ -2132,7 +2145,9 @@ export const createBooking = async (booking: {
             || (typeof inserted?.provider_user_id === 'string' ? inserted.provider_user_id : null);
         const status = String(unifiedPayloadWithFallback.status || 'pending').toLowerCase();
         const paymentStatus = String(unifiedPayloadWithFallback.payment_status || 'pending').toLowerCase();
-        const route = '/profile';
+        const route = booking.is_virtual_tour ? '/virtual-tours' : '/profile';
+        const providerRoute = booking.is_virtual_tour ? '/dashboard/provider?section=virtual-tours' : route;
+        const priorityMetadata = booking.is_virtual_tour ? { priority: 'live_tour' } : {};
 
         const notifications: CreateNotificationInput[] = [
             {
@@ -2141,7 +2156,7 @@ export const createBooking = async (booking: {
                 type: 'booking_created',
                 title: 'Booking created',
                 body: `Your booking for ${listingTitle} is now in the system.`,
-                metadata: { booking_id: bookingId || null, listing_id: unifiedPayloadWithFallback.listing_id || null, route },
+                metadata: { booking_id: bookingId || null, listing_id: unifiedPayloadWithFallback.listing_id || null, route, ...priorityMetadata },
             },
         ];
 
@@ -2150,9 +2165,11 @@ export const createBooking = async (booking: {
                 userId: providerId,
                 actorUserId: booking.user_id,
                 type: 'booking_created',
-                title: 'New booking received',
-                body: `${booking.number_of_people} traveler(s) booked ${listingTitle}.`,
-                metadata: { booking_id: bookingId || null, listing_id: unifiedPayloadWithFallback.listing_id || null, route },
+                title: booking.is_virtual_tour ? 'Priority live tour booking' : 'New booking received',
+                body: booking.is_virtual_tour
+                    ? `${booking.number_of_people} tourist(s) paid for ${listingTitle}. Accept the live slot to unlock chat and room access.`
+                    : `${booking.number_of_people} traveler(s) booked ${listingTitle}.`,
+                metadata: { booking_id: bookingId || null, listing_id: unifiedPayloadWithFallback.listing_id || null, route: providerRoute, ...priorityMetadata },
             });
         }
 
@@ -2163,7 +2180,7 @@ export const createBooking = async (booking: {
                 type: 'booking_confirmed',
                 title: 'Booking confirmed',
                 body: `${listingTitle} is confirmed.`,
-                metadata: { booking_id: bookingId || null, route },
+                metadata: { booking_id: bookingId || null, route, ...priorityMetadata },
             });
             if (providerId && providerId !== booking.user_id) {
                 notifications.push({
@@ -2172,7 +2189,7 @@ export const createBooking = async (booking: {
                     type: 'booking_confirmed',
                     title: 'Booking confirmed',
                     body: `Booking for ${listingTitle} is confirmed.`,
-                    metadata: { booking_id: bookingId || null, route },
+                    metadata: { booking_id: bookingId || null, route: providerRoute, ...priorityMetadata },
                 });
             }
         } else if (status === 'cancelled' || status === 'canceled') {
@@ -2182,7 +2199,7 @@ export const createBooking = async (booking: {
                 type: 'booking_cancelled',
                 title: 'Booking cancelled',
                 body: `${listingTitle} booking was cancelled.`,
-                metadata: { booking_id: bookingId || null, route },
+                metadata: { booking_id: bookingId || null, route, ...priorityMetadata },
             });
             if (providerId && providerId !== booking.user_id) {
                 notifications.push({
@@ -2191,7 +2208,7 @@ export const createBooking = async (booking: {
                     type: 'booking_cancelled',
                     title: 'Booking cancelled',
                     body: `Booking for ${listingTitle} was cancelled.`,
-                    metadata: { booking_id: bookingId || null, route },
+                    metadata: { booking_id: bookingId || null, route: providerRoute, ...priorityMetadata },
                 });
             }
         } else if (status === 'completed') {
@@ -2201,7 +2218,7 @@ export const createBooking = async (booking: {
                 type: 'booking_completed',
                 title: 'Trip completed',
                 body: `${listingTitle} has been marked completed.`,
-                metadata: { booking_id: bookingId || null, route },
+                metadata: { booking_id: bookingId || null, route, ...priorityMetadata },
             });
             if (providerId && providerId !== booking.user_id) {
                 notifications.push({
@@ -2210,7 +2227,7 @@ export const createBooking = async (booking: {
                     type: 'booking_completed',
                     title: 'Trip completed',
                     body: `${listingTitle} booking has been marked completed.`,
-                    metadata: { booking_id: bookingId || null, route },
+                    metadata: { booking_id: bookingId || null, route: providerRoute, ...priorityMetadata },
                 });
             }
         }
@@ -2222,7 +2239,7 @@ export const createBooking = async (booking: {
                 type: 'payment_paid',
                 title: 'Payment successful',
                 body: `Payment received for ${listingTitle}.`,
-                metadata: { booking_id: bookingId || null, route },
+                metadata: { booking_id: bookingId || null, route, ...priorityMetadata },
             });
             if (providerId && providerId !== booking.user_id) {
                 notifications.push({
@@ -2231,7 +2248,7 @@ export const createBooking = async (booking: {
                     type: 'payment_paid',
                     title: 'Payment received',
                     body: `Payment was completed for ${listingTitle}.`,
-                    metadata: { booking_id: bookingId || null, route },
+                    metadata: { booking_id: bookingId || null, route: providerRoute, ...priorityMetadata },
                 });
             }
         } else if (paymentStatus === 'refunded') {
@@ -2241,7 +2258,7 @@ export const createBooking = async (booking: {
                 type: 'payment_refunded',
                 title: 'Payment refunded',
                 body: `Refund processed for ${listingTitle}.`,
-                metadata: { booking_id: bookingId || null, route },
+                metadata: { booking_id: bookingId || null, route, ...priorityMetadata },
             });
             if (providerId && providerId !== booking.user_id) {
                 notifications.push({
@@ -2250,7 +2267,7 @@ export const createBooking = async (booking: {
                     type: 'payment_refunded',
                     title: 'Payment refunded',
                     body: `A refund was processed for ${listingTitle}.`,
-                    metadata: { booking_id: bookingId || null, route },
+                    metadata: { booking_id: bookingId || null, route: providerRoute, ...priorityMetadata },
                 });
             }
         } else if (paymentStatus === 'failed') {
@@ -2260,7 +2277,7 @@ export const createBooking = async (booking: {
                 type: 'payment_failed',
                 title: 'Payment failed',
                 body: `Payment failed for ${listingTitle}. Retry to complete booking.`,
-                metadata: { booking_id: bookingId || null, route },
+                metadata: { booking_id: bookingId || null, route, ...priorityMetadata },
             });
         }
 
@@ -3428,6 +3445,21 @@ export const respondToBookingRequest = async (args: {
     const listingTitle = typeof rawBooking.listing_title === 'string' && rawBooking.listing_title.trim()
         ? rawBooking.listing_title.trim()
         : 'your booking';
+    const virtualHaystack = [
+        rawBooking.listing_title,
+        rawBooking.listing_type,
+        rawBooking.delivery_mode,
+        rawBooking.experience_mode,
+    ]
+        .map((value) => (typeof value === 'string' ? value.toLowerCase() : ''))
+        .join(' ');
+    const virtualBooking = virtualHaystack.includes('virtual')
+        || virtualHaystack.includes('360')
+        || virtualHaystack.includes('vr')
+        || virtualHaystack.includes('ar');
+    const touristRoute = virtualBooking ? `/virtual-tours/live/${bookingId}` : '/dashboard/tourist?section=bookings';
+    const providerRoute = virtualBooking ? `/virtual-tours/live/${bookingId}` : '/dashboard/provider?section=bookings';
+    const priorityMetadata = virtualBooking ? { priority: 'live_tour' } : {};
 
     if (args.decision === 'accept') {
         await triggerProviderPayout(bookingId);
@@ -3441,16 +3473,20 @@ export const respondToBookingRequest = async (args: {
                     actorUserId: providerUserId,
                     type: 'booking_confirmed',
                     title: 'Booking confirmed',
-                    body: `${listingTitle} is confirmed by the provider.`,
-                    metadata: { booking_id: bookingId, route: '/dashboard/tourist?section=bookings' },
+                    body: virtualBooking
+                        ? `${listingTitle} is confirmed. Chat is open and the live room is ready for the scheduled time.`
+                        : `${listingTitle} is confirmed by the provider.`,
+                    metadata: { booking_id: bookingId, route: touristRoute, ...priorityMetadata },
                 },
                 {
                     userId: providerUserId,
                     actorUserId: providerUserId,
                     type: 'booking_confirmed',
                     title: 'Booking accepted',
-                    body: `You confirmed booking for ${listingTitle}.`,
-                    metadata: { booking_id: bookingId, route: '/dashboard/provider?section=bookings' },
+                    body: virtualBooking
+                        ? `You accepted ${listingTitle}. Open the live room when the slot starts.`
+                        : `You confirmed booking for ${listingTitle}.`,
+                    metadata: { booking_id: bookingId, route: providerRoute, ...priorityMetadata },
                 },
             ]);
         } else {
@@ -3463,8 +3499,9 @@ export const respondToBookingRequest = async (args: {
                     body: `${listingTitle} was rejected by the provider. You can request a refund from your bookings dashboard.`,
                     metadata: {
                         booking_id: bookingId,
-                        route: '/dashboard/tourist?section=bookings',
+                        route: touristRoute,
                         rejection_reason: rejectionReason,
+                        ...priorityMetadata,
                     },
                 },
                 {
@@ -3473,7 +3510,7 @@ export const respondToBookingRequest = async (args: {
                     type: 'refund_requested',
                     title: 'Refund available',
                     body: `Submit a refund request for ${listingTitle} from your bookings dashboard if you want the admin team to process it.`,
-                    metadata: { booking_id: bookingId, route: '/dashboard/tourist?section=bookings' },
+                    metadata: { booking_id: bookingId, route: '/dashboard/tourist?section=bookings', ...priorityMetadata },
                 },
                 {
                     userId: providerUserId,
@@ -3481,7 +3518,7 @@ export const respondToBookingRequest = async (args: {
                     type: 'booking_cancelled',
                     title: 'Booking rejected',
                     body: `You rejected booking for ${listingTitle}.`,
-                    metadata: { booking_id: bookingId, route: '/dashboard/provider?section=bookings' },
+                    metadata: { booking_id: bookingId, route: providerRoute, ...priorityMetadata },
                 },
             ]);
         }

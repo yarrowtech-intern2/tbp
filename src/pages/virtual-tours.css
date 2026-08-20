@@ -371,6 +371,28 @@
     flex-wrap: wrap;
 }
 
+.vto-room-status {
+    align-items: center;
+    color: var(--text-muted, #746b60);
+    display: inline-flex;
+    gap: 8px;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.vto-room-status span {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: #d97706;
+    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.12);
+}
+
+.vto-room-status span.is-live {
+    background: #16a34a;
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16);
+}
+
 .vto-alert,
 .vto-camera-error {
     margin: 0;
