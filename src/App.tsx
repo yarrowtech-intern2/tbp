@@ -27,6 +27,7 @@ const UserProfile = lazy(async () => ({ default: (await import('./pages/UserProf
 const Messages = lazy(async () => ({ default: (await import('./pages/Messages')).Messages }));
 const Notifications = lazy(async () => ({ default: (await import('./pages/Notifications')).Notifications }));
 const MapPage = lazy(async () => ({ default: (await import('./pages/MapPage')).MapPage }));
+const Map2Page = lazy(async () => ({ default: (await import('./pages/Map2Page')).Map2Page }));
 const VirtualTours = lazy(async () => ({ default: (await import('./pages/VirtualTours')).VirtualTours }));
 
 const APP_HOME_PATH = '/';
@@ -214,6 +215,7 @@ function App() {
               <Route path="/virtual-tours" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
               <Route path="/virtual-tours/live/:bookingId" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
               <Route path="/map" element={<MapPage />} />
+              <Route path="/map2" element={<Map2Page />} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
               <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />
