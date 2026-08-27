@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { divIcon, latLngBounds, point } from 'leaflet';
 import { MapContainer, Marker, Polyline, TileLayer, useMap, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -309,6 +309,7 @@ const Map2Viewport: React.FC<{
 };
 
 export const Map2Page: React.FC = () => {
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<Map2Attraction | null>(MAP2_ATTRACTIONS[0]);
   const [routeOpen, setRouteOpen] = useState(true);
   const [startId, setStartId] = useState(MAP2_ATTRACTIONS[0].id);
@@ -323,6 +324,7 @@ export const Map2Page: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const startPoint = useMemo(
     () => MAP2_ATTRACTIONS.find((item) => item.id === startId) || MAP2_ATTRACTIONS[0],
@@ -349,6 +351,12 @@ export const Map2Page: React.FC = () => {
       window.speechSynthesis.cancel();
     }
   }, []);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const timeoutId = window.setTimeout(() => searchInputRef.current?.focus(), 180);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchOpen]);
 
   const handlePointClick = (pointItem: Map2Attraction) => {
     setSelectedPoint(pointItem);
@@ -512,51 +520,65 @@ export const Map2Page: React.FC = () => {
         ))}
       </MapContainer>
 
-      <div className="map2-toolbar" aria-label="Map controls">
-        <button
-          type="button"
-          className={`map2-tool${routeOpen ? ' is-active' : ''}`}
-          onClick={() => {
-            setRouteOpen((current) => !current);
-            setSelectedPoint(null);
-          }}
-          aria-label="Route creator"
-          title="Route creator"
-        >
-          <Route size={19} />
-        </button>
-        <button
-          type="button"
-          className="map2-tool"
-          onClick={() => void handleLocate()}
-          disabled={locating}
-          aria-label="Find my location"
-          title="Find my location"
-        >
-          <LocateFixed size={19} />
-        </button>
-        <button
-          type="button"
-          className="map2-tool"
-          onClick={resetRoute}
-          aria-label="Reset route"
-          title="Reset route"
-        >
-          <RotateCcw size={18} />
-        </button>
+      <div className="map2-top-controls">
+        <section className={`map2-search${searchOpen ? ' is-open' : ''}`} aria-label="Attraction search">
+          <button
+            type="button"
+            className="map2-search-toggle"
+            onClick={() => {
+              setSearchOpen((current) => !current);
+              if (searchOpen) setQuery('');
+            }}
+            aria-label={searchOpen ? 'Close search' : 'Open search'}
+            title="Search"
+          >
+            {searchOpen ? <X size={17} /> : <Search size={18} />}
+          </button>
+          <input
+            ref={searchInputRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search places"
+            aria-label="Search tourist places"
+          />
+        </section>
+
+        <div className="map2-toolbar" aria-label="Map controls">
+          <button
+            type="button"
+            className={`map2-tool${routeOpen ? ' is-active' : ''}`}
+            onClick={() => {
+              setRouteOpen((current) => !current);
+              setSelectedPoint(null);
+            }}
+            aria-label="Route creator"
+            title="Route creator"
+          >
+            <Route size={19} />
+          </button>
+          <button
+            type="button"
+            className="map2-tool"
+            onClick={() => void handleLocate()}
+            disabled={locating}
+            aria-label="Find my location"
+            title="Find my location"
+          >
+            <LocateFixed size={19} />
+          </button>
+          <button
+            type="button"
+            className="map2-tool"
+            onClick={resetRoute}
+            aria-label="Reset route"
+            title="Reset route"
+          >
+            <RotateCcw size={18} />
+          </button>
+        </div>
       </div>
 
-      <section className="map2-search" aria-label="Attraction search">
-        <Search size={16} />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search places"
-          aria-label="Search tourist places"
-        />
-      </section>
-
-      {query.trim() && (
+      {searchOpen && query.trim() && (
         <section className="map2-search-results" aria-label="Matching tourist places">
           {filteredAttractions.length ? filteredAttractions.slice(0, 5).map((item) => (
             <button
@@ -565,6 +587,7 @@ export const Map2Page: React.FC = () => {
               onClick={() => {
                 handlePointClick(item);
                 setQuery('');
+                setSearchOpen(false);
               }}
             >
               <span>{item.name}</span>
@@ -684,7 +707,7 @@ export const Map2Page: React.FC = () => {
             <Compass size={17} />
             <div>
               <strong>{selectedPoint.guide.name}</strong>
-              <span>{selectedPoint.guide.specialty} · {selectedPoint.guide.languages}</span>
+              <span>{selectedPoint.guide.specialty} - {selectedPoint.guide.languages}</span>
             </div>
           </div>
 

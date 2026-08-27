@@ -121,8 +121,7 @@
     0 8px 18px rgba(18, 65, 140, 0.22);
 }
 
-.map2-toolbar,
-.map2-search,
+.map2-top-controls,
 .map2-search-results,
 .map2-route-panel,
 .map2-detail-sheet {
@@ -130,10 +129,17 @@
   z-index: 20;
 }
 
-.map2-toolbar {
+.map2-top-controls {
   top: calc(env(safe-area-inset-top) + 78px);
   right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map2-toolbar {
   display: inline-flex;
+  flex: 0 0 auto;
   gap: 6px;
   padding: 6px;
   border-radius: 999px;
@@ -169,18 +175,38 @@
 }
 
 .map2-search {
-  top: calc(env(safe-area-inset-top) + 78px);
-  left: 14px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: min(240px, calc(100vw - 156px));
+  flex: 0 1 auto;
+  gap: 0;
+  width: 44px;
   min-height: 44px;
-  padding: 0 13px;
-  border: 1px solid rgba(17, 17, 17, 0.08);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 10px 24px rgba(20, 20, 20, 0.12);
+  background: rgba(18, 18, 18, 0.9);
+  box-shadow: 0 10px 24px rgba(20, 20, 20, 0.18);
+  transition: width 220ms cubic-bezier(0.22, 1, 0.36, 1), background 180ms ease;
+}
+
+.map2-search.is-open {
+  width: min(220px, calc(100vw - 176px));
+  padding-right: 12px;
+}
+
+.map2-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
 }
 
 .map2-search input {
@@ -189,18 +215,26 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #171717;
+  color: #ffffff;
   font: inherit;
   font-size: 0.86rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.map2-search.is-open input {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .map2-search input::placeholder {
-  color: rgba(17, 17, 17, 0.48);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .map2-search-results {
   top: calc(env(safe-area-inset-top) + 128px);
-  left: 14px;
+  right: 14px;
   display: grid;
   gap: 5px;
   width: min(280px, calc(100vw - 28px));
@@ -536,6 +570,7 @@
 }
 
 :root[data-theme='dark'] .map2-search input,
+:root[data-theme='dark'] .map2-icon-btn,
 :root[data-theme='dark'] .map2-panel-head h1,
 :root[data-theme='dark'] .map2-stop-title,
 :root[data-theme='dark'] .map2-route-metrics strong,
@@ -547,6 +582,7 @@
 :root[data-theme='dark'] .map2-panel-head span,
 :root[data-theme='dark'] .map2-route-fields label span,
 :root[data-theme='dark'] .map2-status,
+:root[data-theme='dark'] .map2-mode-row button,
 :root[data-theme='dark'] .map2-search-results small,
 :root[data-theme='dark'] .map2-stop-list small,
 :root[data-theme='dark'] .map2-route-metrics span,
@@ -554,7 +590,11 @@
 :root[data-theme='dark'] .map2-guide-strip span,
 :root[data-theme='dark'] .map2-audio-status,
 :root[data-theme='dark'] .map2-best-time {
-  color: rgba(248, 250, 252, 0.64);
+  color: rgba(248, 250, 252, 0.78);
+}
+
+:root[data-theme='dark'] .map2-icon-btn {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 :root[data-theme='dark'] .map2-detail-actions .map2-audio-btn,
@@ -573,20 +613,18 @@
 }
 
 @media (min-width: 768px) {
-  .map2-toolbar {
+  .map2-top-controls {
     top: 94px;
     right: 30px;
   }
 
-  .map2-search {
-    top: 94px;
-    left: 30px;
-    width: 280px;
+  .map2-search.is-open {
+    width: 250px;
   }
 
   .map2-search-results {
     top: 146px;
-    left: 30px;
+    right: 30px;
   }
 
   .map2-route-panel,
@@ -606,13 +644,12 @@
 }
 
 @media (max-width: 420px) {
-  .map2-toolbar {
+  .map2-top-controls {
     right: 10px;
   }
 
-  .map2-search {
-    left: 10px;
-    width: min(192px, calc(100vw - 154px));
+  .map2-search.is-open {
+    width: min(190px, calc(100vw - 176px));
   }
 
   .map2-route-panel,
