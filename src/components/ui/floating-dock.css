@@ -262,7 +262,7 @@
 
 .floating-dock.is-liquid .floating-dock-item:hover,
 .floating-dock.is-liquid .floating-dock-item:focus-visible {
-  background: rgba(255, 255, 255, 0.14);
+  background: transparent;
   color: var(--floating-dock-ink);
   transform: translateY(-5px);
   box-shadow: none;
