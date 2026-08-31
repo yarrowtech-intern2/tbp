@@ -31,6 +31,12 @@ export const FOOTER_EXPLORE_LINKS: FooterLink[] = [
     { label: 'Newsletter', href: '#contact' },
 ];
 
+export const OFFICIAL_SOCIAL_LINKS: FooterLink[] = [
+    { label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61591060152802' },
+    { label: 'Instagram', href: 'https://www.instagram.com/thebetterpass?utm_source=ig_web_button_share_sheet&igsi=ZDNlZDc0MzIxNw==' },
+    { label: 'LinkedIn', href: 'https://www.linkedin.com/company/the-betterpass' },
+];
+
 export type HeroMessagesContent = Record<HeroMessageMood, string[]>;
 
 export type AppContentConfig = {
@@ -130,11 +136,7 @@ export const DEFAULT_FOOTER_CONTENT: FooterContent = {
         },
     ],
     copyright: '(c) 2026 The Better Pass. All rights reserved.',
-    socials: [
-        { label: 'Instagram', href: '#' },
-        { label: 'Twitter', href: '#' },
-        { label: 'LinkedIn', href: '#' },
-    ],
+    socials: OFFICIAL_SOCIAL_LINKS,
 };
 
 export const DEFAULT_SALES_SETTINGS: SalesSettingsContent = {
@@ -269,6 +271,18 @@ const normalizeFooterLink = (value: unknown): FooterLink | null => {
     return { label, href };
 };
 
+const normalizeFooterSocialLink = (link: FooterLink): FooterLink => {
+    if (link.href && link.href !== '#') return link;
+
+    const normalizedLabel = link.label.trim().toLowerCase();
+    const replacement = OFFICIAL_SOCIAL_LINKS.find((item) => item.label.toLowerCase() === normalizedLabel)
+        || (normalizedLabel === 'twitter' || normalizedLabel === 'x / twitter' || normalizedLabel === 'x'
+            ? OFFICIAL_SOCIAL_LINKS[0]
+            : null);
+
+    return replacement || link;
+};
+
 const looksLikeEmail = (value: string) => value.includes('@');
 
 const looksLikePhone = (value: string) => value.replace(/[^\d]/g, '').length >= 7;
@@ -308,6 +322,7 @@ export const normalizeFooterContent = (value: unknown): FooterContent => {
 
     const socials = Array.isArray(value.socials)
         ? value.socials.map(normalizeFooterLink).filter((item): item is FooterLink => Boolean(item))
+            .map(normalizeFooterSocialLink)
         : DEFAULT_FOOTER_CONTENT.socials;
 
     return {

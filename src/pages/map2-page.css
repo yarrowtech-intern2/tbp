@@ -126,12 +126,13 @@
 .map2-route-panel,
 .map2-detail-sheet {
   position: absolute;
-  z-index: 20;
+  z-index: 900;
 }
 
 .map2-top-controls {
-  top: calc(env(safe-area-inset-top) + 78px);
+  top: calc(env(safe-area-inset-top) + 24px);
   right: 14px;
+  z-index: 1100;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -233,8 +234,9 @@
 }
 
 .map2-search-results {
-  top: calc(env(safe-area-inset-top) + 128px);
+  top: calc(env(safe-area-inset-top) + 76px);
   right: 14px;
+  z-index: 1200;
   display: grid;
   gap: 5px;
   width: min(280px, calc(100vw - 28px));
@@ -614,7 +616,7 @@
 
 @media (min-width: 768px) {
   .map2-top-controls {
-    top: 94px;
+    top: 28px;
     right: 30px;
   }
 
@@ -623,7 +625,7 @@
   }
 
   .map2-search-results {
-    top: 146px;
+    top: 84px;
     right: 30px;
   }
 

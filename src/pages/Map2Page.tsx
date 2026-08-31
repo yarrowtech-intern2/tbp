@@ -6,10 +6,10 @@ import {
   Compass,
   LocateFixed,
   MapPinned,
+  Menu,
   Navigation,
   Pause,
   Play,
-  RotateCcw,
   Route,
   Search,
   X,
@@ -310,8 +310,10 @@ const Map2Viewport: React.FC<{
 
 export const Map2Page: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedPoint, setSelectedPoint] = useState<Map2Attraction | null>(MAP2_ATTRACTIONS[0]);
-  const [routeOpen, setRouteOpen] = useState(true);
+  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const speechKeepAliveRef = useRef<number | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<Map2Attraction | null>(null);
+  const [routeOpen, setRouteOpen] = useState(false);
   const [startId, setStartId] = useState(MAP2_ATTRACTIONS[0].id);
   const [endId, setEndId] = useState(MAP2_ATTRACTIONS[5].id);
   const [travelMode, setTravelMode] = useState<TravelMode>('driving');
@@ -350,6 +352,10 @@ export const Map2Page: React.FC = () => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+    if (speechKeepAliveRef.current !== null) {
+      window.clearInterval(speechKeepAliveRef.current);
+      speechKeepAliveRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -363,33 +369,84 @@ export const Map2Page: React.FC = () => {
     setRouteOpen(false);
   };
 
-  const handlePlayAudio = () => {
+  const stopSpeechKeepAlive = () => {
+    if (speechKeepAliveRef.current === null) return;
+    window.clearInterval(speechKeepAliveRef.current);
+    speechKeepAliveRef.current = null;
+  };
+
+  const getPreferredVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    return voices.find((voice) => voice.lang.toLowerCase() === 'en-in')
+      || voices.find((voice) => voice.lang.toLowerCase().startsWith('en-') && voice.localService)
+      || voices.find((voice) => voice.lang.toLowerCase().startsWith('en-'))
+      || voices[0]
+      || null;
+  };
+
+  const speakSelectedPoint = () => {
     if (!selectedPoint) return;
-    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+    if (!('speechSynthesis' in window) || typeof window.SpeechSynthesisUtterance === 'undefined') {
       setAudioStatus('Audio is not supported in this browser.');
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(
+    const synth = window.speechSynthesis;
+    const voice = getPreferredVoice();
+
+    stopSpeechKeepAlive();
+    synth.cancel();
+
+    const utterance = new window.SpeechSynthesisUtterance(
       `${selectedPoint.name}. ${selectedPoint.summary} Guide suggestion: ${selectedPoint.guide.name}, ${selectedPoint.guide.specialty}. Languages: ${selectedPoint.guide.languages}. Best time: ${selectedPoint.bestTime}.`,
     );
-    utterance.rate = 0.92;
+
+    if (voice) utterance.voice = voice;
+    utterance.lang = voice?.lang || 'en-IN';
+    utterance.rate = 0.88;
     utterance.pitch = 1;
-    utterance.onend = () => setAudioPlaying(false);
-    utterance.onerror = () => {
-      setAudioPlaying(false);
-      setAudioStatus('Could not play the guide audio.');
+    utterance.volume = 1;
+    utterance.onstart = () => {
+      setAudioStatus('Playing guide audio.');
+      setAudioPlaying(true);
     };
-    setAudioStatus('');
+    utterance.onend = () => {
+      stopSpeechKeepAlive();
+      activeUtteranceRef.current = null;
+      setAudioPlaying(false);
+      setAudioStatus('');
+    };
+    utterance.onerror = (event) => {
+      stopSpeechKeepAlive();
+      activeUtteranceRef.current = null;
+      setAudioPlaying(false);
+      setAudioStatus(event.error === 'interrupted' ? '' : 'Could not play the guide audio.');
+    };
+
+    activeUtteranceRef.current = utterance;
+    setAudioStatus('Starting guide audio...');
     setAudioPlaying(true);
-    window.speechSynthesis.speak(utterance);
+    synth.speak(utterance);
+    synth.resume();
+
+    speechKeepAliveRef.current = window.setInterval(() => {
+      if (!synth.speaking) return;
+      synth.pause();
+      synth.resume();
+    }, 9000);
+  };
+
+  const handlePlayAudio = () => {
+    speakSelectedPoint();
   };
 
   const handleStopAudio = () => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    stopSpeechKeepAlive();
+    activeUtteranceRef.current = null;
+    setAudioStatus('');
     setAudioPlaying(false);
   };
 
@@ -468,12 +525,6 @@ export const Map2Page: React.FC = () => {
     } finally {
       setRouteLoading(false);
     }
-  };
-
-  const resetRoute = () => {
-    setPlannedRoute(null);
-    setRouteStops([]);
-    setRouteStatus('Choose two points to build a route.');
   };
 
   return (
@@ -569,11 +620,11 @@ export const Map2Page: React.FC = () => {
           <button
             type="button"
             className="map2-tool"
-            onClick={resetRoute}
-            aria-label="Reset route"
-            title="Reset route"
+            onClick={() => window.dispatchEvent(new CustomEvent('tbp:toggle-mobile-menu'))}
+            aria-label="Menu"
+            title="Menu"
           >
-            <RotateCcw size={18} />
+            <Menu size={19} />
           </button>
         </div>
       </div>

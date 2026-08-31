@@ -134,9 +134,9 @@ values
         ],
         "copyright": "(c) 2026 The Better Pass. All rights reserved.",
         "socials": [
-            { "label": "Instagram", "href": "#" },
-            { "label": "Twitter", "href": "#" },
-            { "label": "LinkedIn", "href": "#" }
+            { "label": "Facebook", "href": "https://www.facebook.com/profile.php?id=61591060152802" },
+            { "label": "Instagram", "href": "https://www.instagram.com/thebetterpass?utm_source=ig_web_button_share_sheet&igsi=ZDNlZDc0MzIxNw==" },
+            { "label": "LinkedIn", "href": "https://www.linkedin.com/company/the-betterpass" }
         ]
     }'::jsonb
 ),

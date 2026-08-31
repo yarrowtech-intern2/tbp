@@ -6,6 +6,7 @@ import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
 import { AppSEO } from './components/SEO';
 import { AppTutorialProvider } from './context/AppTutorialContext';
+import { OFFICIAL_SOCIAL_LINKS } from './lib/appContent';
 import { resolveEffectiveAccountRole } from './lib/platform';
 
 const Home5 = lazy(async () => ({ default: (await import('./pages/Home5')).Home5 }));
@@ -249,7 +250,6 @@ const AppFooter: React.FC<{ homePath: string; footerLogoSrc: string; user: unkno
   const isGuestLanding = !user && pathname === '/';
   if (HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
   if (isGuestLanding) return null;
-  return null;
 
   return (
         <footer style={{ padding: '88px 0 40px', borderTop: '1px solid var(--border-light)', marginTop: '120px', background: 'var(--surface-main)' }}>
@@ -322,9 +322,9 @@ const AppFooter: React.FC<{ homePath: string; footerLogoSrc: string; user: unkno
             <div style={{ marginTop: '48px', paddingTop: '22px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', opacity: 0.72 }}>© 2026 Vagabond. Crafted for seamless journeys.</p>
               <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' }}>
-                <a href="#" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>Instagram</a>
-                <a href="#" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>X / Twitter</a>
-                <a href="#" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>LinkedIn</a>
+                {OFFICIAL_SOCIAL_LINKS.map((link) => (
+                  <a key={link.label} href={link.href || '#'} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none', fontWeight: 500 }}>{link.label}</a>
+                ))}
               </div>
             </div>
           </div>

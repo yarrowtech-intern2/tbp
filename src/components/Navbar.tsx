@@ -236,6 +236,12 @@ export const Navbar: React.FC = () => {
     }, [desktopMorphCycle, desktopMorphing]);
 
     useEffect(() => {
+        const onMapMenuToggle = () => setShowMenu((current) => !current);
+        window.addEventListener('tbp:toggle-mobile-menu', onMapMenuToggle);
+        return () => window.removeEventListener('tbp:toggle-mobile-menu', onMapMenuToggle);
+    }, []);
+
+    useEffect(() => {
         if (!showMenu) return;
 
         const onPointerDown = (event: MouseEvent | TouchEvent) => {
@@ -263,7 +269,7 @@ export const Navbar: React.FC = () => {
     return (
         <>
             {/* ── Desktop nav bar ─────────────────────────────── */}
-            <div className="nbr-bar nbr-desktop">
+            <div className={`nbr-bar nbr-desktop${location.pathname === '/map2' ? ' nbr-desktop--map2' : ''}`}>
                 <Link to={homePath} aria-label="Home" className="nbr-desktop-logo">
                     <img src={logoSrc} alt="The Better Pass" className="nbr-logo" />
                 </Link>
@@ -408,7 +414,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* ── Mobile nav bar ──────────────────────────────── */}
-            <div className="nbr-bar nbr-mobile" ref={mobileNavRef}>
+            <div className={`nbr-bar nbr-mobile${location.pathname === '/map2' ? ' nbr-mobile--map2' : ''}`} ref={mobileNavRef}>
                 <div className="nbr-pill nbr-mobile-pill">
                     <Link to={homePath} aria-label="Home" className="nbr-logo-wrap">
                         <img src={logoSrc} alt="The Better Pass" className="nbr-logo nbr-logo--sm" />
@@ -433,6 +439,12 @@ export const Navbar: React.FC = () => {
                 {/* Mobile dropdown */}
                 {showMenu && (
                     <div className="nbr-dropdown">
+                        {!navLinks.some((item) => item.key === 'home') && (
+                            <Link to={homePath} className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                <span>Home</span>
+                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
+                            </Link>
+                        )}
                         {user && navLinks.map((item) => (
                             <Link key={item.key} to={item.to} className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
                                 <span>{item.label}</span>
@@ -1035,6 +1047,37 @@ export const Navbar: React.FC = () => {
                     width: 100%;
                 }
 
+                .nbr-desktop--map2 {
+                    display: none !important;
+                }
+
+                .nbr-mobile--map2 {
+                    display: flex !important;
+                    flex-direction: column;
+                    align-items: stretch;
+                    padding: 0 16px;
+                    top: 16px;
+                }
+
+                .nbr-mobile--map2 .nbr-mobile-pill {
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    background: transparent !important;
+                    border: none !important;
+                    border-radius: 0 !important;
+                    box-shadow: none !important;
+                    padding: 7px 10px !important;
+                    pointer-events: none;
+                }
+
+                .nbr-mobile--map2 .nbr-mobile-actions {
+                    display: none !important;
+                }
+
+                .nbr-mobile--map2 .nbr-logo-wrap {
+                    pointer-events: auto;
+                }
+
                 @keyframes nbrMenuIn {
                     from { opacity: 0; transform: translateY(-8px) scale(0.98); }
                     to { opacity: 1; transform: translateY(0) scale(1); }
@@ -1121,6 +1164,18 @@ export const Navbar: React.FC = () => {
                     }
 
                     .nbr-avatar-sm-wrap { display: none !important; }
+
+                    .nbr-mobile--map2 .nbr-mobile-actions {
+                        display: none !important;
+                    }
+
+                    .nbr-mobile--map2 .nbr-mobile-pill {
+                        pointer-events: none;
+                    }
+
+                    .nbr-mobile--map2 .nbr-logo-wrap {
+                        pointer-events: auto;
+                    }
                 }
             `}</style>
         </>
