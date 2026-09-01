@@ -54,6 +54,14 @@
     margin: 0;
 }
 
+.terms-sample-image {
+    display: block;
+    height: auto;
+    margin-top: 36px;
+    max-width: 100%;
+    width: 100%;
+}
+
 .terms-updated {
     color: #5f6368;
     font-size: 0.95rem;

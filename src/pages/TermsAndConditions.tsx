@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import './terms-and-conditions.css';
 
+/*
 const sections = [
     {
         title: 'Using The Better Pass',
@@ -31,6 +32,7 @@ const sections = [
         body: 'We may update these terms as the platform evolves. Continued use of The Better Pass after updates means you accept the revised terms.',
     },
 ];
+*/
 
 export const TermsAndConditions: React.FC = () => (
     <main className="terms-page">
@@ -41,6 +43,14 @@ export const TermsAndConditions: React.FC = () => (
         </header>
 
         <article className="terms-document">
+            <h1>sample testing</h1>
+            <img
+                className="terms-sample-image"
+                src="https://res.cloudinary.com/dc3qprub3/image/upload/v1788264825/tbp_terms_cond_sample_webp_myl5tz.webp"
+                alt="Terms and conditions sample"
+            />
+
+            {/*
             <p className="terms-kicker">The Better Pass</p>
             <h1>Terms and Conditions</h1>
             <p className="terms-updated">Last updated: May 8, 2026</p>
@@ -62,6 +72,7 @@ export const TermsAndConditions: React.FC = () => (
             <footer className="terms-footer">
                 <Link to="/login" className="terms-return-link">Return to login</Link>
             </footer>
+            */}
         </article>
     </main>
 );
