@@ -8,6 +8,7 @@ import { AppSEO } from './components/SEO';
 import { AppTutorialProvider } from './context/AppTutorialContext';
 import { OFFICIAL_SOCIAL_LINKS } from './lib/appContent';
 import { resolveEffectiveAccountRole } from './lib/platform';
+import { VIRTUAL_TOURS_ENABLED } from './lib/virtualTours';
 
 const Home5 = lazy(async () => ({ default: (await import('./pages/Home5')).Home5 }));
 const About2 = lazy(async () => ({ default: (await import('./pages/About2')).About2 }));
@@ -104,7 +105,7 @@ const HomeRoute: React.FC = () => {
 
   if (user) {
     if (providerAccount || isAdminAccount || marketingAccount) {
-      return <Navigate to={role === 'local_guide' ? '/dashboard/provider?section=virtual-tours' : '/dashboard'} replace />;
+      return <Navigate to="/dashboard" replace />;
     }
     return <DashboardHome />;
   }
@@ -213,8 +214,8 @@ function App() {
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/users/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
               <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-              <Route path="/virtual-tours" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
-              <Route path="/virtual-tours/live/:bookingId" element={<ProtectedRoute><VirtualTours /></ProtectedRoute>} />
+              <Route path="/virtual-tours" element={VIRTUAL_TOURS_ENABLED ? <ProtectedRoute><VirtualTours /></ProtectedRoute> : <Navigate to="/" replace />} />
+              <Route path="/virtual-tours/live/:bookingId" element={VIRTUAL_TOURS_ENABLED ? <ProtectedRoute><VirtualTours /></ProtectedRoute> : <Navigate to="/" replace />} />
               <Route path="/map" element={<MapPage />} />
               <Route path="/map2" element={<Map2Page />} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
@@ -248,7 +249,8 @@ const AppNavbar: React.FC = () => {
 const AppFooter: React.FC<{ homePath: string; footerLogoSrc: string; user: unknown }> = ({ homePath, footerLogoSrc, user }) => {
   const { pathname } = useLocation();
   const isGuestLanding = !user && pathname === '/';
-  if (HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
+  const shouldRenderAppFooter = false;
+  if (!shouldRenderAppFooter || HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
   if (isGuestLanding) return null;
 
   return (

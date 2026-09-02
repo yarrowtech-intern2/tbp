@@ -37,7 +37,7 @@ import { isProviderRole, normalizeRoleValue } from '../lib/platform';
 import { onBookingSync } from '../lib/bookingSync';
 import { DEFAULT_HERO_MESSAGES, getDynamicHeroMessage, getPublicAppContent, type HeroMessagesContent } from '../lib/appContent';
 import { getListingImages } from '../lib/listingImages';
-import { isVirtualTourRecord } from '../lib/virtualTours';
+import { VIRTUAL_TOURS_ENABLED, isVirtualTourRecord } from '../lib/virtualTours';
 import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './dashboard-home.css';
 import '../components/listing-card.css';
@@ -795,17 +795,30 @@ export const DashboardHome: React.FC = () => {
 
   const searchQueryNormalized = deferredSearchQuery.trim().toLowerCase();
 
+  const visibleTourPosts = useMemo(
+    () => VIRTUAL_TOURS_ENABLED ? tourPosts : tourPosts.filter((post) => !isVirtualTourRecord(post)),
+    [tourPosts],
+  );
+  const visibleActivityPosts = useMemo(
+    () => VIRTUAL_TOURS_ENABLED ? activityPosts : activityPosts.filter((post) => !isVirtualTourRecord(post)),
+    [activityPosts],
+  );
+  const visibleEventPosts = useMemo(
+    () => VIRTUAL_TOURS_ENABLED ? eventPosts : eventPosts.filter((post) => !isVirtualTourRecord(post)),
+    [eventPosts],
+  );
+
   const filteredTourPosts = useMemo(
-    () => filterPostsByQuery(tourPosts, searchQueryNormalized),
-    [tourPosts, searchQueryNormalized]
+    () => filterPostsByQuery(visibleTourPosts, searchQueryNormalized),
+    [visibleTourPosts, searchQueryNormalized]
   );
   const filteredActivityPosts = useMemo(
-    () => filterPostsByQuery(activityPosts, searchQueryNormalized),
-    [activityPosts, searchQueryNormalized]
+    () => filterPostsByQuery(visibleActivityPosts, searchQueryNormalized),
+    [visibleActivityPosts, searchQueryNormalized]
   );
   const filteredEventPosts = useMemo(
-    () => filterPostsByQuery(eventPosts, searchQueryNormalized),
-    [eventPosts, searchQueryNormalized]
+    () => filterPostsByQuery(visibleEventPosts, searchQueryNormalized),
+    [visibleEventPosts, searchQueryNormalized]
   );
   const filteredLivePosts = useMemo(
     () => filterPostsByQuery(dedupePosts([...tourPosts, ...activityPosts, ...eventPosts]).filter(isVirtualTourRecord), searchQueryNormalized),
@@ -813,7 +826,10 @@ export const DashboardHome: React.FC = () => {
   );
 
   const recommendedPosts = useMemo(() => {
-    const filteredSuggested = filterPostsByQuery(suggestedPosts, searchQueryNormalized);
+    const visibleSuggestedPosts = VIRTUAL_TOURS_ENABLED
+      ? suggestedPosts
+      : suggestedPosts.filter((post) => !isVirtualTourRecord(post));
+    const filteredSuggested = filterPostsByQuery(visibleSuggestedPosts, searchQueryNormalized);
     const pool = dedupePosts([
       ...filteredSuggested,
       ...filteredTourPosts,
@@ -1100,7 +1116,7 @@ export const DashboardHome: React.FC = () => {
               />
             )}
 
-            {showAll && filteredLivePosts.length > 0 && (
+            {VIRTUAL_TOURS_ENABLED && showAll && filteredLivePosts.length > 0 && (
               <Reveal delay={180}>
                 <section className="dh-listing-section">
                   <div className="dh-section-top">

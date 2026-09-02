@@ -20,7 +20,7 @@ import {
 } from '../lib/destinations';
 import { calculatePricingFromProviderUnit } from '../lib/pricing';
 import { isProviderRole, normalizeRoleValue, type ListingType } from '../lib/platform';
-import { isVirtualTourRecord } from '../lib/virtualTours';
+import { VIRTUAL_TOURS_ENABLED, isVirtualTourRecord } from '../lib/virtualTours';
 import { onBookingSync } from '../lib/bookingSync';
 import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './tourist-explore-page.css';
@@ -34,7 +34,7 @@ type ExploreCardRecord = PostRecord & {
 
 const FILTERS: Array<{ id: ExploreFilter; label: string }> = [
   { id: 'all', label: 'All' },
-  { id: 'live', label: 'Live Tours' },
+  ...(VIRTUAL_TOURS_ENABLED ? [{ id: 'live' as ExploreFilter, label: 'Live Tours' }] : []),
   { id: 'tours', label: 'Tours' },
   { id: 'activities', label: 'Activities' },
   { id: 'guides', label: 'Guides' },
@@ -319,7 +319,7 @@ export const TouristExplorePage: React.FC = () => {
 
   const activeFilter = useMemo<ExploreFilter>(() => {
     const tab = (searchParams.get('tab') || '').toLowerCase();
-    if (tab === 'live' || tab === 'virtual' || tab === 'virtual-tours') return 'live';
+    if (VIRTUAL_TOURS_ENABLED && (tab === 'live' || tab === 'virtual' || tab === 'virtual-tours')) return 'live';
     if (tab === 'tours') return 'tours';
     if (tab === 'activities') return 'activities';
     if (tab === 'guides' || tab === 'events') return 'guides';
@@ -346,10 +346,12 @@ export const TouristExplorePage: React.FC = () => {
           getBookings(user.id),
         ]);
 
-        const mapped: ExploreCardRecord[] = [...tours, ...activities, ...guides].map((post) => ({
-          ...post,
-          exploreType: getExploreType(post),
-        }));
+        const mapped: ExploreCardRecord[] = [...tours, ...activities, ...guides]
+          .filter((post) => VIRTUAL_TOURS_ENABLED || !isVirtualTourRecord(post))
+          .map((post) => ({
+            ...post,
+            exploreType: getExploreType(post),
+          }));
 
         setPosts(mapped);
         setTouristBookings(bookings);
@@ -407,7 +409,7 @@ export const TouristExplorePage: React.FC = () => {
   }
 
   const filteredPosts = posts.filter((post) => {
-    if (activeFilter === 'live') return isVirtualTourRecord(post);
+    if (VIRTUAL_TOURS_ENABLED && activeFilter === 'live') return isVirtualTourRecord(post);
     if (activeFilter !== 'all' && post.exploreType !== activeFilter) return false;
     if (!deferredSearchQuery) return true;
 

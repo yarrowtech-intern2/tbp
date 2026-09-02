@@ -28,6 +28,7 @@ import {
 } from '../lib/platform';
 import { COUNTRY_OPTIONS } from '../lib/countries';
 import { getPasswordFormatStatus, PASSWORD_METER_CIRCUMFERENCE, PASSWORD_REQUIREMENTS_ERROR } from '../lib/password';
+import { VIRTUAL_TOURS_ENABLED } from '../lib/virtualTours';
 import './auth.css';
 
 const TOURIST_EXPLORE_PATH = '/explore';
@@ -50,7 +51,6 @@ const getPostLoginDestination = (role?: string | null) => {
     const normalizedRole = normalizeRoleValue(role);
     if (normalizedRole === 'admin') return '/dashboard/admin';
     if (normalizedRole === 'marketing') return '/dashboard/marketing';
-    if (normalizedRole === 'local_guide') return '/dashboard/provider?section=virtual-tours';
     if (isProviderRole(normalizedRole) || normalizedRole === 'provider' || normalizedRole === 'vendor') {
         return '/dashboard/provider';
     }
@@ -176,7 +176,7 @@ const readAuthQueryIntent = (rawSearch?: string): { isLogin?: boolean; isRecover
     const mode = params.get('mode')?.trim().toLowerCase();
     const rawRole = params.get('role')?.trim().toLowerCase();
     const requestedRole = rawRole === 'provider' ? 'tour_company' : rawRole;
-    const role = requestedRole && requestedRole in ROLE_SIGNUP_CONFIG
+    const role = requestedRole && requestedRole in ROLE_SIGNUP_CONFIG && (VIRTUAL_TOURS_ENABLED || requestedRole !== 'local_guide')
         ? requestedRole as UserRole
         : undefined;
 
@@ -198,6 +198,7 @@ export const Auth: React.FC = () => {
     );
     const [isLogin, setIsLogin] = useState(() => {
         if (initialQueryIntent.isLogin !== undefined) return initialQueryIntent.isLogin;
+        if (typeof window !== 'undefined' && window.location.pathname === '/login') return true;
         if (typeof window !== 'undefined' && window.location.pathname === '/signup') return false;
         return initialDraft?.isLogin ?? true;
     });
@@ -216,7 +217,9 @@ export const Auth: React.FC = () => {
     const [formValues, setFormValues] = useState<SignupFormValues>(() => ({
         ...DEFAULT_SIGNUP_VALUES,
         ...(initialDraft?.signupValues || {}),
-        role: initialQueryIntent.role ?? initialDraft?.signupValues.role ?? DEFAULT_SIGNUP_VALUES.role,
+        role: initialQueryIntent.role
+            ?? (initialDraft?.signupValues.role === 'local_guide' && !VIRTUAL_TOURS_ENABLED ? DEFAULT_SIGNUP_VALUES.role : initialDraft?.signupValues.role)
+            ?? DEFAULT_SIGNUP_VALUES.role,
         password: '',
     }));
     const [loading, setLoading] = useState(false);
@@ -956,7 +959,7 @@ export const Auth: React.FC = () => {
                                         <option value="tour_company">Tour Company</option>
                                         <option value="tour_guide">Tour Guide</option>
                                         <option value="tour_instructor">Tour Instructor</option>
-                                        <option value="local_guide">Local Guide</option>
+                                        {VIRTUAL_TOURS_ENABLED && <option value="local_guide">Local Guide</option>}
                                     </select>
                                 </div>
                             )}

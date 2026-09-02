@@ -101,7 +101,7 @@ import {
     getTouristRouteHistory,
     type RouteHistoryRecord,
 } from '../lib/routePlanner';
-import { isVirtualTourRecord } from '../lib/virtualTours';
+import { VIRTUAL_TOURS_ENABLED, isVirtualTourRecord } from '../lib/virtualTours';
 import './role-dashboard.css';
 
 type DashboardRole = 'tourist' | 'provider' | 'admin' | 'marketing';
@@ -530,7 +530,7 @@ const parseTouristSection = (value: string | null): SidebarKey | null => {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview') return 'overview';
     if (normalized === 'explore') return 'explore';
-    if (normalized === 'virtual' || normalized === 'virtualtours' || normalized === 'virtual-tours' || normalized === 'virtual_tours' || normalized === 'live' || normalized === 'live-tours' || normalized === 'live_tours') return 'virtualTours';
+    if (VIRTUAL_TOURS_ENABLED && (normalized === 'virtual' || normalized === 'virtualtours' || normalized === 'virtual-tours' || normalized === 'virtual_tours' || normalized === 'live' || normalized === 'live-tours' || normalized === 'live_tours')) return 'virtualTours';
     if (normalized === 'bookings') return 'bookings';
     if (normalized === 'routes' || normalized === 'history' || normalized === 'route-history') return 'routes';
     if (normalized === 'revenue' || normalized === 'spend') return 'revenue';
@@ -544,7 +544,7 @@ const parseProviderSection = (value: string | null): SidebarKey | null => {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'overview' || normalized === 'dashboard') return 'overview';
     if (normalized === 'bookings') return 'bookings';
-    if (normalized === 'virtual' || normalized === 'virtualtours' || normalized === 'virtual-tours' || normalized === 'virtual_tours' || normalized === 'live' || normalized === 'live-tours' || normalized === 'live_tours') return 'virtualTours';
+    if (VIRTUAL_TOURS_ENABLED && (normalized === 'virtual' || normalized === 'virtualtours' || normalized === 'virtual-tours' || normalized === 'virtual_tours' || normalized === 'live' || normalized === 'live-tours' || normalized === 'live_tours')) return 'virtualTours';
     if (normalized === 'revenue') return 'revenue';
     if (normalized === 'listings') return 'listings';
     if (normalized === 'studio' || normalized === 'create') return 'studio';
@@ -954,7 +954,7 @@ export const RoleDashboard: React.FC = () => {
         () => parseMarketingSection(searchParams.get('section')),
         [searchParams],
     );
-    const requestedLocalGuideCreate = searchParams.get('create') === 'live-tour';
+    const requestedLocalGuideCreate = VIRTUAL_TOURS_ENABLED && searchParams.get('create') === 'live-tour';
     const metadataRole = typeof user?.user_metadata?.role === 'string' ? user.user_metadata.role : null;
     const resolvedAccountRole = useMemo(
         () => resolveEffectiveAccountRole(profile?.role, metadataRole),
@@ -967,7 +967,7 @@ export const RoleDashboard: React.FC = () => {
     const requestedSection = useMemo(() => {
         if (effectiveRole === 'admin') return requestedAdminSection;
         if (effectiveRole === 'provider') {
-            if (resolvedAccountRole === 'local_guide' && requestedProviderSection === 'studio') {
+            if (VIRTUAL_TOURS_ENABLED && resolvedAccountRole === 'local_guide' && requestedProviderSection === 'studio') {
                 return 'virtualTours';
             }
             return requestedProviderSection;
@@ -1064,7 +1064,7 @@ export const RoleDashboard: React.FC = () => {
     const [localGuideBuilderOpen, setLocalGuideBuilderOpen] = useState(false);
     const defaultDashboardSection: SidebarKey = effectiveRole === 'admin'
         ? adminDefaultSection
-        : effectiveRole === 'provider' && resolvedAccountRole === 'local_guide'
+        : VIRTUAL_TOURS_ENABLED && effectiveRole === 'provider' && resolvedAccountRole === 'local_guide'
             ? 'virtualTours'
             : 'overview';
 
@@ -1261,6 +1261,7 @@ export const RoleDashboard: React.FC = () => {
             !routeRole
             || routeRole !== effectiveRole
             || effectiveRole !== 'provider'
+            || !VIRTUAL_TOURS_ENABLED
             || resolvedAccountRole !== 'local_guide'
             || requestedProviderSection !== 'studio'
         ) {
@@ -1295,7 +1296,7 @@ export const RoleDashboard: React.FC = () => {
     }, [activeSection, requestedLocalGuideCreate, resolvedAccountRole]);
 
     const goToSection = useCallback((section: SidebarKey, replace = true) => {
-        const normalizedSection = effectiveRole === 'provider' && resolvedAccountRole === 'local_guide' && section === 'studio'
+        const normalizedSection = VIRTUAL_TOURS_ENABLED && effectiveRole === 'provider' && resolvedAccountRole === 'local_guide' && section === 'studio'
             ? 'virtualTours'
             : normalizeSectionForRole(effectiveRole, section);
         const nextSearchParams = new URLSearchParams(searchParams);
@@ -1541,7 +1542,7 @@ export const RoleDashboard: React.FC = () => {
             const providerNavItems: NavItem[] = [
                 { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                 { key: 'bookings', label: 'Bookings', icon: ClipboardList },
-                { key: 'virtualTours', label: 'Live Tours', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours },
+                ...(VIRTUAL_TOURS_ENABLED ? [{ key: 'virtualTours' as SidebarKey, label: 'Live Tours', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours }] : []),
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'studio', label: 'Studio', icon: SquarePen },
                 { key: 'listings', label: 'Listings', icon: Package },
@@ -1550,14 +1551,18 @@ export const RoleDashboard: React.FC = () => {
             ];
 
             if (resolvedAccountRole === 'local_guide') {
-                return [
-                    providerNavItems[2],
-                    providerNavItems[1],
-                    providerNavItems[3],
-                    { ...providerNavItems[5], label: 'Live Listings' },
-                    providerNavItems[7],
-                    providerNavItems[0],
-                ];
+                const itemByKey = new Map(providerNavItems.map((item) => [item.key, item]));
+                const localGuideKeys: SidebarKey[] = VIRTUAL_TOURS_ENABLED
+                    ? ['virtualTours', 'bookings', 'revenue', 'listings', 'messages', 'overview']
+                    : ['overview', 'bookings', 'revenue', 'listings', 'messages'];
+                return localGuideKeys
+                    .map((key) => itemByKey.get(key))
+                    .filter((item): item is NavItem => Boolean(item))
+                    .map((item) => (
+                        VIRTUAL_TOURS_ENABLED && item.key === 'listings'
+                            ? { ...item, label: 'Live Listings' }
+                            : item
+                    ));
             }
 
             return providerNavItems;
@@ -1576,7 +1581,7 @@ export const RoleDashboard: React.FC = () => {
         return [
             { key: 'overview', label: 'Dashboard', icon: LayoutDashboard },
             { key: 'explore', label: 'Explore', icon: Compass },
-            { key: 'virtualTours', label: 'Live Tours', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours },
+            ...(VIRTUAL_TOURS_ENABLED ? [{ key: 'virtualTours' as SidebarKey, label: 'Live Tours', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours }] : []),
             { key: 'bookings', label: 'Bookings', icon: ClipboardList },
             { key: 'revenue', label: 'Spend', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.spending },
             { key: 'messages', label: 'Messages', icon: MessageSquare },
@@ -1610,7 +1615,7 @@ export const RoleDashboard: React.FC = () => {
         return [
             { id: 'home', label: 'Home', icon: Home, to: '/' },
             { id: 'explore', label: 'Explore', icon: Search, to: '/explore' },
-            { id: 'virtualTours', label: 'Live', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours, section: 'virtualTours' },
+            ...(VIRTUAL_TOURS_ENABLED ? [{ id: 'virtualTours', label: 'Live', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours, section: 'virtualTours' as SidebarKey }] : []),
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'overview' },
             { id: 'bookings', label: 'Bookings', icon: ClipboardList, section: 'bookings' },
             { id: 'spending', label: 'Spend', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.spending, section: 'revenue' },
@@ -2543,7 +2548,7 @@ export const RoleDashboard: React.FC = () => {
     };
 
     const renderTouristSection = () => {
-        if (activeSection === 'virtualTours') {
+        if (VIRTUAL_TOURS_ENABLED && activeSection === 'virtualTours') {
             return (
                 <section className="rdb-content-grid rdb-virtual-tour-section">
                     <article className="rdb-panel">
@@ -3078,7 +3083,7 @@ export const RoleDashboard: React.FC = () => {
     };
 
     const renderProviderSection = () => {
-        if (activeSection === 'virtualTours') {
+        if (VIRTUAL_TOURS_ENABLED && activeSection === 'virtualTours') {
             return (
                 <section className="rdb-content-grid rdb-virtual-tour-section">
                     <article className="rdb-panel">

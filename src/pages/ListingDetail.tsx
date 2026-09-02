@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Facebook, Heart, Instagram, Loader2, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -32,7 +32,7 @@ import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
 import { SEOHead } from '../components/SEO';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import { buildListingJsonLd } from '../lib/seo';
-import { CAMERA_TYPE_LABELS, getVirtualTourDetailsFromRecord, isVirtualTourRecord } from '../lib/virtualTours';
+import { CAMERA_TYPE_LABELS, VIRTUAL_TOURS_ENABLED, getVirtualTourDetailsFromRecord, isVirtualTourRecord } from '../lib/virtualTours';
 import {
     clearPendingBookingConfirmation,
     getPendingBookingConfirmation,
@@ -765,6 +765,10 @@ export const ListingDetail: React.FC = () => {
                 <h2>Listing not found.</h2>
             </main>
         );
+    }
+
+    if (!VIRTUAL_TOURS_ENABLED && isVirtualTour) {
+        return <Navigate to="/explore" replace />;
     }
 
     return (

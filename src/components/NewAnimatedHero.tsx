@@ -161,7 +161,7 @@ const ProviderCount: React.FC = () => (
 );
 
 const HeroCTA: React.FC = () => (
-  <Link className="tbp-editorial-cta" to="/signup" aria-label="Get started with The Better Pass">
+  <Link className="tbp-editorial-cta" to="/login" aria-label="Get started with The Better Pass">
     <span>Get started</span>
     <ArrowRight size={18} strokeWidth={2.5} aria-hidden="true" />
   </Link>

@@ -449,7 +449,7 @@ export const Home5: React.FC = () => {
     {
       title: 'Get started',
       iconSrc: '/icons/mobile-nav-icons/login.webp',
-      to: '/signup',
+      to: '/login',
       isPrimary: true,
     },
   ];
@@ -949,7 +949,7 @@ export const Home5: React.FC = () => {
             <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
             <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
             <Link to="/map" onClick={() => setHeroMenuOpen(false)}>Map</Link>
-            <Link to="/signup" onClick={() => setHeroMenuOpen(false)}>Get started</Link>
+            <Link to="/login" onClick={() => setHeroMenuOpen(false)}>Get started</Link>
             <button
               type="button"
               onClick={() => {

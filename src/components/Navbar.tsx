@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { normalizeRoleValue } from '../lib/platform';
+import { VIRTUAL_TOURS_ENABLED } from '../lib/virtualTours';
 
 type NavTab = 'home' | 'explore' | 'virtualTours' | 'dashboard' | 'bookings' | 'profile';
 
@@ -96,7 +97,7 @@ export const Navbar: React.FC = () => {
     const activeTab: NavTab | null = (() => {
         const tab = new URLSearchParams(location.search).get('tab');
         if (location.pathname === '/profile') return 'profile';
-        if (location.pathname === '/virtual-tours' || location.pathname.startsWith('/virtual-tours/')) return 'virtualTours';
+        if (VIRTUAL_TOURS_ENABLED && (location.pathname === '/virtual-tours' || location.pathname.startsWith('/virtual-tours/'))) return 'virtualTours';
         if (!isTourist) return null;
         if (location.pathname === '/') return 'home';
         if (location.pathname === '/explore') return 'explore';
@@ -128,14 +129,14 @@ export const Navbar: React.FC = () => {
             ? [
                 { key: 'home' as NavTab, label: 'Home', to: '/' },
                 { key: 'explore' as NavTab, label: 'Explore', to: touristExplorePath },
-                { key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' },
+                ...(VIRTUAL_TOURS_ENABLED ? [{ key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' }] : []),
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: touristDashboardPath },
                 { key: 'bookings' as NavTab, label: 'Bookings', to: touristBookingsPath },
                 { key: 'profile' as NavTab, label: 'Profile', to: '/profile' },
               ]
             : [
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: dashboardPath },
-                { key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' },
+                ...(VIRTUAL_TOURS_ENABLED ? [{ key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' }] : []),
                 { key: 'profile' as NavTab, label: 'Profile', to: '/profile' },
               ]),
     ];

@@ -60,6 +60,7 @@ import {
     CAMERA_TYPE_LABELS,
     DEFAULT_VIRTUAL_TOUR_DETAILS,
     LOCAL_GUIDE_VIRTUAL_SUBCATEGORY,
+    VIRTUAL_TOURS_ENABLED,
     buildVirtualTourDescription,
     joinLines,
     normalizeVirtualTourDetails,
@@ -399,8 +400,8 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         () => (['tour', 'activity', 'guide'] as ListingType[]).filter((type) => canRolePublish(studioRole, type)),
         [studioRole]
     );
-    const canAccessStudio = isProvider && allowedTypes.length > 0;
     const localGuideStudio = studioRole === 'local_guide';
+    const canAccessStudio = isProvider && allowedTypes.length > 0 && (VIRTUAL_TOURS_ENABLED || !localGuideStudio);
 
     const loadListings = useCallback(async () => {
         if (!currentUserId) return;
@@ -710,6 +711,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         return <Navigate to="/dashboard" replace />;
     }
 
+    if (localGuideStudio && !VIRTUAL_TOURS_ENABLED) {
+        if (embedded) return null;
+        return <Navigate to="/dashboard/provider" replace />;
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canAccessStudio || uploadingImage || uploadingProofPhoto || uploadingProofVideo) return;
@@ -1010,8 +1016,8 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     <div className="ps-lock-banner">
                         <ShieldAlert size={20} />
                         <div>
-                            <strong>{localGuideStudio ? 'Live tour publishing is unavailable' : 'Provider publishing is not available for this role'}</strong>
-                            <p>{localGuideStudio ? 'This account can only publish Live AR/VR tour slots.' : 'Your current role cannot create tours, activities, or events.'}</p>
+                            <strong>{localGuideStudio ? 'Live tour publishing is paused' : 'Provider publishing is not available for this role'}</strong>
+                            <p>{localGuideStudio ? 'Virtual tours are reserved for version 2.' : 'Your current role cannot create tours, activities, or events.'}</p>
                         </div>
                     </div>
                 )}

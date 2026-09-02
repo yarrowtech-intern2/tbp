@@ -1,4 +1,5 @@
 export const LOCAL_GUIDE_VIRTUAL_SUBCATEGORY = 'Live 360 Virtual Tour';
+export const VIRTUAL_TOURS_ENABLED = false;
 
 export const VIRTUAL_TOUR_TAGS = [
     'virtual tour',
@@ -90,6 +91,19 @@ const toStringValue = (value: unknown): string => (
     typeof value === 'string' ? value.trim() : ''
 );
 
+const hasVirtualTourDetailSignal = (value: Record<string, unknown>): boolean => (
+    value.is_virtual_tour === true
+    || value.virtual_tour === true
+    || toStringValue(value.spot_location).length > 0
+    || toStringValue(value.meeting_point).length > 0
+    || toStringValue(value.camera_notes).length > 0
+    || toStringValue(value.network_plan).length > 0
+    || toStringArray(value.places_shown).length > 0
+    || toStringArray(value.available_windows).length > 0
+    || toStringArray(value.verification_photo_urls).length > 0
+    || toStringValue(value.verification_video_url).length > 0
+);
+
 const toStringArray = (value: unknown): string[] => {
     if (Array.isArray(value)) {
         return Array.from(new Set(value.map(toStringValue).filter(Boolean)));
@@ -143,7 +157,13 @@ export const getVirtualTourDetailsFromRecord = (record: Record<string, unknown> 
         : isRecord(record.virtualTourDetails)
             ? record.virtualTourDetails
             : null;
-    if (!detailSource && record.is_virtual_tour !== true && record.virtual_tour !== true) return null;
+    if (
+        record.is_virtual_tour !== true
+        && record.virtual_tour !== true
+        && (!detailSource || !hasVirtualTourDetailSignal(detailSource))
+    ) {
+        return null;
+    }
     return normalizeVirtualTourDetails(detailSource || record);
 };
 
