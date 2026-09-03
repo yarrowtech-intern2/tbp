@@ -100,6 +100,12 @@ const FIELD_ICONS: Partial<Record<RoleFormField, React.ReactNode>> = {
     city: <MapPin size={15} />,
 };
 
+const SIGNUP_ROLE_LABELS: Record<UserRole, string> = {
+    ...ROLE_LABELS,
+    tour_guide: 'Local Guide',
+    tour_instructor: 'Activity Instructor',
+};
+
 const GoogleIcon: React.FC = () => (
     <svg className="auth-google-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
         <path
@@ -281,7 +287,7 @@ export const Auth: React.FC = () => {
 
     const summaryEntries = useMemo(() => {
         const items: Array<{ label: string; value: string }> = [
-            { label: 'Role', value: ROLE_LABELS[activeRole] },
+            { label: 'Role', value: SIGNUP_ROLE_LABELS[activeRole] },
             { label: 'Name', value: formValues.fullName || 'Not set' },
             { label: 'Email', value: formValues.email || 'Not set' },
         ];
@@ -957,9 +963,8 @@ export const Auth: React.FC = () => {
                                         aria-label="Select provider type"
                                     >
                                         <option value="tour_company">Tour Company</option>
-                                        <option value="tour_guide">Tour Guide</option>
-                                        <option value="tour_instructor">Tour Instructor</option>
-                                        {VIRTUAL_TOURS_ENABLED && <option value="local_guide">Local Guide</option>}
+                                        <option value="tour_guide">Local Guide</option>
+                                        <option value="tour_instructor">Activity Instructor</option>
                                     </select>
                                 </div>
                             )}
@@ -969,7 +974,7 @@ export const Auth: React.FC = () => {
                                     <>
                                         <div className="auth-tourist-step-header">
                                             <p className="auth-tourist-step-kicker">
-                                                {ROLE_LABELS[activeRole]} signup
+                                                {SIGNUP_ROLE_LABELS[activeRole]} signup
                                                 <span>{signupStepIndex + 1} / {signupSteps.length}</span>
                                             </p>
                                             <div className="auth-tourist-progress" aria-hidden="true">
@@ -980,7 +985,7 @@ export const Auth: React.FC = () => {
                                         {currentSignupStep.kind === 'final' ? (
                                             <div className="auth-tourist-card auth-tourist-card--final auth-field-full">
                                                 <div className="auth-tourist-copy">
-                                                    <h2>Review and create your {ROLE_LABELS[activeRole].toLowerCase()} account</h2>
+                                                    <h2>Review and create your {SIGNUP_ROLE_LABELS[activeRole].toLowerCase()} account</h2>
                                                     <p>
                                                         Your signup data stays the same. This only changes the front-end flow into
                                                         single-question screens.
@@ -1074,10 +1079,10 @@ export const Auth: React.FC = () => {
                                                                     ? meta.description
                                                                     : isProviderIdentityStep
                                                                     ? companyNameRequired
-                                                                        ? `Your name and company name are required to create your ${ROLE_LABELS[activeRole].toLowerCase()} account.`
+                                                                        ? `Your name and company name are required to create your ${SIGNUP_ROLE_LABELS[activeRole].toLowerCase()} account.`
                                                                         : 'Your name is required. Add a company name only if you want it attached to this profile.'
                                                                     : meta.required
-                                                                    ? `This is required to create your ${ROLE_LABELS[activeRole].toLowerCase()} account.`
+                                                                    ? `This is required to create your ${SIGNUP_ROLE_LABELS[activeRole].toLowerCase()} account.`
                                                                     : 'Optional. You can skip this and add it later.'}
                                                             </p>
                                                         </div>
@@ -1299,7 +1304,7 @@ export const Auth: React.FC = () => {
                                     </>
                                 ) : null}
 
-                                <p className="auth-role-note">Selected role: {ROLE_LABELS[activeRole]}</p>
+                                <p className="auth-role-note">Selected role: {SIGNUP_ROLE_LABELS[activeRole]}</p>
                             </form>
                         </>
                     )}
