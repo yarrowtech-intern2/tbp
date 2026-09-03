@@ -28,7 +28,6 @@ const ListingDetail = lazy(async () => ({ default: (await import('./pages/Listin
 const UserProfile = lazy(async () => ({ default: (await import('./pages/UserProfile')).UserProfile }));
 const Messages = lazy(async () => ({ default: (await import('./pages/Messages')).Messages }));
 const Notifications = lazy(async () => ({ default: (await import('./pages/Notifications')).Notifications }));
-const MapPage = lazy(async () => ({ default: (await import('./pages/MapPage')).MapPage }));
 const Map2Page = lazy(async () => ({ default: (await import('./pages/Map2Page')).Map2Page }));
 const VirtualTours = lazy(async () => ({ default: (await import('./pages/VirtualTours')).VirtualTours }));
 
@@ -216,8 +215,8 @@ function App() {
               <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
               <Route path="/virtual-tours" element={VIRTUAL_TOURS_ENABLED ? <ProtectedRoute><VirtualTours /></ProtectedRoute> : <Navigate to="/" replace />} />
               <Route path="/virtual-tours/live/:bookingId" element={VIRTUAL_TOURS_ENABLED ? <ProtectedRoute><VirtualTours /></ProtectedRoute> : <Navigate to="/" replace />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/map2" element={<Map2Page />} />
+              <Route path="/map" element={<Map2Page />} />
+              <Route path="/map2" element={<Navigate to="/map" replace />} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/admin" element={<AdminRoute><AdminConsole /></AdminRoute>} />
               <Route path="/admin/review/:id" element={<AdminRoute><AdminListingReview /></AdminRoute>} />

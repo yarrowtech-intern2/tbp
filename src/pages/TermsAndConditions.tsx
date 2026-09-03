@@ -36,6 +36,8 @@ const sections = [
 
 export const TermsAndConditions: React.FC = () => (
     <main className="terms-page">
+        <div className="terms-watermark" aria-hidden="true">sample testing</div>
+
         <header className="terms-header">
             <Link to="/" className="terms-logo" aria-label="The Better Pass home">
                 <img src="/logo/final-logo.png" alt="The Better Pass" />
@@ -43,7 +45,6 @@ export const TermsAndConditions: React.FC = () => (
         </header>
 
         <article className="terms-document">
-            <h1>sample testing</h1>
             <img
                 className="terms-sample-image"
                 src="https://res.cloudinary.com/dc3qprub3/image/upload/v1788264825/tbp_terms_cond_sample_webp_myl5tz.webp"

@@ -2,7 +2,23 @@
     background: #ffffff;
     color: #202124;
     min-height: 100vh;
+    overflow: hidden;
     padding: 132px 24px 72px;
+    position: relative;
+}
+
+.terms-watermark {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='220' viewBox='0 0 360 220'%3E%3Cg transform='translate(28 132) rotate(-24)'%3E%3Ctext x='0' y='0' fill='%23202124' fill-opacity='0.17' font-family='Arial, sans-serif' font-size='34' font-weight='800'%3Esample testing%3C/text%3E%3C/g%3E%3C/svg%3E");
+    background-position: center top;
+    background-repeat: repeat;
+    background-size: 360px 220px;
+    color: transparent;
+    font-weight: 800;
+    inset: 72px 0 0;
+    letter-spacing: 0;
+    pointer-events: none;
+    position: fixed;
+    z-index: 10;
 }
 
 .terms-header {
@@ -35,6 +51,8 @@
 .terms-document {
     margin: 0 auto;
     max-width: 820px;
+    position: relative;
+    z-index: 1;
 }
 
 .terms-kicker {
@@ -127,6 +145,11 @@
 @media (max-width: 700px) {
     .terms-page {
         padding: calc(72px + env(safe-area-inset-top, 0px)) 20px 56px;
+    }
+
+    .terms-watermark {
+        background-size: 260px 160px;
+        inset: 64px 0 0;
     }
 
     .terms-header {

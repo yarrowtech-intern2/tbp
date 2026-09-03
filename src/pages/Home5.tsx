@@ -438,7 +438,7 @@ export const Home5: React.FC = () => {
     },
     {
       title: 'Map',
-      iconSrc: '/icons/mobile-nav-icons/map.svg',
+      iconSrc: '/icons/mobile-nav-icons/map.webp',
       to: '/map',
     },
     {

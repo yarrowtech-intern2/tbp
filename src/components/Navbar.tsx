@@ -270,7 +270,7 @@ export const Navbar: React.FC = () => {
     return (
         <>
             {/* ── Desktop nav bar ─────────────────────────────── */}
-            <div className={`nbr-bar nbr-desktop${location.pathname === '/map2' ? ' nbr-desktop--map2' : ''}`}>
+            <div className={`nbr-bar nbr-desktop${location.pathname === '/map' ? ' nbr-desktop--map2' : ''}`}>
                 <Link to={homePath} aria-label="Home" className="nbr-desktop-logo">
                     <img src={logoSrc} alt="The Better Pass" className="nbr-logo" />
                 </Link>
@@ -401,7 +401,7 @@ export const Navbar: React.FC = () => {
                             aria-label="Open map"
                             title="Map"
                         >
-                            <img src="/icons/mobile-nav-icons/gps.svg" alt="" className="nbr-map-icon" aria-hidden="true" />
+                            <img src="/icons/mobile-nav-icons/map.webp" alt="" className="nbr-map-icon" aria-hidden="true" />
                         </Link>
                         <Link to="/profile" className={`nbr-user-chip${location.pathname === '/profile' ? ' nbr-user-chip--active' : ''}`}>
                             <div className="nbr-user-text">
@@ -415,7 +415,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* ── Mobile nav bar ──────────────────────────────── */}
-            <div className={`nbr-bar nbr-mobile${location.pathname === '/map2' ? ' nbr-mobile--map2' : ''}`} ref={mobileNavRef}>
+            <div className={`nbr-bar nbr-mobile${location.pathname === '/map' ? ' nbr-mobile--map2' : ''}`} ref={mobileNavRef}>
                 <div className="nbr-pill nbr-mobile-pill">
                     <Link to={homePath} aria-label="Home" className="nbr-logo-wrap">
                         <img src={logoSrc} alt="The Better Pass" className="nbr-logo nbr-logo--sm" />
