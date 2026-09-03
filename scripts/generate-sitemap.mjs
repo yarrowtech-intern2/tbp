@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import {
   STATIC_ROUTES,
   buildUrl,
+  fetchDynamicBlogsForSeo,
   fetchDynamicListingsForSeo,
   getSiteUrl,
   toDate,
@@ -43,7 +44,7 @@ function staticEntries() {
 
 const entriesByLocation = new Map();
 
-for (const entry of [...staticEntries(), ...(await fetchDynamicListingsForSeo(siteUrl))]) {
+for (const entry of [...staticEntries(), ...(await fetchDynamicListingsForSeo(siteUrl)), ...(await fetchDynamicBlogsForSeo(siteUrl))]) {
   if (!entriesByLocation.has(entry.loc)) {
     entriesByLocation.set(entry.loc, {
       loc: entry.loc,

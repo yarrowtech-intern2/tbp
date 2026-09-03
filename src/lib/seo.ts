@@ -216,6 +216,38 @@ export const buildRouteSeo = (pathname: string): SeoConfig => {
         };
     }
 
+    if (pathname === '/blogs/new') {
+        return {
+            title: 'Write Blog | The Better Pass',
+            description: 'Create a travel blog post for The Better Pass.',
+            path: '/blogs/new',
+            noindex: true,
+        };
+    }
+
+    if (pathname === '/blogs') {
+        return {
+            title: 'Travel Blogs | Stories and Guides | The Better Pass',
+            description: 'Read travel stories, destination guides, activity ideas and local insights from registered members of The Better Pass.',
+            path: '/blogs',
+            type: 'article',
+            jsonLd: [
+                buildOrganizationJsonLd(),
+                buildBreadcrumbJsonLd('/blogs', 'Travel Blogs'),
+            ],
+        };
+    }
+
+    if (pathname.startsWith('/blogs/')) {
+        return {
+            title: 'Travel Blog | The Better Pass',
+            description: 'Read travel stories, destination guides, activity ideas and local insights from The Better Pass members.',
+            path: pathname,
+            type: 'article',
+            jsonLd: buildBreadcrumbJsonLd(pathname, 'Travel Blog'),
+        };
+    }
+
     if (pathname === '/map') {
         return {
             title: 'Travel Map | Route Planning and Destination Discovery | The Better Pass',

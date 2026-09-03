@@ -4,6 +4,7 @@ import {
   STATIC_NOINDEX_PATHS,
   STATIC_ROUTES,
   buildRouteSeo,
+  fetchDynamicBlogsForSeo,
   fetchDynamicListingsForSeo,
   getSiteUrl,
   injectSeoIntoHtml,
@@ -22,6 +23,10 @@ const routes = [
     seo: buildRouteSeo(path, siteUrl),
   })),
   ...(await fetchDynamicListingsForSeo(siteUrl)).map((entry) => ({
+    path: entry.path,
+    seo: entry.seo,
+  })),
+  ...(await fetchDynamicBlogsForSeo(siteUrl)).map((entry) => ({
     path: entry.path,
     seo: entry.seo,
   })),

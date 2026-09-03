@@ -2456,6 +2456,28 @@
     justify-content: flex-end;
 }
 
+.rdb-admin-write-blog-btn {
+    align-items: center;
+    background: var(--accent);
+    border: none;
+    border-radius: 999px;
+    color: #101010;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.84rem;
+    font-weight: 800;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 15px;
+    text-decoration: none;
+    transition: filter 0.16s ease, transform 0.16s ease;
+}
+
+.rdb-admin-write-blog-btn:hover {
+    filter: brightness(0.96);
+    transform: translateY(-1px);
+}
+
 .rdb-admin-topbar-shortcuts {
     display: flex;
     flex-wrap: wrap;
@@ -3586,6 +3608,16 @@
     .rdb-admin-topbar.is-mobile .rdb-admin-ctrl-btn {
         width: 48px;
         height: 48px;
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-write-blog-btn {
+        min-height: 48px;
+        padding: 0;
+        width: 48px;
+    }
+
+    .rdb-admin-topbar.is-mobile .rdb-admin-write-blog-btn span {
+        display: none;
     }
 
     .rdb-admin-topbar-shortcuts {

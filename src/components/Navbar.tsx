@@ -8,7 +8,7 @@ import { getProfileAvatarUrl } from '../lib/avatar';
 import { normalizeRoleValue } from '../lib/platform';
 import { VIRTUAL_TOURS_ENABLED } from '../lib/virtualTours';
 
-type NavTab = 'home' | 'explore' | 'virtualTours' | 'dashboard' | 'bookings' | 'profile';
+type NavTab = 'home' | 'explore' | 'blogs' | 'virtualTours' | 'dashboard' | 'bookings' | 'profile';
 
 type DesktopLiquidNavItem = {
     key: string;
@@ -21,6 +21,7 @@ type DesktopLiquidNavItem = {
 const DESKTOP_NAV_ICON_SRC: Record<string, string> = {
     home: '/icons/mobile-nav-icons/home.webp',
     explore: '/icons/mobile-nav-icons/search.webp',
+    blogs: '/icons/mobile-nav-icons/about.webp',
     virtualTours: '/icons/mobile-nav-icons/gps.svg',
     dashboard: '/icons/mobile-nav-icons/dashboard.webp',
     bookings: '/icons/mobile-nav-icons/bookings.webp',
@@ -98,6 +99,7 @@ export const Navbar: React.FC = () => {
         const tab = new URLSearchParams(location.search).get('tab');
         if (location.pathname === '/profile') return 'profile';
         if (VIRTUAL_TOURS_ENABLED && (location.pathname === '/virtual-tours' || location.pathname.startsWith('/virtual-tours/'))) return 'virtualTours';
+        if (location.pathname === '/blogs' || location.pathname.startsWith('/blogs/')) return 'blogs';
         if (!isTourist) return null;
         if (location.pathname === '/') return 'home';
         if (location.pathname === '/explore') return 'explore';
@@ -129,6 +131,7 @@ export const Navbar: React.FC = () => {
             ? [
                 { key: 'home' as NavTab, label: 'Home', to: '/' },
                 { key: 'explore' as NavTab, label: 'Explore', to: touristExplorePath },
+                { key: 'blogs' as NavTab, label: 'Blogs', to: '/blogs' },
                 ...(VIRTUAL_TOURS_ENABLED ? [{ key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' }] : []),
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: touristDashboardPath },
                 { key: 'bookings' as NavTab, label: 'Bookings', to: touristBookingsPath },
@@ -136,6 +139,7 @@ export const Navbar: React.FC = () => {
               ]
             : [
                 { key: 'dashboard' as NavTab, label: 'Dashboard', to: dashboardPath },
+                { key: 'blogs' as NavTab, label: 'Blogs', to: '/blogs' },
                 ...(VIRTUAL_TOURS_ENABLED ? [{ key: 'virtualTours' as NavTab, label: 'Live Tours', to: '/virtual-tours' }] : []),
                 { key: 'profile' as NavTab, label: 'Profile', to: '/profile' },
               ]),
@@ -331,7 +335,10 @@ export const Navbar: React.FC = () => {
                         </div>
                     </nav>
                 ) : (
-                    <Link to="/signup" className="nbr-join nbr-join--desktop">Join</Link>
+                    <div className="nbr-guest-actions">
+                        <Link to="/blogs" className={`nbr-guest-link${location.pathname.startsWith('/blogs') ? ' is-active' : ''}`}>Blogs</Link>
+                        <Link to="/signup" className="nbr-join nbr-join--desktop">Join</Link>
+                    </div>
                 )}
                 {/* Centered glass pill */}
                 <div className="nbr-pill nbr-pill--legacy">
@@ -379,7 +386,10 @@ export const Navbar: React.FC = () => {
                     )}
 
                     {!user && (
-                        <Link to="/signup" className="nbr-join">Join</Link>
+                        <>
+                            <Link to="/blogs" className={`nbr-link${location.pathname.startsWith('/blogs') ? ' nbr-link--active' : ''}`}>Blogs</Link>
+                            <Link to="/signup" className="nbr-join">Join</Link>
+                        </>
                     )}
                 </div>
 
@@ -473,6 +483,12 @@ export const Navbar: React.FC = () => {
                         {user && (
                             <Link to="/map" className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
                                 <span>Map</span>
+                                <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
+                            </Link>
+                        )}
+                        {!user && (
+                            <Link to="/blogs" className="nbr-drop-item nbr-drop-item--main" onClick={() => setShowMenu(false)}>
+                                <span>Blogs</span>
                                 <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
                             </Link>
                         )}
@@ -882,8 +898,33 @@ export const Navbar: React.FC = () => {
                 .nbr-join--desktop {
                     background: #FF741D;
                     color: #101010;
+                }
+
+                .nbr-guest-actions {
+                    align-items: center;
+                    display: inline-flex;
+                    gap: 10px;
                     grid-column: 2;
                     justify-self: center;
+                }
+
+                .nbr-guest-link {
+                    align-items: center;
+                    background: ${isDark ? '#2a2a2a' : '#efefef'};
+                    border-radius: 999px;
+                    color: ${navTextStrong};
+                    display: inline-flex;
+                    font-family: 'Okine', 'Outfit', sans-serif;
+                    font-size: 0.875rem;
+                    font-weight: 700;
+                    min-height: 36px;
+                    padding: 8px 16px;
+                    text-decoration: none;
+                }
+
+                .nbr-guest-link:hover,
+                .nbr-guest-link.is-active {
+                    background: ${isDark ? '#343434' : '#d8d8d8'};
                 }
 
                 .nbr-right-actions {

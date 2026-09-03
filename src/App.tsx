@@ -24,6 +24,9 @@ const AdminConsole = lazy(async () => ({ default: (await import('./pages/AdminCo
 const AdminListingReview = lazy(async () => ({ default: (await import('./pages/AdminListingReview')).AdminListingReview }));
 const ProviderTerms = lazy(async () => ({ default: (await import('./pages/ProviderTerms')).ProviderTerms }));
 const TermsAndConditions = lazy(async () => ({ default: (await import('./pages/TermsAndConditions')).TermsAndConditions }));
+const Blogs = lazy(async () => ({ default: (await import('./pages/Blogs')).Blogs }));
+const BlogCreate = lazy(async () => ({ default: (await import('./pages/BlogCreate')).BlogCreate }));
+const BlogDetail = lazy(async () => ({ default: (await import('./pages/BlogDetail')).BlogDetail }));
 const ListingDetail = lazy(async () => ({ default: (await import('./pages/ListingDetail')).ListingDetail }));
 const UserProfile = lazy(async () => ({ default: (await import('./pages/UserProfile')).UserProfile }));
 const Messages = lazy(async () => ({ default: (await import('./pages/Messages')).Messages }));
@@ -201,6 +204,9 @@ function App() {
               <Route path="/signup" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
               <Route path="/auth" element={<LegacyAuthRedirect />} />
               <Route path="/terms" element={<TermsAndConditions />} />
+              <Route path="/blogs" element={<Blogs />} />
+              <Route path="/blogs/new" element={<ProtectedRoute><BlogCreate /></ProtectedRoute>} />
+              <Route path="/blogs/:slug" element={<BlogDetail />} />
               <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
               <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
               <Route path="/explore" element={<TouristOnlyRoute><TouristExplorePage /></TouristOnlyRoute>} />

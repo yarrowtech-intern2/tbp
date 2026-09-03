@@ -50,6 +50,18 @@ export const STATIC_ROUTES = [
     description: 'Read the terms for using The Better Pass, including accounts, bookings, payments, provider content, traveler conduct and platform communications.',
     jsonLd: (siteUrl) => buildBreadcrumbJsonLd('/terms', 'Terms and Conditions', siteUrl),
   },
+  {
+    path: '/blogs',
+    changefreq: 'daily',
+    priority: '0.7',
+    type: 'article',
+    title: 'Travel Blogs | Stories and Guides | The Better Pass',
+    description: 'Read travel stories, destination guides, activity ideas and local insights from registered members of The Better Pass.',
+    jsonLd: (siteUrl) => [
+      buildOrganizationJsonLd(siteUrl),
+      buildBreadcrumbJsonLd('/blogs', 'Travel Blogs', siteUrl),
+    ],
+  },
 ];
 
 export const PRIVATE_ROUTE_PREFIXES = [
@@ -67,6 +79,10 @@ export const PRIVATE_ROUTE_PREFIXES = [
 ];
 
 export const NOINDEX_ROUTES = {
+  '/blogs/new': {
+    title: 'Write Blog | The Better Pass',
+    description: 'Create a travel blog post for The Better Pass.',
+  },
   '/about-final': {
     title: 'About Preview | The Better Pass',
     description: 'Preview version of The Better Pass about page.',
@@ -84,6 +100,7 @@ export const STATIC_NOINDEX_PATHS = [
   '/profile',
   '/messages',
   '/admin',
+  '/blogs/new',
   '/provider/studio',
   '/provider/terms',
   '/notifications',
@@ -484,6 +501,42 @@ export function buildListingSeo(row, type, siteUrl = getSiteUrl()) {
   };
 }
 
+export function buildBlogSeo(row, siteUrl = getSiteUrl()) {
+  const title = cleanString(row?.title) || 'Travel Blog';
+  const description = truncate(stripHtml(cleanString(row?.excerpt) || cleanString(row?.content) || DEFAULT_DESCRIPTION), 155);
+  const path = `/blogs/${encodeURIComponent(String(row.slug || ''))}`;
+  const image = absolutizeUrl(cleanUrl(row?.cover_image_url) || DEFAULT_IMAGE_PATH, siteUrl);
+  const url = buildUrl(path, siteUrl);
+
+  return {
+    title: `${title} | The Better Pass Blog`,
+    description,
+    path,
+    type: 'article',
+    image,
+    noindex: false,
+    jsonLd: [
+      buildOrganizationJsonLd(siteUrl),
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: title,
+        description,
+        image,
+        datePublished: row?.published_at || row?.created_at,
+        dateModified: row?.updated_at || row?.published_at || row?.created_at,
+        author: {
+          '@type': 'Person',
+          name: cleanString(row?.author_name) || 'The Better Pass member',
+        },
+        publisher: { '@id': `${siteUrl}/#organization` },
+        mainEntityOfPage: url,
+      },
+      buildBreadcrumbJsonLd(path, title, siteUrl),
+    ],
+  };
+}
+
 export async function fetchDynamicListingsForSeo(siteUrl = getSiteUrl()) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -507,6 +560,29 @@ export async function fetchDynamicListingsForSeo(siteUrl = getSiteUrl()) {
   ].filter(Boolean);
 }
 
+export async function fetchDynamicBlogsForSeo(siteUrl = getSiteUrl()) {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('SEO: Supabase env vars missing, using static blog routes only.');
+    return [];
+  }
+
+  try {
+    const rows = await fetchRows('blogs', {
+      select: 'id,title,slug,excerpt,content,cover_image_url,author_name,category,tags,published_at,updated_at,created_at,status',
+      status: 'eq.published',
+      order: 'published_at.desc.nullslast',
+      limit: '5000',
+    }, supabaseUrl, supabaseAnonKey);
+
+    return rows.map((row) => blogEntry(row, siteUrl)).filter(Boolean);
+  } catch (error) {
+    console.warn(`SEO: could not fetch blogs. ${error.message}`);
+    return [];
+  }
+}
+
 async function safeFetchListings(label, fetcher) {
   try {
     return await fetcher();
@@ -525,6 +601,19 @@ function listingEntry(row, type, siteUrl) {
     lastmod: toDate(row.updated_at || row.reviewed_at || row.created_at),
     changefreq: 'weekly',
     priority: '0.8',
+    seo,
+  };
+}
+
+function blogEntry(row, siteUrl) {
+  if (!row?.slug || !row?.title) return null;
+  const seo = buildBlogSeo(row, siteUrl);
+  return {
+    loc: buildUrl(seo.path, siteUrl),
+    path: seo.path,
+    lastmod: toDate(row.updated_at || row.published_at || row.created_at),
+    changefreq: 'weekly',
+    priority: '0.7',
     seo,
   };
 }

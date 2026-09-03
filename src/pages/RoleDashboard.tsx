@@ -4840,6 +4840,14 @@ export const RoleDashboard: React.FC = () => {
                                 <h1>{dashboardTitle}</h1>
                             </div>
                             <div className="rdb-admin-topbar-controls">
+                                <Link
+                                    to="/blogs/new"
+                                    className="rdb-admin-write-blog-btn"
+                                    title="Write blog"
+                                >
+                                    <SquarePen size={17} />
+                                    <span>Write Blog</span>
+                                </Link>
                                 {!isDesktopDashboard && (
                                     <button
                                         type="button"
