@@ -16,6 +16,10 @@ const formatDate = (value: string) => {
     }).format(new Date(value));
 };
 
+const formatBlogMeta = (blog: BlogPost) => (
+    [blog.category, blog.location, formatDate(blog.published_at)].filter(Boolean).join(' / ')
+);
+
 const featuredImage = (blog: BlogPost | null) => (
     blog?.cover_image_url || '/images/home4/tbp-map-1920.png'
 );
@@ -122,7 +126,7 @@ export const Blogs: React.FC = () => {
                                 <img src={featuredBlog.cover_image_url} alt={featuredBlog.title} />
                             </Link>
                             <div className="blogs-featured-copy">
-                                <p className="blogs-meta">{featuredBlog.category} / {formatDate(featuredBlog.published_at)}</p>
+                                <p className="blogs-meta">{formatBlogMeta(featuredBlog)}</p>
                                 <h2>
                                     <Link to={`/blogs/${featuredBlog.slug}`}>{featuredBlog.title}</Link>
                                 </h2>
@@ -156,7 +160,7 @@ export const Blogs: React.FC = () => {
                                     <img src={blog.cover_image_url} alt={blog.title} loading="lazy" />
                                 </Link>
                                 <div className="blogs-card-copy">
-                                    <p className="blogs-meta">{blog.category} / {formatDate(blog.published_at)}</p>
+                                    <p className="blogs-meta">{formatBlogMeta(blog)}</p>
                                     <h2>
                                         <Link to={`/blogs/${blog.slug}`}>{blog.title}</Link>
                                     </h2>

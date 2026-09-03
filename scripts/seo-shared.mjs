@@ -503,10 +503,34 @@ export function buildListingSeo(row, type, siteUrl = getSiteUrl()) {
 
 export function buildBlogSeo(row, siteUrl = getSiteUrl()) {
   const title = cleanString(row?.title) || 'Travel Blog';
-  const description = truncate(stripHtml(cleanString(row?.excerpt) || cleanString(row?.content) || DEFAULT_DESCRIPTION), 155);
+  const location = cleanString(row?.location);
+  const descriptionBase = truncate(stripHtml(cleanString(row?.excerpt) || cleanString(row?.content) || DEFAULT_DESCRIPTION), 155);
+  const description = `${descriptionBase}${location ? ` Location: ${location}.` : ''}`.trim();
   const path = `/blogs/${encodeURIComponent(String(row.slug || ''))}`;
   const image = absolutizeUrl(cleanUrl(row?.cover_image_url) || DEFAULT_IMAGE_PATH, siteUrl);
   const url = buildUrl(path, siteUrl);
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    description,
+    image,
+    datePublished: row?.published_at || row?.created_at,
+    dateModified: row?.updated_at || row?.published_at || row?.created_at,
+    author: {
+      '@type': 'Person',
+      name: cleanString(row?.author_name) || 'The Better Pass member',
+    },
+    publisher: { '@id': `${siteUrl}/#organization` },
+    mainEntityOfPage: url,
+  };
+
+  if (location) {
+    articleJsonLd.contentLocation = {
+      '@type': 'Place',
+      name: location,
+    };
+  }
 
   return {
     title: `${title} | The Better Pass Blog`,
@@ -517,21 +541,7 @@ export function buildBlogSeo(row, siteUrl = getSiteUrl()) {
     noindex: false,
     jsonLd: [
       buildOrganizationJsonLd(siteUrl),
-      {
-        '@context': 'https://schema.org',
-        '@type': 'BlogPosting',
-        headline: title,
-        description,
-        image,
-        datePublished: row?.published_at || row?.created_at,
-        dateModified: row?.updated_at || row?.published_at || row?.created_at,
-        author: {
-          '@type': 'Person',
-          name: cleanString(row?.author_name) || 'The Better Pass member',
-        },
-        publisher: { '@id': `${siteUrl}/#organization` },
-        mainEntityOfPage: url,
-      },
+      articleJsonLd,
       buildBreadcrumbJsonLd(path, title, siteUrl),
     ],
   };
@@ -570,7 +580,7 @@ export async function fetchDynamicBlogsForSeo(siteUrl = getSiteUrl()) {
 
   try {
     const rows = await fetchRows('blogs', {
-      select: 'id,title,slug,excerpt,content,cover_image_url,author_name,category,tags,published_at,updated_at,created_at,status',
+      select: 'id,title,slug,excerpt,content,cover_image_url,author_name,category,location,tags,published_at,updated_at,created_at,status',
       status: 'eq.published',
       order: 'published_at.desc.nullslast',
       limit: '5000',

@@ -8,6 +8,7 @@ create table if not exists public.blogs (
     excerpt text not null,
     content text not null,
     category text not null,
+    location text not null default '',
     tags text[] not null default '{}'::text[],
     cover_image_url text not null,
     content_image_urls text[] not null default '{}'::text[],
@@ -23,6 +24,7 @@ create unique index if not exists blogs_slug_idx on public.blogs (slug);
 create index if not exists blogs_published_at_idx on public.blogs (published_at desc);
 create index if not exists blogs_author_id_idx on public.blogs (author_id);
 create index if not exists blogs_category_idx on public.blogs (category);
+create index if not exists blogs_location_idx on public.blogs (location);
 create index if not exists blogs_tags_idx on public.blogs using gin (tags);
 
 alter table public.blogs enable row level security;

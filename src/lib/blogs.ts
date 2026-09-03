@@ -10,6 +10,7 @@ export interface BlogPost {
     excerpt: string;
     content: string;
     category: string;
+    location: string;
     tags: string[];
     cover_image_url: string;
     content_image_urls: string[];
@@ -27,6 +28,7 @@ export interface CreateBlogInput {
     excerpt: string;
     content: string;
     category: string;
+    location: string;
     tags: string[];
     coverImageUrl: string;
     contentImageUrls: string[];
@@ -42,6 +44,7 @@ const BLOG_SELECT = [
     'excerpt',
     'content',
     'category',
+    'location',
     'tags',
     'cover_image_url',
     'content_image_urls',
@@ -68,6 +71,7 @@ const mapBlog = (row: Record<string, unknown>): BlogPost => ({
     excerpt: String(row.excerpt || ''),
     content: String(row.content || ''),
     category: String(row.category || 'Travel'),
+    location: String(row.location || ''),
     tags: normalizeStringArray(row.tags),
     cover_image_url: String(row.cover_image_url || ''),
     content_image_urls: normalizeStringArray(row.content_image_urls),
@@ -152,6 +156,7 @@ export const createBlog = async (input: CreateBlogInput): Promise<BlogPost> => {
             excerpt: input.excerpt.trim(),
             content: input.content.trim(),
             category: input.category.trim() || 'Travel',
+            location: input.location.trim(),
             tags: input.tags,
             cover_image_url: input.coverImageUrl,
             content_image_urls: input.contentImageUrls,

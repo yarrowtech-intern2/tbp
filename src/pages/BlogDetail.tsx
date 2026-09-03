@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Loader2, MessageCircle, Send, Share2, Trash2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
 import { useAuth } from '../hooks/useAuth';
 import { deleteBlog, getBlogBySlug, type BlogPost } from '../lib/blogs';
@@ -20,27 +20,39 @@ const formatDate = (value: string) => {
 const buildArticleJsonLd = (blog: BlogPost) => {
     const siteUrl = getSiteUrl();
     const path = `/blogs/${blog.slug}`;
+    const articleJsonLd: Record<string, unknown> = {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: blog.title,
+        description: blog.excerpt,
+        image: blog.cover_image_url,
+        datePublished: blog.published_at,
+        dateModified: blog.updated_at,
+        author: {
+            '@type': 'Person',
+            name: blog.author_name,
+        },
+        publisher: { '@id': `${siteUrl}/#organization` },
+        mainEntityOfPage: `${siteUrl}${path}`,
+    };
+
+    if (blog.location) {
+        articleJsonLd.contentLocation = {
+            '@type': 'Place',
+            name: blog.location,
+        };
+    }
 
     return [
         buildOrganizationJsonLd(siteUrl),
-        {
-            '@context': 'https://schema.org',
-            '@type': 'BlogPosting',
-            headline: blog.title,
-            description: blog.excerpt,
-            image: blog.cover_image_url,
-            datePublished: blog.published_at,
-            dateModified: blog.updated_at,
-            author: {
-                '@type': 'Person',
-                name: blog.author_name,
-            },
-            publisher: { '@id': `${siteUrl}/#organization` },
-            mainEntityOfPage: `${siteUrl}${path}`,
-        },
+        articleJsonLd,
         buildBreadcrumbJsonLd(path, blog.title, siteUrl),
     ];
 };
+
+const formatBlogMeta = (blog: BlogPost) => (
+    [blog.category, blog.location, formatDate(blog.published_at)].filter(Boolean).join(' / ')
+);
 
 export const BlogDetail: React.FC = () => {
     const { slug } = useParams();
@@ -49,6 +61,8 @@ export const BlogDetail: React.FC = () => {
     const [blog, setBlog] = useState<BlogPost | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [shareUrl, setShareUrl] = useState('');
+    const [shareStatus, setShareStatus] = useState('');
     const [deleting, setDeleting] = useState(false);
 
     const content = useMemo(
@@ -77,6 +91,40 @@ export const BlogDetail: React.FC = () => {
             cancelled = true;
         };
     }, [slug]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') setShareUrl(window.location.href);
+    }, [slug]);
+
+    const copyShareLink = async () => {
+        if (!blog) return;
+        const url = shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            setShareStatus('Link copied');
+        } catch {
+            setShareStatus('Copy failed');
+        }
+    };
+
+    const handleNativeShare = async () => {
+        if (!blog) return;
+        const url = shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`;
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: blog.title,
+                    text: blog.excerpt,
+                    url,
+                });
+                setShareStatus('');
+                return;
+            }
+            await copyShareLink();
+        } catch {
+            setShareStatus('');
+        }
+    };
 
     const handleDelete = async () => {
         if (!blog || deleting || !isAdmin) return;
@@ -139,13 +187,60 @@ export const BlogDetail: React.FC = () => {
                         <ArrowLeft size={18} />
                         <span>Blogs</span>
                     </Link>
-                    <p className="blogs-meta">{blog.category} / {formatDate(blog.published_at)}</p>
+                    <p className="blogs-meta">{formatBlogMeta(blog)}</p>
                     <h1>{blog.title}</h1>
                     <p>{blog.excerpt}</p>
                     <div className="blog-author-row">
                         {blog.author_avatar_url ? <img src={blog.author_avatar_url} alt="" /> : null}
                         <span>By {blog.author_name}</span>
                     </div>
+                    <div className="blog-share-row" aria-label="Share blog">
+                        <button type="button" className="blog-share-btn" onClick={() => void handleNativeShare()}>
+                            <Share2 size={16} />
+                            <span>Apps</span>
+                        </button>
+                        <a
+                            className="blog-share-btn"
+                            href={`https://wa.me/?text=${encodeURIComponent(`${blog.title} ${shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`}`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <MessageCircle size={16} />
+                            <span>WhatsApp</span>
+                        </a>
+                        <a
+                            className="blog-share-btn"
+                            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <Send size={16} />
+                            <span>Facebook</span>
+                        </a>
+                        <a
+                            className="blog-share-btn"
+                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(blog.title)}&url=${encodeURIComponent(shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <Send size={16} />
+                            <span>X</span>
+                        </a>
+                        <a
+                            className="blog-share-btn"
+                            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            <Send size={16} />
+                            <span>LinkedIn</span>
+                        </a>
+                        <button type="button" className="blog-share-btn" onClick={() => void copyShareLink()}>
+                            <Copy size={16} />
+                            <span>Copy</span>
+                        </button>
+                    </div>
+                    {shareStatus && <p className="blog-share-status">{shareStatus}</p>}
                     {isAdmin && (
                         <button
                             type="button"

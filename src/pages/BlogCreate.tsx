@@ -24,6 +24,7 @@ type BlogCreateDraft = {
     excerpt: string;
     content: string;
     category: string;
+    location: string;
     tags: string;
     coverImageUrl: string;
     coverImageName: string;
@@ -36,6 +37,7 @@ const DEFAULT_BLOG_DRAFT: BlogCreateDraft = {
     excerpt: '',
     content: '',
     category: BLOG_CATEGORIES[0],
+    location: '',
     tags: '',
     coverImageUrl: '',
     coverImageName: '',
@@ -81,6 +83,7 @@ export const BlogCreate: React.FC = () => {
     const [excerpt, setExcerpt] = useState(initialDraft.excerpt);
     const [content, setContent] = useState(initialDraft.content);
     const [category, setCategory] = useState(initialDraft.category);
+    const [location, setLocation] = useState(initialDraft.location);
     const [tags, setTags] = useState(initialDraft.tags);
     const [coverImageUrl, setCoverImageUrl] = useState(initialDraft.coverImageUrl);
     const [coverImageName, setCoverImageName] = useState(initialDraft.coverImageName);
@@ -104,13 +107,14 @@ export const BlogCreate: React.FC = () => {
             excerpt,
             content,
             category,
+            location,
             tags,
             coverImageUrl,
             coverImageName,
             contentImageUrls,
             contentImageNames,
         });
-    }, [category, content, contentImageNames, contentImageUrls, coverImageName, coverImageUrl, excerpt, tags, title]);
+    }, [category, content, contentImageNames, contentImageUrls, coverImageName, coverImageUrl, excerpt, location, tags, title]);
 
     if (!loading && !user) return <Navigate to="/login" replace />;
 
@@ -196,6 +200,7 @@ export const BlogCreate: React.FC = () => {
                 excerpt,
                 content,
                 category,
+                location,
                 tags: parseBlogTags(tags),
                 coverImageUrl,
                 contentImageUrls,
@@ -262,15 +267,25 @@ export const BlogCreate: React.FC = () => {
                         </label>
 
                         <label className="blog-field">
-                            <span>Tags</span>
+                            <span>Location</span>
                             <input
                                 type="text"
-                                value={tags}
-                                onChange={(event) => setTags(event.target.value)}
-                                placeholder="Kashmir, food walk, heritage"
+                                value={location}
+                                onChange={(event) => setLocation(event.target.value)}
+                                placeholder="Park Street, Kolkata"
                             />
                         </label>
                     </div>
+
+                    <label className="blog-field">
+                        <span>Tags</span>
+                        <input
+                            type="text"
+                            value={tags}
+                            onChange={(event) => setTags(event.target.value)}
+                            placeholder="Kashmir, food walk, heritage"
+                        />
+                    </label>
 
                     <div className="blog-upload-row">
                         <label className="blog-upload">
@@ -360,6 +375,7 @@ export const BlogCreate: React.FC = () => {
                         <div className="blog-preview-cover blog-preview-cover--empty" />
                     )}
                     <h2>{title || 'Blog title'}</h2>
+                    {location && <p className="blog-preview-location">{location}</p>}
                     <p>{excerpt || 'Your excerpt will appear here.'}</p>
                     <div className="blog-preview-content">
                         {content ? previewBlocks : <p>Start writing to see the article rhythm.</p>}
