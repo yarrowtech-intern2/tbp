@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Copy, Loader2, MessageCircle, PenLine, Send, Share2, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Home, Loader2, MapPin, MessageCircle, PenLine, Search, Send, Trash2, UserCircle2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
+import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
+import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
 import {
     createBlogComment,
@@ -20,6 +22,23 @@ import {
 import { renderBlogContentBlocks } from '../lib/blogContent';
 import { buildBreadcrumbJsonLd, buildOrganizationJsonLd, getSiteUrl } from '../lib/seo';
 import './blogs.css';
+
+type BlogMobileNavKey = 'home' | 'explore' | 'blogs' | 'map' | 'profile';
+
+const BLOG_MOBILE_NAV_ITEMS: Array<{ key: BlogMobileNavKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+    { key: 'home', label: 'Home', icon: Home },
+    { key: 'explore', label: 'Explore', icon: Search },
+    { key: 'blogs', label: 'Blogs', icon: PenLine },
+    { key: 'map', label: 'Map', icon: MapPin },
+    { key: 'profile', label: 'Profile', icon: UserCircle2 },
+];
+
+const BLOG_ACTION_ICONS = {
+    like: '/icons/mobile-nav-icons/blogs/like.webp',
+    dislike: '/icons/mobile-nav-icons/blogs/dislike.webp',
+    comment: '/icons/mobile-nav-icons/blogs/comment.webp',
+    share: '/icons/mobile-nav-icons/blogs/share.webp',
+};
 
 const formatDate = (value: string) => {
     if (!value) return '';
@@ -92,6 +111,7 @@ export const BlogDetail: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [shareUrl, setShareUrl] = useState('');
     const [shareStatus, setShareStatus] = useState('');
+    const [shareModalOpen, setShareModalOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [comments, setComments] = useState<BlogComment[]>([]);
     const [commentSort, setCommentSort] = useState<BlogCommentSort>('popular');
@@ -136,6 +156,17 @@ export const BlogDetail: React.FC = () => {
     }, [slug]);
 
     useEffect(() => {
+        if (!shareModalOpen) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setShareModalOpen(false);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [shareModalOpen]);
+
+    useEffect(() => {
         if (!blog?.id) return;
         let cancelled = false;
         setCommentsLoading(true);
@@ -157,11 +188,13 @@ export const BlogDetail: React.FC = () => {
         };
     }, [blog?.id, commentSort]);
 
+    const blogShareUrl = blog ? shareUrl || `${getSiteUrl()}/blogs/${blog.slug}` : '';
+    const blogShareText = blog ? `${blog.title} ${blogShareUrl}` : '';
+
     const copyShareLink = async () => {
         if (!blog) return;
-        const url = shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`;
         try {
-            await navigator.clipboard.writeText(url);
+            await navigator.clipboard.writeText(blogShareUrl);
             setShareStatus('Link copied');
         } catch {
             setShareStatus('Copy failed');
@@ -170,21 +203,57 @@ export const BlogDetail: React.FC = () => {
 
     const handleNativeShare = async () => {
         if (!blog) return;
-        const url = shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`;
         try {
             if (navigator.share) {
                 await navigator.share({
                     title: blog.title,
                     text: blog.excerpt,
-                    url,
+                    url: blogShareUrl,
                 });
+                setShareModalOpen(false);
                 setShareStatus('');
                 return;
             }
             await copyShareLink();
+            setShareModalOpen(false);
         } catch {
             setShareStatus('');
         }
+    };
+
+    const openShareUrl = (url: string) => {
+        if (typeof window === 'undefined') return;
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setShareModalOpen(false);
+    };
+
+    const handleCopyShare = async () => {
+        await copyShareLink();
+        setShareModalOpen(false);
+    };
+
+    const scrollToComments = () => {
+        document.getElementById('blog-comments-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const handleMobileNav = (key: BlogMobileNavKey) => {
+        if (key === 'home') {
+            navigate('/');
+            return;
+        }
+        if (key === 'explore') {
+            navigate(user ? '/explore' : '/login');
+            return;
+        }
+        if (key === 'blogs') {
+            navigate('/blogs');
+            return;
+        }
+        if (key === 'map') {
+            navigate('/map');
+            return;
+        }
+        navigate(user ? '/profile' : '/login');
     };
 
     const handleDelete = async () => {
@@ -377,8 +446,9 @@ export const BlogDetail: React.FC = () => {
                             className={blog.user_vote === 1 ? 'is-active' : ''}
                             disabled={votingBlog}
                             onClick={() => void handleBlogVote(1)}
+                            aria-label="Upvote blog"
                         >
-                            <ThumbsUp size={16} />
+                            <img src={BLOG_ACTION_ICONS.like} alt="" aria-hidden="true" />
                             <span>{blog.upvote_count}</span>
                         </button>
                         <button
@@ -386,59 +456,30 @@ export const BlogDetail: React.FC = () => {
                             className={blog.user_vote === -1 ? 'is-active' : ''}
                             disabled={votingBlog}
                             onClick={() => void handleBlogVote(-1)}
+                            aria-label="Downvote blog"
                         >
-                            <ThumbsDown size={16} />
+                            <img src={BLOG_ACTION_ICONS.dislike} alt="" aria-hidden="true" />
                             <span>{blog.downvote_count}</span>
                         </button>
-                        <span className="blog-comment-count">
-                            <MessageCircle size={16} />
-                            {blog.comment_count} comments
-                        </span>
-                    </div>
-                    <div className="blog-share-row" aria-label="Share blog">
-                        <button type="button" className="blog-share-btn" onClick={() => void handleNativeShare()}>
-                            <Share2 size={16} />
-                            <span>Apps</span>
+                        <button
+                            type="button"
+                            className="blog-comment-count"
+                            onClick={scrollToComments}
+                            aria-label={`${blog.comment_count} comments`}
+                        >
+                            <img src={BLOG_ACTION_ICONS.comment} alt="" aria-hidden="true" />
+                            <span>{blog.comment_count}</span>
                         </button>
-                        <a
-                            className="blog-share-btn"
-                            href={`https://wa.me/?text=${encodeURIComponent(`${blog.title} ${shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`}`)}`}
-                            target="_blank"
-                            rel="noreferrer"
+                        <button
+                            type="button"
+                            className="blog-share-trigger"
+                            onClick={() => {
+                                setShareStatus('');
+                                setShareModalOpen(true);
+                            }}
+                            aria-label="Share blog"
                         >
-                            <MessageCircle size={16} />
-                            <span>WhatsApp</span>
-                        </a>
-                        <a
-                            className="blog-share-btn"
-                            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <Send size={16} />
-                            <span>Facebook</span>
-                        </a>
-                        <a
-                            className="blog-share-btn"
-                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(blog.title)}&url=${encodeURIComponent(shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <Send size={16} />
-                            <span>X</span>
-                        </a>
-                        <a
-                            className="blog-share-btn"
-                            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <Send size={16} />
-                            <span>LinkedIn</span>
-                        </a>
-                        <button type="button" className="blog-share-btn" onClick={() => void copyShareLink()}>
-                            <Copy size={16} />
-                            <span>Copy</span>
+                            <img src={BLOG_ACTION_ICONS.share} alt="" aria-hidden="true" />
                         </button>
                     </div>
                     {shareStatus && <p className="blog-share-status">{shareStatus}</p>}
@@ -584,7 +625,7 @@ export const BlogDetail: React.FC = () => {
                                             disabled={busyCommentId === comment.id}
                                             onClick={() => void handleCommentVote(comment, 1)}
                                         >
-                                            <ThumbsUp size={13} />
+                                            <img src={BLOG_ACTION_ICONS.like} alt="" aria-hidden="true" />
                                             <span>{comment.upvote_count}</span>
                                         </button>
                                         <button
@@ -593,7 +634,7 @@ export const BlogDetail: React.FC = () => {
                                             disabled={busyCommentId === comment.id}
                                             onClick={() => void handleCommentVote(comment, -1)}
                                         >
-                                            <ThumbsDown size={13} />
+                                            <img src={BLOG_ACTION_ICONS.dislike} alt="" aria-hidden="true" />
                                             <span>{comment.downvote_count}</span>
                                         </button>
                                     </div>
@@ -603,6 +644,79 @@ export const BlogDetail: React.FC = () => {
                     </div>
                 )}
             </section>
+
+            {shareModalOpen && blog && (
+                <div className="blog-share-modal" role="presentation" onMouseDown={() => setShareModalOpen(false)}>
+                    <section
+                        className="blog-share-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="blog-share-title"
+                        onMouseDown={(event) => event.stopPropagation()}
+                    >
+                        <div className="blog-share-dialog-head">
+                            <div>
+                                <p className="blogs-eyebrow">Share</p>
+                                <h2 id="blog-share-title">{blog.title}</h2>
+                            </div>
+                            <button type="button" onClick={() => setShareModalOpen(false)} aria-label="Close share options">
+                                X
+                            </button>
+                        </div>
+                        <div className="blog-share-options">
+                            <button type="button" onClick={() => void handleNativeShare()}>
+                                <Send size={16} />
+                                <span>Apps</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => openShareUrl(`https://wa.me/?text=${encodeURIComponent(blogShareText)}`)}
+                            >
+                                <MessageCircle size={16} />
+                                <span>WhatsApp</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(blogShareUrl)}`)}
+                            >
+                                <Send size={16} />
+                                <span>Facebook</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => openShareUrl(`https://twitter.com/intent/tweet?text=${encodeURIComponent(blog.title)}&url=${encodeURIComponent(blogShareUrl)}`)}
+                            >
+                                <Send size={16} />
+                                <span>X</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => openShareUrl(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(blogShareUrl)}`)}
+                            >
+                                <Send size={16} />
+                                <span>LinkedIn</span>
+                            </button>
+                            <button type="button" onClick={() => void handleCopyShare()}>
+                                <Copy size={16} />
+                                <span>Copy</span>
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            <LiquidMobileNav
+                ariaLabel="Blog article mobile navigation"
+                className="blogs-bottom-nav"
+                items={BLOG_MOBILE_NAV_ITEMS.map((item): LiquidNavItem => ({
+                    id: item.key,
+                    label: item.key === 'profile' && !user ? 'Log in' : item.label,
+                    isActive: item.key === 'blogs',
+                    iconSrc: item.key === 'profile' && !user ? MOBILE_NAV_ICON_SRC.login : MOBILE_NAV_ICON_SRC[item.key],
+                    icon: item.icon,
+                    onClick: () => handleMobileNav(item.key),
+                }))}
+            />
         </main>
     );
 };

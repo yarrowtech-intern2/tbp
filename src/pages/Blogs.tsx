@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Loader2, MapPin, MessageCircle, PenLine, Search, ThumbsDown, ThumbsUp, Trash2, UserCircle2 } from 'lucide-react';
+import { Home, Loader2, MapPin, PenLine, Plus, Search, Trash2, UserCircle2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
@@ -18,6 +18,12 @@ const BLOG_MOBILE_NAV_ITEMS: Array<{ key: BlogMobileNavKey; label: string; icon:
     { key: 'map', label: 'Map', icon: MapPin },
     { key: 'profile', label: 'Profile', icon: UserCircle2 },
 ];
+
+const BLOG_ACTION_ICONS = {
+    like: '/icons/mobile-nav-icons/blogs/like.webp',
+    dislike: '/icons/mobile-nav-icons/blogs/dislike.webp',
+    comment: '/icons/mobile-nav-icons/blogs/comment.webp',
+};
 
 const featuredImage = (blog: BlogPost | null) => (
     blog?.cover_image_url || '/images/home4/tbp-map-1920.png'
@@ -135,10 +141,11 @@ export const Blogs: React.FC = () => {
             <section className="blogs-hero" aria-labelledby="blogs-title">
                 <div>
                     <p className="blogs-eyebrow">The Better Pass Journal</p>
-                    <h1 id="blogs-title">Travel ideas from people who move through places.</h1>
+                    <h1 id="blogs-title">Travel stories</h1>
+                    <p className="blogs-hero-subtitle">from people who move through places</p>
                 </div>
                 <button type="button" className="blogs-write-btn" onClick={handleWrite}>
-                    <PenLine size={18} />
+                    <Plus size={20} />
                     <span>Write Blog</span>
                 </button>
             </section>
@@ -155,7 +162,7 @@ export const Blogs: React.FC = () => {
                     <h2>No blogs yet.</h2>
                     <p>Registered members can publish the first story.</p>
                     <button type="button" className="blogs-write-btn" onClick={handleWrite}>
-                        <PenLine size={18} />
+                        <Plus size={20} />
                         <span>Write Blog</span>
                     </button>
                 </section>
@@ -185,7 +192,7 @@ export const Blogs: React.FC = () => {
                                         onClick={() => void handleVote(blog, 1)}
                                         aria-label={`Upvote ${blog.title}`}
                                     >
-                                        <ThumbsUp size={13} />
+                                        <img src={BLOG_ACTION_ICONS.like} alt="" aria-hidden="true" />
                                         <span>{blog.upvote_count}</span>
                                     </button>
                                     <button
@@ -195,11 +202,11 @@ export const Blogs: React.FC = () => {
                                         onClick={() => void handleVote(blog, -1)}
                                         aria-label={`Downvote ${blog.title}`}
                                     >
-                                        <ThumbsDown size={13} />
+                                        <img src={BLOG_ACTION_ICONS.dislike} alt="" aria-hidden="true" />
                                         <span>{blog.downvote_count}</span>
                                     </button>
                                     <Link to={`/blogs/${blog.slug}`} aria-label={`${blog.comment_count} comments on ${blog.title}`}>
-                                        <MessageCircle size={13} />
+                                        <img src={BLOG_ACTION_ICONS.comment} alt="" aria-hidden="true" />
                                         <span>{blog.comment_count}</span>
                                     </Link>
                                 </div>

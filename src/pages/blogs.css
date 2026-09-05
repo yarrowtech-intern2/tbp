@@ -36,6 +36,15 @@
     overflow-wrap: anywhere;
 }
 
+.blogs-hero-subtitle {
+    color: #424245;
+    font-size: clamp(1.08rem, 2vw, 1.42rem);
+    font-weight: 650;
+    line-height: 1.25;
+    margin: 8px 0 0;
+    max-width: 680px;
+}
+
 .blog-create-heading h1 {
     font-size: clamp(2.35rem, 5.2vw, 4.4rem);
     max-width: 720px;
@@ -229,6 +238,13 @@
     min-height: 25px;
     padding: 0 7px;
     text-decoration: none;
+}
+
+.blogs-card-stats img {
+    display: block;
+    height: 13px;
+    object-fit: contain;
+    width: 13px;
 }
 
 .blogs-card-stats button:hover,
@@ -433,6 +449,7 @@
 
 .blog-vote-row button,
 .blog-comment-count,
+.blog-share-trigger,
 .blog-comment-sort button,
 .blog-comment-form button,
 .blog-comment-login button,
@@ -451,6 +468,7 @@
 
 .blog-vote-row button,
 .blog-comment-count,
+.blog-share-trigger,
 .blog-comment-votes button {
     background: #f5f5f7;
     border: 1px solid #e8e8ed;
@@ -459,7 +477,21 @@
     padding: 0 12px;
 }
 
+.blog-vote-row button img,
+.blog-comment-votes button img {
+    display: block;
+    height: 16px;
+    object-fit: contain;
+    width: 16px;
+}
+
+.blog-share-trigger {
+    padding: 0;
+    width: 38px;
+}
+
 .blog-vote-row button,
+.blog-share-trigger,
 .blog-comment-sort button,
 .blog-comment-form button,
 .blog-comment-login button,
@@ -471,11 +503,12 @@
 
 .blog-vote-row button:hover,
 .blog-vote-row button.is-active,
+.blog-share-trigger:hover,
 .blog-comment-votes button:hover,
 .blog-comment-votes button.is-active {
-    background: #1d1d1f;
-    border-color: #1d1d1f;
-    color: #ffffff;
+    background: #e8e8ed;
+    border-color: #d2d2d7;
+    color: #1d1d1f;
 }
 
 .blog-vote-row button:disabled,
@@ -488,6 +521,86 @@
 
 .blogs-delete-btn--article {
     margin-top: 28px;
+}
+
+.blog-share-modal {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.22);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 20px;
+    position: fixed;
+    z-index: 260;
+}
+
+.blog-share-dialog {
+    background: #ffffff;
+    border: 1px solid #e8e8ed;
+    border-radius: 8px;
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.18);
+    max-width: 420px;
+    padding: 18px;
+    width: min(100%, 420px);
+}
+
+.blog-share-dialog-head {
+    align-items: start;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.blog-share-dialog-head h2 {
+    font-size: 1.15rem;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.blog-share-dialog-head button {
+    align-items: center;
+    background: #f5f5f7;
+    border: 1px solid #e8e8ed;
+    border-radius: 50%;
+    color: #1d1d1f;
+    cursor: pointer;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 900;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+}
+
+.blog-share-options {
+    display: grid;
+    gap: 9px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.blog-share-options button {
+    align-items: center;
+    background: #f5f5f7;
+    border: 1px solid #e8e8ed;
+    border-radius: 999px;
+    color: #1d1d1f;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 800;
+    gap: 8px;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 12px;
+}
+
+.blog-share-options button:hover,
+.blog-share-dialog-head button:hover {
+    background: #e8e8ed;
 }
 
 .blog-cover {
@@ -928,6 +1041,7 @@
 :root[data-theme='dark'] .blog-comment-form,
 :root[data-theme='dark'] .blog-comment-login,
 :root[data-theme='dark'] .blog-comment-card,
+:root[data-theme='dark'] .blog-share-dialog,
 :root[data-theme='dark'] .blogs-loading,
 :root[data-theme='dark'] .blogs-empty {
     background: #1c1c1e;
@@ -957,6 +1071,7 @@
 
 :root[data-theme='dark'] .blogs-featured-copy > p:not(.blogs-meta),
 :root[data-theme='dark'] .blogs-card-copy > p,
+:root[data-theme='dark'] .blogs-hero-subtitle,
 :root[data-theme='dark'] .blogs-empty p,
 :root[data-theme='dark'] .blog-create-preview > p,
 :root[data-theme='dark'] .blog-content p,
@@ -980,11 +1095,14 @@
 :root[data-theme='dark'] .blog-share-btn,
 :root[data-theme='dark'] .blog-clear-image-btn,
 :root[data-theme='dark'] .blog-vote-row button,
+:root[data-theme='dark'] .blog-share-trigger,
 :root[data-theme='dark'] .blog-comment-count,
 :root[data-theme='dark'] .blog-comment-sort,
 :root[data-theme='dark'] .blog-comment-tools button,
 :root[data-theme='dark'] .blog-comment-edit button,
-:root[data-theme='dark'] .blog-comment-votes button {
+:root[data-theme='dark'] .blog-comment-votes button,
+:root[data-theme='dark'] .blog-share-dialog-head button,
+:root[data-theme='dark'] .blog-share-options button {
     background: #2c2c2e;
     border-color: #3a3a3c;
     color: #f5f5f7;
@@ -998,10 +1116,13 @@
 
 :root[data-theme='dark'] .blog-vote-row button:hover,
 :root[data-theme='dark'] .blog-vote-row button.is-active,
+:root[data-theme='dark'] .blog-share-trigger:hover,
 :root[data-theme='dark'] .blog-comment-sort button.is-active,
 :root[data-theme='dark'] .blog-comment-edit button:last-child,
 :root[data-theme='dark'] .blog-comment-votes button:hover,
-:root[data-theme='dark'] .blog-comment-votes button.is-active {
+:root[data-theme='dark'] .blog-comment-votes button.is-active,
+:root[data-theme='dark'] .blog-share-dialog-head button:hover,
+:root[data-theme='dark'] .blog-share-options button:hover {
     background: #f5f5f7;
     border-color: #f5f5f7;
     color: #111113;
@@ -1119,6 +1240,12 @@
         max-width: 100%;
     }
 
+    .blogs-hero-subtitle {
+        font-size: 1rem;
+        line-height: 1.3;
+        margin-top: 6px;
+    }
+
     .blogs-eyebrow,
     .blogs-meta {
         font-size: 0.7rem;
@@ -1126,6 +1253,7 @@
     }
 
     .blogs-write-btn {
+        aspect-ratio: 1;
         min-height: 34px;
         padding: 0 11px;
     }
@@ -1210,10 +1338,30 @@
     }
 
     .blog-vote-row button,
-    .blog-comment-count {
+    .blog-comment-count,
+    .blog-share-trigger {
         font-size: 0.78rem;
         min-height: 32px;
         padding: 0 10px;
+    }
+
+    .blog-share-trigger {
+        padding: 0;
+        width: 34px;
+    }
+
+    .blog-vote-row button img,
+    .blog-comment-votes button img {
+        height: 15px;
+        width: 15px;
+    }
+
+    .blog-share-dialog {
+        padding: 16px;
+    }
+
+    .blog-share-options {
+        grid-template-columns: 1fr;
     }
 
     .blog-comments-section {
