@@ -588,6 +588,21 @@ export async function fetchDynamicBlogsForSeo(siteUrl = getSiteUrl()) {
 
     return rows.map((row) => blogEntry(row, siteUrl)).filter(Boolean);
   } catch (error) {
+    if (isMissingColumnError(error, 'location', 'blogs')) {
+      try {
+        const rows = await fetchRows('blogs', {
+          select: 'id,title,slug,excerpt,content,cover_image_url,author_name,category,tags,published_at,updated_at,created_at,status',
+          status: 'eq.published',
+          order: 'published_at.desc.nullslast',
+          limit: '5000',
+        }, supabaseUrl, supabaseAnonKey);
+
+        return rows.map((row) => blogEntry(row, siteUrl)).filter(Boolean);
+      } catch (fallbackError) {
+        console.warn(`SEO: could not fetch blogs. ${fallbackError.message}`);
+        return [];
+      }
+    }
     console.warn(`SEO: could not fetch blogs. ${error.message}`);
     return [];
   }
@@ -597,6 +612,7 @@ async function safeFetchListings(label, fetcher) {
   try {
     return await fetcher();
   } catch (error) {
+    if (isMissingRelationError(error, label)) return [];
     console.warn(`SEO: could not fetch ${label} listings. ${error.message}`);
     return [];
   }
@@ -677,30 +693,64 @@ async function fetchPostListings(supabaseUrl, supabaseAnonKey) {
 }
 
 async function fetchLegacyListings(table, supabaseUrl, supabaseAnonKey) {
-  const select = 'id,status,updated_at,created_at,title,name,description,location,image_url,cover_image_url,thumbnail_url,gallery_images,price';
-  try {
-    return await fetchRows(table, {
-      select,
+  const attempts = [
+    {
+      select: 'id,status,updated_at,created_at,title,name,description,location,image_url,cover_image_url,thumbnail_url,gallery_images,price',
       status: `in.(${PUBLIC_STATUSES.join(',')})`,
       order: 'updated_at.desc.nullslast',
       limit: '5000',
-    }, supabaseUrl, supabaseAnonKey);
-  } catch {
+    },
+    {
+      select: 'id,status,updated_at,created_at,title,description,location,image_url,cover_image_url,thumbnail_url,gallery_images,price',
+      status: `in.(${PUBLIC_STATUSES.join(',')})`,
+      order: 'updated_at.desc.nullslast',
+      limit: '5000',
+    },
+    {
+      select: 'id,status,created_at,title,description,location,image_url,price',
+      status: `in.(${PUBLIC_STATUSES.join(',')})`,
+      order: 'created_at.desc.nullslast',
+      limit: '5000',
+    },
+    {
+      select: 'id,created_at,title,description,location,image_url,price',
+      order: 'created_at.desc.nullslast',
+      limit: '5000',
+    },
+  ];
+
+  let lastError;
+  for (const params of attempts) {
     try {
-      return await fetchRows(table, {
-        select: 'id,status,created_at,title,name,description,location,image_url,price',
-        status: `in.(${PUBLIC_STATUSES.join(',')})`,
-        order: 'created_at.desc.nullslast',
-        limit: '5000',
-      }, supabaseUrl, supabaseAnonKey);
-    } catch {
-      return fetchRows(table, {
-        select: 'id,created_at,title,name,description,location,image_url,price',
-        order: 'created_at.desc.nullslast',
-        limit: '5000',
-      }, supabaseUrl, supabaseAnonKey);
+      return await fetchRows(table, params, supabaseUrl, supabaseAnonKey);
+    } catch (error) {
+      if (isMissingRelationError(error, table)) return [];
+      lastError = error;
+      if (!isMissingColumnError(error)) throw error;
     }
   }
+  throw lastError;
+}
+
+function isMissingRelationError(error, table) {
+  const message = String(error?.message || '').toLowerCase();
+  const normalizedTable = String(table || '').toLowerCase();
+  return (
+    message.includes('pgrst205')
+    || (message.includes('could not find the table') && (!normalizedTable || message.includes(`'public.${normalizedTable}'`)))
+    || (message.includes('relation') && normalizedTable && message.includes(normalizedTable) && message.includes('does not exist'))
+  );
+}
+
+function isMissingColumnError(error, column, table) {
+  const message = String(error?.message || '').toLowerCase();
+  const normalizedColumn = String(column || '').toLowerCase();
+  const normalizedTable = String(table || '').toLowerCase();
+  return (
+    message.includes('42703')
+    && (!normalizedColumn || message.includes(normalizedColumn))
+    && (!normalizedTable || message.includes(normalizedTable))
+  );
 }
 
 function cleanString(value) {
