@@ -1,24 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Loader2, PenLine, Trash2 } from 'lucide-react';
+import { Home, Loader2, MapPin, MessageCircle, PenLine, Search, ThumbsDown, ThumbsUp, Trash2, UserCircle2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
+import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
+import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
-import { deleteBlog, getBlogs, type BlogPost } from '../lib/blogs';
+import { deleteBlog, getBlogs, setBlogVote, type BlogPost, type BlogVoteValue } from '../lib/blogs';
 import { buildBreadcrumbJsonLd, buildOrganizationJsonLd } from '../lib/seo';
 import './blogs.css';
 
-const formatDate = (value: string) => {
-    if (!value) return '';
-    return new Intl.DateTimeFormat('en', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    }).format(new Date(value));
-};
+type BlogMobileNavKey = 'home' | 'explore' | 'blogs' | 'map' | 'profile';
 
-const formatBlogMeta = (blog: BlogPost) => (
-    [blog.category, blog.location, formatDate(blog.published_at)].filter(Boolean).join(' / ')
-);
+const BLOG_MOBILE_NAV_ITEMS: Array<{ key: BlogMobileNavKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
+    { key: 'home', label: 'Home', icon: Home },
+    { key: 'explore', label: 'Explore', icon: Search },
+    { key: 'blogs', label: 'Blogs', icon: PenLine },
+    { key: 'map', label: 'Map', icon: MapPin },
+    { key: 'profile', label: 'Profile', icon: UserCircle2 },
+];
 
 const featuredImage = (blog: BlogPost | null) => (
     blog?.cover_image_url || '/images/home4/tbp-map-1920.png'
@@ -31,9 +30,9 @@ export const Blogs: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [votingBlogId, setVotingBlogId] = useState<string | null>(null);
 
     const featuredBlog = blogs[0] || null;
-    const remainingBlogs = useMemo(() => blogs.slice(1), [blogs]);
 
     useEffect(() => {
         let cancelled = false;
@@ -60,6 +59,26 @@ export const Blogs: React.FC = () => {
         navigate(user ? '/blogs/new' : '/login');
     };
 
+    const handleMobileNav = (key: BlogMobileNavKey) => {
+        if (key === 'home') {
+            navigate('/');
+            return;
+        }
+        if (key === 'explore') {
+            navigate(user ? '/explore' : '/login');
+            return;
+        }
+        if (key === 'blogs') {
+            navigate('/blogs');
+            return;
+        }
+        if (key === 'map') {
+            navigate('/map');
+            return;
+        }
+        navigate(user ? '/profile' : '/login');
+    };
+
     const handleDelete = async (blog: BlogPost) => {
         if (!isAdmin || deletingId) return;
         const confirmed = window.confirm(`Delete "${blog.title}"? This cannot be undone.`);
@@ -74,6 +93,28 @@ export const Blogs: React.FC = () => {
             setError(err instanceof Error ? err.message : 'Could not delete blog.');
         } finally {
             setDeletingId(null);
+        }
+    };
+
+    const handleVote = async (blog: BlogPost, voteValue: BlogVoteValue) => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (votingBlogId) return;
+
+        setVotingBlogId(blog.id);
+        setError(null);
+        try {
+            const nextVote = blog.user_vote === voteValue ? null : voteValue;
+            const summary = await setBlogVote(blog.id, nextVote);
+            setBlogs((current) => current.map((item) => (
+                item.id === blog.id ? { ...item, ...summary } : item
+            )));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Could not save your vote.');
+        } finally {
+            setVotingBlogId(null);
         }
     };
 
@@ -119,76 +160,78 @@ export const Blogs: React.FC = () => {
                     </button>
                 </section>
             ) : (
-                <>
-                    {featuredBlog && (
-                        <article className="blogs-featured">
-                            <Link to={`/blogs/${featuredBlog.slug}`} className="blogs-featured-image">
-                                <img src={featuredBlog.cover_image_url} alt={featuredBlog.title} />
+                <section className="blogs-grid" aria-label="Blogs">
+                    {blogs.map((blog) => (
+                        <article className="blogs-card" key={blog.id}>
+                            <Link to={`/blogs/${blog.slug}`} className="blogs-card-image">
+                                <img src={blog.cover_image_url} alt="" loading="lazy" />
                             </Link>
-                            <div className="blogs-featured-copy">
-                                <p className="blogs-meta">{formatBlogMeta(featuredBlog)}</p>
+                            <div className="blogs-card-copy">
                                 <h2>
-                                    <Link to={`/blogs/${featuredBlog.slug}`}>{featuredBlog.title}</Link>
+                                    <Link to={`/blogs/${blog.slug}`}>{blog.title}</Link>
                                 </h2>
-                                <p>{featuredBlog.excerpt}</p>
-                                <div className="blogs-card-footer">
-                                    <span>By {featuredBlog.author_name}</span>
-                                    <Link to={`/blogs/${featuredBlog.slug}`} className="blogs-read-link">
-                                        Read
-                                        <ArrowUpRight size={16} />
+                                {blog.tags.length > 0 && (
+                                    <div className="blogs-card-tags" aria-label="Blog tags">
+                                        {blog.tags.slice(0, 3).map((tag) => (
+                                            <span key={tag}>{tag}</span>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="blogs-card-stats" aria-label="Blog engagement">
+                                    <button
+                                        type="button"
+                                        className={blog.user_vote === 1 ? 'is-active' : ''}
+                                        disabled={votingBlogId === blog.id}
+                                        onClick={() => void handleVote(blog, 1)}
+                                        aria-label={`Upvote ${blog.title}`}
+                                    >
+                                        <ThumbsUp size={13} />
+                                        <span>{blog.upvote_count}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={blog.user_vote === -1 ? 'is-active' : ''}
+                                        disabled={votingBlogId === blog.id}
+                                        onClick={() => void handleVote(blog, -1)}
+                                        aria-label={`Downvote ${blog.title}`}
+                                    >
+                                        <ThumbsDown size={13} />
+                                        <span>{blog.downvote_count}</span>
+                                    </button>
+                                    <Link to={`/blogs/${blog.slug}`} aria-label={`${blog.comment_count} comments on ${blog.title}`}>
+                                        <MessageCircle size={13} />
+                                        <span>{blog.comment_count}</span>
                                     </Link>
                                 </div>
                                 {isAdmin && (
                                     <button
                                         type="button"
                                         className="blogs-delete-btn"
-                                        disabled={deletingId === featuredBlog.id}
-                                        onClick={() => void handleDelete(featuredBlog)}
+                                        disabled={deletingId === blog.id}
+                                        onClick={() => void handleDelete(blog)}
+                                        aria-label={`Delete ${blog.title}`}
                                     >
-                                        <Trash2 size={16} />
-                                        <span>{deletingId === featuredBlog.id ? 'Deleting' : 'Delete'}</span>
+                                        <Trash2 size={15} />
                                     </button>
                                 )}
                             </div>
                         </article>
-                    )}
-
-                    <section className="blogs-grid" aria-label="More blogs">
-                        {remainingBlogs.map((blog) => (
-                            <article className="blogs-card" key={blog.id}>
-                                <Link to={`/blogs/${blog.slug}`} className="blogs-card-image">
-                                    <img src={blog.cover_image_url} alt={blog.title} loading="lazy" />
-                                </Link>
-                                <div className="blogs-card-copy">
-                                    <p className="blogs-meta">{formatBlogMeta(blog)}</p>
-                                    <h2>
-                                        <Link to={`/blogs/${blog.slug}`}>{blog.title}</Link>
-                                    </h2>
-                                    <p>{blog.excerpt}</p>
-                                    <div className="blogs-card-footer">
-                                        <span>By {blog.author_name}</span>
-                                        <Link to={`/blogs/${blog.slug}`} className="blogs-read-link">
-                                            Read
-                                            <ArrowUpRight size={16} />
-                                        </Link>
-                                    </div>
-                                    {isAdmin && (
-                                        <button
-                                            type="button"
-                                            className="blogs-delete-btn"
-                                            disabled={deletingId === blog.id}
-                                            onClick={() => void handleDelete(blog)}
-                                        >
-                                            <Trash2 size={16} />
-                                            <span>{deletingId === blog.id ? 'Deleting' : 'Delete'}</span>
-                                        </button>
-                                    )}
-                                </div>
-                            </article>
-                        ))}
-                    </section>
-                </>
+                    ))}
+                </section>
             )}
+
+            <LiquidMobileNav
+                ariaLabel="Blogs mobile navigation"
+                className="blogs-bottom-nav"
+                items={BLOG_MOBILE_NAV_ITEMS.map((item): LiquidNavItem => ({
+                    id: item.key,
+                    label: item.key === 'profile' && !user ? 'Log in' : item.label,
+                    isActive: item.key === 'blogs',
+                    iconSrc: item.key === 'profile' && !user ? MOBILE_NAV_ICON_SRC.login : MOBILE_NAV_ICON_SRC[item.key],
+                    icon: item.icon,
+                    onClick: () => handleMobileNav(item.key),
+                }))}
+            />
         </main>
     );
 };

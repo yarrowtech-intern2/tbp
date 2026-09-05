@@ -36,6 +36,16 @@ const escapeHtml = (value: unknown): string => (
         .replace(/'/g, '&#39;')
 );
 
+const isEmailProviderSetupError = (message: string): boolean => {
+    const normalized = message.toLowerCase();
+    return (
+        normalized.includes('testing emails')
+        || normalized.includes('verify a domain')
+        || normalized.includes('resend')
+        || normalized.includes('email provider')
+    );
+};
+
 const getAppUrl = (): string => (
     (Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('VITE_PUBLIC_APP_URL') || '').trim().replace(/\/+$/, '')
 );
@@ -124,6 +134,11 @@ Deno.serve(async (req) => {
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Internal server error';
         console.error('send-password-reset-email failed', message);
+        if (isEmailProviderSetupError(message)) {
+            return jsonResponse(503, {
+                error: 'Password reset email is not available because the sender email service is not fully verified.',
+            });
+        }
         return jsonResponse(500, { error: message });
     }
 });

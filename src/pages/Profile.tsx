@@ -5,6 +5,7 @@ import {
     Search, Sun, Trash2, UserCircle2, Users, X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
@@ -277,6 +278,8 @@ export const Profile: React.FC = () => {
     const [deleteBusy, setDeleteBusy] = useState(false);
     const [securityError, setSecurityError] = useState('');
     const [securityInfo, setSecurityInfo] = useState('');
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+    const [logoutBusy, setLogoutBusy] = useState(false);
 
     const newPasswordFormat = useMemo(() => getPasswordFormatStatus(newPassword), [newPassword]);
     const newPasswordProgressStyle = {
@@ -285,8 +288,15 @@ export const Profile: React.FC = () => {
     } as React.CSSProperties;
 
     const handleSignOut = async () => {
-        await signOut();
-        navigate('/login', { replace: true });
+        if (logoutBusy) return;
+        setLogoutBusy(true);
+        try {
+            await signOut();
+            setLogoutConfirmOpen(false);
+            navigate('/login', { replace: true });
+        } finally {
+            setLogoutBusy(false);
+        }
     };
 
     const resetSecurityMessages = () => {
@@ -1320,7 +1330,7 @@ export const Profile: React.FC = () => {
                         <button
                             type="button"
                             className="prf-signout-btn"
-                            onClick={() => void handleSignOut()}
+                            onClick={() => setLogoutConfirmOpen(true)}
                         >
                             Sign Out
                         </button>
@@ -1338,6 +1348,13 @@ export const Profile: React.FC = () => {
                     icon: item.icon,
                     onClick: () => navigate(item.to),
                 }))}
+            />
+
+            <LogoutConfirmModal
+                open={logoutConfirmOpen}
+                busy={logoutBusy}
+                onConfirm={() => { void handleSignOut(); }}
+                onCancel={() => setLogoutConfirmOpen(false)}
             />
 
             <style>{`

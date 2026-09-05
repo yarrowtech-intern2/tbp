@@ -242,25 +242,29 @@
   gap: 5px;
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: #d2d2d2;
   color: rgba(17, 17, 17, 0.68);
   cursor: pointer;
   pointer-events: auto;
   transition:
+    background 180ms ease,
     color 180ms ease,
     transform 180ms ease;
 }
 
 .home5-hero-menu-toggle:hover {
+  background: #c8c8c8;
   color: #111111;
   transform: translateY(-1px);
 }
 
 .home5-nav-shell.is-on-dark .home5-hero-menu-toggle {
+  background: #151515;
   color: rgba(255, 255, 255, 0.82);
 }
 
 .home5-nav-shell.is-on-dark .home5-hero-menu-toggle:hover {
+  background: #242424;
   color: #ffffff;
 }
 

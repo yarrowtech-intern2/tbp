@@ -7,6 +7,7 @@ import { useTheme } from '../hooks/useTheme';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { normalizeRoleValue } from '../lib/platform';
 import { VIRTUAL_TOURS_ENABLED } from '../lib/virtualTours';
+import { LogoutConfirmModal } from './LogoutConfirmModal';
 
 type NavTab = 'home' | 'explore' | 'blogs' | 'virtualTours' | 'dashboard' | 'bookings' | 'profile';
 
@@ -21,7 +22,7 @@ type DesktopLiquidNavItem = {
 const DESKTOP_NAV_ICON_SRC: Record<string, string> = {
     home: '/icons/mobile-nav-icons/home.webp',
     explore: '/icons/mobile-nav-icons/search.webp',
-    blogs: '/icons/mobile-nav-icons/about.webp',
+    blogs: '/icons/mobile-nav-icons/blog.webp',
     virtualTours: '/icons/mobile-nav-icons/gps.svg',
     dashboard: '/icons/mobile-nav-icons/dashboard.webp',
     bookings: '/icons/mobile-nav-icons/bookings.webp',
@@ -39,6 +40,8 @@ export const Navbar: React.FC = () => {
     const { openTutorial } = useAppTutorial();
     const { theme, toggleTheme } = useTheme();
     const [showMenu, setShowMenu] = useState(false);
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+    const [logoutBusy, setLogoutBusy] = useState(false);
     const [desktopMorphing, setDesktopMorphing] = useState(false);
     const [desktopMorphCycle, setDesktopMorphCycle] = useState(0);
     const mobileNavRef = useRef<HTMLDivElement | null>(null);
@@ -270,6 +273,18 @@ export const Navbar: React.FC = () => {
             document.removeEventListener('keydown', onKeyDown);
         };
     }, [showMenu]);
+
+    const handleSignOut = async () => {
+        if (logoutBusy) return;
+        setLogoutBusy(true);
+        try {
+            await signOut();
+            setLogoutConfirmOpen(false);
+            setShowMenu(false);
+        } finally {
+            setLogoutBusy(false);
+        }
+    };
 
     return (
         <>
@@ -511,7 +526,10 @@ export const Navbar: React.FC = () => {
                             <button
                                 type="button"
                                 className="nbr-drop-item nbr-drop-item--btn nbr-drop-item--danger"
-                                onClick={() => { void signOut(); setShowMenu(false); }}
+                                onClick={() => {
+                                    setShowMenu(false);
+                                    setLogoutConfirmOpen(true);
+                                }}
                             >
                                 Sign Out
                             </button>
@@ -519,6 +537,12 @@ export const Navbar: React.FC = () => {
                     </div>
                 )}
             </div>
+            <LogoutConfirmModal
+                open={logoutConfirmOpen}
+                busy={logoutBusy}
+                onConfirm={() => { void handleSignOut(); }}
+                onCancel={() => setLogoutConfirmOpen(false)}
+            />
             <style>{`
                 /* Fixed bar */
                 .nbr-bar {
@@ -1056,10 +1080,8 @@ export const Navbar: React.FC = () => {
 
                 .nbr-hamburger {
                     align-items: center;
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
-                    background: ${navHover};
-                    border: 1px solid var(--border-light);
+                    background: ${mobileMenuBg};
+                    border: none;
                     border-radius: 999px;
                     color: var(--text-main);
                     cursor: pointer;
@@ -1071,7 +1093,7 @@ export const Navbar: React.FC = () => {
                     width: 32px;
                 }
 
-                .nbr-hamburger:hover { background: ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.16)'}; }
+                .nbr-hamburger:hover { background: ${isDark ? '#242424' : '#c8c8c8'}; }
 
                 .nbr-dropdown {
                     animation: nbrMenuIn 0.24s cubic-bezier(0.18, 0.92, 0.22, 1) both;
@@ -1196,13 +1218,9 @@ export const Navbar: React.FC = () => {
                     }
 
                     .nbr-hamburger {
-                        backdrop-filter: blur(16px) saturate(180%);
-                        -webkit-backdrop-filter: blur(16px) saturate(180%);
-                        background: ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.42)'};
-                        border: 1px solid ${isDark ? 'rgba(255,255,255,0.22)' : 'rgba(122,72,20,0.22)'};
-                        box-shadow:
-                            0 6px 18px rgba(15,23,42,0.14),
-                            inset 0 1px 0 ${isDark ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.72)'};
+                        background: ${mobileMenuBg};
+                        border: none;
+                        box-shadow: 0 6px 18px rgba(15,23,42,0.14);
                     }
 
                     .nbr-avatar-sm-wrap { display: none !important; }

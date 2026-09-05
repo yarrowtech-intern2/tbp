@@ -1,9 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Copy, Loader2, MessageCircle, Send, Share2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Loader2, MessageCircle, PenLine, Send, Share2, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
 import { useAuth } from '../hooks/useAuth';
-import { deleteBlog, getBlogBySlug, type BlogPost } from '../lib/blogs';
+import {
+    createBlogComment,
+    deleteBlog,
+    deleteBlogComment,
+    getBlogBySlug,
+    getBlogComments,
+    setBlogCommentVote,
+    setBlogVote,
+    updateBlogComment,
+    type BlogComment,
+    type BlogCommentSort,
+    type BlogPost,
+    type BlogVoteValue,
+} from '../lib/blogs';
 import { renderBlogContentBlocks } from '../lib/blogContent';
 import { buildBreadcrumbJsonLd, buildOrganizationJsonLd, getSiteUrl } from '../lib/seo';
 import './blogs.css';
@@ -54,9 +67,25 @@ const formatBlogMeta = (blog: BlogPost) => (
     [blog.category, blog.location, formatDate(blog.published_at)].filter(Boolean).join(' / ')
 );
 
+const sortCommentList = (items: BlogComment[], sort: BlogCommentSort): BlogComment[] => {
+    const next = [...items];
+    if (sort === 'oldest') {
+        return next.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+    }
+    if (sort === 'popular') {
+        return next.sort((a, b) => {
+            const scoreA = a.upvote_count - a.downvote_count;
+            const scoreB = b.upvote_count - b.downvote_count;
+            if (scoreA !== scoreB) return scoreB - scoreA;
+            return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        });
+    }
+    return next.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+};
+
 export const BlogDetail: React.FC = () => {
     const { slug } = useParams();
-    const { isAdmin } = useAuth();
+    const { user, profile, isAdmin } = useAuth();
     const navigate = useNavigate();
     const [blog, setBlog] = useState<BlogPost | null>(null);
     const [loading, setLoading] = useState(true);
@@ -64,6 +93,16 @@ export const BlogDetail: React.FC = () => {
     const [shareUrl, setShareUrl] = useState('');
     const [shareStatus, setShareStatus] = useState('');
     const [deleting, setDeleting] = useState(false);
+    const [comments, setComments] = useState<BlogComment[]>([]);
+    const [commentSort, setCommentSort] = useState<BlogCommentSort>('popular');
+    const [commentsLoading, setCommentsLoading] = useState(false);
+    const [commentText, setCommentText] = useState('');
+    const [commentError, setCommentError] = useState<string | null>(null);
+    const [commentSubmitting, setCommentSubmitting] = useState(false);
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+    const [editingText, setEditingText] = useState('');
+    const [busyCommentId, setBusyCommentId] = useState<string | null>(null);
+    const [votingBlog, setVotingBlog] = useState(false);
 
     const content = useMemo(
         () => blog ? renderBlogContentBlocks(blog.content, blog.content_image_urls) : null,
@@ -95,6 +134,28 @@ export const BlogDetail: React.FC = () => {
     useEffect(() => {
         if (typeof window !== 'undefined') setShareUrl(window.location.href);
     }, [slug]);
+
+    useEffect(() => {
+        if (!blog?.id) return;
+        let cancelled = false;
+        setCommentsLoading(true);
+        setCommentError(null);
+
+        void getBlogComments(blog.id, commentSort)
+            .then((items) => {
+                if (!cancelled) setComments(items);
+            })
+            .catch((err) => {
+                if (!cancelled) setCommentError(err instanceof Error ? err.message : 'Could not load comments.');
+            })
+            .finally(() => {
+                if (!cancelled) setCommentsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [blog?.id, commentSort]);
 
     const copyShareLink = async () => {
         if (!blog) return;
@@ -140,6 +201,122 @@ export const BlogDetail: React.FC = () => {
             setError(err instanceof Error ? err.message : 'Could not delete blog.');
         } finally {
             setDeleting(false);
+        }
+    };
+
+    const handleBlogVote = async (voteValue: BlogVoteValue) => {
+        if (!blog) return;
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (votingBlog) return;
+
+        setVotingBlog(true);
+        setError(null);
+        try {
+            const nextVote = blog.user_vote === voteValue ? null : voteValue;
+            const summary = await setBlogVote(blog.id, nextVote);
+            setBlog((current) => current ? { ...current, ...summary } : current);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Could not save your vote.');
+        } finally {
+            setVotingBlog(false);
+        }
+    };
+
+    const handleCreateComment = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!blog || commentSubmitting) return;
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+
+        const authorName = profile?.full_name?.trim()
+            || user.email?.split('@')[0]
+            || 'The Better Pass member';
+
+        setCommentSubmitting(true);
+        setCommentError(null);
+        try {
+            const comment = await createBlogComment({
+                blogId: blog.id,
+                content: commentText,
+                authorName,
+                authorAvatarUrl: profile?.profile_image_url || null,
+            });
+            setCommentText('');
+            setComments((current) => sortCommentList([comment, ...current], commentSort));
+            setBlog((current) => current ? { ...current, comment_count: current.comment_count + 1 } : current);
+        } catch (err) {
+            setCommentError(err instanceof Error ? err.message : 'Could not post your comment.');
+        } finally {
+            setCommentSubmitting(false);
+        }
+    };
+
+    const startEditingComment = (comment: BlogComment) => {
+        setEditingCommentId(comment.id);
+        setEditingText(comment.content);
+        setCommentError(null);
+    };
+
+    const handleUpdateComment = async (commentId: string) => {
+        if (busyCommentId) return;
+        setBusyCommentId(commentId);
+        setCommentError(null);
+        try {
+            const updated = await updateBlogComment(commentId, editingText);
+            setComments((current) => sortCommentList(current.map((comment) => (
+                comment.id === commentId ? { ...comment, ...updated } : comment
+            )), commentSort));
+            setEditingCommentId(null);
+            setEditingText('');
+        } catch (err) {
+            setCommentError(err instanceof Error ? err.message : 'Could not update comment.');
+        } finally {
+            setBusyCommentId(null);
+        }
+    };
+
+    const handleDeleteComment = async (comment: BlogComment) => {
+        if (busyCommentId) return;
+        const confirmed = window.confirm('Delete this comment?');
+        if (!confirmed) return;
+
+        setBusyCommentId(comment.id);
+        setCommentError(null);
+        try {
+            await deleteBlogComment(comment.id);
+            setComments((current) => current.filter((item) => item.id !== comment.id));
+            setBlog((current) => current ? { ...current, comment_count: Math.max(0, current.comment_count - 1) } : current);
+        } catch (err) {
+            setCommentError(err instanceof Error ? err.message : 'Could not delete comment.');
+        } finally {
+            setBusyCommentId(null);
+        }
+    };
+
+    const handleCommentVote = async (comment: BlogComment, voteValue: BlogVoteValue) => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        if (busyCommentId) return;
+
+        setBusyCommentId(comment.id);
+        setCommentError(null);
+        try {
+            const nextVote = comment.user_vote === voteValue ? null : voteValue;
+            const summary = await setBlogCommentVote(comment.id, nextVote);
+            setComments((current) => sortCommentList(current.map((item) => (
+                item.id === comment.id ? { ...item, ...summary } : item
+            )), commentSort));
+        } catch (err) {
+            setCommentError(err instanceof Error ? err.message : 'Could not save your vote.');
+        } finally {
+            setBusyCommentId(null);
         }
     };
 
@@ -193,6 +370,30 @@ export const BlogDetail: React.FC = () => {
                     <div className="blog-author-row">
                         {blog.author_avatar_url ? <img src={blog.author_avatar_url} alt="" /> : null}
                         <span>By {blog.author_name}</span>
+                    </div>
+                    <div className="blog-vote-row" aria-label="Blog votes and comments">
+                        <button
+                            type="button"
+                            className={blog.user_vote === 1 ? 'is-active' : ''}
+                            disabled={votingBlog}
+                            onClick={() => void handleBlogVote(1)}
+                        >
+                            <ThumbsUp size={16} />
+                            <span>{blog.upvote_count}</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={blog.user_vote === -1 ? 'is-active' : ''}
+                            disabled={votingBlog}
+                            onClick={() => void handleBlogVote(-1)}
+                        >
+                            <ThumbsDown size={16} />
+                            <span>{blog.downvote_count}</span>
+                        </button>
+                        <span className="blog-comment-count">
+                            <MessageCircle size={16} />
+                            {blog.comment_count} comments
+                        </span>
                     </div>
                     <div className="blog-share-row" aria-label="Share blog">
                         <button type="button" className="blog-share-btn" onClick={() => void handleNativeShare()}>
@@ -271,6 +472,137 @@ export const BlogDetail: React.FC = () => {
                     </footer>
                 )}
             </article>
+
+            <section className="blog-comments-section" aria-labelledby="blog-comments-title">
+                <div className="blog-comments-head">
+                    <div>
+                        <p className="blogs-eyebrow">Discussion</p>
+                        <h2 id="blog-comments-title">Comments</h2>
+                    </div>
+                    <div className="blog-comment-sort" aria-label="Sort comments">
+                        {(['popular', 'newest', 'oldest'] as const).map((sortOption) => (
+                            <button
+                                key={sortOption}
+                                type="button"
+                                className={commentSort === sortOption ? 'is-active' : ''}
+                                onClick={() => setCommentSort(sortOption)}
+                            >
+                                {sortOption}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {user ? (
+                    <form className="blog-comment-form" onSubmit={(event) => void handleCreateComment(event)}>
+                        <textarea
+                            value={commentText}
+                            onChange={(event) => setCommentText(event.target.value)}
+                            placeholder="Add your comment"
+                            maxLength={2000}
+                            rows={3}
+                        />
+                        <button type="submit" disabled={commentSubmitting || !commentText.trim()}>
+                            {commentSubmitting ? <Loader2 className="animate-spin" size={16} /> : <PenLine size={16} />}
+                            <span>{commentSubmitting ? 'Posting' : 'Post'}</span>
+                        </button>
+                    </form>
+                ) : (
+                    <div className="blog-comment-login">
+                        <span>Log in to comment or vote.</span>
+                        <button type="button" onClick={() => navigate('/login')}>Log in</button>
+                    </div>
+                )}
+
+                {commentError && <p className="blogs-alert">{commentError}</p>}
+
+                {commentsLoading ? (
+                    <div className="blogs-loading blog-comments-loading">
+                        <Loader2 className="animate-spin" size={20} />
+                        <span>Loading comments</span>
+                    </div>
+                ) : comments.length === 0 ? (
+                    <div className="blogs-empty blog-comments-empty">
+                        <h2>No comments yet.</h2>
+                        <p>Start the conversation with a useful thought.</p>
+                    </div>
+                ) : (
+                    <div className="blog-comments-list">
+                        {comments.map((comment) => {
+                            const canManageComment = isAdmin || comment.user_id === user?.id;
+                            const isEditing = editingCommentId === comment.id;
+                            return (
+                                <article className="blog-comment-card" key={comment.id}>
+                                    <div className="blog-comment-top">
+                                        <div className="blog-comment-author">
+                                            {comment.author_avatar_url ? <img src={comment.author_avatar_url} alt="" /> : <span aria-hidden="true" />}
+                                            <div>
+                                                <strong>{comment.author_name}</strong>
+                                                <small>{formatDate(comment.created_at)}</small>
+                                            </div>
+                                        </div>
+                                        {canManageComment && (
+                                            <div className="blog-comment-tools">
+                                                <button type="button" onClick={() => startEditingComment(comment)}>Edit</button>
+                                                <button type="button" onClick={() => void handleDeleteComment(comment)}>Delete</button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {isEditing ? (
+                                        <div className="blog-comment-edit">
+                                            <textarea
+                                                value={editingText}
+                                                onChange={(event) => setEditingText(event.target.value)}
+                                                maxLength={2000}
+                                                rows={3}
+                                            />
+                                            <div>
+                                                <button type="button" onClick={() => {
+                                                    setEditingCommentId(null);
+                                                    setEditingText('');
+                                                }}>
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={busyCommentId === comment.id || !editingText.trim()}
+                                                    onClick={() => void handleUpdateComment(comment.id)}
+                                                >
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p>{comment.content}</p>
+                                    )}
+
+                                    <div className="blog-comment-votes" aria-label="Comment votes">
+                                        <button
+                                            type="button"
+                                            className={comment.user_vote === 1 ? 'is-active' : ''}
+                                            disabled={busyCommentId === comment.id}
+                                            onClick={() => void handleCommentVote(comment, 1)}
+                                        >
+                                            <ThumbsUp size={13} />
+                                            <span>{comment.upvote_count}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={comment.user_vote === -1 ? 'is-active' : ''}
+                                            disabled={busyCommentId === comment.id}
+                                            onClick={() => void handleCommentVote(comment, -1)}
+                                        >
+                                            <ThumbsDown size={13} />
+                                            <span>{comment.downvote_count}</span>
+                                        </button>
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                )}
+            </section>
         </main>
     );
 };

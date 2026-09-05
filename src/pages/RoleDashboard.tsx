@@ -36,6 +36,7 @@ import {
     type LucideIcon,
 } from 'lucide-react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
@@ -928,14 +929,23 @@ export const RoleDashboard: React.FC = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const handleSignOut = async () => {
-        await signOut();
-        navigate('/login', { replace: true });
+        if (logoutBusy) return;
+        setLogoutBusy(true);
+        try {
+            await signOut();
+            setLogoutConfirmOpen(false);
+            navigate('/login', { replace: true });
+        } finally {
+            setLogoutBusy(false);
+        }
     };
     const search = '';
     const [activeSection, setActiveSection] = useState<SidebarKey>('overview');
     const [isDesktopDashboard, setIsDesktopDashboard] = useState(
         typeof window === 'undefined' ? true : window.innerWidth >= 700,
     );
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+    const [logoutBusy, setLogoutBusy] = useState(false);
 
     const routeRole = normalizeRoleParam(roleParam);
     const requestedTouristSection = useMemo(
@@ -4816,7 +4826,7 @@ export const RoleDashboard: React.FC = () => {
                     <button
                         type="button"
                         className="rdb-admin-sidebar-logout"
-                        onClick={() => { void handleSignOut(); }}
+                        onClick={() => setLogoutConfirmOpen(true)}
                         title="Log out"
                         aria-label="Log out"
                     >
@@ -5006,7 +5016,7 @@ export const RoleDashboard: React.FC = () => {
                                     className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--utility rdb-admin-mobile-menu-item--logout"
                                     onClick={() => {
                                         setAdminMobileMenuOpen(false);
-                                        void handleSignOut();
+                                        setLogoutConfirmOpen(true);
                                     }}
                                 >
                                     <span>Log out</span>
@@ -5159,6 +5169,13 @@ export const RoleDashboard: React.FC = () => {
                     })}
                 />
             )}
+
+            <LogoutConfirmModal
+                open={logoutConfirmOpen}
+                busy={logoutBusy}
+                onConfirm={() => { void handleSignOut(); }}
+                onCancel={() => setLogoutConfirmOpen(false)}
+            />
         </main>
     );
 };

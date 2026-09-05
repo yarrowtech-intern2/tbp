@@ -57,6 +57,8 @@ const getPostLoginDestination = (role?: string | null) => {
     return TOURIST_EXPLORE_PATH;
 };
 
+const getRecoveryRedirectUrl = () => `${getOAuthRedirectBaseUrl()}/login?mode=recovery`;
+
 const getFunctionErrorMessage = async (err: unknown, fallback: string): Promise<string> => {
     const context = typeof err === 'object' && err !== null && 'context' in err
         ? (err as { context?: unknown }).context
@@ -79,6 +81,35 @@ const getFunctionErrorMessage = async (err: unknown, fallback: string): Promise<
     }
 
     return err instanceof Error && err.message ? err.message : fallback;
+};
+
+const getPasswordResetErrorMessage = async (err: unknown): Promise<string> => {
+    const message = await getFunctionErrorMessage(err, 'Password reset failed. Please try again.');
+    const normalized = message.toLowerCase();
+    if (
+        normalized.includes('testing emails')
+        || normalized.includes('verify a domain')
+        || normalized.includes('resend')
+        || normalized.includes('email provider')
+    ) {
+        return 'Password reset email is not available because the sender email service is not fully verified. Please contact support to reset your password.';
+    }
+    return message;
+};
+
+const sendPasswordResetLink = async (email: string): Promise<void> => {
+    const redirectTo = getRecoveryRedirectUrl();
+    const { error: nativeResetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+    });
+
+    if (!nativeResetError) return;
+
+    const { error: functionResetError } = await supabase.functions.invoke('send-password-reset-email', {
+        body: { email },
+    });
+
+    if (functionResetError) throw functionResetError;
 };
 
 const NATURE_SIDE_IMAGES = [
@@ -528,14 +559,11 @@ export const Auth: React.FC = () => {
         setInfo(null);
 
         try {
-            const { error: resetError } = await supabase.functions.invoke('send-password-reset-email', {
-                body: { email },
-            });
-            if (resetError) throw resetError;
+            await sendPasswordResetLink(email);
             setForgotPasswordOpen(false);
             setInfo('Password reset link sent. Check your email and open the link to set a new password.');
         } catch (err: unknown) {
-            setError(await getFunctionErrorMessage(err, 'Password reset failed. Please try again.'));
+            setError(await getPasswordResetErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -867,6 +895,11 @@ export const Auth: React.FC = () => {
                                                     placeholder="you@example.com"
                                                     value={forgotEmail}
                                                     onChange={(e) => setForgotEmail(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key !== 'Enter') return;
+                                                        e.preventDefault();
+                                                        void handleForgotPassword();
+                                                    }}
                                                 />
                                             </label>
                                             <div className="auth-reset-actions">

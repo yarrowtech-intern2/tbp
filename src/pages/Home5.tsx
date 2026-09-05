@@ -442,6 +442,11 @@ export const Home5: React.FC = () => {
       to: '/map',
     },
     {
+      title: 'Blogs',
+      iconSrc: '/icons/mobile-nav-icons/blog.webp',
+      to: '/blogs',
+    },
+    {
       title: 'Contact',
       iconSrc: '/icons/mobile-nav-icons/chat.webp',
       onClick: openContactModal,
@@ -949,6 +954,7 @@ export const Home5: React.FC = () => {
             <Link to="/" onClick={() => setHeroMenuOpen(false)}>Home</Link>
             <Link to="/about-final" onClick={() => setHeroMenuOpen(false)}>About us</Link>
             <Link to="/map" onClick={() => setHeroMenuOpen(false)}>Map</Link>
+            <Link to="/blogs" onClick={() => setHeroMenuOpen(false)}>Blogs</Link>
             <Link to="/login" onClick={() => setHeroMenuOpen(false)}>Get started</Link>
             <button
               type="button"
