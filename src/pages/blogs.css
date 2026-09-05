@@ -636,6 +636,7 @@
 
 .blog-content-image {
     aspect-ratio: 16 / 9;
+    border-radius: 18px;
     margin: 44px 0;
 }
 
