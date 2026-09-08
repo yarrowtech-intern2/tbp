@@ -34,19 +34,27 @@ import { VIRTUAL_TOURS_ENABLED } from '../lib/virtualTours';
 import './auth.css';
 
 const TOURIST_EXPLORE_PATH = '/explore';
+const DEFAULT_WEB_APP_URL = 'https://thebetterpass.com';
 type SignupBaseField = 'fullName' | 'email' | 'password';
 const PROVIDER_ROLE_SET = new Set<UserRole>(PROVIDER_ROLES);
 const isProviderSignupRole = (role: UserRole) => PROVIDER_ROLE_SET.has(role);
 
 const normalizeAppUrl = (rawUrl?: string) => {
     if (!rawUrl) return '';
-    return rawUrl.trim().replace(/\/+$/, '');
+    const normalized = rawUrl.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(normalized)) return '';
+    try {
+        return new URL(normalized).origin;
+    } catch {
+        return '';
+    }
 };
 
 const getOAuthRedirectBaseUrl = () => {
     const fromEnv = normalizeAppUrl(import.meta.env.VITE_PUBLIC_APP_URL);
     if (fromEnv) return fromEnv;
-    return normalizeAppUrl(window.location.origin);
+    const fromWindow = typeof window !== 'undefined' ? normalizeAppUrl(window.location.origin) : '';
+    return fromWindow || DEFAULT_WEB_APP_URL;
 };
 
 const getPostLoginDestination = (role?: string | null) => {
@@ -62,7 +70,7 @@ const getPostLoginDestination = (role?: string | null) => {
 const getRecoveryRedirectUrl = () => `${getOAuthRedirectBaseUrl()}/login?mode=recovery`;
 
 const getWebOAuthRedirectUrl = (nextPath: string) => {
-    const url = new URL(`${getOAuthRedirectBaseUrl()}/auth/callback`);
+    const url = new URL('/auth/callback', getOAuthRedirectBaseUrl());
     url.searchParams.set('next', nextPath);
     return url.toString();
 };

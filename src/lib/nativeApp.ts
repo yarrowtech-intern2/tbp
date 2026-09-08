@@ -6,12 +6,11 @@ export const NATIVE_AUTH_CALLBACK_PATH = '/callback';
 export const DEFAULT_NATIVE_AUTH_REDIRECT_PATH = '/explore';
 const APP_LINK_HOSTS = new Set(['thebetterpass.com', 'www.thebetterpass.com']);
 
-export const isNativeApp = () => Capacitor.isNativePlatform();
+export const isNativeApp = () => Capacitor.isNativePlatform() || Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios';
 
 export const getNativeOAuthRedirectUrl = (nextPath = DEFAULT_NATIVE_AUTH_REDIRECT_PATH) => {
-    const url = new URL(`${NATIVE_APP_SCHEME}://${NATIVE_AUTH_HOST}${NATIVE_AUTH_CALLBACK_PATH}`);
-    url.searchParams.set('next', nextPath);
-    return url.toString();
+    const params = new URLSearchParams({ next: nextPath });
+    return `${NATIVE_APP_SCHEME}://${NATIVE_AUTH_HOST}${NATIVE_AUTH_CALLBACK_PATH}?${params.toString()}`;
 };
 
 export const isNativeAuthCallbackUrl = (rawUrl: string) => {
