@@ -31,3 +31,4 @@ tools/
 .tmp/
 .claude/
 android/wrapper/dists/
+android/.gradle-user-home/

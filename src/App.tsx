@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -45,8 +45,6 @@ const DASHBOARD_TOURS_PATH = '/explore?tab=tours';
 const DASHBOARD_ACTIVITIES_PATH = '/explore?tab=activities';
 const DASHBOARD_EVENTS_PATH = '/explore?tab=guides';
 const SHOW_SUPPORT_CHATBOT = false;
-const NATIVE_SPLASH_VISIBLE_MS = 1800;
-const NATIVE_SPLASH_EXIT_MS = 280;
 let lastHandledNativeAuthUrl = '';
 
 const resolveUserRole = (user: { user_metadata?: Record<string, unknown> } | null, profileRole?: string | null) => {
@@ -246,26 +244,8 @@ function App() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const isNativePlatform = Capacitor.isNativePlatform();
-  const [showNativeSplash, setShowNativeSplash] = useState(isNativePlatform);
-  const [nativeSplashExiting, setNativeSplashExiting] = useState(false);
   const homePath = user ? APP_HOME_PATH : '/';
   const footerLogoSrc = theme === 'dark' ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
-
-  useEffect(() => {
-    if (!isNativePlatform) return undefined;
-
-    const exitTimer = window.setTimeout(() => {
-      setNativeSplashExiting(true);
-    }, NATIVE_SPLASH_VISIBLE_MS);
-    const removeTimer = window.setTimeout(() => {
-      setShowNativeSplash(false);
-    }, NATIVE_SPLASH_VISIBLE_MS + NATIVE_SPLASH_EXIT_MS);
-
-    return () => {
-      window.clearTimeout(exitTimer);
-      window.clearTimeout(removeTimer);
-    };
-  }, [isNativePlatform]);
 
   return (
     <Router>
@@ -320,7 +300,6 @@ function App() {
 
           <AppFooter homePath={homePath} footerLogoSrc={footerLogoSrc} user={user} />
           {SHOW_SUPPORT_CHATBOT ? <SupportChatbot /> : null}
-          {showNativeSplash ? <AppSplashScreen exiting={nativeSplashExiting} /> : null}
         </div>
       </AppTutorialProvider>
     </Router>
@@ -328,7 +307,7 @@ function App() {
 }
 
 const NativeLoadingFallback: React.FC = () => (
-  Capacitor.isNativePlatform() ? <AppSplashScreen /> : null
+  Capacitor.isNativePlatform() ? <AppSplashScreen lightweight /> : null
 );
 
 const NativeDeepLinkHandler: React.FC = () => {

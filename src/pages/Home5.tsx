@@ -924,7 +924,7 @@ export const Home5: React.FC = () => {
   }, []);
 
   if (isNativeAppLanding) {
-    return <AppSplashScreen />;
+    return <AppSplashScreen actionHref="/login" />;
   }
 
   return (
