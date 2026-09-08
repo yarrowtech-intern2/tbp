@@ -1,13 +1,19 @@
-import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { SupportChatbot } from './components/SupportChatbot';
 import { AppSEO } from './components/SEO';
+import { AppSplashScreen } from './components/AppSplashScreen';
 import { AppTutorialProvider } from './context/AppTutorialContext';
 import { OFFICIAL_SOCIAL_LINKS } from './lib/appContent';
+import { getNativeAppLinkPath, isNativeAuthCallbackUrl, sanitizeNativeNavigationPath } from './lib/nativeApp';
 import { resolveEffectiveAccountRole } from './lib/platform';
+import { supabase } from './lib/supabase';
 import { VIRTUAL_TOURS_ENABLED } from './lib/virtualTours';
 
 const Home5 = lazy(async () => ({ default: (await import('./pages/Home5')).Home5 }));
@@ -39,6 +45,9 @@ const DASHBOARD_TOURS_PATH = '/explore?tab=tours';
 const DASHBOARD_ACTIVITIES_PATH = '/explore?tab=activities';
 const DASHBOARD_EVENTS_PATH = '/explore?tab=guides';
 const SHOW_SUPPORT_CHATBOT = false;
+const NATIVE_SPLASH_VISIBLE_MS = 1800;
+const NATIVE_SPLASH_EXIT_MS = 280;
+let lastHandledNativeAuthUrl = '';
 
 const resolveUserRole = (user: { user_metadata?: Record<string, unknown> } | null, profileRole?: string | null) => {
   const metadataRole = user?.user_metadata?.role;
@@ -63,7 +72,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { user, loading, profileLoading } = useAuth();
 
   if (loading || profileLoading) {
-    return null;
+    return <NativeLoadingFallback />;
   }
 
   if (!user) {
@@ -78,13 +87,69 @@ const LegacyAuthRedirect: React.FC = () => {
   return <Navigate to={`/login${location.search}`} replace />;
 };
 
+const AuthCallback: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    let mounted = true;
+
+    const completeAuthCallback = async () => {
+      const params = new URLSearchParams(location.search);
+      const nextPath = sanitizeNativeNavigationPath(params.get('next'));
+      const oauthError = params.get('error_description') || params.get('error');
+
+      if (oauthError) {
+        console.error('OAuth callback failed:', oauthError);
+        if (mounted) navigate('/login', { replace: true });
+        return;
+      }
+
+      try {
+        const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const authCode = params.get('code');
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+        } else if (authCode) {
+          const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (error) throw error;
+        } else {
+          const { data, error } = await supabase.auth.getSession();
+          if (error) throw error;
+          if (!data.session) throw new Error('OAuth callback did not include a session.');
+        }
+
+        if (mounted) navigate(nextPath, { replace: true });
+      } catch (error) {
+        console.error('OAuth session exchange failed:', error);
+        if (mounted) navigate('/login', { replace: true });
+      }
+    };
+
+    void completeAuthCallback();
+
+    return () => {
+      mounted = false;
+    };
+  }, [location.hash, location.search, navigate]);
+
+  return <NativeLoadingFallback />;
+};
+
 const GuestOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   const isRecoveryMode = new URLSearchParams(location.search).get('mode') === 'recovery';
 
   if (loading) {
-    return null;
+    return <NativeLoadingFallback />;
   }
 
   if (user && !isRecoveryMode) {
@@ -102,7 +167,7 @@ const HomeRoute: React.FC = () => {
   const marketingAccount = isMarketingAccount(role);
 
   if (loading || profileLoading) {
-    return null;
+    return <NativeLoadingFallback />;
   }
 
   if (user) {
@@ -121,7 +186,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAdminAccount = role === 'admin' || isAdmin;
 
   if (loading) {
-    return null;
+    return <NativeLoadingFallback />;
   }
 
   if (!user) {
@@ -141,7 +206,7 @@ const ProviderRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const isProvider = isProviderAccount(role);
 
   if (loading) {
-    return null;
+    return <NativeLoadingFallback />;
   }
 
   if (!user) {
@@ -163,7 +228,7 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
   const marketingAccount = isMarketingAccount(role);
 
   if (loading || profileLoading) {
-    return null;
+    return <NativeLoadingFallback />;
   }
 
   if (!user) {
@@ -180,16 +245,36 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
 function App() {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const isNativePlatform = Capacitor.isNativePlatform();
+  const [showNativeSplash, setShowNativeSplash] = useState(isNativePlatform);
+  const [nativeSplashExiting, setNativeSplashExiting] = useState(false);
   const homePath = user ? APP_HOME_PATH : '/';
   const footerLogoSrc = theme === 'dark' ? '/logo/final-logo-white.png' : '/logo/final-logo.png';
+
+  useEffect(() => {
+    if (!isNativePlatform) return undefined;
+
+    const exitTimer = window.setTimeout(() => {
+      setNativeSplashExiting(true);
+    }, NATIVE_SPLASH_VISIBLE_MS);
+    const removeTimer = window.setTimeout(() => {
+      setShowNativeSplash(false);
+    }, NATIVE_SPLASH_VISIBLE_MS + NATIVE_SPLASH_EXIT_MS);
+
+    return () => {
+      window.clearTimeout(exitTimer);
+      window.clearTimeout(removeTimer);
+    };
+  }, [isNativePlatform]);
 
   return (
     <Router>
       <AppTutorialProvider>
         <div className={`app${user ? ' app-authenticated' : ''}`}>
           <AppSEO />
+          <NativeDeepLinkHandler />
           <AppNavbar />
-          <Suspense fallback={null}>
+          <Suspense fallback={isNativePlatform ? <AppSplashScreen /> : null}>
             <Routes>
               <Route path="/" element={<HomeRoute />} />
               <Route path="/home2" element={<Navigate to="/" replace />} />
@@ -202,6 +287,7 @@ function App() {
               <Route path="/whomadeit" element={<WhoMadeIt />} />
               <Route path="/login" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
               <Route path="/signup" element={<GuestOnlyRoute><Auth /></GuestOnlyRoute>} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/auth" element={<LegacyAuthRedirect />} />
               <Route path="/terms" element={<TermsAndConditions />} />
               <Route path="/blogs" element={<Blogs />} />
@@ -234,11 +320,94 @@ function App() {
 
           <AppFooter homePath={homePath} footerLogoSrc={footerLogoSrc} user={user} />
           {SHOW_SUPPORT_CHATBOT ? <SupportChatbot /> : null}
+          {showNativeSplash ? <AppSplashScreen exiting={nativeSplashExiting} /> : null}
         </div>
       </AppTutorialProvider>
     </Router>
   );
 }
+
+const NativeLoadingFallback: React.FC = () => (
+  Capacitor.isNativePlatform() ? <AppSplashScreen /> : null
+);
+
+const NativeDeepLinkHandler: React.FC = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let mounted = true;
+    let listenerHandle: { remove: () => Promise<void> } | undefined;
+
+    const handleNativeUrl = async (rawUrl: string) => {
+      const appLinkPath = getNativeAppLinkPath(rawUrl);
+      if (appLinkPath) {
+        if (rawUrl === lastHandledNativeAuthUrl) return;
+        lastHandledNativeAuthUrl = rawUrl;
+        if (mounted) navigate(appLinkPath, { replace: false });
+        return;
+      }
+
+      if (!isNativeAuthCallbackUrl(rawUrl) || rawUrl === lastHandledNativeAuthUrl) return;
+      lastHandledNativeAuthUrl = rawUrl;
+
+      await Browser.close().catch(() => undefined);
+
+      const callbackUrl = new URL(rawUrl);
+      const nextPath = sanitizeNativeNavigationPath(callbackUrl.searchParams.get('next'));
+      const oauthError = callbackUrl.searchParams.get('error_description') || callbackUrl.searchParams.get('error');
+
+      if (oauthError) {
+        console.error('Native OAuth callback failed:', oauthError);
+        if (mounted) navigate('/login', { replace: true });
+        return;
+      }
+
+      const hashParams = new URLSearchParams(callbackUrl.hash.replace(/^#/, ''));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const authCode = callbackUrl.searchParams.get('code');
+
+      try {
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+        } else if (authCode) {
+          const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (error) throw error;
+        } else {
+          throw new Error('Native OAuth callback did not include a session token or auth code.');
+        }
+
+        if (mounted) navigate(nextPath, { replace: true });
+      } catch (error) {
+        console.error('Native OAuth session exchange failed:', error);
+        if (mounted) navigate('/login', { replace: true });
+      }
+    };
+
+    void CapacitorApp.getLaunchUrl().then((launchUrl) => {
+      if (launchUrl?.url) void handleNativeUrl(launchUrl.url);
+    });
+
+    void CapacitorApp.addListener('appUrlOpen', (event) => {
+      void handleNativeUrl(event.url);
+    }).then((handle) => {
+      listenerHandle = handle;
+    });
+
+    return () => {
+      mounted = false;
+      void listenerHandle?.remove();
+    };
+  }, [navigate]);
+
+  return null;
+};
 
 const HIDE_GLOBAL_CHROME_PATHS = ['/login', '/signup', '/home4', '/home5', '/terms', '/about', '/about2', '/about-final', '/whomadeit'];
 

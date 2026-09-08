@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Loader2, MapPin, PenLine, Plus, Search, Trash2, UserCircle2 } from 'lucide-react';
+import { Home, Loader2, MapPin, PenLine, Search, Trash2, UserCircle2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
@@ -24,6 +24,8 @@ const BLOG_ACTION_ICONS = {
     dislike: '/icons/mobile-nav-icons/blogs/dislike.webp',
     comment: '/icons/mobile-nav-icons/blogs/comment.webp',
 };
+
+const BLOG_ICON_SRC = '/icons/mobile-nav-icons/blog.webp';
 
 const featuredImage = (blog: BlogPost | null) => (
     blog?.cover_image_url || '/images/home4/tbp-map-1920.png'
@@ -144,8 +146,8 @@ export const Blogs: React.FC = () => {
                     <h1 id="blogs-title">Travel stories</h1>
                     <p className="blogs-hero-subtitle">from people who move through places</p>
                 </div>
-                <button type="button" className="blogs-write-btn" onClick={handleWrite}>
-                    <Plus size={20} />
+                <button type="button" className="blogs-write-btn" onClick={handleWrite} aria-label="Write blog">
+                    <img src={BLOG_ICON_SRC} alt="" aria-hidden="true" />
                     <span>Write Blog</span>
                 </button>
             </section>
@@ -161,8 +163,8 @@ export const Blogs: React.FC = () => {
                 <section className="blogs-empty">
                     <h2>No blogs yet.</h2>
                     <p>Registered members can publish the first story.</p>
-                    <button type="button" className="blogs-write-btn" onClick={handleWrite}>
-                        <Plus size={20} />
+                    <button type="button" className="blogs-write-btn" onClick={handleWrite} aria-label="Write blog">
+                        <img src={BLOG_ICON_SRC} alt="" aria-hidden="true" />
                         <span>Write Blog</span>
                     </button>
                 </section>

@@ -1,7 +1,9 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Send } from 'reicon-react';
+import { AppSplashScreen } from '../components/AppSplashScreen';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
 import { NewAnimatedHero } from '../components/NewAnimatedHero';
 import { TextReveal } from '../components/ui/text-reveal';
@@ -279,6 +281,8 @@ const EMPTY_CONTACT_FORM: ContactFormState = {
 };
 
 const CONTACT_MODAL_TRANSITION_MS = 240;
+
+const isNativeAppLanding = Capacitor.isNativePlatform();
 
 const getCarouselOffset = (index: number, activeIndex: number, total: number) => {
   let offset = index - activeIndex;
@@ -918,6 +922,10 @@ export const Home5: React.FC = () => {
       window.removeEventListener('resize', handleScroll);
     };
   }, []);
+
+  if (isNativeAppLanding) {
+    return <AppSplashScreen />;
+  }
 
   return (
     <main className="home5-page">

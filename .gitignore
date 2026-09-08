@@ -30,3 +30,4 @@ tools/
 # Local/generated workspace files
 .tmp/
 .claude/
+android/wrapper/dists/

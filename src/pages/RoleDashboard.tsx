@@ -4854,8 +4854,9 @@ export const RoleDashboard: React.FC = () => {
                                     to="/blogs/new"
                                     className="rdb-admin-write-blog-btn"
                                     title="Write blog"
+                                    aria-label="Write blog"
                                 >
-                                    <SquarePen size={17} />
+                                    <img src="/icons/mobile-nav-icons/blog.webp" alt="" aria-hidden="true" />
                                     <span>Write Blog</span>
                                 </Link>
                                 {!isDesktopDashboard && (

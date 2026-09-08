@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Share } from '@capacitor/share';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Copy, Home, Loader2, MapPin, MessageCircle, PenLine, Search, Send, Trash2, UserCircle2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
@@ -20,7 +21,8 @@ import {
     type BlogVoteValue,
 } from '../lib/blogs';
 import { renderBlogContentBlocks } from '../lib/blogContent';
-import { buildBreadcrumbJsonLd, buildOrganizationJsonLd, getSiteUrl } from '../lib/seo';
+import { isNativeApp } from '../lib/nativeApp';
+import { buildBreadcrumbJsonLd, buildOrganizationJsonLd, DEFAULT_SITE_URL, getSiteUrl } from '../lib/seo';
 import './blogs.css';
 
 type BlogMobileNavKey = 'home' | 'explore' | 'blogs' | 'map' | 'profile';
@@ -188,7 +190,11 @@ export const BlogDetail: React.FC = () => {
         };
     }, [blog?.id, commentSort]);
 
-    const blogShareUrl = blog ? shareUrl || `${getSiteUrl()}/blogs/${blog.slug}` : '';
+    const blogShareUrl = blog
+        ? isNativeApp()
+            ? `${DEFAULT_SITE_URL}/blogs/${blog.slug}`
+            : shareUrl || `${getSiteUrl()}/blogs/${blog.slug}`
+        : '';
     const blogShareText = blog ? `${blog.title} ${blogShareUrl}` : '';
 
     const copyShareLink = async () => {
@@ -204,6 +210,18 @@ export const BlogDetail: React.FC = () => {
     const handleNativeShare = async () => {
         if (!blog) return;
         try {
+            if (isNativeApp()) {
+                await Share.share({
+                    title: blog.title,
+                    text: blog.excerpt,
+                    url: blogShareUrl,
+                    dialogTitle: 'Share blog',
+                });
+                setShareModalOpen(false);
+                setShareStatus('');
+                return;
+            }
+
             if (navigator.share) {
                 await navigator.share({
                     title: blog.title,
@@ -221,8 +239,12 @@ export const BlogDetail: React.FC = () => {
         }
     };
 
-    const openShareUrl = (url: string) => {
+    const openShareUrl = async (url: string) => {
         if (typeof window === 'undefined') return;
+        if (isNativeApp()) {
+            await handleNativeShare();
+            return;
+        }
         window.open(url, '_blank', 'noopener,noreferrer');
         setShareModalOpen(false);
     };
@@ -407,7 +429,7 @@ export const BlogDetail: React.FC = () => {
             <main className="blogs-page blogs-page--detail">
                 <section className="blogs-empty">
                     <h1>Blog not found.</h1>
-                    <Link to="/blogs" className="blogs-write-btn">
+                    <Link to="/blogs" className="blog-back-link">
                         <ArrowLeft size={18} />
                         <span>All Blogs</span>
                     </Link>
@@ -670,28 +692,28 @@ export const BlogDetail: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => openShareUrl(`https://wa.me/?text=${encodeURIComponent(blogShareText)}`)}
+                                onClick={() => void openShareUrl(`https://wa.me/?text=${encodeURIComponent(blogShareText)}`)}
                             >
                                 <MessageCircle size={16} />
                                 <span>WhatsApp</span>
                             </button>
                             <button
                                 type="button"
-                                onClick={() => openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(blogShareUrl)}`)}
+                                onClick={() => void openShareUrl(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(blogShareUrl)}`)}
                             >
                                 <Send size={16} />
                                 <span>Facebook</span>
                             </button>
                             <button
                                 type="button"
-                                onClick={() => openShareUrl(`https://twitter.com/intent/tweet?text=${encodeURIComponent(blog.title)}&url=${encodeURIComponent(blogShareUrl)}`)}
+                                onClick={() => void openShareUrl(`https://twitter.com/intent/tweet?text=${encodeURIComponent(blog.title)}&url=${encodeURIComponent(blogShareUrl)}`)}
                             >
                                 <Send size={16} />
                                 <span>X</span>
                             </button>
                             <button
                                 type="button"
-                                onClick={() => openShareUrl(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(blogShareUrl)}`)}
+                                onClick={() => void openShareUrl(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(blogShareUrl)}`)}
                             >
                                 <Send size={16} />
                                 <span>LinkedIn</span>

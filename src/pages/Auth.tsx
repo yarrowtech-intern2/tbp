@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Browser } from '@capacitor/browser';
 import {
     ArrowLeft,
     Backpack,
@@ -12,6 +13,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CircleBottomUp } from 'reicon-react';
 import { supabase } from '../lib/supabase';
+import { getNativeOAuthRedirectUrl, isNativeApp } from '../lib/nativeApp';
 import { getProfile, signUpWithRole } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
 import {
@@ -58,6 +60,16 @@ const getPostLoginDestination = (role?: string | null) => {
 };
 
 const getRecoveryRedirectUrl = () => `${getOAuthRedirectBaseUrl()}/login?mode=recovery`;
+
+const getWebOAuthRedirectUrl = (nextPath: string) => {
+    const url = new URL(`${getOAuthRedirectBaseUrl()}/auth/callback`);
+    url.searchParams.set('next', nextPath);
+    return url.toString();
+};
+
+const getOAuthRedirectUrl = (nextPath: string) => (
+    isNativeApp() ? getNativeOAuthRedirectUrl(nextPath) : getWebOAuthRedirectUrl(nextPath)
+);
 
 const getFunctionErrorMessage = async (err: unknown, fallback: string): Promise<string> => {
     const context = typeof err === 'object' && err !== null && 'context' in err
@@ -695,7 +707,8 @@ export const Auth: React.FC = () => {
         setInfo(null);
 
         try {
-            const redirectTo = `${getOAuthRedirectBaseUrl()}${TOURIST_EXPLORE_PATH}`;
+            const useNativeOAuth = isNativeApp();
+            const redirectTo = getOAuthRedirectUrl(TOURIST_EXPLORE_PATH);
 
             if (mode === 'signup') {
                 setOAuthIntent({
@@ -712,16 +725,22 @@ export const Auth: React.FC = () => {
                 clearOAuthIntent();
             }
 
-            const { error: oauthError } = await supabase.auth.signInWithOAuth({
+            const { data: oauthData, error: oauthError } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo,
+                    skipBrowserRedirect: useNativeOAuth,
                     queryParams: {
                         prompt: 'select_account',
                     },
                 },
             });
             if (oauthError) throw oauthError;
+
+            if (useNativeOAuth) {
+                if (!oauthData.url) throw new Error('Google authentication URL was not returned.');
+                await Browser.open({ url: oauthData.url });
+            }
         } catch (err: unknown) {
             clearOAuthIntent();
             const fallback = 'Google authentication failed. Please try again.';
