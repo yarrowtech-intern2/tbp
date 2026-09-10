@@ -299,8 +299,9 @@
   gap: 4px;
   min-width: 25rem;
   border-radius: 22px;
-  padding: 20px 18px;
+  padding: 20px 18px 66px;
   background: #d2d2d2;
+  position: relative;
   transform-origin: top right;
   transform: translateX(calc(100% + 42px)) rotate(5deg) scale(0.96);
   opacity: 0;
@@ -362,6 +363,22 @@
   transform: translateY(-50%);
 }
 
+.home5-hero-menu-panel .home5-hero-menu-theme {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: auto;
+  min-height: 34px;
+  padding: 0 10px;
+  gap: 10px;
+  justify-content: flex-start;
+  font-size: 1rem;
+}
+
+.home5-hero-menu-panel .home5-hero-menu-theme::after {
+  content: none;
+}
+
 .home5-hero-menu-panel a:hover,
 .home5-hero-menu-panel button:hover {
   background: rgba(255, 255, 255, 0.72);
@@ -412,7 +429,7 @@
 
   .home5-hero-menu-panel {
     min-width: min(23rem, calc(100vw - 28px));
-    padding: 12px 14px;
+    padding: 12px 14px 60px;
   }
 
   .home5-hero-menu-panel a,

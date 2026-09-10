@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowUpRight, Bookmark, Loader2, Share2 } from 'lucide-react';
+import { ArrowUpRight, Bookmark, CalendarDays, Compass, Loader2, Map, Share2, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { addListingFavorite, isListingFavorited, removeListingFavorite } from '../lib/destinations';
@@ -29,6 +29,46 @@ const formatPrice = (providerPrice: number | null | undefined): string => {
     const touristPrice = calculatePricingFromProviderUnit(providerPrice, 1).tourist_unit_price;
 
     return `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(touristPrice)}`;
+};
+
+const getListingPresentation = (type: ListingType) => {
+    if (type === 'tour') {
+        return {
+            className: 'listing-card--tour',
+            label: 'Tour Package',
+            pricePrefix: 'Package from',
+            cta: 'View itinerary',
+            icon: <Map size={13} />,
+            meta: [
+                { icon: <Compass size={13} />, label: 'Route-led' },
+                { icon: <CalendarDays size={13} />, label: 'Multi-stop' },
+            ],
+        };
+    }
+    if (type === 'guide') {
+        return {
+            className: 'listing-card--guide',
+            label: 'Guide',
+            pricePrefix: 'Guide from',
+            cta: 'View guide',
+            icon: <Compass size={13} />,
+            meta: [
+                { icon: <Compass size={13} />, label: 'Local host' },
+                { icon: <CalendarDays size={13} />, label: 'Date based' },
+            ],
+        };
+    }
+    return {
+        className: 'listing-card--activity',
+        label: 'Activity',
+        pricePrefix: 'Activity from',
+        cta: 'Book activity',
+        icon: <Zap size={13} />,
+        meta: [
+            { icon: <Zap size={13} />, label: 'Session' },
+            { icon: <CalendarDays size={13} />, label: 'Short format' },
+        ],
+    };
 };
 
 const limitWords = (value: string, maxWords: number): string => {
@@ -101,8 +141,12 @@ export const DestinationCard: React.FC<DestinationProps> = ({
         ? limitWords(description, 12)
         : 'Curated listing with complete details available on open.';
     const priceLabel = formatPrice(price);
+    const presentation = getListingPresentation(listingType);
+    const displayedPrice = priceLabel === 'Price on request'
+        ? priceLabel
+        : `${presentation.pricePrefix} ${priceLabel}`;
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingPathType}/${id}` : '';
-    const bookingCtaLabel = isBooked ? 'BOOK AGAIN' : 'BOOK';
+    const bookingCtaLabel = isBooked ? 'Book again' : presentation.cta;
 
     useEffect(() => {
         if (!user || !id || !canFavorite) {
@@ -160,7 +204,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
 
     return (
         <article
-            className="listing-card"
+            className={`listing-card ${presentation.className}`}
             role="link"
             tabIndex={0}
             onClick={openListing}
@@ -172,6 +216,10 @@ export const DestinationCard: React.FC<DestinationProps> = ({
 
                 <div className="listing-card-media-top">
                     <div className="listing-card-badge-cluster">
+                        <span className="listing-card-chip listing-card-type-chip">
+                            {presentation.icon}
+                            {presentation.label}
+                        </span>
                         {isBooked && <span className="listing-card-booked-pill">Booked</span>}
                         {isBoosted && (
                             <span className="listing-card-boost-badge" aria-label="Boosted listing" title="Boosted">
@@ -208,9 +256,17 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                 <div className="listing-card-reveal-panel">
                     <h3 className="listing-card-title">{displayTitle}</h3>
                     <p className="listing-card-sub">{subtitle}</p>
+                    <div className="listing-card-meta" aria-label={`${presentation.label} highlights`}>
+                        {presentation.meta.map((item) => (
+                            <span key={item.label} className="listing-card-meta-item">
+                                {item.icon}
+                                {item.label}
+                            </span>
+                        ))}
+                    </div>
 
                     <div className="listing-card-actions">
-                        <span className="listing-card-price">{priceLabel}</span>
+                        <span className="listing-card-price">{displayedPrice}</span>
                         <div className="listing-card-cta-cluster">
                             <Link
                                 to={`/listings/${listingPathType}/${id}`}
@@ -232,7 +288,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                                         title,
                                         description: subtitle,
                                         imageUrl: image_url,
-                                        priceLabel,
+                                        priceLabel: displayedPrice,
                                         url: shareUrl,
                                     });
                                 }}
@@ -247,9 +303,17 @@ export const DestinationCard: React.FC<DestinationProps> = ({
             <div className="listing-card-mobile-content">
                 <h3 className="listing-card-title">{displayTitle}</h3>
                 <p className="listing-card-sub">{subtitle}</p>
+                <div className="listing-card-meta" aria-label={`${presentation.label} highlights`}>
+                    {presentation.meta.map((item) => (
+                        <span key={item.label} className="listing-card-meta-item">
+                            {item.icon}
+                            {item.label}
+                        </span>
+                    ))}
+                </div>
 
                 <div className="listing-card-actions">
-                    <span className="listing-card-price">{priceLabel}</span>
+                    <span className="listing-card-price">{displayedPrice}</span>
                     <div className="listing-card-cta-cluster">
                         <Link
                             to={`/listings/${listingPathType}/${id}`}
@@ -271,7 +335,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                                     title,
                                     description: subtitle,
                                     imageUrl: image_url,
-                                    priceLabel,
+                                    priceLabel: displayedPrice,
                                     url: shareUrl,
                                 });
                             }}

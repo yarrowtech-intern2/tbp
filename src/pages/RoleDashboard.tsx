@@ -4871,17 +4871,6 @@ export const RoleDashboard: React.FC = () => {
                                         <Menu size={18} />
                                     </button>
                                 )}
-                                {!isDesktopDashboard && (
-                                    <button
-                                        type="button"
-                                        className="rdb-admin-ctrl-btn"
-                                        title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-                                        aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
-                                        onClick={toggleTheme}
-                                    >
-                                        {isDarkTheme ? <Sun size={18} /> : <Moon size={18} />}
-                                    </button>
-                                )}
                                 {isDesktopDashboard && (
                                     <button
                                         type="button"
@@ -4995,17 +4984,6 @@ export const RoleDashboard: React.FC = () => {
                                     className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--utility"
                                     onClick={() => {
                                         setAdminMobileMenuOpen(false);
-                                        toggleTheme();
-                                    }}
-                                >
-                                    <span>{isDarkTheme ? 'Light theme' : 'Dark theme'}</span>
-                                    {isDarkTheme ? <Sun size={16} /> : <Moon size={16} />}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--utility"
-                                    onClick={() => {
-                                        setAdminMobileMenuOpen(false);
                                         openTutorial();
                                     }}
                                 >
@@ -5022,6 +5000,19 @@ export const RoleDashboard: React.FC = () => {
                                 >
                                     <span>Log out</span>
                                     <LogOut size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--utility rdb-admin-mobile-menu-item--theme"
+                                    onClick={() => {
+                                        setAdminMobileMenuOpen(false);
+                                        toggleTheme();
+                                    }}
+                                    title={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                                    aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+                                >
+                                    <span>{isDarkTheme ? 'Light theme' : 'Dark theme'}</span>
+                                    {isDarkTheme ? <Sun size={16} /> : <Moon size={16} />}
                                 </button>
                             </nav>
                         )}

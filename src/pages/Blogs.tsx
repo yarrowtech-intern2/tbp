@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Loader2, MapPin, PenLine, Search, Trash2, UserCircle2 } from 'lucide-react';
+import { Home, Loader2, MapPin, MessageCircle, PenLine, Search, ThumbsDown, ThumbsUp, Trash2, UserCircle2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
@@ -18,12 +18,6 @@ const BLOG_MOBILE_NAV_ITEMS: Array<{ key: BlogMobileNavKey; label: string; icon:
     { key: 'map', label: 'Map', icon: MapPin },
     { key: 'profile', label: 'Profile', icon: UserCircle2 },
 ];
-
-const BLOG_ACTION_ICONS = {
-    like: '/icons/mobile-nav-icons/blogs/like.webp',
-    dislike: '/icons/mobile-nav-icons/blogs/dislike.webp',
-    comment: '/icons/mobile-nav-icons/blogs/comment.webp',
-};
 
 const BLOG_ICON_SRC = '/icons/mobile-nav-icons/blog.webp';
 
@@ -194,7 +188,7 @@ export const Blogs: React.FC = () => {
                                         onClick={() => void handleVote(blog, 1)}
                                         aria-label={`Upvote ${blog.title}`}
                                     >
-                                        <img src={BLOG_ACTION_ICONS.like} alt="" aria-hidden="true" />
+                                        <ThumbsUp size={13} aria-hidden="true" />
                                         <span>{blog.upvote_count}</span>
                                     </button>
                                     <button
@@ -204,11 +198,11 @@ export const Blogs: React.FC = () => {
                                         onClick={() => void handleVote(blog, -1)}
                                         aria-label={`Downvote ${blog.title}`}
                                     >
-                                        <img src={BLOG_ACTION_ICONS.dislike} alt="" aria-hidden="true" />
+                                        <ThumbsDown size={13} aria-hidden="true" />
                                         <span>{blog.downvote_count}</span>
                                     </button>
                                     <Link to={`/blogs/${blog.slug}`} aria-label={`${blog.comment_count} comments on ${blog.title}`}>
-                                        <img src={BLOG_ACTION_ICONS.comment} alt="" aria-hidden="true" />
+                                        <MessageCircle size={13} aria-hidden="true" />
                                         <span>{blog.comment_count}</span>
                                     </Link>
                                 </div>

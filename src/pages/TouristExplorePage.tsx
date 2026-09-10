@@ -1,6 +1,6 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Bookmark, ChevronLeft, ChevronRight, ClipboardList, Home, LayoutDashboard, Loader2, Search, UserCircle2, X } from 'lucide-react';
+import { ArrowUpRight, Bookmark, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Compass, Home, LayoutDashboard, Loader2, Map, Search, UserCircle2, X, Zap } from 'lucide-react';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { useAuth } from '../hooks/useAuth';
@@ -35,7 +35,7 @@ type ExploreCardRecord = PostRecord & {
 const FILTERS: Array<{ id: ExploreFilter; label: string }> = [
   { id: 'all', label: 'All' },
   ...(VIRTUAL_TOURS_ENABLED ? [{ id: 'live' as ExploreFilter, label: 'Live Tours' }] : []),
-  { id: 'tours', label: 'Tours' },
+  { id: 'tours', label: 'Tour Packages' },
   { id: 'activities', label: 'Activities' },
   { id: 'guides', label: 'Guides' },
 ];
@@ -90,6 +90,59 @@ const formatPrice = (providerPrice: number | null | undefined): string => {
   return `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(touristPrice)}`;
 };
 
+const getExplorePresentation = (post: ExploreCardRecord) => {
+  if (isVirtualTourRecord(post)) {
+    return {
+      className: 'txp-card--live-tour',
+      label: 'Live Tour',
+      pricePrefix: 'Slot from',
+      cta: 'Reserve slot',
+      icon: <Compass size={13} />,
+      meta: [
+        { icon: <CalendarDays size={13} />, label: 'Live slot' },
+        { icon: <Map size={13} />, label: 'Remote guide' },
+      ],
+    };
+  }
+  if (post.exploreType === 'tours') {
+    return {
+      className: 'txp-card--tour-package',
+      label: 'Tour Package',
+      pricePrefix: 'Package from',
+      cta: 'View itinerary',
+      icon: <Map size={13} />,
+      meta: [
+        { icon: <Compass size={13} />, label: 'Route-led' },
+        { icon: <CalendarDays size={13} />, label: 'Multi-stop' },
+      ],
+    };
+  }
+  if (post.exploreType === 'guides') {
+    return {
+      className: 'txp-card--guide-listing',
+      label: 'Guide',
+      pricePrefix: 'Guide from',
+      cta: 'View guide',
+      icon: <Compass size={13} />,
+      meta: [
+        { icon: <Compass size={13} />, label: 'Local host' },
+        { icon: <CalendarDays size={13} />, label: 'Date based' },
+      ],
+    };
+  }
+  return {
+    className: 'txp-card--activity-session',
+    label: 'Activity',
+    pricePrefix: 'Activity from',
+    cta: 'Book activity',
+    icon: <Zap size={13} />,
+    meta: [
+      { icon: <Zap size={13} />, label: 'Session' },
+      { icon: <CalendarDays size={13} />, label: 'Short format' },
+    ],
+  };
+};
+
 const getListingTypeValue = (post: ExploreCardRecord): ListingType => {
   if (post.exploreType === 'tours') return 'tour';
   if (post.exploreType === 'guides') return 'guide';
@@ -135,6 +188,9 @@ const ExploreListingCard: React.FC<{
   const subtitle = getPostSubtitle(post);
   const boosted = hasActiveBoost(post);
   const isLiveTour = isVirtualTourRecord(post);
+  const presentation = getExplorePresentation(post);
+  const price = formatPrice(post.price);
+  const displayedPrice = price === 'Custom' ? 'Price on request' : `${presentation.pricePrefix} ${price}`;
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -210,7 +266,7 @@ const ExploreListingCard: React.FC<{
       onMouseLeave={() => setIsImagePaused(false)}
       onFocus={() => setIsImagePaused(true)}
       onBlur={() => setIsImagePaused(false)}
-      className={`txp-card txp-card--${size}`}
+      className={`txp-card txp-card--${size} ${presentation.className}`}
       aria-label={`Open ${title}`}
     >
       <div className="txp-card-media">
@@ -253,6 +309,10 @@ const ExploreListingCard: React.FC<{
         <div className="txp-card-content">
           <div className="txp-card-top">
             <div className="txp-card-badges">
+              <span className="txp-card-chip txp-card-type-chip">
+                {presentation.icon}
+                {presentation.label}
+              </span>
               {isBooked && <span className="txp-card-booked">Booked</span>}
               {isLiveTour && <span className="txp-card-booked txp-card-booked--live">Live</span>}
               {boosted && (
@@ -279,10 +339,18 @@ const ExploreListingCard: React.FC<{
           <div className="txp-card-copy">
             <h2>{displayTitle}</h2>
             <p>{subtitle}</p>
+            <div className="txp-card-meta" aria-label={`${presentation.label} highlights`}>
+              {presentation.meta.map((item) => (
+                <span key={item.label}>
+                  {item.icon}
+                  {item.label}
+                </span>
+              ))}
+            </div>
             <div className="txp-card-actions">
-              <strong>{formatPrice(post.price)}</strong>
+              <strong>{displayedPrice}</strong>
               <Link to={href} className="txp-card-book" onClick={(event) => event.stopPropagation()}>
-                BOOK
+                {isBooked ? 'Book again' : presentation.cta}
               </Link>
             </div>
           </div>

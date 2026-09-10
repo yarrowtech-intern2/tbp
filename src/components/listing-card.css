@@ -5,6 +5,7 @@
   overflow: hidden;
   background: transparent;
   cursor: pointer;
+  transform-style: preserve-3d;
   transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.34s ease;
   box-shadow: none;
 }
@@ -178,6 +179,7 @@
 .listing-card-boost-badge {
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   min-height: 25px;
   padding: 0 10px;
   border-radius: 999px;
@@ -188,6 +190,30 @@
   font-size: 0.72rem;
   font-weight: 780;
   letter-spacing: 0;
+}
+
+.listing-card-type-chip {
+  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.92);
+  color: #111827;
+}
+
+.listing-card--tour .listing-card-type-chip {
+  background: rgba(219, 234, 254, 0.94);
+  border-color: rgba(37, 99, 235, 0.38);
+  color: #1d4ed8;
+}
+
+.listing-card--activity .listing-card-type-chip {
+  background: rgba(220, 252, 231, 0.94);
+  border-color: rgba(22, 163, 74, 0.38);
+  color: #15803d;
+}
+
+.listing-card--guide .listing-card-type-chip {
+  background: rgba(254, 243, 199, 0.94);
+  border-color: rgba(217, 119, 6, 0.38);
+  color: #92400e;
 }
 
 .listing-card-booked-pill--live {
@@ -315,8 +341,14 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
   color: rgba(236, 240, 248, 0.95);
   max-width: 100%;
+  font-size: 0.72rem;
+  font-weight: 750;
 }
 
 .listing-card-meta-item span {
@@ -533,6 +565,231 @@
 
   .dh-page .listing-card-gallery-dots {
     bottom: 10px;
+  }
+
+}
+
+.dh-clean-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-radius: 24px;
+  overflow: visible;
+  background: transparent;
+  transform: none !important;
+  box-shadow: none;
+}
+
+.dh-clean-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+
+.dh-clean-media.is-fallback {
+  background: color-mix(in srgb, var(--surface-muted) 82%, #ffffff);
+}
+
+.dh-clean-media.is-fallback .listing-card-media-bg {
+  background-image: linear-gradient(160deg, #12253f 0%, #1f4d7d 38%, #4f87b5 72%, #9fc3dc 100%);
+}
+
+.dh-clean-media-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(8, 11, 18, 0.02) 0%, rgba(8, 11, 18, 0.02) 58%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+.dh-clean-top {
+  position: absolute;
+  z-index: 6;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dh-clean-fav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(17, 24, 39, 0.5);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.dh-clean-fav-btn.is-active {
+  background: rgba(255, 255, 255, 0.96);
+  color: #ff6b00;
+}
+
+.dh-clean-fav-btn:disabled {
+  opacity: 0.66;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dh-clean-fav-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+
+.dh-clean-type-chip {
+  position: absolute;
+  z-index: 6;
+  left: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.62);
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 640;
+  letter-spacing: 0;
+}
+
+.dh-clean-price-chip {
+  position: absolute;
+  z-index: 6;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111827;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+.dh-clean-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.dh-clean-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.dh-clean-title {
+  margin: 0;
+  color: var(--text-main);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 1.34rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.12;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dh-clean-sub {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dh-clean-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dh-clean-share-btn,
+.dh-clean-go-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.dh-clean-share-btn {
+  background: var(--surface-muted);
+  color: var(--text-main);
+  border: 1px solid var(--border-light);
+}
+
+.dh-clean-go-btn {
+  background: #ff6b00;
+  color: #ffffff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dh-clean-share-btn:hover,
+  .dh-clean-go-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+  }
+}
+
+@media (max-width: 480px) {
+  .dh-clean-body {
+    gap: 8px;
+  }
+
+  .dh-clean-title {
+    font-size: 1.08rem;
+  }
+
+  .dh-clean-sub {
+    font-size: 0.76rem;
+  }
+
+  .dh-clean-buttons {
+    gap: 6px;
+  }
+
+  .dh-clean-share-btn,
+  .dh-clean-go-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .dh-clean-type-chip,
+  .dh-clean-price-chip {
+    min-height: 22px;
+    padding: 0 10px;
+    font-size: 0.68rem;
   }
 }
 

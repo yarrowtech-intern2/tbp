@@ -23,7 +23,7 @@ import {
     deriveBookingAmounts,
     type ListingFeeBreakdown,
 } from './pricing';
-import type { VirtualTourDetails } from './virtualTours';
+import { normalizeVirtualTourDetails, type VirtualTourDetails } from './virtualTours';
 
 export interface Destination {
     id: string;
@@ -130,7 +130,7 @@ export interface ListingInput {
     price?: number | null;
     fee_breakdown?: ListingFeeBreakdown | null;
     is_virtual_tour?: boolean;
-    virtual_tour_details?: VirtualTourDetails | null;
+    virtual_tour_details?: VirtualTourDetails | Record<string, unknown> | null;
     delivery_mode?: string | null;
     experience_mode?: string | null;
     starts_at?: string | null;
@@ -858,6 +858,8 @@ const getPostFallbackValue = (columnName: string, payload: Record<string, unknow
             return payload.type || 'activity';
         case 'created_at':
             return new Date().toISOString();
+        case 'virtual_tour_details':
+            return {};
         default:
             return undefined;
     }
@@ -1719,6 +1721,9 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
         feeBreakdown.platform_fee_rate ?? PLATFORM_FEE_RATE,
     );
     const normalizedPrice = feePricing.provider_subtotal;
+    const normalizedVirtualTourDetails = listing.is_virtual_tour
+        ? normalizeVirtualTourDetails(listing.virtual_tour_details)
+        : {};
     const payload: Record<string, unknown> = {
         ...listing,
         title: normalizedTitle,
@@ -1732,6 +1737,10 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
         gallery_images: galleryWithCover,
         fee_breakdown: feeBreakdown,
         price: normalizedPrice,
+        is_virtual_tour: listing.is_virtual_tour === true,
+        virtual_tour_details: normalizedVirtualTourDetails,
+        delivery_mode: listing.is_virtual_tour === true ? listing.delivery_mode : null,
+        experience_mode: listing.is_virtual_tour === true ? listing.experience_mode : null,
         status: normalizedStatus,
         rejection_reason: null,
         reviewed_at: null,

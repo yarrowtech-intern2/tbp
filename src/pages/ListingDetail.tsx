@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Facebook, Heart, Instagram, Loader2, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, CalendarDays, Clock, Compass, Facebook, Heart, Instagram, Loader2, Map, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
     addListingFavorite,
@@ -97,6 +97,75 @@ const buildShortDescription = (value: string, maxLength = 120): string => {
     const trimmed = value.trim();
     if (trimmed.length <= maxLength) return trimmed;
     return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
+};
+
+const getDetailPresentation = (type: ListingType, isVirtualTour: boolean) => {
+    if (isVirtualTour) {
+        return {
+            label: 'Live Tour',
+            seoLabel: 'Live Tour',
+            bookingTitle: 'Reserve Live Slot',
+            dateLabel: 'Live Slot',
+            travelersLabel: 'Guests',
+            buttonLabel: 'Pay & Book Live Slot',
+            panelClass: 'listing-type-panel--live',
+            panelTitle: 'Live slot details',
+            panelItems: [
+                { icon: <Clock size={15} />, label: 'Format', value: 'Real-time guided stream' },
+                { icon: <Compass size={15} />, label: 'Experience', value: 'Remote local guide' },
+                { icon: <Users size={15} />, label: 'Booking', value: 'Shared live slot' },
+            ],
+        };
+    }
+    if (type === 'tour') {
+        return {
+            label: 'Tour Package',
+            seoLabel: 'Tour Package',
+            bookingTitle: 'Reserve Package',
+            dateLabel: 'Start Date',
+            travelersLabel: 'Travelers',
+            buttonLabel: 'Pay & Book Package',
+            panelClass: 'listing-type-panel--tour',
+            panelTitle: 'Package overview',
+            panelItems: [
+                { icon: <Map size={15} />, label: 'Format', value: 'Route-led package' },
+                { icon: <CalendarDays size={15} />, label: 'Planning', value: 'Start-date based' },
+                { icon: <Compass size={15} />, label: 'Best for', value: 'Multi-stop trips' },
+            ],
+        };
+    }
+    if (type === 'guide') {
+        return {
+            label: 'Guide',
+            seoLabel: 'Guide Listing',
+            bookingTitle: 'Reserve Guide',
+            dateLabel: 'Date',
+            travelersLabel: 'Travelers',
+            buttonLabel: 'Pay & Book Guide',
+            panelClass: 'listing-type-panel--guide',
+            panelTitle: 'Guide overview',
+            panelItems: [
+                { icon: <Compass size={15} />, label: 'Format', value: 'Local guided visit' },
+                { icon: <CalendarDays size={15} />, label: 'Planning', value: 'Date based' },
+                { icon: <Users size={15} />, label: 'Best for', value: 'Personal guidance' },
+            ],
+        };
+    }
+    return {
+        label: 'Activity',
+        seoLabel: 'Activity',
+        bookingTitle: 'Book Activity',
+        dateLabel: 'Session Date',
+        travelersLabel: 'Participants',
+        buttonLabel: 'Pay & Book Activity',
+        panelClass: 'listing-type-panel--activity',
+        panelTitle: 'Activity overview',
+        panelItems: [
+            { icon: <Zap size={15} />, label: 'Format', value: 'Single-session experience' },
+            { icon: <Clock size={15} />, label: 'Planning', value: 'Short format' },
+            { icon: <Users size={15} />, label: 'Best for', value: 'Hands-on booking' },
+        ],
+    };
 };
 
 export const ListingDetail: React.FC = () => {
@@ -238,9 +307,9 @@ export const ListingDetail: React.FC = () => {
     const effectiveType: ListingType = toInternalListingType(listingTypeValue || undefined)
         ? (toInternalListingType(listingTypeValue || undefined) as ListingType)
         : (listingType || 'activity');
-    const displayType = effectiveType === 'guide' ? 'event' : effectiveType;
     const isVirtualTour = isVirtualTourRecord(listing as Record<string, unknown> | null);
     const virtualDetails = getVirtualTourDetailsFromRecord(listing as Record<string, unknown> | null);
+    const detailPresentation = getDetailPresentation(effectiveType, isVirtualTour);
     const pricing = useMemo(
         () => feeBreakdown
             ? calculatePricingFromFeeBreakdown(feeBreakdown, guests, platformFeeRate)
@@ -251,7 +320,7 @@ export const ListingDetail: React.FC = () => {
     const canFavorite = profile?.role === 'tourist';
     const canReview = profile?.role === 'tourist';
     const bookingButtonDisabled = bookingLoading || Boolean(user && !canBook);
-    const bookingButtonLabel = !user ? 'Login to Book' : canBook ? (isVirtualTour ? 'Pay & Book Live Slot' : 'Pay & Book') : 'Tourist Only';
+    const bookingButtonLabel = !user ? 'Login to Book' : canBook ? detailPresentation.buttonLabel : 'Tourist Only';
     const guestOptions = Array.from(
         { length: Math.min(Math.max(virtualDetails?.max_guests || 6, 1), 25) },
         (_, index) => index + 1,
@@ -774,7 +843,7 @@ export const ListingDetail: React.FC = () => {
     return (
         <main className="listing-detail-page">
             <SEOHead
-                title={`${title} | ${displayType.charAt(0).toUpperCase()}${displayType.slice(1)} Package | The Better Pass`}
+                title={`${title} | ${detailPresentation.seoLabel} | The Better Pass`}
                 description={seoDescription}
                 path={`/listings/${effectiveType}/${listing.id}`}
                 image={seoImage}
@@ -825,7 +894,7 @@ export const ListingDetail: React.FC = () => {
                         )}
                         <div className="listing-detail-content">
                             <div className="listing-detail-meta-row">
-                                <span className="listing-detail-type-pill">{displayType}</span>
+                                <span className={`listing-detail-type-pill ${detailPresentation.panelClass}`}>{detailPresentation.label}</span>
                                 {boosted && (
                                     <span className="listing-detail-boost-pill">
                                         <TrendingUp size={14} /> Boosted
@@ -841,6 +910,23 @@ export const ListingDetail: React.FC = () => {
                             </div>
                             <h1 className="listing-detail-title">{title}</h1>
                             <p className="listing-detail-description">{description}</p>
+                            {!isVirtualTour && (
+                                <section className={`listing-type-panel ${detailPresentation.panelClass}`} aria-label={detailPresentation.panelTitle}>
+                                    <div className="listing-type-panel-head">
+                                        <span>{detailPresentation.panelTitle}</span>
+                                        {listing.sub_category && <strong>{listing.sub_category}</strong>}
+                                    </div>
+                                    <div className="listing-type-panel-grid">
+                                        {detailPresentation.panelItems.map((item) => (
+                                            <div key={item.label}>
+                                                {item.icon}
+                                                <span>{item.label}</span>
+                                                <strong>{item.value}</strong>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
                             {isVirtualTour && virtualDetails && (
                                 <section className="listing-virtual-panel" aria-label="Live virtual tour details">
                                     <div className="listing-virtual-head">
@@ -936,12 +1022,12 @@ export const ListingDetail: React.FC = () => {
                         ) : (
                             <form onSubmit={handleBooking} className="listing-book-form">
                                 <div className="listing-book-head">
-                                    <h3>{isVirtualTour ? 'Reserve Live Slot' : 'Reserve'}</h3>
+                                    <h3>{detailPresentation.bookingTitle}</h3>
                                     <strong>Rs {pricing.total_price.toLocaleString()}</strong>
                                 </div>
 
                                 <label className="listing-book-field">
-                                    <span>{isVirtualTour ? 'Live Slot' : 'Date'}</span>
+                                    <span>{detailPresentation.dateLabel}</span>
                                     <span className="listing-book-input-wrap">
                                         <Calendar size={16} />
                                         <input value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required type={isVirtualTour ? 'datetime-local' : 'date'} />
@@ -949,7 +1035,7 @@ export const ListingDetail: React.FC = () => {
                                 </label>
 
                                 <label className="listing-book-field">
-                                    <span>Travelers</span>
+                                    <span>{detailPresentation.travelersLabel}</span>
                                     <span className="listing-book-input-wrap">
                                         <Users size={16} />
                                         <select value={guests} onChange={(e) => setGuests(Number(e.target.value))}>

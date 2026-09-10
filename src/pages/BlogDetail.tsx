@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Share } from '@capacitor/share';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Copy, Home, Loader2, MapPin, MessageCircle, PenLine, Search, Send, Trash2, UserCircle2 } from 'lucide-react';
+import { ArrowLeft, Copy, Home, Loader2, MapPin, MessageCircle, PenLine, Search, Send, Share2, ThumbsDown, ThumbsUp, Trash2, UserCircle2 } from 'lucide-react';
 import { SEOHead } from '../components/SEO';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
@@ -34,13 +34,6 @@ const BLOG_MOBILE_NAV_ITEMS: Array<{ key: BlogMobileNavKey; label: string; icon:
     { key: 'map', label: 'Map', icon: MapPin },
     { key: 'profile', label: 'Profile', icon: UserCircle2 },
 ];
-
-const BLOG_ACTION_ICONS = {
-    like: '/icons/mobile-nav-icons/blogs/like.webp',
-    dislike: '/icons/mobile-nav-icons/blogs/dislike.webp',
-    comment: '/icons/mobile-nav-icons/blogs/comment.webp',
-    share: '/icons/mobile-nav-icons/blogs/share.webp',
-};
 
 const formatDate = (value: string) => {
     if (!value) return '';
@@ -470,7 +463,7 @@ export const BlogDetail: React.FC = () => {
                             onClick={() => void handleBlogVote(1)}
                             aria-label="Upvote blog"
                         >
-                            <img src={BLOG_ACTION_ICONS.like} alt="" aria-hidden="true" />
+                            <ThumbsUp size={16} aria-hidden="true" />
                             <span>{blog.upvote_count}</span>
                         </button>
                         <button
@@ -480,7 +473,7 @@ export const BlogDetail: React.FC = () => {
                             onClick={() => void handleBlogVote(-1)}
                             aria-label="Downvote blog"
                         >
-                            <img src={BLOG_ACTION_ICONS.dislike} alt="" aria-hidden="true" />
+                            <ThumbsDown size={16} aria-hidden="true" />
                             <span>{blog.downvote_count}</span>
                         </button>
                         <button
@@ -489,7 +482,7 @@ export const BlogDetail: React.FC = () => {
                             onClick={scrollToComments}
                             aria-label={`${blog.comment_count} comments`}
                         >
-                            <img src={BLOG_ACTION_ICONS.comment} alt="" aria-hidden="true" />
+                            <MessageCircle size={16} aria-hidden="true" />
                             <span>{blog.comment_count}</span>
                         </button>
                         <button
@@ -501,7 +494,7 @@ export const BlogDetail: React.FC = () => {
                             }}
                             aria-label="Share blog"
                         >
-                            <img src={BLOG_ACTION_ICONS.share} alt="" aria-hidden="true" />
+                            <Share2 size={16} aria-hidden="true" />
                         </button>
                     </div>
                     {shareStatus && <p className="blog-share-status">{shareStatus}</p>}
@@ -647,7 +640,7 @@ export const BlogDetail: React.FC = () => {
                                             disabled={busyCommentId === comment.id}
                                             onClick={() => void handleCommentVote(comment, 1)}
                                         >
-                                            <img src={BLOG_ACTION_ICONS.like} alt="" aria-hidden="true" />
+                                            <ThumbsUp size={16} aria-hidden="true" />
                                             <span>{comment.upvote_count}</span>
                                         </button>
                                         <button
@@ -656,7 +649,7 @@ export const BlogDetail: React.FC = () => {
                                             disabled={busyCommentId === comment.id}
                                             onClick={() => void handleCommentVote(comment, -1)}
                                         >
-                                            <img src={BLOG_ACTION_ICONS.dislike} alt="" aria-hidden="true" />
+                                            <ThumbsDown size={16} aria-hidden="true" />
                                             <span>{comment.downvote_count}</span>
                                         </button>
                                     </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Moon, Sun } from 'lucide-react';
 import {
   DEFAULT_FOOTER_CONTENT,
   getFooterContactDetails,
@@ -7,6 +8,7 @@ import {
   type FooterContent,
   type FooterLink,
 } from '../lib/appContent';
+import { useTheme } from '../hooks/useTheme';
 import './about-final.css';
 
 const ABOUT_STORY_SECTIONS = [
@@ -219,6 +221,8 @@ const AboutFinalContactSection: React.FC<{ footerContent: FooterContent }> = ({ 
 };
 
 export const AboutFinal: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
+  const isDarkTheme = theme === 'dark';
   const [menuOpen, setMenuOpen] = useState(false);
   const [footerContent, setFooterContent] = useState<FooterContent>(DEFAULT_FOOTER_CONTENT);
 
@@ -280,6 +284,16 @@ export const AboutFinal: React.FC = () => {
           <Link to="/about-final" onClick={() => setMenuOpen(false)}>About us</Link>
           <Link to="/login" onClick={() => setMenuOpen(false)}>Login</Link>
           <Link to="/#contact" onClick={() => setMenuOpen(false)}>Contact</Link>
+          <button
+            type="button"
+            className="about-final-menu-theme"
+            onClick={toggleTheme}
+            aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={isDarkTheme ? 'Light theme' : 'Dark theme'}
+          >
+            {isDarkTheme ? <Sun size={16} /> : <Moon size={16} />}
+            <span>{isDarkTheme ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
         </nav>
       </div>
 

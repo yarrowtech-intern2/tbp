@@ -259,10 +259,10 @@
     text-decoration: none;
 }
 
-.blogs-card-stats img {
+.blogs-card-stats svg {
     display: block;
+    flex: 0 0 auto;
     height: 13px;
-    object-fit: contain;
     width: 13px;
 }
 
@@ -496,11 +496,11 @@
     padding: 0 12px;
 }
 
-.blog-vote-row button img,
-.blog-comment-votes button img {
+.blog-vote-row button svg,
+.blog-comment-votes button svg {
     display: block;
+    flex: 0 0 auto;
     height: 16px;
-    object-fit: contain;
     width: 16px;
 }
 

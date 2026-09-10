@@ -335,6 +335,67 @@ const getSubmitCopy = (type: ListingType, role?: string | null) => (
     role === 'local_guide' && type === 'guide' ? 'Submit Live AR/VR Tour' : getPrimaryActionCopy(type)
 );
 
+const getStudioTypeGuidance = (type: ListingType, role?: string | null) => {
+    if (role === 'local_guide' && type === 'guide') {
+        return {
+            titleLabel: 'Live tour title',
+            locationLabel: 'Broadcast location',
+            categoryLabel: 'Tour format',
+            dateLabel: 'Live date',
+            feeLabel: 'Guide live-session fee (Rs)',
+            priceNote: 'live virtual slot',
+            placeholderTitle: 'e.g. Golden Hour Walk through Kalpa Village',
+            placeholderCategory: LOCAL_GUIDE_VIRTUAL_SUBCATEGORY,
+            placeholderDescription: 'Describe the live route, AR/VR setup, language, duration, and what tourists can request.',
+            guidanceTitle: 'Live AR/VR tour checklist',
+            guidanceItems: ['Exact live spot', 'Camera and network backup', 'Proof photos and short video'],
+        };
+    }
+    if (type === 'tour') {
+        return {
+            titleLabel: 'Package title',
+            locationLabel: 'Route or destination',
+            categoryLabel: 'Package theme',
+            dateLabel: 'Start date',
+            feeLabel: 'Vendor package fee (Rs)',
+            priceNote: 'traveler/package selection',
+            placeholderTitle: 'e.g. 3D/2N Kalpa and Kinnaur Scenic Circuit',
+            placeholderCategory: 'e.g. Himalayan circuit, heritage route, weekend getaway',
+            placeholderDescription: 'Describe the itinerary, day-wise route, transport, stay, meals, inclusions, exclusions, and pickup point.',
+            guidanceTitle: 'Tour package checklist',
+            guidanceItems: ['Day-wise itinerary or route', 'Transport, meals, stay, and guide inclusions', 'Pickup point and start date'],
+        };
+    }
+    if (type === 'activity') {
+        return {
+            titleLabel: 'Activity title',
+            locationLabel: 'Activity location',
+            categoryLabel: 'Activity type',
+            dateLabel: 'Session date',
+            feeLabel: 'Vendor activity fee (Rs)',
+            priceNote: 'activity session',
+            placeholderTitle: 'e.g. Riverside Kayaking Session in Rishikesh',
+            placeholderCategory: 'e.g. Adventure, cooking class, wellness, workshop',
+            placeholderDescription: 'Describe what guests will do, session length, equipment, safety notes, skill level, group size, and meeting point.',
+            guidanceTitle: 'Activity checklist',
+            guidanceItems: ['Session duration and group size', 'Equipment, safety, and skill level', 'Meeting point and guest requirements'],
+        };
+    }
+    return {
+        titleLabel: 'Event title',
+        locationLabel: 'Event location',
+        categoryLabel: 'Event type',
+        dateLabel: 'Event date',
+        feeLabel: 'Vendor event fee (Rs)',
+        priceNote: 'event booking',
+        placeholderTitle: 'e.g. Local Market Walk with Neighborhood Guide',
+        placeholderCategory: 'e.g. Walking guide, culture, food trail',
+        placeholderDescription: "Describe the experience, what's included, meeting point, timing, and guest requirements.",
+        guidanceTitle: 'Guide listing checklist',
+        guidanceItems: ['Meeting point and timing', 'What the guide covers', 'Guest requirements and inclusions'],
+    };
+};
+
 const normalizeImageList = (values: Array<unknown>): string[] => Array.from(new Set(
     values
         .map((value) => (typeof value === 'string' ? value.trim() : ''))
@@ -402,6 +463,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     );
     const localGuideStudio = studioRole === 'local_guide';
     const canAccessStudio = isProvider && allowedTypes.length > 0 && (VIRTUAL_TOURS_ENABLED || !localGuideStudio);
+    const studioTypeGuidance = getStudioTypeGuidance(form.type, studioRole);
 
     const loadListings = useCallback(async () => {
         if (!currentUserId) return;
@@ -810,7 +872,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 sub_category: submittedSubcategory,
                 fee_breakdown: submissionFeeBreakdown,
                 is_virtual_tour: localGuideStudio,
-                virtual_tour_details: localGuideStudio ? submittedVirtualDetails : null,
+                virtual_tour_details: localGuideStudio ? submittedVirtualDetails : {},
                 delivery_mode: localGuideStudio ? 'virtual_live' : null,
                 experience_mode: localGuideStudio ? 'virtual' : null,
                 status: 'pending',
@@ -1102,12 +1164,12 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                         <form onSubmit={handleSubmit} className="ps-form">
                             <label className="ps-field">
-                                <span className="ps-field-label"><Type size={13} /> Title</span>
+                                <span className="ps-field-label"><Type size={13} /> {studioTypeGuidance.titleLabel}</span>
                                 <input
                                     className="ps-input"
                                     value={form.title}
                                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                                    placeholder="e.g. Sunrise Hike through Margalla Hills"
+                                    placeholder={studioTypeGuidance.placeholderTitle}
                                     disabled={!canAccessStudio}
                                     required
                                 />
@@ -1115,7 +1177,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                             <div className="ps-two-up">
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><MapPin size={13} /> Location</span>
+                                    <span className="ps-field-label"><MapPin size={13} /> {studioTypeGuidance.locationLabel}</span>
                                     <input
                                         className="ps-input"
                                         value={form.location}
@@ -1126,16 +1188,29 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     />
                                 </label>
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><Tag size={13} /> {localGuideStudio ? 'Tour Format' : 'Subcategory'}</span>
+                                    <span className="ps-field-label"><Tag size={13} /> {studioTypeGuidance.categoryLabel}</span>
                                     <input
                                         className="ps-input"
                                         value={form.sub_category || ''}
                                         onChange={(e) => setForm((f) => ({ ...f, sub_category: e.target.value }))}
-                                        placeholder={studioRole === 'local_guide' ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY : 'e.g. Hiking, Cooking class'}
+                                        placeholder={studioTypeGuidance.placeholderCategory}
                                         disabled={!canAccessStudio}
                                     />
                                 </label>
                             </div>
+
+                            {!localGuideStudio && (
+                                <section className={`ps-type-guidance ps-type-guidance--${form.type}`} aria-label={`${getListingSingularCopy(form.type, studioRole)} checklist`}>
+                                    <div>
+                                        <span className="ps-field-label">{TYPE_META[form.type]?.icon}{studioTypeGuidance.guidanceTitle}</span>
+                                    </div>
+                                    <div className="ps-type-guidance-list">
+                                        {studioTypeGuidance.guidanceItems.map((item) => (
+                                            <span key={item}>{item}</span>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
 
                             {localGuideStudio && (
                                 <section className="ps-live-details" aria-label="Live virtual tour details">
@@ -1582,7 +1657,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                                 <div className="ps-fee-preview">
                                     <div>
-                                        <span>{localGuideStudio ? 'Guide live-session fee' : 'Vendor package fee'}</span>
+                                        <span>{studioTypeGuidance.feeLabel.replace(' (Rs)', '')}</span>
                                         <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong>
                                     </div>
                                     <div>
@@ -1610,7 +1685,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                             <div className="ps-two-up">
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><DollarSign size={13} /> {localGuideStudio ? 'Guide live-session fee (Rs)' : 'Vendor package fee (Rs)'}</span>
+                                    <span className="ps-field-label"><DollarSign size={13} /> {studioTypeGuidance.feeLabel}</span>
                                     <input
                                         className="ps-input"
                                         type="number"
@@ -1620,13 +1695,13 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                         readOnly
                                     />
                                     <p className="ps-price-note">
-                                        {localGuideStudio ? 'Tourists see ' : 'Package cards show '}
+                                        {localGuideStudio ? 'Tourists see ' : form.type === 'tour' ? 'Package cards show ' : 'Activity cards show '}
                                         <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong> including platform fee.
-                                        You receive <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong> for one {localGuideStudio ? 'live virtual slot' : 'traveler/package selection'}.
+                                        You receive <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong> for one {studioTypeGuidance.priceNote}.
                                     </p>
                                 </label>
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><Clock size={13} /> {localGuideStudio ? 'Live Date' : 'Start Date'}</span>
+                                    <span className="ps-field-label"><Clock size={13} /> {studioTypeGuidance.dateLabel}</span>
                                     <input
                                         className="ps-input"
                                         type="date"
@@ -1643,7 +1718,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     className="ps-textarea"
                                     value={form.description}
                                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                                    placeholder={localGuideStudio ? 'Describe the live route, AR/VR setup, language, duration, and what tourists can request.' : "Describe the experience, what's included, meeting point..."}
+                                    placeholder={studioTypeGuidance.placeholderDescription}
                                     disabled={!canAccessStudio}
                                     required
                                 />

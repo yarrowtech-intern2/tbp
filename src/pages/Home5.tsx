@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Moon, Sun } from 'lucide-react';
 import { Send } from 'reicon-react';
 import { AppSplashScreen } from '../components/AppSplashScreen';
 import { FloatingDock, type FloatingDockItem } from '../components/ui/floating-dock';
@@ -10,6 +10,7 @@ import { TextReveal } from '../components/ui/text-reveal';
 import type { WorldMapDot } from '../components/ui/world-map';
 import { DEFAULT_FOOTER_CONTENT, getPublicAppContent, type FooterContent, type FooterLink } from '../lib/appContent';
 import { submitContactSubmission } from '../lib/contactSubmissions';
+import { useTheme } from '../hooks/useTheme';
 import './home5.css';
 
 const LazyGlobe = lazy(async () => ({ default: (await import('../components/ui/globe')).Globe }));
@@ -294,6 +295,8 @@ const getCarouselOffset = (index: number, activeIndex: number, total: number) =>
 const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export const Home5: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
+  const isDarkTheme = theme === 'dark';
   const [activeCard, setActiveCard] = useState(0);
   const [activeBookingCard, setActiveBookingCard] = useState(0);
   const howProgressRef = useRef(0);
@@ -972,6 +975,16 @@ export const Home5: React.FC = () => {
               }}
             >
               Contact
+            </button>
+            <button
+              type="button"
+              className="home5-hero-menu-theme"
+              onClick={toggleTheme}
+              aria-label={isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={isDarkTheme ? 'Light theme' : 'Dark theme'}
+            >
+              {isDarkTheme ? <Sun size={16} /> : <Moon size={16} />}
+              <span>{isDarkTheme ? 'Light Mode' : 'Dark Mode'}</span>
             </button>
           </nav>
         </div>

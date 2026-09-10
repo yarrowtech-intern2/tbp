@@ -513,9 +513,15 @@ export const Navbar: React.FC = () => {
                                 <img src="/icons/arrow.webp" alt="" className="nbr-drop-arrow" aria-hidden="true" />
                             </Link>
                         )}
-                        <button type="button" className="nbr-drop-item nbr-drop-item--btn" onClick={toggleTheme}>
+                        <button
+                            type="button"
+                            className="nbr-drop-item nbr-drop-item--btn nbr-drop-item--theme"
+                            onClick={toggleTheme}
+                            aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                            title={isDark ? 'Light theme' : 'Dark theme'}
+                        >
                             {isDark ? <Sun size={14} /> : <Moon size={14} />}
-                            {isDark ? 'Light Mode' : 'Dark Mode'}
+                            <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
                         </button>
                         {user && (
                             <button type="button" className="nbr-drop-item nbr-drop-item--btn" onClick={() => { openTutorial(); setShowMenu(false); }}>
@@ -1106,8 +1112,9 @@ export const Navbar: React.FC = () => {
                     gap: 0;
                     margin-top: 10px;
                     min-height: 330px;
-                    padding: 24px 18px 20px;
+                    padding: 24px 18px 66px;
                     pointer-events: all;
+                    position: relative;
                     width: 100%;
                 }
 
@@ -1201,6 +1208,15 @@ export const Navbar: React.FC = () => {
                     justify-content: flex-start;
                     text-align: left;
                     width: 100%;
+                }
+
+                .nbr-drop-item--theme {
+                    bottom: 18px;
+                    min-height: 34px;
+                    padding: 0 10px;
+                    position: absolute;
+                    right: 18px;
+                    width: auto;
                 }
 
                 @media (max-width: 768px) {

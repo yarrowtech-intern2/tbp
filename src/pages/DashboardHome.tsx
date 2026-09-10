@@ -299,7 +299,8 @@ const ListingCard: React.FC<{
   const boosted = hasActiveBoost(post);
   const isLiveTour = isVirtualTourRecord(post);
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingTypePath}/${post.id}` : '';
-  const bookingCtaLabel = isBooked ? 'BOOK AGAIN' : 'BOOK';
+  const bookingCtaLabel = isBooked ? 'Book again' : type === 'activities' ? 'Book activity' : type === 'tours' ? 'View itinerary' : 'Book';
+  const typeLabel = type === 'activities' ? 'Activity' : type === 'tours' ? 'Tour Package' : 'Guide';
 
   useEffect(() => {
     if (!user || !post.id || !canFavorite) {
@@ -365,6 +366,139 @@ const ListingCard: React.FC<{
     }
   };
 
+  if (type === 'activities') {
+    return (
+      <article
+        className={`listing-card dh-tone-activities dh-clean-card${isBooked ? ' is-booked' : ''}`}
+        role="link"
+        tabIndex={0}
+        onClick={openListing}
+        onKeyDown={handleCardKeyDown}
+        onMouseEnter={() => setIsImagePaused(true)}
+        onMouseLeave={() => setIsImagePaused(false)}
+        onFocus={() => setIsImagePaused(true)}
+        onBlur={() => setIsImagePaused(false)}
+        aria-label={`Open ${title}`}
+      >
+        <div className={`dh-clean-media${activeImage ? '' : ' is-fallback'}`}>
+          <div
+            key={`listing-prev-${post.id}-${transitionKey}`}
+            className="listing-card-media-bg listing-card-media-bg--previous"
+            style={{ backgroundImage: `url(${previousImage})` }}
+          />
+          <div
+            key={`listing-current-${post.id}-${transitionKey}`}
+            className="listing-card-media-bg listing-card-media-bg--current"
+            style={{ backgroundImage: `url(${activeImage})` }}
+          />
+          <div className="dh-clean-media-shade" />
+
+          {hasMultipleImages && (
+            <>
+              <button
+                type="button"
+                className="listing-card-gallery-btn listing-card-gallery-btn--prev"
+                aria-label="Previous listing image"
+                onClick={(event) => handleImageStep(event, -1)}
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                type="button"
+                className="listing-card-gallery-btn listing-card-gallery-btn--next"
+                aria-label="Next listing image"
+                onClick={(event) => handleImageStep(event, 1)}
+              >
+                <ChevronRight size={14} />
+              </button>
+              <div className="listing-card-gallery-dots" aria-hidden="true">
+                {images.slice(0, 6).map((url, index) => (
+                  <span key={`${url}-${index}`} className={index === activeImageIndex ? 'is-active' : ''} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {(isBooked || isLiveTour || boosted || canFavorite) && (
+            <div className="dh-clean-top">
+              <div className="listing-card-badge-cluster">
+                {isBooked && <span className="listing-card-booked-pill">Booked</span>}
+                {isLiveTour && <span className="listing-card-booked-pill listing-card-booked-pill--live">Live</span>}
+                {boosted && (
+                  <span className="listing-card-boost-badge" aria-label="Boosted listing" title="Boosted">
+                    <ArrowUpRight size={15} />
+                  </span>
+                )}
+              </div>
+              {canFavorite && (
+                <button
+                  type="button"
+                  className={`dh-clean-fav-btn${isFavorite ? ' is-active' : ''}`}
+                  onClick={handleFavoriteToggle}
+                  disabled={favoriteLoading}
+                  title={isFavorite ? 'Remove from saved' : 'Save listing'}
+                  aria-label={isFavorite ? 'Remove from saved listings' : 'Save listing'}
+                >
+                  {favoriteLoading ? (
+                    <Loader2 size={14} className="dh-spin" />
+                  ) : (
+                    <Bookmark size={14} fill={isFavorite ? 'currentColor' : 'none'} />
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
+          {!activeImage && (
+            <div className="listing-card-fallback-text" aria-hidden="true">
+              {title.charAt(0).toUpperCase()}
+            </div>
+          )}
+
+          <span className="dh-clean-type-chip">{typeLabel}</span>
+          {priceLabel !== 'Price on request' && <span className="dh-clean-price-chip">{priceLabel}</span>}
+        </div>
+
+        <div className="dh-clean-body">
+          <div className="dh-clean-text">
+            <h3 className="dh-clean-title">{displayTitle}</h3>
+            <p className="dh-clean-sub">{subtitle}</p>
+          </div>
+          <div className="dh-clean-buttons">
+            <button
+              type="button"
+              className="dh-clean-share-btn"
+              aria-label="Share activity"
+              title="Share activity"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void shareListing({
+                  title,
+                  description: subtitle,
+                  imageUrl: activeImage,
+                  priceLabel,
+                  url: shareUrl,
+                });
+              }}
+            >
+              <Share2 size={17} />
+            </button>
+            <Link
+              to={`/listings/${listingTypePath}/${post.id}`}
+              className="dh-clean-go-btn"
+              aria-label={isBooked ? `Book ${title} again` : bookingCtaLabel}
+              title={bookingCtaLabel}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <article
       className={`listing-card ${getToneClass(type)}${isBooked ? ' is-booked' : ''}`}
@@ -417,6 +551,7 @@ const ListingCard: React.FC<{
         )}
         <div className="listing-card-media-top">
           <div className="listing-card-badge-cluster">
+            <span className="listing-card-chip listing-card-type-chip">{typeLabel}</span>
             {isBooked && <span className="listing-card-booked-pill">Booked</span>}
             {isLiveTour && <span className="listing-card-booked-pill listing-card-booked-pill--live">Live</span>}
             {boosted && (
