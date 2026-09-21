@@ -19,6 +19,8 @@ import {
     Star,
     Tag,
     Trash2,
+    TrendingDown,
+    TrendingUp,
     Type,
     Upload,
     Users,
@@ -1135,69 +1137,123 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         }
     };
 
-    const renderMarketPricePanel = () => (
-        <aside className={`ps-market-box ps-market-box--${marketInsight?.statusTone || 'neutral'}`} aria-live="polite">
-            <div className="ps-market-head">
-                <span className="ps-field-label"><Sparkles size={13} /> Market price check</span>
-                {marketInsight && <strong>{marketInsight.statusLabel}</strong>}
-            </div>
+    const renderMarketPricePanel = () => {
+        const tone = marketInsight?.statusTone || 'neutral';
+        const status = marketInsight?.status;
+        const StatusIcon = status === 'fair'
+            ? CheckCircle2
+            : status === 'low' || status === 'too_low'
+                ? TrendingDown
+                : TrendingUp;
 
-            {pricingPreview.provider_subtotal <= 0 ? (
-                <p className="ps-market-empty">Add at least one included fee to compare this listing with similar trips.</p>
-            ) : marketLoading && !marketInsight ? (
-                <p className="ps-market-empty">Checking marketplace comparables and global benchmarks...</p>
-            ) : marketInsight ? (
-                <>
-                    <p className="ps-market-headline">{marketInsight.headline}</p>
-                    <div className="ps-market-metrics">
-                        <div>
-                            <span>Your vendor price</span>
-                            <strong>{formatRs(pricingPreview.provider_subtotal)}</strong>
-                        </div>
-                        <div>
-                            <span>Market average</span>
-                            <strong>{formatRs(marketInsight.marketAverageProviderPrice)}</strong>
-                        </div>
-                        <div>
-                            <span>Market range</span>
-                            <strong>{formatRs(marketInsight.marketLowProviderPrice)} - {formatRs(marketInsight.marketHighProviderPrice)}</strong>
-                        </div>
-                        <div>
-                            <span>Suggested price</span>
-                            <strong>{formatRs(marketInsight.suggestedProviderPrice)}</strong>
-                        </div>
-                    </div>
-                    <p className="ps-market-tourist">
-                        Tourist sees {formatRs(pricingPreview.total_price)}. Suggested tourist total is {formatRs(marketInsight.suggestedTouristPrice)} after platform fee.
-                    </p>
-                    <div className="ps-market-note">
-                        <span>Pricing recommendation</span>
-                        <p>
-                            {ollamaStatus === 'loading'
-                                ? 'Preparing pricing guidance...'
-                                : ollamaNote || `Your price is ${Math.abs(marketInsight.differencePercent)}% ${marketInsight.differencePercent < 0 ? 'below' : 'above'} the market average. A competitive vendor price is ${formatRs(marketInsight.suggestedProviderPrice)}.`}
-                        </p>
-                    </div>
-                    <div className="ps-market-signals">
-                        {marketInsight.signals.map((signal) => (
-                            <span key={signal}>{signal}</span>
-                        ))}
-                        <span>{marketInsight.confidence} confidence</span>
-                    </div>
-                    <div className="ps-market-comps">
-                        {marketInsight.similarTrips.slice(0, 3).map((trip) => (
-                            <div key={`${trip.source}-${trip.title}-${trip.providerPrice}`}>
-                                <span>{trip.title}</span>
-                                <strong>{formatRs(trip.providerPrice)}</strong>
+        // Position of a price on the market-range track, clamped so out-of-range prices pin to an edge.
+        const rangeLow = marketInsight?.marketLowProviderPrice ?? 0;
+        const rangeHigh = marketInsight?.marketHighProviderPrice ?? 0;
+        const toRangePercent = (value: number) => (
+            rangeHigh > rangeLow
+                ? Math.min(100, Math.max(0, ((value - rangeLow) / (rangeHigh - rangeLow)) * 100))
+                : 50
+        );
+
+        return (
+            <aside
+                className={`ps-market-box ps-market-box--${tone}`}
+                data-status={status || 'none'}
+                aria-live="polite"
+            >
+                <div className="ps-market-head">
+                    <span className="ps-market-title">
+                        <img className="ps-market-title-icon" src="/icons/local-llm.gif" alt="" aria-hidden="true" />
+                        Market price check
+                    </span>
+                    {marketInsight && (
+                        <strong className="ps-market-status">
+                            <StatusIcon size={13} aria-hidden="true" />
+                            {marketInsight.statusLabel}
+                        </strong>
+                    )}
+                </div>
+
+                {pricingPreview.provider_subtotal <= 0 ? (
+                    <p className="ps-market-empty">Add at least one included fee to compare this listing with similar trips.</p>
+                ) : marketLoading && !marketInsight ? (
+                    <p className="ps-market-empty">Checking marketplace comparables and global benchmarks...</p>
+                ) : marketInsight ? (
+                    <>
+                        <p className="ps-market-headline">{marketInsight.headline}</p>
+
+                        <div className="ps-market-metrics">
+                            <div className="ps-market-metric ps-market-metric--you">
+                                <span>Your vendor price</span>
+                                <strong>{formatRs(pricingPreview.provider_subtotal)}</strong>
                             </div>
-                        ))}
-                    </div>
-                </>
-            ) : (
-                <p className="ps-market-empty">No comparable pricing signal is available yet.</p>
-            )}
-        </aside>
-    );
+                            <div className="ps-market-metric">
+                                <span>Suggested price</span>
+                                <strong>{formatRs(marketInsight.suggestedProviderPrice)}</strong>
+                            </div>
+                            <div className="ps-market-metric">
+                                <span>Market average</span>
+                                <strong>{formatRs(marketInsight.marketAverageProviderPrice)}</strong>
+                            </div>
+                            <div className="ps-market-metric">
+                                <span>Market range</span>
+                                <strong>{formatRs(marketInsight.marketLowProviderPrice)} – {formatRs(marketInsight.marketHighProviderPrice)}</strong>
+                            </div>
+                        </div>
+
+                        <div className="ps-market-range" aria-hidden="true">
+                            <div className="ps-market-range-track">
+                                <i
+                                    className="ps-market-range-mark ps-market-range-mark--avg"
+                                    style={{ left: `${toRangePercent(marketInsight.marketAverageProviderPrice)}%` }}
+                                />
+                                <i
+                                    className="ps-market-range-mark ps-market-range-mark--you"
+                                    style={{ left: `${toRangePercent(pricingPreview.provider_subtotal)}%` }}
+                                />
+                            </div>
+                            <div className="ps-market-range-legend">
+                                <span><i className="ps-market-range-key ps-market-range-key--you" /> You</span>
+                                <span><i className="ps-market-range-key ps-market-range-key--avg" /> Market average</span>
+                            </div>
+                        </div>
+
+                        <p className="ps-market-tourist">
+                            Tourist sees {formatRs(pricingPreview.total_price)}. Suggested tourist total is {formatRs(marketInsight.suggestedTouristPrice)} after platform fee.
+                        </p>
+
+                        <div className="ps-market-note">
+                            <i className="ps-market-note-glow" aria-hidden="true" />
+                            <span>Pricing recommendation</span>
+                            <p>
+                                {ollamaStatus === 'loading'
+                                    ? 'Preparing pricing guidance...'
+                                    : ollamaNote || `Your price is ${Math.abs(marketInsight.differencePercent)}% ${marketInsight.differencePercent < 0 ? 'below' : 'above'} the market average. A competitive vendor price is ${formatRs(marketInsight.suggestedProviderPrice)}.`}
+                            </p>
+                        </div>
+
+                        <div className="ps-market-signals">
+                            {marketInsight.signals.map((signal) => (
+                                <span key={signal}>{signal}</span>
+                            ))}
+                            <span>{marketInsight.confidence} confidence</span>
+                        </div>
+
+                        <div className="ps-market-comps">
+                            {marketInsight.similarTrips.slice(0, 3).map((trip) => (
+                                <div key={`${trip.source}-${trip.title}-${trip.providerPrice}`}>
+                                    <span>{trip.title}</span>
+                                    <strong>{formatRs(trip.providerPrice)}</strong>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                ) : (
+                    <p className="ps-market-empty">No comparable pricing signal is available yet.</p>
+                )}
+            </aside>
+        );
+    };
 
     const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user.id, profile?.full_name, user.email);
 
