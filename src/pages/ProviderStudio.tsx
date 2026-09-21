@@ -30,6 +30,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
     createOrUpdateListing,
+    getPublicListingsByType,
     getMyPosts,
     type ListingInput,
     type PostRecord,
@@ -44,6 +45,8 @@ import {
     type ListingFeeBreakdownItem,
     type ListingFeeBreakdownStatus,
 } from '../lib/pricing';
+import { buildMarketPriceInsight } from '../lib/marketPricing';
+import { generateOllamaPricingNote } from '../lib/ollamaPricing';
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
 import { uploadCloudinaryImage, uploadCloudinaryVideo } from '../lib/cloudinaryUpload';
@@ -309,6 +312,8 @@ const getStatusPillClass = (verificationStatus?: string | null) => {
 
 const getListingTitle = (listing: PostRecord) => listing.title || listing.name || 'Untitled listing';
 
+const formatRs = (value: number) => `Rs ${Math.round(value).toLocaleString()}`;
+
 const getPrimaryActionCopy = (type: ListingType) => {
     switch (type) {
         case 'tour': return 'Submit Tour';
@@ -436,6 +441,10 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [form, setForm] = useState<ListingInput>(EMPTY_FORM('tour'));
     const [virtualDetails, setVirtualDetails] = useState<VirtualTourDetails>(DEFAULT_VIRTUAL_TOUR_DETAILS);
     const [platformFeeRate, setPlatformFeeRate] = useState(PLATFORM_FEE_RATE);
+    const [marketListings, setMarketListings] = useState<PostRecord[]>([]);
+    const [marketLoading, setMarketLoading] = useState(false);
+    const [ollamaNote, setOllamaNote] = useState<string | null>(null);
+    const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
     const [imgError, setImgError] = useState(false);
     const [galleryInput, setGalleryInput] = useState('');
     const [proofPhotoInput, setProofPhotoInput] = useState('');
@@ -625,6 +634,26 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         };
     }, []);
 
+    useEffect(() => {
+        if (!canAccessStudio) return;
+        let cancelled = false;
+        setMarketLoading(true);
+        void getPublicListingsByType(form.type)
+            .then((rows) => {
+                if (!cancelled) setMarketListings(rows);
+            })
+            .catch((error) => {
+                console.error('Failed loading market pricing comparables:', error);
+                if (!cancelled) setMarketListings([]);
+            })
+            .finally(() => {
+                if (!cancelled) setMarketLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [canAccessStudio, form.type]);
+
     const galleryImages = useMemo(
         () => normalizeImageList(form.gallery_images || []),
         [form.gallery_images]
@@ -641,6 +670,78 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         () => calculatePricingFromFeeBreakdown(feeBreakdownDraft, 1, platformFeeRate),
         [feeBreakdownDraft, platformFeeRate]
     );
+    const marketInsight = useMemo(
+        () => buildMarketPriceInsight({
+            listingType: form.type,
+            title: form.title,
+            location: form.location,
+            category: form.sub_category,
+            description: form.description,
+            providerPrice: pricingPreview.provider_subtotal,
+            touristPrice: pricingPreview.total_price,
+            platformFeeRate,
+            feeBreakdown: feeBreakdownDraft,
+            comparables: marketListings,
+            excludeListingId: editingListingId,
+        }),
+        [
+            editingListingId,
+            feeBreakdownDraft,
+            form.description,
+            form.location,
+            form.sub_category,
+            form.title,
+            form.type,
+            marketListings,
+            platformFeeRate,
+            pricingPreview.provider_subtotal,
+            pricingPreview.total_price,
+        ]
+    );
+
+    useEffect(() => {
+        if (!marketInsight || pricingPreview.provider_subtotal <= 0) {
+            setOllamaNote(null);
+            setOllamaStatus('idle');
+            return;
+        }
+
+        let cancelled = false;
+        const timeout = window.setTimeout(() => {
+            setOllamaStatus('loading');
+            void generateOllamaPricingNote({
+                listingType: form.type,
+                title: form.title,
+                location: form.location,
+                category: form.sub_category,
+                description: form.description,
+                insight: marketInsight,
+            })
+                .then((note) => {
+                    if (cancelled) return;
+                    setOllamaNote(note);
+                    setOllamaStatus(note ? 'ready' : 'unavailable');
+                })
+                .catch(() => {
+                    if (cancelled) return;
+                    setOllamaNote(null);
+                    setOllamaStatus('unavailable');
+                });
+        }, 700);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timeout);
+        };
+    }, [
+        form.description,
+        form.location,
+        form.sub_category,
+        form.title,
+        form.type,
+        marketInsight,
+        pricingPreview.provider_subtotal,
+    ]);
 
     const updateFeeItems = useCallback((updater: (items: ListingFeeBreakdownItem[]) => ListingFeeBreakdownItem[]) => {
         setForm((current) => {
@@ -1033,6 +1134,70 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             setUploadingProofVideo(false);
         }
     };
+
+    const renderMarketPricePanel = () => (
+        <aside className={`ps-market-box ps-market-box--${marketInsight?.statusTone || 'neutral'}`} aria-live="polite">
+            <div className="ps-market-head">
+                <span className="ps-field-label"><Sparkles size={13} /> Market price check</span>
+                {marketInsight && <strong>{marketInsight.statusLabel}</strong>}
+            </div>
+
+            {pricingPreview.provider_subtotal <= 0 ? (
+                <p className="ps-market-empty">Add at least one included fee to compare this listing with similar trips.</p>
+            ) : marketLoading && !marketInsight ? (
+                <p className="ps-market-empty">Checking marketplace comparables and global benchmarks...</p>
+            ) : marketInsight ? (
+                <>
+                    <p className="ps-market-headline">{marketInsight.headline}</p>
+                    <div className="ps-market-metrics">
+                        <div>
+                            <span>Your vendor price</span>
+                            <strong>{formatRs(pricingPreview.provider_subtotal)}</strong>
+                        </div>
+                        <div>
+                            <span>Market average</span>
+                            <strong>{formatRs(marketInsight.marketAverageProviderPrice)}</strong>
+                        </div>
+                        <div>
+                            <span>Market range</span>
+                            <strong>{formatRs(marketInsight.marketLowProviderPrice)} - {formatRs(marketInsight.marketHighProviderPrice)}</strong>
+                        </div>
+                        <div>
+                            <span>Suggested price</span>
+                            <strong>{formatRs(marketInsight.suggestedProviderPrice)}</strong>
+                        </div>
+                    </div>
+                    <p className="ps-market-tourist">
+                        Tourist sees {formatRs(pricingPreview.total_price)}. Suggested tourist total is {formatRs(marketInsight.suggestedTouristPrice)} after platform fee.
+                    </p>
+                    <div className="ps-market-note">
+                        <span>Pricing recommendation</span>
+                        <p>
+                            {ollamaStatus === 'loading'
+                                ? 'Preparing pricing guidance...'
+                                : ollamaNote || `Your price is ${Math.abs(marketInsight.differencePercent)}% ${marketInsight.differencePercent < 0 ? 'below' : 'above'} the market average. A competitive vendor price is ${formatRs(marketInsight.suggestedProviderPrice)}.`}
+                        </p>
+                    </div>
+                    <div className="ps-market-signals">
+                        {marketInsight.signals.map((signal) => (
+                            <span key={signal}>{signal}</span>
+                        ))}
+                        <span>{marketInsight.confidence} confidence</span>
+                    </div>
+                    <div className="ps-market-comps">
+                        {marketInsight.similarTrips.slice(0, 3).map((trip) => (
+                            <div key={`${trip.source}-${trip.title}-${trip.providerPrice}`}>
+                                <span>{trip.title}</span>
+                                <strong>{formatRs(trip.providerPrice)}</strong>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            ) : (
+                <p className="ps-market-empty">No comparable pricing signal is available yet.</p>
+            )}
+        </aside>
+    );
 
     const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user.id, profile?.full_name, user.email);
 
@@ -1576,111 +1741,113 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                 </div>
                             </div>
 
-                            <div className="ps-fee-section">
-                                <div className="ps-fee-section-head">
-                                    <div>
-                                        <span className="ps-field-label"><ReceiptText size={13} /> Fee breakdown</span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="ps-upload-btn"
-                                        onClick={addCustomFeeItem}
-                                        disabled={!canAccessStudio}
-                                    >
-                                        <Plus size={14} />
-                                        Add custom
-                                    </button>
-                                </div>
-
-                                <div className="ps-fee-grid">
-                                    {feeItems.map((item) => (
-                                        <div key={item.id} className="ps-fee-row">
-                                            <input
-                                                className="ps-input ps-fee-name"
-                                                value={item.label}
-                                                onChange={(event) => updateFeeItem(item.id, { label: event.target.value })}
-                                                readOnly={!item.is_custom}
-                                                placeholder="Custom fee"
-                                                disabled={!canAccessStudio}
-                                            />
-                                            <input
-                                                className="ps-input"
-                                                type="number"
-                                                min="0"
-                                                step="1"
-                                                value={item.amount > 0 ? item.amount : ''}
-                                                onChange={(event) => updateFeeItem(item.id, { amount: normalizeDraftAmount(event.target.value) })}
-                                                placeholder="Rs"
-                                                disabled={!canAccessStudio}
-                                            />
-                                            <select
-                                                className="ps-select"
-                                                value={item.basis}
-                                                onChange={(event) => updateFeeItem(item.id, { basis: event.target.value as ListingFeeBreakdownBasis })}
-                                                disabled={!canAccessStudio}
-                                            >
-                                                {FEE_BASIS_OPTIONS.map((option) => (
-                                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                                ))}
-                                            </select>
-                                            <select
-                                                className="ps-select"
-                                                value={item.status}
-                                                onChange={(event) => updateFeeItem(item.id, { status: event.target.value as ListingFeeBreakdownStatus })}
-                                                disabled={!canAccessStudio}
-                                            >
-                                                {FEE_STATUS_OPTIONS.map((option) => (
-                                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                className="ps-input ps-fee-note"
-                                                value={item.note || ''}
-                                                onChange={(event) => updateFeeItem(item.id, { note: event.target.value })}
-                                                placeholder="Note"
-                                                disabled={!canAccessStudio}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="ps-fee-remove-btn"
-                                                onClick={() => removeCustomFeeItem(item.id)}
-                                                disabled={!canAccessStudio || !item.is_custom}
-                                                aria-label="Remove custom fee item"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {feeBreakdownError && <p className="ps-gallery-error">{feeBreakdownError}</p>}
-
-                                <div className="ps-fee-preview">
-                                    <div>
-                                        <span>{studioTypeGuidance.feeLabel.replace(' (Rs)', '')}</span>
-                                        <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Platform fee ({Math.round(platformFeeRate * 100)}%)</span>
-                                        <strong>Rs {pricingPreview.platform_fee_amount.toLocaleString()}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Tourist total shown</span>
-                                        <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong>
-                                    </div>
-                                    {pricingPreview.optional_total > 0 && (
+                            <div className="ps-pricing-layout">
+                                <div className="ps-fee-section">
+                                    <div className="ps-fee-section-head">
                                         <div>
-                                            <span>Optional items</span>
-                                            <strong>Rs {pricingPreview.optional_total.toLocaleString()}</strong>
+                                            <span className="ps-field-label"><ReceiptText size={13} /> Fee breakdown</span>
                                         </div>
-                                    )}
-                                    {pricingPreview.pay_at_location_total > 0 && (
+                                        <button
+                                            type="button"
+                                            className="ps-upload-btn"
+                                            onClick={addCustomFeeItem}
+                                            disabled={!canAccessStudio}
+                                        >
+                                            <Plus size={14} />
+                                            Add custom
+                                        </button>
+                                    </div>
+                                    <div className="ps-fee-grid">
+                                        {feeItems.map((item) => (
+                                            <div key={item.id} className="ps-fee-row">
+                                                <input
+                                                    className="ps-input ps-fee-name"
+                                                    value={item.label}
+                                                    onChange={(event) => updateFeeItem(item.id, { label: event.target.value })}
+                                                    readOnly={!item.is_custom}
+                                                    placeholder="Custom fee"
+                                                    disabled={!canAccessStudio}
+                                                />
+                                                <input
+                                                    className="ps-input"
+                                                    type="number"
+                                                    min="0"
+                                                    step="1"
+                                                    value={item.amount > 0 ? item.amount : ''}
+                                                    onChange={(event) => updateFeeItem(item.id, { amount: normalizeDraftAmount(event.target.value) })}
+                                                    placeholder="Rs"
+                                                    disabled={!canAccessStudio}
+                                                />
+                                                <select
+                                                    className="ps-select"
+                                                    value={item.basis}
+                                                    onChange={(event) => updateFeeItem(item.id, { basis: event.target.value as ListingFeeBreakdownBasis })}
+                                                    disabled={!canAccessStudio}
+                                                >
+                                                    {FEE_BASIS_OPTIONS.map((option) => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                                <select
+                                                    className="ps-select"
+                                                    value={item.status}
+                                                    onChange={(event) => updateFeeItem(item.id, { status: event.target.value as ListingFeeBreakdownStatus })}
+                                                    disabled={!canAccessStudio}
+                                                >
+                                                    {FEE_STATUS_OPTIONS.map((option) => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                                <input
+                                                    className="ps-input ps-fee-note"
+                                                    value={item.note || ''}
+                                                    onChange={(event) => updateFeeItem(item.id, { note: event.target.value })}
+                                                    placeholder="Note"
+                                                    disabled={!canAccessStudio}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="ps-fee-remove-btn"
+                                                    onClick={() => removeCustomFeeItem(item.id)}
+                                                    disabled={!canAccessStudio || !item.is_custom}
+                                                    aria-label="Remove custom fee item"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {feeBreakdownError && <p className="ps-gallery-error">{feeBreakdownError}</p>}
+
+                                    <div className="ps-fee-preview">
                                         <div>
-                                            <span>Pay at location</span>
-                                            <strong>Rs {pricingPreview.pay_at_location_total.toLocaleString()}</strong>
+                                            <span>{studioTypeGuidance.feeLabel.replace(' (Rs)', '')}</span>
+                                            <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong>
                                         </div>
-                                    )}
+                                        <div>
+                                            <span>Platform fee ({Math.round(platformFeeRate * 100)}%)</span>
+                                            <strong>Rs {pricingPreview.platform_fee_amount.toLocaleString()}</strong>
+                                        </div>
+                                        <div>
+                                            <span>Tourist total shown</span>
+                                            <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong>
+                                        </div>
+                                        {pricingPreview.optional_total > 0 && (
+                                            <div>
+                                                <span>Optional items</span>
+                                                <strong>Rs {pricingPreview.optional_total.toLocaleString()}</strong>
+                                            </div>
+                                        )}
+                                        {pricingPreview.pay_at_location_total > 0 && (
+                                            <div>
+                                                <span>Pay at location</span>
+                                                <strong>Rs {pricingPreview.pay_at_location_total.toLocaleString()}</strong>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
+
                             </div>
 
                             <div className="ps-two-up">
@@ -1768,8 +1935,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                         </form>
                     </article>
 
+                    <div className="ps-side-stack">
                     {/* ── Inventory Card ── */}
-                    <article className="ps-card">
+                    <article className="ps-card ps-inventory-card">
                         <div className="ps-card-head">
                             <div>
                                 <span className="ps-card-label">
@@ -1851,6 +2019,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                             </div>
                         )}
                     </article>
+
+                    {renderMarketPricePanel()}
+                    </div>
                 </div>
 
                 {submissionModal && (
