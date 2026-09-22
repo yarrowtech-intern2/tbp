@@ -166,11 +166,19 @@
     flex: 0 0 18px;
 }
 
-.rdb-nav-icon-img[src$='spending.webp'] {
+.rdb-nav-icon-img[src$='rupees.svg'] {
     width: 24px;
     height: 24px;
     flex-basis: 24px;
     margin: -3px;
+}
+
+:root[data-theme='dark'] .rdb-nav-icon-img[src$='rupees.svg'] {
+    filter: invert(1);
+}
+
+:root[data-theme='dark'] .rdb-nav-item.is-active .rdb-nav-icon-img[src$='rupees.svg'] {
+    filter: none;
 }
 
 .rdb-nav-item:hover {
@@ -2598,6 +2606,62 @@
     opacity: 0.92;
 }
 
+/* Animated hamburger: three bars that morph into a close (X) when the menu opens. */
+.rdb-hamburger {
+    position: relative;
+    display: block;
+    width: 22px;
+    height: 16px;
+}
+
+.rdb-hamburger > span {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2.5px;
+    border-radius: 999px;
+    background: currentColor;
+    transition: transform 0.34s cubic-bezier(0.68, -0.4, 0.27, 1.4), opacity 0.2s ease, width 0.28s ease, top 0.28s ease;
+}
+
+.rdb-hamburger > span:nth-child(1) { top: 0; }
+.rdb-hamburger > span:nth-child(2) { top: 6.75px; width: 70%; }
+.rdb-hamburger > span:nth-child(3) { top: 13.5px; }
+
+.rdb-admin-menu-btn {
+    transition: transform 0.16s ease, opacity 0.16s ease, background 0.28s ease, color 0.28s ease;
+}
+
+.rdb-admin-menu-btn:active {
+    transform: scale(0.92);
+}
+
+.rdb-admin-menu-btn:hover .rdb-hamburger > span:nth-child(2) {
+    width: 100%;
+}
+
+.rdb-admin-menu-btn.is-open .rdb-hamburger > span:nth-child(1) {
+    top: 6.75px;
+    transform: rotate(45deg);
+}
+
+.rdb-admin-menu-btn.is-open .rdb-hamburger > span:nth-child(2) {
+    opacity: 0;
+    transform: translateX(-10px);
+}
+
+.rdb-admin-menu-btn.is-open .rdb-hamburger > span:nth-child(3) {
+    top: 6.75px;
+    transform: rotate(-45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rdb-hamburger > span,
+    .rdb-admin-menu-btn {
+        transition: none;
+    }
+}
+
 .rdb-admin-ctrl-badge {
     position: absolute;
     top: 7px;
@@ -2897,38 +2961,6 @@
     align-items: center;
 }
 
-.rdb-role-donut {
-    position: relative;
-    width: 94px;
-    height: 94px;
-    flex-shrink: 0;
-    display: grid;
-    place-items: center;
-}
-
-.rdb-role-donut-chart {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    border-radius: 50%;
-}
-
-.rdb-role-donut-chart::after {
-    content: '';
-    position: absolute;
-    inset: 31%;
-    border-radius: 50%;
-    background: var(--rdb-admin-card);
-}
-
-.rdb-role-donut strong {
-    position: relative;
-    z-index: 1;
-    font-size: 1.06rem;
-    font-weight: 800;
-    color: var(--rdb-admin-text-strong);
-}
-
 .rdb-admin-users-breakdown {
     display: grid;
     gap: 5px;
@@ -3062,27 +3094,6 @@
     margin: 4px 0 10px;
     font-size: 0.8rem;
     color: var(--rdb-admin-text-muted);
-}
-
-.rdb-admin-echart-wrap {
-    width: 100%;
-}
-
-.rdb-admin-svg-chart {
-    display: block;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-}
-
-.rdb-admin-echart-wrap--bar {
-    height: 220px;
-    padding-top: 4px;
-}
-
-.rdb-admin-echart-wrap--line {
-    height: 174px;
-    margin-top: 8px;
 }
 
 .rdb-admin-mod-list {
@@ -3413,7 +3424,7 @@
         flex-basis: 22px;
     }
 
-    .rdb-shell--admin .rdb-nav-icon-img[src$='spending.webp'] {
+    .rdb-shell--admin .rdb-nav-icon-img[src$='rupees.svg'] {
         width: 26px;
         height: 26px;
         flex-basis: 26px;
@@ -3620,10 +3631,9 @@
         height: 48px;
     }
 
-    .rdb-admin-topbar.is-mobile .rdb-admin-write-blog-btn {
-        height: 48px;
-        padding: 0;
-        width: 48px;
+    .rdb-admin-topbar.is-mobile .rdb-admin-menu-btn {
+        width: 52px;
+        height: 52px;
     }
 
     .rdb-admin-topbar-shortcuts {
@@ -3789,13 +3799,6 @@
         font-size: clamp(1.3rem, 5.4vw, 1.8rem);
     }
 
-    .rdb-admin-echart-wrap--bar {
-        height: 188px;
-    }
-
-    .rdb-admin-echart-wrap--line {
-        height: 154px;
-    }
 }
 
 @media (max-width: 699px) {
@@ -3881,15 +3884,6 @@
         display: none;
     }
 
-.rdb-role-donut {
-    width: 78px;
-    height: 78px;
-}
-
-.rdb-role-donut strong {
-    font-size: 0.96rem;
-}
-
     .rdb-admin-arrow-btn {
         width: 38px;
         height: 38px;
@@ -3908,15 +3902,6 @@
     .rdb-admin-mod-item {
         font-size: 0.84rem;
     }
-
-.rdb-admin-echart-wrap--bar {
-    height: 164px;
-}
-
-.rdb-admin-echart-wrap--line {
-    height: 132px;
-    margin-top: 6px;
-}
 
     .rdb-marketing-form-grid {
         grid-template-columns: 1fr;

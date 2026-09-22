@@ -18,7 +18,6 @@ import {
     Mail,
     Megaphone,
     MessageSquare,
-    Menu,
     MapPin,
     Package,
     RadioTower,
@@ -96,6 +95,12 @@ import { ContactSubmissionsPanel } from '../components/contact/ContactSubmission
 import { CrmPanel } from '../components/admin/CrmPanel';
 import { MarketingContentEditor, SalesSettingsEditor } from '../components/marketing/MarketingContentEditor';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
+import {
+    StatusDonut,
+    TimeSeriesChart,
+    type DonutSource,
+    type TimeSeriesSource,
+} from '../components/dashboard/DashboardCharts';
 import {
     formatRouteDistance,
     formatRouteDuration,
@@ -656,263 +661,35 @@ const LazyProviderStudio = lazy(async () => {
     return { default: module.ProviderStudio };
 });
 
-type ChartPalette = {
-    accent: string;
-    text: string;
-    textStrong: string;
-    grid: string;
-    neutral: string;
-    neutralDark: string;
+type BookingStatusCategory = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+const bookingStatusCategory = (status?: string | null): BookingStatusCategory => {
+    const value = (status || '').toLowerCase();
+    if (value === 'cancelled' || value === 'rejected') return 'cancelled';
+    if (value === 'completed') return 'completed';
+    if (value === 'confirmed') return 'confirmed';
+    return 'pending';
 };
 
-const getChartPalette = (_themeKey?: string): ChartPalette => {
-    void _themeKey;
+// The activity chart needs history; the Recent Activity list still only shows the latest few.
+const AUDIT_LOG_FETCH_LIMIT = 500;
+const ADMIN_RECENT_ACTIVITY_LIMIT = 12;
 
-    if (typeof window === 'undefined') {
-        return {
-            accent: '#ff6700',
-            text: '#4d4f55',
-            textStrong: '#111114',
-            grid: 'rgba(20, 20, 22, 0.12)',
-            neutral: '#b7b7bd',
-            neutralDark: '#2f2f33',
-        };
-    }
+const bookingCreatedDate = (item: UnifiedBooking) => item.created_at || item.booking_date;
 
-    const styles = getComputedStyle(document.documentElement);
-    const pick = (name: string, fallback: string) => {
-        const value = styles.getPropertyValue(name).trim();
-        return value || fallback;
-    };
+const TOURIST_STATUS_CATEGORIES: DonutSource['categories'] = [
+    { key: 'completed', label: 'Completed', color: '#ff6700' },
+    { key: 'confirmed', label: 'Confirmed', color: '#2f2f33', darkColor: '#f1f1f4' },
+    { key: 'pending', label: 'Pending', color: '#b7b7bd' },
+    { key: 'cancelled', label: 'Cancelled', color: '#8f8f95' },
+];
 
-    return {
-        accent: pick('--accent', '#ff6700'),
-        text: pick('--rdb-admin-text', '#4d4f55'),
-        textStrong: pick('--rdb-admin-text-strong', '#111114'),
-        grid: pick('--rdb-admin-chip', 'rgba(20, 20, 22, 0.12)'),
-        neutral: '#b7b7bd',
-        neutralDark: '#2f2f33',
-    };
-};
-
-const AdminBarChart: React.FC<{
-    data: Array<{ month: string; count: number; isCurrentMonth: boolean }>;
-    themeKey: string;
-}> = ({ data, themeKey }) => {
-    const palette = useMemo(() => getChartPalette(themeKey), [themeKey]);
-    const chart = useMemo(() => {
-        const maxValue = Math.max(1, ...data.map((item) => item.count));
-        const width = 420;
-        const height = 180;
-        const padding = { top: 12, right: 10, bottom: 34, left: 10 };
-        const plotWidth = width - padding.left - padding.right;
-        const plotHeight = height - padding.top - padding.bottom;
-        const slotWidth = plotWidth / Math.max(1, data.length);
-        const barWidth = Math.min(44, slotWidth * 0.58);
-
-        return { width, height, padding, plotHeight, slotWidth, barWidth, maxValue };
-    }, [data]);
-
-    return (
-        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--bar" role="img" aria-label={`Monthly activity: ${data.map((item) => `${item.month} ${item.count}`).join(', ')}`}>
-            <svg className="rdb-admin-svg-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} preserveAspectRatio="none" aria-hidden="true">
-                {[0.25, 0.5, 0.75, 1].map((ratio) => {
-                    const y = chart.padding.top + (chart.plotHeight * ratio);
-                    return (
-                        <line
-                            key={ratio}
-                            x1={chart.padding.left}
-                            x2={chart.width - chart.padding.right}
-                            y1={y}
-                            y2={y}
-                            stroke={palette.grid}
-                            strokeWidth="1"
-                        />
-                    );
-                })}
-                {data.map((item, index) => {
-                    const normalizedValue = Math.max(0, item.count) / chart.maxValue;
-                    const barHeight = Math.max(item.count > 0 ? 8 : 2, normalizedValue * chart.plotHeight);
-                    const x = chart.padding.left + (index * chart.slotWidth) + ((chart.slotWidth - chart.barWidth) / 2);
-                    const y = chart.padding.top + chart.plotHeight - barHeight;
-
-                    return (
-                        <g key={`${item.month}-${index}`}>
-                            <rect
-                                x={x}
-                                y={y}
-                                width={chart.barWidth}
-                                height={barHeight}
-                                rx="10"
-                                fill={item.isCurrentMonth ? palette.accent : palette.neutral}
-                            />
-                            <text
-                                x={chart.padding.left + (index * chart.slotWidth) + (chart.slotWidth / 2)}
-                                y={chart.height - 12}
-                                textAnchor="middle"
-                                fill={palette.text}
-                                fontSize="12"
-                                fontWeight="600"
-                            >
-                                {item.month}
-                            </text>
-                        </g>
-                    );
-                })}
-            </svg>
-        </div>
-    );
-};
-
-const AdminLineChart: React.FC<{ data: number[]; themeKey: string }> = ({ data, themeKey }) => {
-    const palette = useMemo(() => getChartPalette(themeKey), [themeKey]);
-    const chart = useMemo(() => {
-        const width = 420;
-        const height = 154;
-        const padding = 12;
-        const maxValue = Math.max(1, ...data);
-        const points = data.map((value, index) => {
-            const x = data.length <= 1
-                ? width / 2
-                : padding + ((width - (padding * 2)) * index) / (data.length - 1);
-            const y = height - padding - ((Math.max(0, value) / maxValue) * (height - (padding * 2)));
-            return { x, y, value };
-        });
-        const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
-        const areaPoints = points.length > 0
-            ? `${padding},${height - padding} ${linePoints} ${width - padding},${height - padding}`
-            : '';
-
-        return { width, height, padding, points, linePoints, areaPoints };
-    }, [data]);
-
-    return (
-        <div className="rdb-admin-echart-wrap rdb-admin-echart-wrap--line" role="img" aria-label={`Daily activity: ${data.map((value, index) => `Day ${index + 1} ${value}`).join(', ')}`}>
-            <svg className="rdb-admin-svg-chart" viewBox={`0 0 ${chart.width} ${chart.height}`} preserveAspectRatio="none" aria-hidden="true">
-                {chart.areaPoints ? (
-                    <polygon points={chart.areaPoints} fill="rgba(255, 103, 0, 0.12)" />
-                ) : null}
-                {chart.linePoints ? (
-                    <polyline
-                        points={chart.linePoints}
-                        fill="none"
-                        stroke={palette.accent}
-                        strokeWidth="4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                ) : null}
-                {chart.points.map((point, index) => (
-                    <circle
-                        key={`${point.x}-${index}`}
-                        cx={point.x}
-                        cy={point.y}
-                        r="4.4"
-                        fill={palette.textStrong}
-                        stroke={palette.accent}
-                        strokeWidth="2"
-                    />
-                ))}
-            </svg>
-        </div>
-    );
-};
-
-type RoleChartSegment = {
-    label: string;
-    value: number;
-    color: string;
-};
-
-const buildRollingMonthlyCounts = (
-    values: Array<string | null | undefined>,
-    monthsCount = 5,
-): Array<{ month: string; count: number; isCurrentMonth: boolean }> => {
-    const safeMonths = Math.max(1, Math.min(12, Math.trunc(monthsCount)));
-    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const now = new Date();
-    const monthKeys: string[] = [];
-    const labels: string[] = [];
-
-    for (let idx = safeMonths - 1; idx >= 0; idx -= 1) {
-        const d = new Date(now.getFullYear(), now.getMonth() - idx, 1);
-        monthKeys.push(`${d.getFullYear()}-${d.getMonth()}`);
-        labels.push(monthLabels[d.getMonth()]);
-    }
-
-    const counts = monthKeys.map(() => 0);
-    values.forEach((value) => {
-        if (!value) return;
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) return;
-        const key = `${d.getFullYear()}-${d.getMonth()}`;
-        const keyIndex = monthKeys.indexOf(key);
-        if (keyIndex >= 0) counts[keyIndex] += 1;
-    });
-
-    return labels.map((month, index) => ({
-        month,
-        count: counts[index],
-        isCurrentMonth: index === labels.length - 1,
-    }));
-};
-
-const buildRollingDailyCounts = (
-    values: Array<string | null | undefined>,
-    daysCount = 10,
-): number[] => {
-    const safeDays = Math.max(2, Math.trunc(daysCount));
-    const counts = new Array(safeDays).fill(0);
-    const dayMs = 86400000;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayMs = today.getTime();
-
-    values.forEach((value) => {
-        if (!value) return;
-        const d = new Date(value);
-        if (Number.isNaN(d.getTime())) return;
-        const bucket = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-        const age = Math.floor((todayMs - bucket) / dayMs);
-        if (age >= 0 && age < safeDays) {
-            counts[safeDays - 1 - age] += 1;
-        }
-    });
-
-    return counts;
-};
-
-const RoleDonutChart: React.FC<{ segments: RoleChartSegment[]; centerValue: number; label: string; themeKey: string }> = ({
-    segments,
-    centerValue,
-    label,
-    themeKey,
-}) => {
-    const palette = useMemo(() => getChartPalette(themeKey), [themeKey]);
-    const normalizedSegments = segments
-        .map((segment) => ({ ...segment, value: Math.max(0, Math.round(segment.value)) }))
-        .filter((segment) => segment.value > 0);
-    const donutBackground = useMemo(() => {
-        if (normalizedSegments.length === 0) return palette.neutral;
-        const total = normalizedSegments.reduce((sum, segment) => sum + segment.value, 0);
-        let cursor = 0;
-
-        return `conic-gradient(${normalizedSegments.map((segment) => {
-            const start = (cursor / total) * 360;
-            cursor += segment.value;
-            const end = (cursor / total) * 360;
-            return `${segment.color} ${start}deg ${end}deg`;
-        }).join(', ')})`;
-    }, [normalizedSegments, palette.neutral]);
-    const ariaText = `${label}: ${segments.map((segment) => `${segment.label} ${Math.max(0, Math.round(segment.value))}`).join(', ')}`;
-
-    return (
-        <div className="rdb-role-donut" role="img" aria-label={ariaText}>
-            <span className="rdb-role-donut-chart" style={{ background: donutBackground }} aria-hidden="true" />
-            <strong>{Math.max(0, Math.round(centerValue))}</strong>
-        </div>
-    );
-};
+const PROVIDER_STATUS_CATEGORIES: DonutSource['categories'] = [
+    { key: 'confirmed', label: 'Confirmed', color: '#ff6700' },
+    { key: 'completed', label: 'Completed', color: '#2f2f33', darkColor: '#f1f1f4' },
+    { key: 'pending', label: 'Pending', color: '#b7b7bd' },
+    { key: 'cancelled', label: 'Cancelled', color: '#8f8f95' },
+];
 
 export const RoleDashboard: React.FC = () => {
     const { user, profile, profileLoading, signOut } = useAuth();
@@ -1083,7 +860,7 @@ export const RoleDashboard: React.FC = () => {
             getPosts(),
             getContentModerationQueue(),
             getVerificationQueue(),
-            getModerationAuditLogs(),
+            getModerationAuditLogs(AUDIT_LOG_FETCH_LIMIT),
             supabase
                 .from('profiles')
                 .select('id, role, full_name, email, created_at')
@@ -1747,37 +1524,26 @@ export const RoleDashboard: React.FC = () => {
         };
     }, [adminPublishedPosts, adminQueuePosts]);
 
-    const adminMonthlyPackages = useMemo(() => {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const counts = new Array(12).fill(0);
-        [...adminPublishedPosts, ...adminQueuePosts].forEach((post) => {
-            if (!post.created_at) return;
-            const d = new Date(post.created_at);
-            if (d.getFullYear() === currentYear) counts[d.getMonth()]++;
-        });
-        const start = Math.max(0, currentMonth - 4);
-        return months.slice(start, currentMonth + 1).map((month, idx) => ({
-            month,
-            count: counts[start + idx],
-            isCurrentMonth: start + idx === currentMonth,
-        }));
-    }, [adminPublishedPosts, adminQueuePosts]);
+    const adminPackagesSeries = useMemo<TimeSeriesSource>(() => ({
+        id: 'admin-packages',
+        title: 'Packages',
+        subtitle: 'Total created per month',
+        kind: 'bar',
+        unit: 'count',
+        valueLabel: 'Packages',
+        // Published + queued can overlap, so de-duplicate before counting.
+        events: dedupePostRows([...adminPublishedPosts, ...adminQueuePosts]).map((post) => ({ date: post.created_at })),
+    }), [adminPublishedPosts, adminQueuePosts]);
 
-    const adminAuditTrend = useMemo(() => {
-        const days = 10;
-        const counts = new Array(days).fill(0);
-        const now = Date.now();
-        const DAY = 86400000;
-        adminAuditLogs.forEach((log) => {
-            if (!log.created_at) return;
-            const age = Math.floor((now - new Date(log.created_at).getTime()) / DAY);
-            if (age >= 0 && age < days) counts[days - 1 - age]++;
-        });
-        return counts;
-    }, [adminAuditLogs]);
+    const adminAuditSeries = useMemo<TimeSeriesSource>(() => ({
+        id: 'admin-audit',
+        title: 'Moderation activity',
+        subtitle: 'Audit events per day',
+        kind: 'line',
+        unit: 'count',
+        valueLabel: 'Audit events',
+        events: adminAuditLogs.map((log) => ({ date: log.created_at })),
+    }), [adminAuditLogs]);
 
     const salesMetrics = useMemo(() => {
         const includedRows = adminRevenueRows.filter((item) => item.included_in_revenue);
@@ -1801,26 +1567,6 @@ export const RoleDashboard: React.FC = () => {
             .sort((a, b) => a.count - b.count || a.revenue - b.revenue || a.title.localeCompare(b.title))
             .slice(0, 6);
 
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        const monthly = new Array(12).fill(0);
-        includedRows.forEach((item) => {
-            const sourceDate = item.paid_at || item.booking_date || item.created_at;
-            if (!sourceDate) return;
-            const date = new Date(sourceDate);
-            if (date.getFullYear() === currentYear) {
-                monthly[date.getMonth()] += item.total_price;
-            }
-        });
-        const start = Math.max(0, currentMonth - 4);
-        const monthlySales = months.slice(start, currentMonth + 1).map((month, index) => ({
-            month,
-            count: Math.round(monthly[start + index]),
-            isCurrentMonth: start + index === currentMonth,
-        }));
-
         return {
             totalBookings: adminRevenueRows.length,
             totalRevenue,
@@ -1828,31 +1574,28 @@ export const RoleDashboard: React.FC = () => {
             activeAds: adminActiveAds.length,
             topPackages,
             lowestPackages,
-            monthlySales,
             recentBookings: [...adminRevenueRows]
                 .sort((a, b) => new Date(b.created_at || b.booking_date || 0).getTime() - new Date(a.created_at || a.booking_date || 0).getTime())
                 .slice(0, 10),
         };
     }, [adminActiveAds.length, adminRevenueRows]);
 
+    const salesRevenueSeries = useMemo<TimeSeriesSource>(() => ({
+        id: 'sales-revenue',
+        title: 'Monthly Sales',
+        subtitle: 'Paid booking revenue by month',
+        kind: 'bar',
+        unit: 'currency',
+        valueLabel: 'Revenue',
+        events: adminRevenueRows
+            .filter((item) => item.included_in_revenue)
+            .map((item) => ({ date: item.paid_at || item.booking_date || item.created_at, value: item.total_price })),
+    }), [adminRevenueRows]);
+
     const touristBookingStatusBreakdown = useMemo(() => {
-        let pending = 0;
-        let confirmed = 0;
-        let completed = 0;
-        let cancelled = 0;
-        for (const item of touristBookings) {
-            const status = (item.status || '').toLowerCase();
-            if (status === 'cancelled' || status === 'rejected') {
-                cancelled += 1;
-            } else if (status === 'completed') {
-                completed += 1;
-            } else if (status === 'confirmed') {
-                confirmed += 1;
-            } else {
-                pending += 1;
-            }
-        }
-        return { pending, confirmed, completed, cancelled };
+        const counts: Record<BookingStatusCategory, number> = { pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
+        for (const item of touristBookings) counts[bookingStatusCategory(item.status)] += 1;
+        return counts;
     }, [touristBookings]);
 
     const providerListingTypeBreakdown = useMemo(() => ({
@@ -1861,35 +1604,41 @@ export const RoleDashboard: React.FC = () => {
         guides: providerListings.filter((item) => item.type === 'guide' || item.type === 'event').length,
     }), [providerListings]);
 
-    const providerBookingStatusBreakdown = useMemo(() => {
-        let pending = 0;
-        let confirmed = 0;
-        let completed = 0;
-        let cancelled = 0;
-        for (const item of providerBookings) {
-            const status = (item.status || '').toLowerCase();
-            if (status === 'cancelled' || status === 'rejected') {
-                cancelled += 1;
-            } else if (status === 'completed') {
-                completed += 1;
-            } else if (status === 'confirmed') {
-                confirmed += 1;
-            } else {
-                pending += 1;
-            }
-        }
-        return { pending, confirmed, completed, cancelled };
-    }, [providerBookings]);
+    const touristBookingsSeries = useMemo<TimeSeriesSource>(() => ({
+        id: 'tourist-bookings',
+        title: 'Bookings',
+        subtitle: 'Total count per month',
+        kind: 'bar',
+        unit: 'count',
+        valueLabel: 'Bookings',
+        events: touristBookings.map((item) => ({ date: bookingCreatedDate(item) })),
+    }), [touristBookings]);
 
-    const touristMonthlyBookings = useMemo(
-        () => buildRollingMonthlyCounts(touristBookings.map((item) => item.booking_date || item.created_at)),
-        [touristBookings],
-    );
+    const providerListingsSeries = useMemo<TimeSeriesSource>(() => ({
+        id: 'provider-listings',
+        title: 'Listings',
+        subtitle: 'Total created per month',
+        kind: 'bar',
+        unit: 'count',
+        valueLabel: 'Listings',
+        events: providerListings.map((item) => ({ date: item.created_at })),
+    }), [providerListings]);
 
-    const providerMonthlyListings = useMemo(
-        () => buildRollingMonthlyCounts(providerListings.map((item) => item.created_at)),
-        [providerListings],
-    );
+    const touristBookingsDonut = useMemo<DonutSource>(() => ({
+        id: 'tourist-booking-status',
+        title: 'Trip Status',
+        subtitle: 'Your bookings by status',
+        categories: TOURIST_STATUS_CATEGORIES,
+        events: touristBookings.map((item) => ({ date: bookingCreatedDate(item), category: bookingStatusCategory(item.status) })),
+    }), [touristBookings]);
+
+    const providerBookingsDonut = useMemo<DonutSource>(() => ({
+        id: 'provider-booking-status',
+        title: 'Bookings',
+        subtitle: 'Bookings by status',
+        categories: PROVIDER_STATUS_CATEGORIES,
+        events: providerBookings.map((item) => ({ date: bookingCreatedDate(item), category: bookingStatusCategory(item.status) })),
+    }), [providerBookings]);
 
     const touristNotificationRows = centerNotifications
         .filter((item) => !query || `${item.title || ''} ${item.body || ''} ${item.type || ''}`.toLowerCase().includes(query));
@@ -1897,18 +1646,28 @@ export const RoleDashboard: React.FC = () => {
     const providerNotificationRows = centerNotifications
         .filter((item) => !query || `${item.title || ''} ${item.body || ''} ${item.type || ''}`.toLowerCase().includes(query));
 
-    const touristActivityTrend = useMemo(
-        () => buildRollingDailyCounts([
-            ...touristBookings.map((item) => item.created_at || item.booking_date),
-            ...touristNotificationRows.map((item) => item.created_at),
-        ]),
-        [touristBookings, touristNotificationRows],
-    );
+    const touristActivitySeries = useMemo<TimeSeriesSource>(() => ({
+        id: 'tourist-activity',
+        title: 'Trip Activity',
+        subtitle: 'Bookings and alerts per day',
+        kind: 'line',
+        unit: 'count',
+        valueLabel: 'Activity',
+        events: [
+            ...touristBookings.map((item) => ({ date: bookingCreatedDate(item) })),
+            ...centerNotifications.map((item) => ({ date: item.created_at })),
+        ],
+    }), [centerNotifications, touristBookings]);
 
-    const providerBookingTrend = useMemo(
-        () => buildRollingDailyCounts(providerBookings.map((item) => item.booking_date || item.created_at)),
-        [providerBookings],
-    );
+    const providerBookingsSeries = useMemo<TimeSeriesSource>(() => ({
+        id: 'provider-bookings',
+        title: 'Bookings',
+        subtitle: 'New bookings per day',
+        kind: 'line',
+        unit: 'count',
+        valueLabel: 'Bookings',
+        events: providerBookings.map((item) => ({ date: bookingCreatedDate(item) })),
+    }), [providerBookings]);
 
     const touristRows = touristBookings
         .filter((item) => !query || `${item.listing_title || ''} ${item.status || ''} ${item.payment_status || ''} ${item.refund_status || ''} ${item.refund_request_reason || ''}`.toLowerCase().includes(query));
@@ -2261,7 +2020,8 @@ export const RoleDashboard: React.FC = () => {
     );
 
     const adminAuditRows = adminAuditLogs
-        .filter((item) => !query || `${item.entity_type} ${item.action} ${item.entity_id}`.toLowerCase().includes(query));
+        .filter((item) => !query || `${item.entity_type} ${item.action} ${item.entity_id}`.toLowerCase().includes(query))
+        .slice(0, ADMIN_RECENT_ACTIVITY_LIMIT);
 
     const adminRevenueFilteredRows = adminRevenueRows
         .filter((item) => !query || `${item.id} ${item.listing_title} ${item.listing_type} ${item.payment_id} ${item.payment_order_id} ${item.traveler_id} ${item.provider_id} ${item.status} ${item.payment_status}`.toLowerCase().includes(query));
@@ -2981,17 +2741,7 @@ export const RoleDashboard: React.FC = () => {
                         <p className="rdb-admin-light-card-title">Trip</p>
                         <h2 className="rdb-admin-light-card-heading">Status</h2>
                         <div className="rdb-admin-users-layout rdb-role-users-layout">
-                            <RoleDonutChart
-                                segments={[
-                                    { label: 'Completed', value: touristBookingStatusBreakdown.completed, color: '#ff6700' },
-                                    { label: 'Confirmed', value: touristBookingStatusBreakdown.confirmed, color: '#2f2f33' },
-                                    { label: 'Pending', value: touristBookingStatusBreakdown.pending, color: '#b7b7bd' },
-                                    { label: 'Cancelled', value: touristBookingStatusBreakdown.cancelled, color: '#8f8f95' },
-                                ]}
-                                centerValue={touristBookings.length}
-                                label="Tourist booking status"
-                                themeKey={theme}
-                            />
+                            <StatusDonut source={touristBookingsDonut} theme={theme} />
                             <div className="rdb-admin-users-breakdown">
                                 <div>Completed <span>{touristBookingStatusBreakdown.completed}</span></div>
                                 <div>Upcoming <span>{touristMetrics.upcoming}</span></div>
@@ -3065,7 +2815,7 @@ export const RoleDashboard: React.FC = () => {
                     <article className="rdb-admin-chart-card rdb-bookings-chart-card">
                         <h3>Bookings</h3>
                         <p>Total count per month</p>
-                        <AdminBarChart data={touristMonthlyBookings} themeKey={theme} />
+                        <TimeSeriesChart source={touristBookingsSeries} theme={theme} />
                     </article>
 
                     <article className="rdb-admin-chart-card rdb-trip-activity-card">
@@ -3085,7 +2835,7 @@ export const RoleDashboard: React.FC = () => {
                                 <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No bookings yet</p>
                             )}
                         </div>
-                        <AdminLineChart data={touristActivityTrend} themeKey={theme} />
+                        <TimeSeriesChart source={touristActivitySeries} theme={theme} />
                     </article>
                 </div>
             </>
@@ -3754,17 +3504,7 @@ export const RoleDashboard: React.FC = () => {
                         <p className="rdb-admin-light-card-title">Total</p>
                         <h2 className="rdb-admin-light-card-heading">Bookings</h2>
                         <div className="rdb-admin-users-layout rdb-role-users-layout">
-                            <RoleDonutChart
-                                segments={[
-                                    { label: 'Confirmed', value: providerBookingStatusBreakdown.confirmed, color: '#ff6700' },
-                                    { label: 'Completed', value: providerBookingStatusBreakdown.completed, color: '#2f2f33' },
-                                    { label: 'Pending', value: providerBookingStatusBreakdown.pending, color: '#b7b7bd' },
-                                    { label: 'Cancelled', value: providerBookingStatusBreakdown.cancelled, color: '#8f8f95' },
-                                ]}
-                                centerValue={providerBookingRows.length}
-                                label="Provider booking status"
-                                themeKey={theme}
-                            />
+                            <StatusDonut source={providerBookingsDonut} theme={theme} />
                             <div className="rdb-admin-users-breakdown">
                                 <div>Pending <span>{providerMetrics.pending}</span></div>
                                 <div>Live <span>{providerMetrics.live}</span></div>
@@ -3797,7 +3537,7 @@ export const RoleDashboard: React.FC = () => {
                     <article className="rdb-admin-chart-card">
                         <h3>Listings</h3>
                         <p>Total created per month</p>
-                        <AdminBarChart data={providerMonthlyListings} themeKey={theme} />
+                        <TimeSeriesChart source={providerListingsSeries} theme={theme} />
                     </article>
 
                     <article className="rdb-admin-chart-card">
@@ -3817,7 +3557,7 @@ export const RoleDashboard: React.FC = () => {
                                 <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No bookings yet</p>
                             )}
                         </div>
-                        <AdminLineChart data={providerBookingTrend} themeKey={theme} />
+                        <TimeSeriesChart source={providerBookingsSeries} theme={theme} />
                     </article>
                 </div>
             </>
@@ -3912,7 +3652,7 @@ export const RoleDashboard: React.FC = () => {
                     <article className="rdb-admin-chart-card">
                         <h3>Monthly Sales</h3>
                         <p>Paid booking revenue by month</p>
-                        <AdminBarChart data={salesMetrics.monthlySales} themeKey={theme} />
+                        <TimeSeriesChart source={salesRevenueSeries} theme={theme} />
                     </article>
                     <article className="rdb-admin-chart-card">
                         <h3>Insights</h3>
@@ -4718,8 +4458,8 @@ export const RoleDashboard: React.FC = () => {
                 <div className="rdb-admin-charts-row">
                     <article className="rdb-admin-chart-card">
                         <h3>Packages</h3>
-                        <p>Total view per month</p>
-                        <AdminBarChart data={adminMonthlyPackages} themeKey={theme} />
+                        <p>Total created per month</p>
+                        <TimeSeriesChart source={adminPackagesSeries} theme={theme} />
                     </article>
 
                     <article className="rdb-admin-chart-card">
@@ -4742,7 +4482,7 @@ export const RoleDashboard: React.FC = () => {
                                 <p className="rdb-admin-mod-item rdb-admin-mod-item--empty">No pending items</p>
                             )}
                         </div>
-                        <AdminLineChart data={adminAuditTrend} themeKey={theme} />
+                        <TimeSeriesChart source={adminAuditSeries} theme={theme} />
                     </article>
                 </div>
             </>
@@ -4850,25 +4590,32 @@ export const RoleDashboard: React.FC = () => {
                                 <h1>{dashboardTitle}</h1>
                             </div>
                             <div className="rdb-admin-topbar-controls">
-                                <Link
-                                    to="/blogs/new"
-                                    className="rdb-admin-write-blog-btn"
-                                    title="Write blog"
-                                    aria-label="Write blog"
-                                >
-                                    <img src="/icons/mobile-nav-icons/blog.webp" alt="" aria-hidden="true" />
-                                    <span>Write Blog</span>
-                                </Link>
+                                {isDesktopDashboard && (
+                                    <Link
+                                        to="/blogs/new"
+                                        className="rdb-admin-write-blog-btn"
+                                        title="Write blog"
+                                        aria-label="Write blog"
+                                    >
+                                        <img src="/icons/mobile-nav-icons/blog.webp" alt="" aria-hidden="true" />
+                                        <span>Write Blog</span>
+                                    </Link>
+                                )}
                                 {!isDesktopDashboard && (
                                     <button
                                         type="button"
                                         className={`rdb-admin-ctrl-btn rdb-admin-menu-btn${adminMobileMenuOpen ? ' is-open' : ''}`}
-                                        title="Open dashboard menu"
+                                        title={adminMobileMenuOpen ? 'Close dashboard menu' : 'Open dashboard menu'}
+                                        aria-label={adminMobileMenuOpen ? 'Close dashboard menu' : 'Open dashboard menu'}
                                         aria-expanded={adminMobileMenuOpen}
                                         aria-controls="rdb-admin-mobile-menu"
                                         onClick={() => setAdminMobileMenuOpen((open) => !open)}
                                     >
-                                        <Menu size={18} />
+                                        <span className="rdb-hamburger" aria-hidden="true">
+                                            <span />
+                                            <span />
+                                            <span />
+                                        </span>
                                     </button>
                                 )}
                                 {isDesktopDashboard && (
@@ -4975,6 +4722,19 @@ export const RoleDashboard: React.FC = () => {
                                     }}
                                 >
                                     <span>Profile</span>
+                                    <span className="rdb-admin-mobile-menu-meta">
+                                        <img src="/icons/arrow.webp" alt="" className="rdb-admin-mobile-menu-arrow" aria-hidden="true" />
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--section"
+                                    onClick={() => {
+                                        setAdminMobileMenuOpen(false);
+                                        navigate('/blogs/new');
+                                    }}
+                                >
+                                    <span>Create Blog</span>
                                     <span className="rdb-admin-mobile-menu-meta">
                                         <img src="/icons/arrow.webp" alt="" className="rdb-admin-mobile-menu-arrow" aria-hidden="true" />
                                     </span>

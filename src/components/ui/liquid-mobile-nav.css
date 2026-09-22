@@ -70,9 +70,13 @@
   user-select: none;
 }
 
-.lmn-icon img[src$='spending.webp'] {
+.lmn-icon img[src$='rupees.svg'] {
   transform: scale(1.24);
   transform-origin: center;
+}
+
+:root[data-theme='dark'] .lmn-btn:not(.is-active) .lmn-icon img[src$='rupees.svg'] {
+  filter: invert(1);
 }
 
 .lmn-badge {

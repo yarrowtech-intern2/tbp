@@ -337,6 +337,16 @@
     color: var(--text-muted);
 }
 
+.ps-rupee-icon {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    background: currentColor;
+    -webkit-mask: url('/icons/rupees.svg') center / contain no-repeat;
+    mask: url('/icons/rupees.svg') center / contain no-repeat;
+}
+
 .ps-input,
 .ps-select,
 .ps-textarea {
@@ -751,20 +761,85 @@ html.dark .ps-type-guidance--activity {
 }
 
 /* ── Market price check ───────────────────────────────────────────
-   Tone is driven by --pm-* tokens so the whole card (tint, border,
-   pill, markers) recolours from one place:
+   Tone is driven by --pm-* tokens (set on the card and on the mobile
+   float wrapper so the bottom sheet shares them):
      danger   (too low / too high)  → red
      warning  (low / high)          → amber
      positive (fair)                → green                          */
-.ps-market-box {
+.ps-market-box,
+.ps-market-float {
     --pm-tint: var(--surface-main);
     --pm-accent: var(--text-muted);
     --pm-ink: var(--text-main);
-    --pm-pill-bg: var(--surface-main);
-    --pm-pill-ink: var(--text-main);
+    --pm-pill-bg: #111114;
+    --pm-pill-ink: #ffffff;
     --pm-tile: #f1f2f4;
-    --pm-track: rgba(11, 11, 15, 0.09);
+    --pm-track: rgba(11, 11, 15, 0.12);
+}
 
+.ps-market-box--danger,
+.ps-market-float--danger {
+    --pm-tint: #fef2f2;
+    --pm-accent: #dc2626;
+    --pm-ink: #991b1b;
+    --pm-pill-bg: #dc2626;
+    --pm-pill-ink: #ffffff;
+}
+
+.ps-market-box--warning,
+.ps-market-float--warning {
+    --pm-tint: #fffbeb;
+    --pm-accent: #d97706;
+    --pm-ink: #92400e;
+    --pm-pill-bg: #f59e0b;
+    --pm-pill-ink: #451a03;
+}
+
+.ps-market-box--positive,
+.ps-market-float--positive {
+    --pm-tint: #f0fdf4;
+    --pm-accent: #16a34a;
+    --pm-ink: #166534;
+    --pm-pill-bg: #16a34a;
+    --pm-pill-ink: #ffffff;
+}
+
+:root[data-theme='dark'] .ps-market-box,
+:root[data-theme='dark'] .ps-market-float {
+    --pm-pill-bg: #f3f4f6;
+    --pm-pill-ink: #111114;
+    --pm-tile: #202023;
+    --pm-track: rgba(255, 255, 255, 0.16);
+}
+
+:root[data-theme='dark'] .ps-market-box--danger,
+:root[data-theme='dark'] .ps-market-float--danger {
+    --pm-tint: rgba(239, 68, 68, 0.1);
+    --pm-accent: #f87171;
+    --pm-ink: #fca5a5;
+    --pm-pill-bg: #ef4444;
+    --pm-pill-ink: #ffffff;
+}
+
+:root[data-theme='dark'] .ps-market-box--warning,
+:root[data-theme='dark'] .ps-market-float--warning {
+    --pm-tint: rgba(245, 158, 11, 0.1);
+    --pm-accent: #fbbf24;
+    --pm-ink: #fcd34d;
+    --pm-pill-bg: #f59e0b;
+    --pm-pill-ink: #1c1004;
+}
+
+:root[data-theme='dark'] .ps-market-box--positive,
+:root[data-theme='dark'] .ps-market-float--positive {
+    --pm-tint: rgba(34, 197, 94, 0.1);
+    --pm-accent: #4ade80;
+    --pm-ink: #86efac;
+    --pm-pill-bg: #22c55e;
+    --pm-pill-ink: #04140a;
+}
+
+.ps-market-box {
     align-content: start;
     background: var(--pm-tint);
     border: 0;
@@ -773,70 +848,16 @@ html.dark .ps-type-guidance--activity {
     box-sizing: border-box;
     color: var(--text-main);
     display: grid;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
-    padding: 16px;
+    padding: 14px;
     width: 100%;
-}
-
-.ps-market-box--danger {
-    --pm-tint: #fef2f2;
-    --pm-accent: #dc2626;
-    --pm-ink: #991b1b;
-    --pm-pill-bg: #dc2626;
-    --pm-pill-ink: #ffffff;
-}
-
-.ps-market-box--warning {
-    --pm-tint: #fffbeb;
-    --pm-accent: #d97706;
-    --pm-ink: #92400e;
-    --pm-pill-bg: #f59e0b;
-    --pm-pill-ink: #451a03;
-}
-
-.ps-market-box--positive {
-    --pm-tint: #f0fdf4;
-    --pm-accent: #16a34a;
-    --pm-ink: #166534;
-    --pm-pill-bg: #16a34a;
-    --pm-pill-ink: #ffffff;
-}
-
-:root[data-theme='dark'] .ps-market-box {
-    --pm-tile: #202023;
-    --pm-track: rgba(255, 255, 255, 0.14);
-}
-
-:root[data-theme='dark'] .ps-market-box--danger {
-    --pm-tint: rgba(239, 68, 68, 0.1);
-    --pm-accent: #f87171;
-    --pm-ink: #fca5a5;
-    --pm-pill-bg: #ef4444;
-    --pm-pill-ink: #ffffff;
-}
-
-:root[data-theme='dark'] .ps-market-box--warning {
-    --pm-tint: rgba(245, 158, 11, 0.1);
-    --pm-accent: #fbbf24;
-    --pm-ink: #fcd34d;
-    --pm-pill-bg: #f59e0b;
-    --pm-pill-ink: #1c1004;
-}
-
-:root[data-theme='dark'] .ps-market-box--positive {
-    --pm-tint: rgba(34, 197, 94, 0.1);
-    --pm-accent: #4ade80;
-    --pm-ink: #86efac;
-    --pm-pill-bg: #22c55e;
-    --pm-pill-ink: #04140a;
 }
 
 .ps-market-head {
     align-items: center;
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px 10px;
+    gap: 8px;
     justify-content: space-between;
 }
 
@@ -844,18 +865,19 @@ html.dark .ps-type-guidance--activity {
     align-items: center;
     color: var(--text-muted);
     display: inline-flex;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 800;
     gap: 6px;
     letter-spacing: 0.08em;
+    min-width: 0;
     text-transform: uppercase;
 }
 
 .ps-market-title-icon {
     flex: none;
-    height: 26px;
+    height: 24px;
     object-fit: contain;
-    width: 26px;
+    width: 24px;
 }
 
 .ps-market-status {
@@ -864,11 +886,12 @@ html.dark .ps-type-guidance--activity {
     border-radius: 999px;
     color: var(--pm-pill-ink);
     display: inline-flex;
-    font-size: 0.7rem;
+    flex: none;
+    font-size: 0.66rem;
     font-weight: 800;
-    gap: 5px;
+    gap: 4px;
     letter-spacing: 0.06em;
-    padding: 5px 10px;
+    padding: 4px 9px;
     text-transform: uppercase;
     white-space: nowrap;
 }
@@ -877,37 +900,38 @@ html.dark .ps-type-guidance--activity {
 .ps-market-empty,
 .ps-market-tourist {
     color: var(--text-muted);
-    font-size: 0.8rem;
-    line-height: 1.5;
+    font-size: 0.76rem;
+    line-height: 1.45;
     margin: 0;
 }
 
 .ps-market-headline {
     color: var(--pm-ink);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 800;
-    line-height: 1.35;
+    line-height: 1.3;
 }
 
+/* One grey block holds all four figures plus the range track. */
 .ps-market-metrics {
-    display: grid;
-    gap: 8px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.ps-market-metric {
     background: var(--pm-tile);
     border-radius: 12px;
     display: grid;
-    gap: 3px;
+    gap: 9px 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 10px 12px;
+}
+
+.ps-market-metric {
+    display: grid;
+    gap: 1px;
     min-width: 0;
-    padding: 9px 11px;
 }
 
 .ps-market-metric span,
 .ps-market-note span {
     color: var(--text-muted);
-    font-size: 0.64rem;
+    font-size: 0.6rem;
     font-weight: 800;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -915,7 +939,7 @@ html.dark .ps-type-guidance--activity {
 
 .ps-market-metric strong {
     color: var(--text-main);
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     line-height: 1.25;
     overflow-wrap: anywhere;
 }
@@ -927,14 +951,15 @@ html.dark .ps-type-guidance--activity {
 /* Range track: where your price and the market average sit between low and high */
 .ps-market-range {
     display: grid;
-    gap: 6px;
-    padding: 2px 6px 0;
+    gap: 5px;
+    grid-column: 1 / -1;
+    padding: 4px 6px 0;
 }
 
 .ps-market-range-track {
     background: var(--pm-track);
     border-radius: 999px;
-    height: 6px;
+    height: 5px;
     position: relative;
 }
 
@@ -948,32 +973,32 @@ html.dark .ps-type-guidance--activity {
 .ps-market-range-mark--avg,
 .ps-market-range-key--avg {
     background: var(--text-muted);
-    height: 14px;
+    height: 13px;
     width: 3px;
 }
 
 .ps-market-range-mark--you,
 .ps-market-range-key--you {
     background: var(--pm-accent);
-    border: 2px solid var(--pm-tint);
+    border: 2px solid var(--pm-tile);
     box-shadow: 0 0 0 1px var(--pm-accent);
-    height: 12px;
-    width: 12px;
+    height: 11px;
+    width: 11px;
 }
 
 .ps-market-range-legend {
     color: var(--text-muted);
     display: flex;
     flex-wrap: wrap;
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     font-weight: 700;
-    gap: 4px 14px;
+    gap: 2px 12px;
 }
 
 .ps-market-range-legend span {
     align-items: center;
     display: inline-flex;
-    gap: 6px;
+    gap: 5px;
 }
 
 .ps-market-range-key {
@@ -983,19 +1008,21 @@ html.dark .ps-type-guidance--activity {
 }
 
 .ps-market-range-key--you {
-    height: 8px;
-    width: 8px;
     border: 0;
     box-shadow: none;
+    height: 7px;
+    width: 7px;
 }
 
 .ps-market-range-key--avg {
-    height: 10px;
+    height: 9px;
     width: 3px;
 }
 
-/* Recommendation note — Gemini-style animated stroke.
-   Layers (back → front): blurred glow, rotating conic ring, solid grey fill. */
+/* Recommendation note — Gemini-style rotating stroke.
+   Layers (back → front): blurred glow, rotating conic ring, solid grey fill.
+   The conic gradient must be written on each layer (not through an inherited
+   custom property) so every layer resolves its own animated --pm-ai-angle. */
 @property --pm-ai-angle {
     syntax: '<angle>';
     inherits: false;
@@ -1009,21 +1036,13 @@ html.dark .ps-type-guidance--activity {
 }
 
 .ps-market-note {
-    --pm-ai-ring: conic-gradient(
-        from var(--pm-ai-angle),
-        #ea4335,
-        #fbbc05,
-        #34a853,
-        #4285f4,
-        #a259ff,
-        #ea4335
-    );
+    --pm-ai-stops: #ea4335, #fbbc05, #34a853, #4285f4, #a259ff, #ea4335;
 
-    border-radius: 14px;
+    border-radius: 12px;
     display: grid;
-    gap: 4px;
+    gap: 3px;
     isolation: isolate;
-    padding: 12px 14px;
+    padding: 9px 12px;
     position: relative;
 }
 
@@ -1037,90 +1056,292 @@ html.dark .ps-type-guidance--activity {
 }
 
 .ps-market-note-glow {
-    animation: ps-market-ai-spin 5s linear infinite;
-    background: var(--pm-ai-ring);
-    filter: blur(9px);
+    animation: ps-market-ai-spin 4s linear infinite;
+    background: conic-gradient(from var(--pm-ai-angle), var(--pm-ai-stops));
+    filter: blur(8px);
     inset: 0;
-    opacity: 0.42;
+    opacity: 0.4;
     z-index: -3;
 }
 
 .ps-market-note::before {
-    animation: ps-market-ai-spin 5s linear infinite;
-    background: var(--pm-ai-ring);
+    animation: ps-market-ai-spin 4s linear infinite;
+    background: conic-gradient(from var(--pm-ai-angle), var(--pm-ai-stops));
     inset: -1.5px;
     z-index: -2;
 }
 
 .ps-market-note::after {
     background: var(--pm-tile);
-    border-radius: 12.5px;
+    border-radius: 10.5px;
     inset: 0;
     z-index: -1;
 }
 
+/* Reduced motion: keep the effect alive but very slow instead of removing it. */
 @media (prefers-reduced-motion: reduce) {
     .ps-market-note-glow,
     .ps-market-note::before {
-        animation: none;
+        animation-duration: 24s;
     }
 }
 
 .ps-market-note p {
     color: var(--text-main);
-    font-size: 0.8rem;
-    line-height: 1.5;
+    font-size: 0.76rem;
+    line-height: 1.45;
     margin: 0;
 }
 
 .ps-market-signals {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.ps-market-signals span {
-    background: var(--pm-tile);
-    border-radius: 999px;
     color: var(--text-muted);
+    font-size: 0.64rem;
+    font-weight: 600;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Similar trips: collapsed by default so the card stays short. */
+.ps-market-comps summary {
+    align-items: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
     font-size: 0.66rem;
-    font-weight: 700;
-    padding: 3px 9px;
-}
-
-.ps-market-comps {
-    display: grid;
+    font-weight: 800;
     gap: 6px;
+    letter-spacing: 0.06em;
+    list-style: none;
+    text-transform: uppercase;
+    user-select: none;
 }
 
-.ps-market-comps div {
+.ps-market-comps summary::-webkit-details-marker {
+    display: none;
+}
+
+.ps-market-comps summary::after {
+    border-bottom: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    content: '';
+    height: 5px;
+    margin-left: auto;
+    transform: rotate(45deg) translate(-2px, -2px);
+    transition: transform 0.18s ease;
+    width: 5px;
+}
+
+.ps-market-comps[open] summary::after {
+    transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.ps-market-comps-list {
+    display: grid;
+    gap: 2px;
+    margin-top: 6px;
+}
+
+.ps-market-comps-list div {
     align-items: baseline;
-    background: var(--pm-tile);
-    border-radius: 10px;
     display: grid;
     gap: 10px;
     grid-template-columns: minmax(0, 1fr) auto;
-    padding: 9px 12px;
 }
 
-.ps-market-comps span {
+.ps-market-comps-list span {
     color: var(--text-muted);
-    font-size: 0.78rem;
-    line-height: 1.35;
+    font-size: 0.72rem;
+    line-height: 1.4;
     min-width: 0;
     overflow-wrap: anywhere;
 }
 
-.ps-market-comps strong {
+.ps-market-comps-list strong {
     color: var(--text-main);
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     white-space: nowrap;
 }
 
-@media (max-width: 420px) {
-    .ps-market-box {
-        border-radius: 14px;
-        padding: 14px;
+/* ── Market price dock ─────────────────────────────────────────────
+   Desktop (≥980px): sticky in the right column, stays in view while the
+   form scrolls. Below that: floating button + bottom sheet (portalled to
+   <body>, so these rules deliberately don't depend on .ps-page).        */
+.ps-market-dock {
+    position: sticky;
+    top: 96px;
+}
+
+.ps-page--embedded .ps-market-dock {
+    top: 12px;
+}
+
+.ps-market-dock .ps-market-box {
+    max-height: calc(100vh - 112px);
+    max-height: calc(100dvh - 112px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+.ps-page--embedded .ps-market-dock .ps-market-box {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+}
+
+/* Position is measured from the mobile nav in JS (--pm-fab-right / --pm-fab-bottom);
+   these values are the fallback when no nav is on the page. */
+.ps-market-fab {
+    align-items: center;
+    background: var(--pm-pill-bg);
+    border: 0;
+    border-radius: 999px;
+    bottom: var(--pm-fab-bottom, calc(84px + env(safe-area-inset-bottom, 0px)));
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+    color: var(--pm-pill-ink);
+    cursor: pointer;
+    display: inline-flex;
+    font-family: inherit;
+    gap: 8px;
+    padding: 5px 15px 5px 5px;
+    position: fixed;
+    right: var(--pm-fab-right, 14px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 1100;
+}
+
+.ps-market-fab:active {
+    transform: scale(0.97);
+}
+
+.ps-market-fab-icon {
+    background: #ffffff;
+    border-radius: 50%;
+    flex: none;
+    height: 34px;
+    object-fit: contain;
+    padding: 4px;
+    width: 34px;
+}
+
+.ps-market-fab-text {
+    display: grid;
+    line-height: 1.15;
+    text-align: left;
+}
+
+.ps-market-fab-text span {
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+    text-transform: uppercase;
+}
+
+.ps-market-fab-text strong {
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.ps-market-backdrop {
+    background: rgba(8, 8, 10, 0.48);
+    inset: 0;
+    opacity: 0;
+    position: fixed;
+    transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+    visibility: hidden;
+    z-index: 1300;
+}
+
+/* The sheet itself carries the status tint, so the panel inside stays flat. */
+.ps-market-sheet {
+    background: linear-gradient(var(--pm-tint), var(--pm-tint)), var(--surface-main);
+    border-radius: 20px 20px 0 0;
+    bottom: 0;
+    box-shadow: 0 -14px 44px rgba(0, 0, 0, 0.28);
+    box-sizing: border-box;
+    left: 0;
+    margin-inline: auto;
+    max-height: min(84vh, 720px);
+    max-height: min(84dvh, 720px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    right: 0;
+    transform: translateY(105%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.3s;
+    visibility: hidden;
+    width: min(100%, 560px);
+    z-index: 1310;
+}
+
+.ps-market-sheet .ps-market-box {
+    background: transparent;
+    box-shadow: none;
+    max-height: none;
+    overflow: visible;
+    padding: 0 0 2px;
+}
+
+.ps-market-sheet-bar {
+    align-items: center;
+    background: linear-gradient(var(--pm-tint), var(--pm-tint)), var(--surface-main);
+    display: flex;
+    height: 30px;
+    justify-content: center;
+    margin: 0 -14px 4px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.ps-market-sheet-grab {
+    background: var(--text-muted);
+    border-radius: 999px;
+    height: 4px;
+    opacity: 0.4;
+    width: 36px;
+}
+
+.ps-market-sheet-close {
+    align-items: center;
+    background: var(--pm-tile);
+    border: 0;
+    border-radius: 50%;
+    color: var(--text-main);
+    cursor: pointer;
+    display: inline-flex;
+    height: 26px;
+    justify-content: center;
+    position: absolute;
+    right: 14px;
+    top: 4px;
+    width: 26px;
+}
+
+.ps-market-float.is-open .ps-market-fab {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.9);
+}
+
+.ps-market-float.is-open .ps-market-backdrop {
+    opacity: 1;
+    transition-delay: 0s;
+    visibility: visible;
+}
+
+.ps-market-float.is-open .ps-market-sheet {
+    transform: none;
+    transition-delay: 0s;
+    visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ps-market-fab,
+    .ps-market-backdrop,
+    .ps-market-sheet {
+        transition: none;
     }
 }
 

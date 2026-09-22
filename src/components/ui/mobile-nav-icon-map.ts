@@ -1,4 +1,5 @@
 const BASE = '/icons/mobile-nav-icons';
+const RUPEE_ICON_SRC = '/icons/rupees.svg';
 
 /**
  * Maps semantic nav-item keys to the provided webp glyphs. Only keys with an
@@ -17,8 +18,8 @@ export const MOBILE_NAV_ICON_SRC: Record<string, string> = {
   dashboard: `${BASE}/dashboard.webp`,
   overview: `${BASE}/dashboard.webp`,
   bookings: `${BASE}/bookings.webp`,
-  revenue: `${BASE}/money.webp`,
-  spending: `${BASE}/spending.webp`,
+  revenue: RUPEE_ICON_SRC,
+  spending: RUPEE_ICON_SRC,
   studio: `${BASE}/studio.webp`,
   listings: `${BASE}/listings.webp`,
   advertisements: `${BASE}/advertisement.webp`,

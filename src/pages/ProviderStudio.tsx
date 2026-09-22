@@ -5,7 +5,6 @@ import {
     CheckCircle2,
     Clock,
     Compass,
-    DollarSign,
     Edit3,
     FileText,
     Image,
@@ -26,8 +25,10 @@ import {
     Users,
     Video,
     Wifi,
+    X,
     Zap,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -314,6 +315,8 @@ const getStatusPillClass = (verificationStatus?: string | null) => {
 
 const getListingTitle = (listing: PostRecord) => listing.title || listing.name || 'Untitled listing';
 
+const COMPACT_LAYOUT_QUERY = '(max-width: 979px)';
+
 const formatRs = (value: number) => `Rs ${Math.round(value).toLocaleString()}`;
 
 const getPrimaryActionCopy = (type: ListingType) => {
@@ -447,6 +450,76 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [marketLoading, setMarketLoading] = useState(false);
     const [ollamaNote, setOllamaNote] = useState<string | null>(null);
     const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
+    // Below the two-column breakpoint the price check becomes a floating button + bottom sheet.
+    const [isCompactLayout, setIsCompactLayout] = useState(
+        () => typeof window !== 'undefined' && window.matchMedia(COMPACT_LAYOUT_QUERY).matches,
+    );
+    const [marketSheetOpen, setMarketSheetOpen] = useState(false);
+    const [fabOffset, setFabOffset] = useState<{ right: number; bottom: number } | null>(null);
+
+    useEffect(() => {
+        const media = window.matchMedia(COMPACT_LAYOUT_QUERY);
+        const handleChange = () => setIsCompactLayout(media.matches);
+        media.addEventListener('change', handleChange);
+        return () => media.removeEventListener('change', handleChange);
+    }, []);
+
+    // Line the floating button up with the mobile nav pill (right edge flush, just above it).
+    useEffect(() => {
+        if (!isCompactLayout) {
+            setFabOffset(null);
+            return undefined;
+        }
+
+        const NAV_INNER_PADDING = 7; // .lmn wraps its pill in 7px of padding
+        const GAP = 10;
+        let observedNav: Element | null = null;
+        let observer: ResizeObserver | null = null;
+
+        const measure = () => {
+            const nav = document.querySelector('.lmn');
+            if (nav !== observedNav) {
+                if (observedNav) observer?.unobserve(observedNav);
+                if (nav) observer?.observe(nav);
+                observedNav = nav;
+            }
+            if (!nav) {
+                setFabOffset(null);
+                return;
+            }
+            const rect = nav.getBoundingClientRect();
+            const next = {
+                right: Math.max(8, Math.round(document.documentElement.clientWidth - rect.right + NAV_INNER_PADDING)),
+                bottom: Math.max(8, Math.round(window.innerHeight - (rect.top + NAV_INNER_PADDING) + GAP)),
+            };
+            setFabOffset((prev) => (prev && prev.right === next.right && prev.bottom === next.bottom ? prev : next));
+        };
+
+        if (typeof ResizeObserver !== 'undefined') observer = new ResizeObserver(measure);
+        measure();
+        // The nav animates in on mount, so re-measure once it has settled.
+        const timers = [window.setTimeout(measure, 350), window.setTimeout(measure, 900)];
+        window.addEventListener('resize', measure);
+        return () => {
+            timers.forEach((timer) => window.clearTimeout(timer));
+            window.removeEventListener('resize', measure);
+            observer?.disconnect();
+        };
+    }, [isCompactLayout]);
+
+    useEffect(() => {
+        if (!marketSheetOpen || !isCompactLayout) return undefined;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setMarketSheetOpen(false);
+        };
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isCompactLayout, marketSheetOpen]);
     const [imgError, setImgError] = useState(false);
     const [galleryInput, setGalleryInput] = useState('');
     const [proofPhotoInput, setProofPhotoInput] = useState('');
@@ -1184,11 +1257,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                         <div className="ps-market-metrics">
                             <div className="ps-market-metric ps-market-metric--you">
-                                <span>Your vendor price</span>
+                                <span>Your price</span>
                                 <strong>{formatRs(pricingPreview.provider_subtotal)}</strong>
                             </div>
                             <div className="ps-market-metric">
-                                <span>Suggested price</span>
+                                <span>Suggested</span>
                                 <strong>{formatRs(marketInsight.suggestedProviderPrice)}</strong>
                             </div>
                             <div className="ps-market-metric">
@@ -1199,27 +1272,27 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                 <span>Market range</span>
                                 <strong>{formatRs(marketInsight.marketLowProviderPrice)} – {formatRs(marketInsight.marketHighProviderPrice)}</strong>
                             </div>
-                        </div>
 
-                        <div className="ps-market-range" aria-hidden="true">
-                            <div className="ps-market-range-track">
-                                <i
-                                    className="ps-market-range-mark ps-market-range-mark--avg"
-                                    style={{ left: `${toRangePercent(marketInsight.marketAverageProviderPrice)}%` }}
-                                />
-                                <i
-                                    className="ps-market-range-mark ps-market-range-mark--you"
-                                    style={{ left: `${toRangePercent(pricingPreview.provider_subtotal)}%` }}
-                                />
-                            </div>
-                            <div className="ps-market-range-legend">
-                                <span><i className="ps-market-range-key ps-market-range-key--you" /> You</span>
-                                <span><i className="ps-market-range-key ps-market-range-key--avg" /> Market average</span>
+                            <div className="ps-market-range" aria-hidden="true">
+                                <div className="ps-market-range-track">
+                                    <i
+                                        className="ps-market-range-mark ps-market-range-mark--avg"
+                                        style={{ left: `${toRangePercent(marketInsight.marketAverageProviderPrice)}%` }}
+                                    />
+                                    <i
+                                        className="ps-market-range-mark ps-market-range-mark--you"
+                                        style={{ left: `${toRangePercent(pricingPreview.provider_subtotal)}%` }}
+                                    />
+                                </div>
+                                <div className="ps-market-range-legend">
+                                    <span><i className="ps-market-range-key ps-market-range-key--you" /> You</span>
+                                    <span><i className="ps-market-range-key ps-market-range-key--avg" /> Market average</span>
+                                </div>
                             </div>
                         </div>
 
                         <p className="ps-market-tourist">
-                            Tourist sees {formatRs(pricingPreview.total_price)}. Suggested tourist total is {formatRs(marketInsight.suggestedTouristPrice)} after platform fee.
+                            Tourist sees {formatRs(pricingPreview.total_price)} · suggested {formatRs(marketInsight.suggestedTouristPrice)} incl. platform fee.
                         </p>
 
                         <div className="ps-market-note">
@@ -1232,26 +1305,74 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                             </p>
                         </div>
 
-                        <div className="ps-market-signals">
-                            {marketInsight.signals.map((signal) => (
-                                <span key={signal}>{signal}</span>
-                            ))}
-                            <span>{marketInsight.confidence} confidence</span>
-                        </div>
+                        <p className="ps-market-signals">
+                            {[...marketInsight.signals, `${marketInsight.confidence} confidence`].join(' · ')}
+                        </p>
 
-                        <div className="ps-market-comps">
-                            {marketInsight.similarTrips.slice(0, 3).map((trip) => (
-                                <div key={`${trip.source}-${trip.title}-${trip.providerPrice}`}>
-                                    <span>{trip.title}</span>
-                                    <strong>{formatRs(trip.providerPrice)}</strong>
+                        {marketInsight.similarTrips.length > 0 && (
+                            <details className="ps-market-comps">
+                                <summary>Similar trips ({Math.min(3, marketInsight.similarTrips.length)})</summary>
+                                <div className="ps-market-comps-list">
+                                    {marketInsight.similarTrips.slice(0, 3).map((trip) => (
+                                        <div key={`${trip.source}-${trip.title}-${trip.providerPrice}`}>
+                                            <span>{trip.title}</span>
+                                            <strong>{formatRs(trip.providerPrice)}</strong>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            </details>
+                        )}
                     </>
                 ) : (
                     <p className="ps-market-empty">No comparable pricing signal is available yet.</p>
                 )}
             </aside>
+        );
+    };
+
+    // Desktop: sticky in the right column so it stays in view while scrolling the form.
+    // Mobile: floating button that opens the same panel as a bottom sheet.
+    const renderMarketDock = () => {
+        if (!isCompactLayout) {
+            return <div className="ps-market-dock">{renderMarketPricePanel()}</div>;
+        }
+
+        const tone = marketInsight?.statusTone || 'neutral';
+        return createPortal(
+            <div
+                className={`ps-market-float ps-market-float--${tone}${marketSheetOpen ? ' is-open' : ''}`}
+                style={fabOffset ? ({ '--pm-fab-right': `${fabOffset.right}px`, '--pm-fab-bottom': `${fabOffset.bottom}px` } as React.CSSProperties) : undefined}
+            >
+                <button
+                    type="button"
+                    className="ps-market-fab"
+                    aria-expanded={marketSheetOpen}
+                    aria-controls="ps-market-sheet"
+                    onClick={() => setMarketSheetOpen((open) => !open)}
+                >
+                    <img className="ps-market-fab-icon" src="/icons/local-llm.gif" alt="" aria-hidden="true" />
+                    <span className="ps-market-fab-text">
+                        <span>Price check</span>
+                        {marketInsight && <strong>{marketInsight.statusLabel}</strong>}
+                    </span>
+                </button>
+                <div className="ps-market-backdrop" onClick={() => setMarketSheetOpen(false)} aria-hidden="true" />
+                <div id="ps-market-sheet" className="ps-market-sheet" role="dialog" aria-label="Market price check">
+                    <div className="ps-market-sheet-bar">
+                        <span className="ps-market-sheet-grab" aria-hidden="true" />
+                        <button
+                            type="button"
+                            className="ps-market-sheet-close"
+                            aria-label="Close price check"
+                            onClick={() => setMarketSheetOpen(false)}
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                    {renderMarketPricePanel()}
+                </div>
+            </div>,
+            document.body,
         );
     };
 
@@ -1908,7 +2029,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                             <div className="ps-two-up">
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><DollarSign size={13} /> {studioTypeGuidance.feeLabel}</span>
+                                    <span className="ps-field-label"><span className="ps-rupee-icon" aria-hidden="true" /> {studioTypeGuidance.feeLabel}</span>
                                     <input
                                         className="ps-input"
                                         type="number"
@@ -1992,6 +2113,8 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     </article>
 
                     <div className="ps-side-stack">
+                    {renderMarketDock()}
+
                     {/* ── Inventory Card ── */}
                     <article className="ps-card ps-inventory-card">
                         <div className="ps-card-head">
@@ -2076,7 +2199,6 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                         )}
                     </article>
 
-                    {renderMarketPricePanel()}
                     </div>
                 </div>
 

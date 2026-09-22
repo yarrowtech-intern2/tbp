@@ -64,6 +64,16 @@ export default defineConfig({
             return 'vendor-globe'
           }
 
+          // Keep charts out of the shared vendor chunk (preloaded on every page); they load with the dashboard charts only.
+          if (
+            isNodePackage(normalizedId, 'echarts')
+            || isNodePackage(normalizedId, 'zrender')
+            || isNodePackage(normalizedId, 'echarts-for-react')
+            || isNodePackage(normalizedId, 'size-sensor')
+          ) {
+            return 'vendor-echarts'
+          }
+
           return 'vendor'
         },
       },
