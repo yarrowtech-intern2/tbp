@@ -963,3 +963,22 @@
     transform: none !important;
   }
 }
+
+.listing-card-discount-badge {
+  position: absolute;
+  right: 10px;
+  top: 46px;
+  z-index: 3;
+  --dsb-size: 50px;
+}
+
+.listing-card-price-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.listing-card-price-stack .discount-price-before {
+  font-size: 0.78rem;
+}

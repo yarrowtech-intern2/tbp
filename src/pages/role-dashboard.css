@@ -1026,24 +1026,41 @@
     gap: 6px;
 }
 
-.rdb-moderation-summary-grid div {
+.rdb-moderation-summary-card {
     border: 1px solid var(--border-light);
     border-radius: 10px;
     background: color-mix(in srgb, var(--surface-muted) 28%, var(--surface-main));
+    color: inherit;
+    cursor: pointer;
     padding: 8px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
+    font: inherit;
+    min-height: 40px;
+    text-align: left;
+    text-decoration: none;
+    transition: border-color 0.16s ease, transform 0.16s ease, background-color 0.16s ease;
 }
 
-.rdb-moderation-summary-grid span {
+.rdb-moderation-summary-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--border-light));
+    transform: translateY(-1px);
+}
+
+.rdb-moderation-summary-card.is-active {
+    border-color: color-mix(in srgb, var(--accent) 36%, var(--border-light));
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface-main));
+}
+
+.rdb-moderation-summary-card span {
     color: var(--text-muted);
     font-size: 0.68rem;
     font-weight: 700;
 }
 
-.rdb-moderation-summary-grid strong {
+.rdb-moderation-summary-card strong {
     color: var(--text-main);
     font-size: 0.92rem;
 }
@@ -2551,6 +2568,15 @@
 .rdb-admin-shortcut.is-active {
     background: color-mix(in srgb, var(--accent) 18%, var(--rdb-admin-card));
     border-color: color-mix(in srgb, var(--accent) 44%, transparent);
+    color: var(--rdb-admin-text-strong);
+}
+
+.rdb-admin-shortcut--all-sections {
+    border-style: dashed;
+    color: var(--rdb-admin-text-muted);
+}
+
+.rdb-admin-shortcut--all-sections:hover {
     color: var(--rdb-admin-text-strong);
 }
 

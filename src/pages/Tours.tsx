@@ -110,6 +110,7 @@ export const Tours: React.FC = () => {
                                     description={tour.description}
                                     category={tour.category}
                                     listingType="tour"
+                                    feeBreakdown={tour.fee_breakdown ?? null}
                                 />
                             );
                         })}

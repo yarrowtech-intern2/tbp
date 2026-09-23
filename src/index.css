@@ -469,3 +469,213 @@ h4,
     justify-content: space-between;
   }
 }
+
+/* Coupon claim modal */
+body.coupon-modal-open {
+  overflow: hidden;
+}
+
+.coupon-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 15, 12, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: couponBackdropIn 0.25s ease;
+}
+
+.coupon-modal {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 28px 28px;
+  border-radius: 24px;
+  text-align: center;
+  background: var(--surface-main);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  animation: couponModalIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+.coupon-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.coupon-modal-close:hover {
+  background: color-mix(in srgb, var(--text-main) 10%, var(--surface-muted));
+  color: var(--text-main);
+}
+
+.coupon-modal-badge-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.coupon-modal-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success-text) 16%, transparent);
+  animation: couponRingPulse 1.8s ease-out infinite;
+}
+
+.coupon-modal-badge {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--success-text) 45%, transparent));
+  animation: couponBadgePop 0.6s 0.15s cubic-bezier(0.2, 1.2, 0.3, 1.3) both;
+}
+
+.coupon-confetti {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: couponConfettiPop 1.1s ease-out both;
+}
+
+.coupon-confetti-1 { background: #facc15; --tx: -58px; --ty: -46px; --rot: -30deg; animation-delay: 0.2s; }
+.coupon-confetti-2 { background: #fb7185; --tx: 54px; --ty: -50px; --rot: 24deg; border-radius: 999px; animation-delay: 0.28s; }
+.coupon-confetti-3 { background: #60a5fa; --tx: -62px; --ty: 30px; --rot: 18deg; animation-delay: 0.34s; }
+.coupon-confetti-4 { background: #34d399; --tx: 60px; --ty: 34px; --rot: -18deg; border-radius: 999px; animation-delay: 0.4s; }
+.coupon-confetti-5 { background: #f97316; --tx: -14px; --ty: -64px; --rot: 45deg; width: 6px; height: 6px; animation-delay: 0.24s; }
+.coupon-confetti-6 { background: #a78bfa; --tx: 16px; --ty: 60px; --rot: -45deg; width: 6px; height: 6px; animation-delay: 0.36s; }
+
+.coupon-modal-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.coupon-modal-subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+.coupon-modal-code {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--success-bg);
+  border: 1px dashed color-mix(in srgb, var(--success-text) 45%, var(--border-light));
+}
+
+.coupon-modal-code span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--success-text) 72%, var(--text-muted));
+}
+
+.coupon-modal-code strong {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--success-text);
+}
+
+.coupon-modal-note {
+  margin: 2px 0 8px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.coupon-modal-cta {
+  width: 100%;
+  padding: 13px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--success-text);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.coupon-modal-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--success-text) 35%, transparent);
+}
+
+@keyframes couponBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes couponModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes couponBadgePop {
+  0% { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+  60% { transform: scale(1.08) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes couponRingPulse {
+  0% { transform: scale(0.7); opacity: 0.55; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+@keyframes couponConfettiPop {
+  0% { transform: translate(-50%, -50%) rotate(0deg) scale(0); opacity: 0; }
+  35% { opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(var(--rot)) scale(1);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .coupon-modal {
+    max-width: 320px;
+    padding: 36px 20px 24px;
+  }
+}

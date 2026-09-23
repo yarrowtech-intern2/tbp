@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPrimaryListingImage } from '../lib/listingImages';
-import { calculatePricingFromProviderUnit } from '../lib/pricing';
+import { calculatePricingFromProviderUnit, resolveListingDisplayPricing } from '../lib/pricing';
+import { DiscountBadge, getListingDiscountPercentForCard } from '../components/DiscountBadge';
 import {
     getBookings,
     getMyPosts,
@@ -79,6 +80,13 @@ const formatMoney = (value?: number | null): string => {
 const formatListingPrice = (post: PostRecord): string => {
     if (typeof post.price !== 'number' || Number.isNaN(post.price) || post.price <= 0) return 'Custom';
     return formatMoney(calculatePricingFromProviderUnit(post.price, 1).tourist_unit_price);
+};
+
+const getListingDiscountPricing = (post: PostRecord) => {
+    const discountPercent = getListingDiscountPercentForCard(post);
+    if (discountPercent <= 0) return null;
+    const pricing = resolveListingDisplayPricing({ price: post.price, feeBreakdown: post.fee_breakdown ?? null });
+    return { ...pricing, discountPercent };
 };
 
 const formatDateTime = (value?: string | null): string => {
@@ -680,13 +688,29 @@ const TouristLiveTourHub: React.FC<{
                 <div className="vto-loading"><Loader2 className="animate-spin" size={18} /> Loading tours</div>
             ) : virtualListings.length > 0 ? (
                 <div className="vto-card-grid">
-                    {virtualListings.slice(0, 9).map((post) => (
+                    {virtualListings.slice(0, 9).map((post) => {
+                        const discountPricing = getListingDiscountPricing(post);
+                        const listPrice = formatListingPrice(post);
+                        return (
                         <article key={post.id} className="vto-listing-card">
                             <img src={getPrimaryListingImage(post, FALLBACK_IMAGE)} alt="" />
+                            {discountPricing && (
+                                <DiscountBadge
+                                    discountPercent={discountPricing.discountPercent}
+                                    className="vto-card-discount-badge"
+                                />
+                            )}
                             <div className="vto-card-body">
                                 <div className="vto-card-topline">
                                     <span>Live 360</span>
-                                    <strong>{formatListingPrice(post)}</strong>
+                                    {discountPricing ? (
+                                        <span className="vto-card-price-stack">
+                                            <span className="discount-price-before">{listPrice}</span>
+                                            <strong className="discount-price-after">{formatMoney(discountPricing.touristTotal)}</strong>
+                                        </span>
+                                    ) : (
+                                        <strong>{listPrice}</strong>
+                                    )}
                                 </div>
                                 <h3>{titleForPost(post)}</h3>
                                 <p>{getText(post.location) || 'Location pending'}</p>
@@ -695,7 +719,8 @@ const TouristLiveTourHub: React.FC<{
                                 </Link>
                             </div>
                         </article>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <EmptyState

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
+import { buildLoginPath } from '../lib/authRedirect';
 import { useAuth } from '../hooks/useAuth';
 import {
   addListingFavorite,
@@ -325,7 +326,7 @@ const ListingCard: React.FC<{
     event.stopPropagation();
 
     if (!user) {
-      navigate('/login');
+      navigate(buildLoginPath());
       return;
     }
 
@@ -1050,8 +1051,6 @@ export const DashboardHome: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-
     const load = async () => {
       setLoading(true);
       try {
@@ -1060,7 +1059,7 @@ export const DashboardHome: React.FC = () => {
           getPublicListingsByType('activity'),
           getPublicListingsByType('guide'),
           getActivePaidAds(),
-          getBookings(user.id),
+          user ? getBookings(user.id) : Promise.resolve([]),
         ]);
 
         setTourPosts(tours);
@@ -1120,7 +1119,6 @@ export const DashboardHome: React.FC = () => {
     return unsubscribe;
   }, [user]);
 
-  if (!user) return null;
   if (providerAccount || providerByLabel || adminAccount || marketingAccount) {
     const dashboardPath = (providerAccount || providerByLabel)
       ? '/dashboard/provider'
@@ -1151,22 +1149,19 @@ export const DashboardHome: React.FC = () => {
       navigate('/');
       return;
     }
-    if (key === 'explore') {
-      navigate('/explore');
-      return;
-    }
-    if (key === 'dashboard') {
-      navigate('/dashboard/tourist');
-      return;
-    }
-    if (key === 'profile') {
-      navigate('/profile');
-      return;
-    }
-    if (key === 'bookings') {
-      navigate('/dashboard/tourist?section=bookings');
-      return;
-    }
+
+    const target = key === 'explore'
+      ? '/explore'
+      : key === 'dashboard'
+        ? '/dashboard/tourist'
+        : key === 'profile'
+          ? '/profile'
+          : key === 'bookings'
+            ? '/dashboard/tourist?section=bookings'
+            : null;
+    if (!target) return;
+
+    navigate(user ? target : buildLoginPath(target));
   };
 
   return (

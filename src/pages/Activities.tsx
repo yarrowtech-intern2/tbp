@@ -110,6 +110,7 @@ export const Activities: React.FC = () => {
                                     description={activity.description}
                                     category={activity.category}
                                     listingType="activity"
+                                    feeBreakdown={activity.fee_breakdown ?? null}
                                 />
                             );
                         })}

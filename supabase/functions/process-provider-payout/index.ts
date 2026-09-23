@@ -264,6 +264,7 @@ const processBooking = async (
     const paymentId = normalizeLooseString(booking.payment_id);
     const providerId = normalizeLooseString(booking.provider_user_id);
     const payoutAmount = toPositiveNumber(booking.provider_payout_amount);
+    const capturedPaymentAmount = toPositiveNumber(booking.total_price);
     const accountId = normalizeLooseString(onboarding?.razorpay_account_id);
     const onboardingStatus = normalizeLooseString(onboarding?.status).toLowerCase();
 
@@ -306,6 +307,18 @@ const processBooking = async (
             booking_id: bookingId,
             status: 'skipped',
             message: 'Provider payout amount must be greater than zero.',
+        };
+    }
+
+    if (capturedPaymentAmount && payoutAmount - capturedPaymentAmount > 0.5) {
+        await updateBookingPayout(admin, bookingId, {
+            payout_status: 'failed',
+            payout_error: 'Provider payout exceeds captured payment because a platform-funded coupon was applied. Pay this booking from platform balance/manual payout.',
+        });
+        return {
+            booking_id: bookingId,
+            status: 'skipped',
+            message: 'Provider payout exceeds captured Razorpay payment because a platform-funded coupon was applied.',
         };
     }
 

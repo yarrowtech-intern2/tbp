@@ -140,3 +140,23 @@
         white-space: normal;
     }
 }
+
+.fbv-discount-row {
+    background: #fff7e6 !important;
+    border-color: #f5c66b !important;
+}
+
+.fbv-discount-row span,
+.fbv-discount-row strong {
+    color: #9a5b00 !important;
+}
+
+.fbv-final-total {
+    background: #eefaf1 !important;
+    border-color: #7fd49b !important;
+}
+
+.fbv-final-total span,
+.fbv-final-total strong {
+    color: #116b3a !important;
+}

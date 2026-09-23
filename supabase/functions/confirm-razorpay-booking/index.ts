@@ -57,6 +57,14 @@ interface BookingPayload {
     provider_payout_amount?: number;
     booking_date?: string | null;
     is_virtual_tour?: boolean;
+    coupon_code?: string | null;
+    coupon_id?: string | null;
+    coupon_redemption_id?: string | null;
+    coupon_discount_amount?: number;
+    coupon_original_total_price?: number;
+    coupon_final_total_price?: number;
+    coupon_funded_by?: string | null;
+    platform_subsidy_amount?: number;
 }
 
 interface PaymentPayload {
@@ -112,6 +120,15 @@ const toOptionalPositiveNumber = (value: unknown): number | null => {
     if (typeof value === 'string') {
         const parsed = Number(value);
         if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return null;
+};
+
+const toOptionalFiniteNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) return parsed;
     }
     return null;
 };
@@ -827,11 +844,19 @@ Deno.serve(async (req) => {
         let unitPrice = toPositiveNumber(booking?.unit_price);
         let totalPrice = toPositiveNumber(booking?.total_price);
         let platformFeeRate = toOptionalPositiveNumber(booking?.platform_fee_rate);
-        let platformFeeAmount = toOptionalPositiveNumber(booking?.platform_fee_amount);
+        let platformFeeAmount = toOptionalFiniteNumber(booking?.platform_fee_amount);
         let providerPayoutAmount = toOptionalPositiveNumber(booking?.provider_payout_amount);
         let bookingDateRaw = normalizeLooseString(booking?.booking_date);
         let bookingDate = bookingDateRaw || null;
         let isVirtualTour = booking?.is_virtual_tour === true;
+        let couponCode = normalizeLooseString(booking?.coupon_code).toUpperCase();
+        let couponId = normalizeOptionalUuid(booking?.coupon_id);
+        let couponRedemptionId = normalizeOptionalUuid(booking?.coupon_redemption_id);
+        let couponDiscountAmount = toOptionalPositiveNumber(booking?.coupon_discount_amount) || 0;
+        let couponOriginalTotalPrice = toOptionalPositiveNumber(booking?.coupon_original_total_price) || null;
+        let couponFinalTotalPrice = toOptionalPositiveNumber(booking?.coupon_final_total_price) || null;
+        let couponFundedBy = normalizeLooseString(booking?.coupon_funded_by).toLowerCase();
+        let platformSubsidyAmount = toOptionalPositiveNumber(booking?.platform_subsidy_amount) || 0;
 
         const hydrateFromPending = await admin
             .from('bookings')
@@ -849,11 +874,19 @@ Deno.serve(async (req) => {
             listingTitle = listingTitle || normalizeLooseString(pending.listing_title);
             listingImage = listingImage || normalizeLooseString(pending.listing_image);
             providerUserId = providerUserId || normalizeOptionalUuid(pending.provider_user_id);
-            if (!unitPrice) unitPrice = toPositiveNumber(pending.unit_price);
-            if (!totalPrice) totalPrice = toPositiveNumber(pending.total_price);
-            if (!platformFeeRate) platformFeeRate = toOptionalPositiveNumber(pending.platform_fee_rate);
-            if (!platformFeeAmount) platformFeeAmount = toOptionalPositiveNumber(pending.platform_fee_amount);
-            if (!providerPayoutAmount) providerPayoutAmount = toOptionalPositiveNumber(pending.provider_payout_amount);
+            unitPrice = toPositiveNumber(pending.unit_price) || unitPrice;
+            totalPrice = toPositiveNumber(pending.total_price) || totalPrice;
+            platformFeeRate = toOptionalPositiveNumber(pending.platform_fee_rate) ?? platformFeeRate;
+            platformFeeAmount = toOptionalFiniteNumber(pending.platform_fee_amount) ?? platformFeeAmount;
+            providerPayoutAmount = toOptionalPositiveNumber(pending.provider_payout_amount) || providerPayoutAmount;
+            couponCode = normalizeLooseString(pending.coupon_code).toUpperCase() || couponCode;
+            couponId = normalizeOptionalUuid(pending.coupon_id) || couponId;
+            couponRedemptionId = normalizeOptionalUuid(pending.coupon_redemption_id) || couponRedemptionId;
+            couponDiscountAmount = toOptionalPositiveNumber(pending.coupon_discount_amount) || couponDiscountAmount;
+            couponOriginalTotalPrice = toOptionalPositiveNumber(pending.coupon_original_total_price) || couponOriginalTotalPrice;
+            couponFinalTotalPrice = toOptionalPositiveNumber(pending.coupon_final_total_price) || couponFinalTotalPrice;
+            couponFundedBy = normalizeLooseString(pending.coupon_funded_by).toLowerCase() || couponFundedBy;
+            platformSubsidyAmount = toOptionalPositiveNumber(pending.platform_subsidy_amount) || platformSubsidyAmount;
             if (!bookingDate) {
                 bookingDateRaw = normalizeLooseString(pending.booking_date);
                 bookingDate = bookingDateRaw || null;
@@ -887,8 +920,15 @@ Deno.serve(async (req) => {
                 listingTitle = listingTitle || normalizeLooseString(notes.listing_title);
                 providerUserId = providerUserId || normalizeOptionalUuid(notes.provider_user_id);
                 if (!unitPrice) unitPrice = toPositiveNumber(notes.unit_price);
+                if (!couponOriginalTotalPrice) couponOriginalTotalPrice = toPositiveNumber(notes.coupon_original_total_price) || toPositiveNumber(notes.original_total_price);
+                if (!couponFinalTotalPrice) couponFinalTotalPrice = toPositiveNumber(notes.coupon_final_total_price);
+                if (!couponDiscountAmount) couponDiscountAmount = toOptionalPositiveNumber(notes.coupon_discount_amount) || 0;
+                couponCode = couponCode || normalizeLooseString(notes.coupon_code).toUpperCase();
+                couponId = couponId || normalizeOptionalUuid(notes.coupon_id);
+                couponFundedBy = couponFundedBy || normalizeLooseString(notes.coupon_funded_by).toLowerCase();
+                platformSubsidyAmount = platformSubsidyAmount || toOptionalPositiveNumber(notes.platform_subsidy_amount) || 0;
                 if (!platformFeeRate) platformFeeRate = toOptionalPositiveNumber(notes.platform_fee_rate);
-                if (!platformFeeAmount) platformFeeAmount = toOptionalPositiveNumber(notes.platform_fee_amount);
+                platformFeeAmount = toOptionalFiniteNumber(notes.platform_fee_amount) ?? platformFeeAmount;
                 if (!providerPayoutAmount) providerPayoutAmount = toOptionalPositiveNumber(notes.provider_payout_amount);
                 if (!bookingDate) {
                     bookingDateRaw = normalizeLooseString(notes.booking_date);
@@ -907,6 +947,31 @@ Deno.serve(async (req) => {
             }
         }
 
+        if (!couponRedemptionId) {
+            const redemptionLookup = await admin
+                .from('coupon_redemptions')
+                .select('id, coupon_id, code, original_total_price, discount_amount, final_total_price, metadata')
+                .eq('user_id', user.id)
+                .eq('payment_order_id', orderId)
+                .maybeSingle();
+
+            if (!redemptionLookup.error && redemptionLookup.data?.id) {
+                const redemption = redemptionLookup.data as Record<string, unknown>;
+                const metadata = redemption.metadata && typeof redemption.metadata === 'object'
+                    ? redemption.metadata as Record<string, unknown>
+                    : {};
+                couponRedemptionId = normalizeOptionalUuid(redemption.id) || couponRedemptionId;
+                couponId = normalizeOptionalUuid(redemption.coupon_id) || couponId;
+                couponCode = normalizeLooseString(redemption.code).toUpperCase() || couponCode;
+                couponOriginalTotalPrice = toPositiveNumber(redemption.original_total_price) || couponOriginalTotalPrice;
+                couponDiscountAmount = toPositiveNumber(redemption.discount_amount) || couponDiscountAmount;
+                couponFinalTotalPrice = toPositiveNumber(redemption.final_total_price) || couponFinalTotalPrice;
+                couponFundedBy = normalizeLooseString(metadata.funded_by).toLowerCase() || couponFundedBy;
+                platformSubsidyAmount = toOptionalPositiveNumber(metadata.platform_subsidy_amount) || platformSubsidyAmount;
+                platformFeeAmount = toOptionalFiniteNumber(metadata.platform_fee_amount) ?? platformFeeAmount;
+            }
+        }
+
         if (!listingId || !listingType || !listingTitle) {
             return jsonResponse(400, { error: 'listing_id, listing_type, and listing_title are required.' });
         }
@@ -914,17 +979,30 @@ Deno.serve(async (req) => {
             return jsonResponse(400, { error: 'Invalid booking amount.' });
         }
         const computedPricing = calculatePricing(unitPrice, numberOfPeople, platformFeeRate ?? PLATFORM_FEE_RATE);
-        totalPrice = totalPrice && totalPrice > 0 ? roundMoney(totalPrice) : computedPricing.totalPrice;
-        if (Math.abs(totalPrice - computedPricing.totalPrice) > 0.5) {
+        const hasCouponApplication = couponDiscountAmount > 0 && Boolean(couponCode);
+        const expectedOriginalTotal = hasCouponApplication
+            ? roundMoney(couponOriginalTotalPrice || computedPricing.totalPrice)
+            : computedPricing.totalPrice;
+        totalPrice = hasCouponApplication
+            ? roundMoney(couponFinalTotalPrice || Math.max(1, expectedOriginalTotal - couponDiscountAmount))
+            : totalPrice && totalPrice > 0
+                ? roundMoney(totalPrice)
+                : computedPricing.totalPrice;
+        if (!hasCouponApplication && Math.abs(totalPrice - computedPricing.totalPrice) > 0.5) {
             totalPrice = computedPricing.totalPrice;
         }
         platformFeeRate = computedPricing.platformFeeRate;
-        platformFeeAmount = platformFeeAmount && platformFeeAmount > 0
-            ? roundMoney(platformFeeAmount)
-            : roundMoney(Math.max(0, totalPrice - computedPricing.providerSubtotal));
         providerPayoutAmount = providerPayoutAmount && providerPayoutAmount > 0
             ? roundMoney(providerPayoutAmount)
             : computedPricing.providerSubtotal;
+        platformFeeAmount = platformFeeAmount !== null
+            ? roundMoney(platformFeeAmount)
+            : roundMoney(totalPrice - providerPayoutAmount);
+        if (hasCouponApplication && !couponOriginalTotalPrice) couponOriginalTotalPrice = expectedOriginalTotal;
+        if (hasCouponApplication && !couponFinalTotalPrice) couponFinalTotalPrice = totalPrice;
+        if (hasCouponApplication && !platformSubsidyAmount && couponFundedBy === 'platform') {
+            platformSubsidyAmount = roundMoney(Math.max(0, providerPayoutAmount - totalPrice));
+        }
 
         const existingLookup = await admin
             .from('bookings')
@@ -1003,6 +1081,14 @@ Deno.serve(async (req) => {
             platform_fee_rate: platformFeeRate,
             platform_fee_amount: platformFeeAmount,
             provider_payout_amount: providerPayoutAmount,
+            coupon_id: couponId,
+            coupon_redemption_id: couponRedemptionId,
+            coupon_code: couponCode || null,
+            coupon_discount_amount: couponDiscountAmount,
+            coupon_original_total_price: couponOriginalTotalPrice,
+            coupon_final_total_price: couponFinalTotalPrice,
+            coupon_funded_by: couponFundedBy || null,
+            platform_subsidy_amount: platformSubsidyAmount,
             payout_status: 'pending_provider_acceptance',
             status: 'pending',
             payment_status: 'paid',

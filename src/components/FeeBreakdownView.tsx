@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import {
+    applyListingDiscount,
+    describeListingDiscount,
     PLATFORM_FEE_RATE,
     calculatePricingFromFeeBreakdown,
     normalizeListingFeeBreakdown,
@@ -44,10 +46,17 @@ export const FeeBreakdownView: React.FC<FeeBreakdownViewProps> = ({
 }) => {
     const normalized = useMemo(() => normalizeListingFeeBreakdown(feeBreakdown), [feeBreakdown]);
     const effectivePlatformFeeRate = platformFeeRate ?? normalized?.platform_fee_rate ?? PLATFORM_FEE_RATE;
-    const pricing = useMemo(
+    const basePricing = useMemo(
         () => calculatePricingFromFeeBreakdown(normalized, peopleCount, effectivePlatformFeeRate),
         [normalized, peopleCount, effectivePlatformFeeRate],
     );
+    const discountResult = useMemo(
+        () => applyListingDiscount(basePricing.total_price, normalized?.discount, effectivePlatformFeeRate),
+        [basePricing.total_price, normalized?.discount, effectivePlatformFeeRate],
+    );
+    const hasDiscount = discountResult.discount_amount > 0;
+    const pricing = basePricing;
+    const discountLine = describeListingDiscount(normalized?.discount);
 
     if (!normalized) {
         if (!showUnavailable) return null;
@@ -92,15 +101,24 @@ export const FeeBreakdownView: React.FC<FeeBreakdownViewProps> = ({
             <div className="fbv-totals">
                 <div>
                     <span>Vendor package fee</span>
-                    <strong>{formatCurrency(pricing.provider_subtotal)}</strong>
+                    <strong>{formatCurrency(hasDiscount ? discountResult.provider_payout_amount : pricing.provider_subtotal)}</strong>
                 </div>
                 <div>
                     <span>Platform fee ({Math.round(pricing.platform_fee_rate * 100)}%)</span>
-                    <strong>{formatCurrency(pricing.platform_fee_amount)}</strong>
+                    <strong>{formatCurrency(hasDiscount ? discountResult.platform_fee_amount : pricing.platform_fee_amount)}</strong>
                 </div>
-                <div>
-                    <span>Tourist total</span>
-                    <strong>{formatCurrency(pricing.total_price)}</strong>
+                {hasDiscount && (
+                    <div className="fbv-discount-row">
+                        <span>
+                            {discountLine}
+                            {normalized?.discount?.label ? ` · ${normalized.discount.label}` : ''}
+                        </span>
+                        <strong>-{formatCurrency(discountResult.discount_amount)}</strong>
+                    </div>
+                )}
+                <div className={hasDiscount ? 'fbv-final-total' : undefined}>
+                    <span>{hasDiscount ? 'Tourist total (discounted)' : 'Tourist total'}</span>
+                    <strong>{formatCurrency(hasDiscount ? discountResult.tourist_total : pricing.total_price)}</strong>
                 </div>
                 {pricing.optional_total > 0 && (
                     <div>

@@ -71,6 +71,7 @@ export interface BookingPaymentDraft {
     provider_payout_amount?: number;
     booking_date?: string | null;
     is_virtual_tour?: boolean;
+    coupon_code?: string | null;
 }
 
 export interface RazorpayOrderPayload {
@@ -78,6 +79,12 @@ export interface RazorpayOrderPayload {
     amount: number;
     currency: string;
     key_id: string;
+    coupon?: {
+        code: string;
+        discount_amount: number;
+        original_total_price: number;
+        final_total_price: number;
+    } | null;
 }
 
 export interface RazorpayCheckoutPrefill {
@@ -165,6 +172,9 @@ export const createRazorpayOrder = async (booking: BookingPaymentDraft): Promise
         amount: payload.amount,
         currency: payload.currency,
         key_id: payload.key_id,
+        coupon: payload.coupon && typeof payload.coupon === 'object'
+            ? payload.coupon as RazorpayOrderPayload['coupon']
+            : null,
     };
 };
 
@@ -435,6 +445,7 @@ export const openRazorpayCheckout = async (
                 listing_id: input.booking.listing_id,
                 listing_type: input.booking.listing_type,
                 booking_date: input.booking.booking_date || '',
+                coupon_code: input.booking.coupon_code || '',
             },
         });
     }
@@ -471,6 +482,7 @@ export const openRazorpayCheckout = async (
                 listing_id: input.booking.listing_id,
                 listing_type: input.booking.listing_type,
                 booking_date: input.booking.booking_date || '',
+                coupon_code: input.booking.coupon_code || '',
             },
             theme: { color: '#1769ff' },
             modal: {

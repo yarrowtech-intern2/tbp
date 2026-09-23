@@ -57,6 +57,25 @@ const CHECKLIST = [
     'Location and schedule information are valid',
 ];
 
+const normalizeListingStatus = (status?: string | null) => String(status || 'pending').trim().toLowerCase();
+
+const isReviewActionableStatus = (status?: string | null) => {
+    const normalized = normalizeListingStatus(status);
+    return normalized === 'pending' || normalized === 'resubmitted';
+};
+
+const isLiveStatus = (status?: string | null) => {
+    const normalized = normalizeListingStatus(status);
+    return normalized === 'live' || normalized === 'published' || normalized === 'approved';
+};
+
+const getListingStatusLabel = (status?: string | null) => {
+    const normalized = normalizeListingStatus(status);
+    if (normalized === 'published') return 'live';
+    if (normalized === 'resubmitted') return 'resubmitted';
+    return normalized || 'pending';
+};
+
 type ReviewFeedback = {
     variant: 'approved' | 'declined' | 'error';
     title: string;
@@ -128,6 +147,12 @@ export const AdminListingReview: React.FC = () => {
     const listingImage = listing?.image_url || listing?.cover_image_url || listing?.thumbnail_url || '';
     const isVirtualTour = isVirtualTourRecord(listing as Record<string, unknown> | null);
     const virtualDetails = getVirtualTourDetailsFromRecord(listing as Record<string, unknown> | null);
+    const listingStatus = normalizeListingStatus(listing?.status);
+    const listingStatusLabel = getListingStatusLabel(listingStatus);
+    const canReviewListing = isReviewActionableStatus(listingStatus);
+    const isListingLive = isLiveStatus(listingStatus);
+    const completedChecklistCount = checklistState.filter(Boolean).length;
+    const checklistPercent = Math.round((completedChecklistCount / CHECKLIST.length) * 100);
 
     const providerAccountType = useMemo(() => {
         const role = verification?.role || providerProfile?.role;
@@ -228,10 +253,22 @@ export const AdminListingReview: React.FC = () => {
 
                 <section className="alr-layout">
                     <aside className="alr-checklist">
-                        <h2>Checklist</h2>
+                        <div className="alr-checklist-head">
+                            <div>
+                                <h2>Checklist</h2>
+                                <p>{completedChecklistCount} of {CHECKLIST.length} checked</p>
+                            </div>
+                            <strong>{checklistPercent}%</strong>
+                        </div>
                         <div className="alr-checklist-list">
                             {CHECKLIST.map((item, index) => (
-                                <button key={item} type="button" className="alr-check-item" onClick={() => toggleChecklist(index)}>
+                                <button
+                                    key={item}
+                                    type="button"
+                                    className={`alr-check-item${checklistState[index] ? ' is-checked' : ''}`}
+                                    onClick={() => toggleChecklist(index)}
+                                    aria-pressed={checklistState[index]}
+                                >
                                     {checklistState[index] ? <CheckSquare size={16} /> : <Square size={16} />}
                                     <span>{item}</span>
                                 </button>
@@ -240,7 +277,42 @@ export const AdminListingReview: React.FC = () => {
                     </aside>
 
                     <article className="alr-detail">
-                        <h2>{isVirtualTour ? 'Live virtual tour details' : 'Tour package details'}</h2>
+                        <div className="alr-detail-head">
+                            <div>
+                                <h2>{isVirtualTour ? 'Live virtual tour details' : 'Tour package details'}</h2>
+                                <p>{canReviewListing ? 'Review the details, complete the checks, then choose an action.' : 'This listing has already been reviewed.'}</p>
+                            </div>
+                            <span className={`alr-status-pill alr-status-pill--${isListingLive ? 'live' : listingStatus}`}>
+                                {listingStatusLabel}
+                            </span>
+                        </div>
+
+                        {!canReviewListing && (
+                            <section className={`alr-review-complete alr-review-complete--${isListingLive ? 'approved' : 'rejected'}`} role="status">
+                                <div className="alr-review-complete-icon" aria-hidden="true">
+                                    {isListingLive ? <CheckCircle2 size={28} /> : <XCircle size={28} />}
+                                </div>
+                                <div className="alr-review-complete-copy">
+                                    <span>Review complete</span>
+                                    <h3>{isListingLive ? 'Approved and removed from the active queue' : 'Rejected and waiting for provider edits'}</h3>
+                                    <p>
+                                        {isListingLive
+                                            ? 'Admins do not need to take another action unless this listing is edited and resubmitted.'
+                                            : 'The provider can update the listing and resubmit it. When that happens, it will return to moderation.'}
+                                    </p>
+                                    <div className="alr-review-complete-actions">
+                                        <button type="button" className="alr-review-action" onClick={() => navigate('/dashboard/admin?section=moderation')}>
+                                            Back to queue
+                                        </button>
+                                        {isListingLive && (
+                                            <Link to={`/listings/${listingTypePath}/${listing.id}`} className="alr-review-action alr-review-action--primary">
+                                                View live listing
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+                            </section>
+                        )}
 
                         <div className="alr-hero">
                             <div className="alr-image" style={listingImage ? { backgroundImage: `url(${listingImage})` } : undefined} />
@@ -248,7 +320,7 @@ export const AdminListingReview: React.FC = () => {
                                 <h3>{listingTitle}</h3>
                                 <p>{listing.description || 'No description provided.'}</p>
                                 <div className="alr-quick-meta">
-                                    <span>Status: <strong>{listing.status || 'pending'}</strong></span>
+                                    <span>Status: <strong>{listingStatusLabel}</strong></span>
                                     <span>Type: <strong>{listingType}</strong></span>
                                     <span>Location: <strong>{listing.location || 'N/A'}</strong></span>
                                     <span>Price: <strong>{formatCurrency(listing.price)}</strong></span>
@@ -335,24 +407,33 @@ export const AdminListingReview: React.FC = () => {
                             className="alr-fee-breakdown"
                         />
 
-                        <label className="alr-reject-reason">
-                            <span>Reject Reason</span>
-                            <textarea
-                                value={rejectReason}
-                                onChange={(event) => setRejectReason(event.target.value)}
-                                placeholder="Explain what should be fixed before approval."
-                                rows={3}
-                            />
-                        </label>
+                        {canReviewListing ? (
+                            <>
+                                <label className="alr-reject-reason">
+                                    <span>Reject Reason</span>
+                                    <textarea
+                                        value={rejectReason}
+                                        onChange={(event) => setRejectReason(event.target.value)}
+                                        placeholder="Explain what should be fixed before approval."
+                                        rows={3}
+                                    />
+                                </label>
 
-                        <div className="alr-actions">
-                            <button type="button" className="alr-btn alr-btn-approve" disabled={saving} onClick={() => void handleReviewDecision('live')}>
-                                {saving ? 'Updating...' : 'Approve'}
-                            </button>
-                            <button type="button" className="alr-btn alr-btn-reject" disabled={saving} onClick={() => void handleReviewDecision('rejected')}>
-                                {saving ? 'Updating...' : 'Reject'}
-                            </button>
-                        </div>
+                                <div className="alr-actions">
+                                    <button type="button" className="alr-btn alr-btn-approve" disabled={saving} onClick={() => void handleReviewDecision('live')}>
+                                        {saving ? 'Updating...' : 'Approve'}
+                                    </button>
+                                    <button type="button" className="alr-btn alr-btn-reject" disabled={saving} onClick={() => void handleReviewDecision('rejected')}>
+                                        {saving ? 'Updating...' : 'Reject'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : listing.rejection_reason ? (
+                            <section className="alr-reviewed-reason">
+                                <span>Rejection reason sent to provider</span>
+                                <p>{listing.rejection_reason}</p>
+                            </section>
+                        ) : null}
                     </article>
                 </section>
             </div>

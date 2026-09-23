@@ -36,6 +36,17 @@ export interface ListingFeeBreakdownItem {
     is_custom?: boolean;
 }
 
+export type ListingFeeDiscountMode = 'percent' | 'flat';
+
+export interface ListingFeeDiscount {
+    /** 'percent' reduces the tourist price by a share; 'flat' removes a fixed INR amount. */
+    mode: ListingFeeDiscountMode;
+    /** Percent value (0-100) for 'percent' mode or flat INR amount for 'flat' mode. */
+    value: number;
+    /** Optional vendor-facing label, e.g. 'Monsoon offer'. */
+    label?: string | null;
+}
+
 export interface ListingFeeBreakdown {
     version: 1;
     currency: 'INR';
@@ -44,7 +55,22 @@ export interface ListingFeeBreakdown {
     platform_fee_rate?: number;
     platform_fee_amount?: number;
     tourist_total?: number;
+    discount?: ListingFeeDiscount | null;
     updated_at?: string;
+}
+
+export interface ListingFeeDiscountResult {
+    discount_mode: ListingFeeDiscountMode;
+    discount_value: number;
+    discount_label: string | null;
+    /** Discount percent relative to the pre-discount tourist price. */
+    discount_percent: number;
+    discount_amount: number;
+    /** Tourist price before the discount is applied. */
+    tourist_total_before_discount: number;
+    tourist_total: number;
+    provider_payout_amount: number;
+    platform_fee_amount: number;
 }
 
 export interface ListingFeePricingBreakdown extends PricingBreakdown {
@@ -53,6 +79,84 @@ export interface ListingFeePricingBreakdown extends PricingBreakdown {
     optional_total: number;
     pay_at_location_total: number;
 }
+
+export const getListingDiscountPercent = (
+    discount: ListingFeeDiscount | null | undefined,
+    touristTotalBeforeDiscount: number,
+): number => {
+    if (!discount || touristTotalBeforeDiscount <= 0) return 0;
+    if (discount.mode === 'percent') {
+        return Math.min(100, Math.max(0, discount.value));
+    }
+    return Math.min(100, (discount.value / touristTotalBeforeDiscount) * 100);
+};
+
+/**
+ * Applies a vendor discount to a computed tourist price.
+ *
+ * The discount targets the final tourist price: the tourist pays
+ * `touristTotalBeforeDiscount - discountAmount`, the platform fee stays a fixed
+ * share of the vendor payout, and the vendor payout shrinks proportionally so
+ * payout + platform fee always equal the discounted tourist price.
+ */
+export const applyListingDiscount = (
+    touristTotalBeforeDiscount: number,
+    discount: ListingFeeDiscount | null | undefined,
+    platformFeeRate = PLATFORM_FEE_RATE,
+): ListingFeeDiscountResult => {
+    const rate = Number.isFinite(platformFeeRate) && platformFeeRate >= 0 ? platformFeeRate : PLATFORM_FEE_RATE;
+    const before = touristTotalBeforeDiscount > 0 ? roundMoney(touristTotalBeforeDiscount) : 0;
+    const normalized = normalizeListingDiscount(discount);
+    const discountPercent = getListingDiscountPercent(normalized, before);
+    const discountAmount = before > 0 ? Math.min(before, percentAmount(before, discountPercent)) : 0;
+    const touristTotal = before > 0 ? roundMoney(Math.max(0, before - discountAmount)) : 0;
+
+    // Keep the platform fee share consistent: payout = touristTotal / (1 + rate).
+    const providerPayout = touristTotal > 0 ? roundMoney(touristTotal / (1 + rate)) : 0;
+    const platformFeeAmount = touristTotal > 0 ? roundMoney(touristTotal - providerPayout) : 0;
+
+    return {
+        discount_mode: normalized?.mode || 'percent',
+        discount_value: normalized?.value || 0,
+        discount_label: normalized?.label || null,
+        discount_percent: Math.round(discountPercent * 10) / 10,
+        discount_amount: discountAmount,
+        tourist_total_before_discount: before,
+        tourist_total: touristTotal,
+        provider_payout_amount: providerPayout,
+        platform_fee_amount: platformFeeAmount,
+    };
+};
+
+export const describeListingDiscount = (discount: ListingFeeDiscount | null | undefined): string | null => {
+    const normalized = normalizeListingDiscount(discount);
+    if (!normalized) return null;
+    return normalized.mode === 'percent'
+        ? `${Math.round(normalized.value)}% off`
+        : `Rs ${Math.round(normalized.value)} off`;
+};
+
+export const resolveListingDisplayPricing = (args: {
+    price: number | null | undefined;
+    feeBreakdown?: ListingFeeBreakdown | null;
+    peopleCount?: number;
+    platformFeeRate?: number;
+}): { discountPercent: number; touristTotalBeforeDiscount: number; touristTotal: number } => {
+    const people = normalizePeople(args.peopleCount ?? 1);
+    const rate = Number.isFinite(args.platformFeeRate) && (args.platformFeeRate as number) >= 0
+        ? (args.platformFeeRate as number)
+        : PLATFORM_FEE_RATE;
+    const breakdownPricing = args.feeBreakdown
+        ? calculatePricingFromFeeBreakdown(args.feeBreakdown, people, rate)
+        : calculatePricingFromProviderUnit(Number(args.price || 0), people, rate);
+    const result = applyListingDiscount(breakdownPricing.total_price, args.feeBreakdown?.discount, rate);
+
+    return {
+        discountPercent: result.discount_percent,
+        touristTotalBeforeDiscount: result.tourist_total_before_discount,
+        touristTotal: result.tourist_total || breakdownPricing.total_price,
+    };
+};
 
 const isFeeBasis = (value: unknown): value is ListingFeeBreakdownBasis => (
     value === 'per_person' || value === 'per_package'
@@ -63,6 +167,28 @@ const isFeeStatus = (value: unknown): value is ListingFeeBreakdownStatus => (
 );
 
 const normalizeCurrency = (value: unknown): 'INR' => (value === 'INR' ? 'INR' : 'INR');
+
+export const MAX_LISTING_DISCOUNT_PERCENT = 90;
+
+export const isListingDiscountMode = (value: unknown): value is ListingFeeDiscountMode => (
+    value === 'percent' || value === 'flat'
+);
+
+export const normalizeListingDiscount = (value: unknown): ListingFeeDiscount | null => {
+    if (!value || typeof value !== 'object') return null;
+    const row = value as Record<string, unknown>;
+    const mode = isListingDiscountMode(row.mode) ? row.mode : 'percent';
+    const rawValue = Number(row.value);
+    if (!Number.isFinite(rawValue) || rawValue <= 0) return null;
+    if (mode === 'percent' && rawValue > MAX_LISTING_DISCOUNT_PERCENT) return null;
+    return {
+        mode,
+        value: mode === 'percent' ? Math.round(rawValue * 100) / 100 : roundMoney(rawValue),
+        label: typeof row.label === 'string' && row.label.trim() ? row.label.trim() : null,
+    };
+};
+
+const percentAmount = (base: number, percent: number): number => roundMoney(base * (percent / 100));
 
 const normalizeFeeItem = (value: unknown): ListingFeeBreakdownItem | null => {
     if (!value || typeof value !== 'object') return null;
@@ -100,6 +226,7 @@ export const normalizeListingFeeBreakdown = (value: unknown): ListingFeeBreakdow
         platform_fee_rate: Number.isFinite(Number(row.platform_fee_rate)) ? Number(row.platform_fee_rate) : undefined,
         platform_fee_amount: normalizeAmount(Number(row.platform_fee_amount || 0)) || undefined,
         tourist_total: normalizeAmount(Number(row.tourist_total || 0)) || undefined,
+        discount: normalizeListingDiscount(row.discount),
         updated_at: typeof row.updated_at === 'string' ? row.updated_at : undefined,
     };
 };
@@ -185,12 +312,16 @@ export const buildListingFeeBreakdownForStorage = (
     const pricing = calculatePricingFromFeeBreakdown(normalized, 1, feeRate);
     if (pricing.provider_subtotal <= 0) return null;
 
+    // Stored totals reflect the final discounted tourist price when a discount is set.
+    const discountResult = applyListingDiscount(pricing.total_price, normalized.discount, feeRate);
+    const hasDiscount = discountResult.discount_amount > 0;
+
     return {
         ...normalized,
-        provider_total: pricing.provider_subtotal,
+        provider_total: hasDiscount ? discountResult.provider_payout_amount : pricing.provider_subtotal,
         platform_fee_rate: pricing.platform_fee_rate,
-        platform_fee_amount: pricing.platform_fee_amount,
-        tourist_total: pricing.total_price,
+        platform_fee_amount: hasDiscount ? discountResult.platform_fee_amount : pricing.platform_fee_amount,
+        tourist_total: hasDiscount ? discountResult.tourist_total : pricing.total_price,
         updated_at: new Date().toISOString(),
     };
 };

@@ -3,7 +3,8 @@ import { ArrowUpRight, Bookmark, CalendarDays, Compass, Loader2, Map, Share2, Za
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { addListingFavorite, isListingFavorited, removeListingFavorite } from '../lib/destinations';
-import { calculatePricingFromProviderUnit } from '../lib/pricing';
+import { calculatePricingFromProviderUnit, resolveListingDisplayPricing } from '../lib/pricing';
+import { DiscountBadge, getListingDiscountPercentForCard } from './DiscountBadge';
 import type { ListingType } from '../lib/platform';
 import './listing-card.css';
 
@@ -20,6 +21,8 @@ interface DestinationProps {
     listingType?: ListingType;
     isBooked?: boolean;
     isBoosted?: boolean;
+    /** Optional fee breakdown carrying the vendor discount. */
+    feeBreakdown?: unknown;
 }
 
 const formatPrice = (providerPrice: number | null | undefined): string => {
@@ -129,6 +132,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
     listingType = 'activity',
     isBooked = false,
     isBoosted = false,
+    feeBreakdown = null,
 }) => {
     const navigate = useNavigate();
     const { user, profile } = useAuth();
@@ -142,9 +146,15 @@ export const DestinationCard: React.FC<DestinationProps> = ({
         : 'Curated listing with complete details available on open.';
     const priceLabel = formatPrice(price);
     const presentation = getListingPresentation(listingType);
+    const discountPercent = getListingDiscountPercentForCard({ price, fee_breakdown: feeBreakdown as { discount?: unknown } | null });
+    const displayPricing = discountPercent > 0 && priceLabel !== 'Price on request'
+        ? resolveListingDisplayPricing({ price, feeBreakdown: feeBreakdown as never })
+        : null;
     const displayedPrice = priceLabel === 'Price on request'
         ? priceLabel
-        : `${presentation.pricePrefix} ${priceLabel}`;
+        : `${presentation.pricePrefix} ${displayPricing
+            ? `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotal)}`
+            : priceLabel}`;
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/listings/${listingPathType}/${id}` : '';
     const bookingCtaLabel = isBooked ? 'Book again' : presentation.cta;
 
@@ -221,6 +231,7 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                             {presentation.label}
                         </span>
                         {isBooked && <span className="listing-card-booked-pill">Booked</span>}
+                        {discountPercent > 0 && <DiscountBadge discountPercent={discountPercent} className="listing-card-discount-badge" />}
                         {isBoosted && (
                             <span className="listing-card-boost-badge" aria-label="Boosted listing" title="Boosted">
                                 <ArrowUpRight size={15} />
@@ -266,7 +277,18 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                     </div>
 
                     <div className="listing-card-actions">
-                        <span className="listing-card-price">{displayedPrice}</span>
+                        {displayPricing ? (
+                            <span className="listing-card-price listing-card-price-stack">
+                                <span className="discount-price-before">
+                                    Rs. {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotalBeforeDiscount)}
+                                </span>
+                                <strong className="discount-price-after">
+                                    Rs. {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotal)}
+                                </strong>
+                            </span>
+                        ) : (
+                            <span className="listing-card-price">{displayedPrice}</span>
+                        )}
                         <div className="listing-card-cta-cluster">
                             <Link
                                 to={`/listings/${listingPathType}/${id}`}
@@ -313,7 +335,18 @@ export const DestinationCard: React.FC<DestinationProps> = ({
                 </div>
 
                 <div className="listing-card-actions">
-                    <span className="listing-card-price">{displayedPrice}</span>
+                    {displayPricing ? (
+                        <span className="listing-card-price listing-card-price-stack">
+                            <span className="discount-price-before">
+                                Rs. {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotalBeforeDiscount)}
+                            </span>
+                            <strong className="discount-price-after">
+                                Rs. {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotal)}
+                            </strong>
+                        </span>
+                    ) : (
+                        <span className="listing-card-price">{displayedPrice}</span>
+                    )}
                     <div className="listing-card-cta-cluster">
                         <Link
                             to={`/listings/${listingPathType}/${id}`}

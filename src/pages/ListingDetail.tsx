@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, CalendarDays, Clock, Compass, Facebook, Heart, Instagram, Loader2, Map, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users, Zap } from 'lucide-react';
+import { ArrowLeft, BadgePercent, Calendar, CalendarDays, Clock, Compass, Facebook, Heart, Instagram, Loader2, Map, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { buildLoginPath } from '../lib/authRedirect';
 import {
     addListingFavorite,
     getCurrentUserListingReview,
@@ -22,15 +23,23 @@ import { confirmRazorpayBooking, createRazorpayOrder, openRazorpayCheckout, type
 import { getLocalBookedLookup, markListingBookedLocally, onBookingSync } from '../lib/bookingSync';
 import {
     PLATFORM_FEE_RATE,
+    applyListingDiscount,
     calculatePricingFromFeeBreakdown,
     calculatePricingFromProviderUnit,
     normalizeListingFeeBreakdown,
 } from '../lib/pricing';
 import { getPublicAppContent } from '../lib/appContent';
 import { getProfileAvatarUrl } from '../lib/avatar';
+import {
+    COUPON_STORAGE_EVENT,
+    FIRST_BOOKING_COUPON_CODE,
+    buildFirstBookingCouponPreview,
+    getStoredCouponClaim,
+} from '../lib/coupons';
 import { getListingImages, getPrimaryListingImage } from '../lib/listingImages';
 import { SEOHead } from '../components/SEO';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
+import '../components/discount-badge.css';
 import { buildListingJsonLd } from '../lib/seo';
 import { CAMERA_TYPE_LABELS, VIRTUAL_TOURS_ENABLED, getVirtualTourDetailsFromRecord, isVirtualTourRecord } from '../lib/virtualTours';
 import {
@@ -204,6 +213,7 @@ export const ListingDetail: React.FC = () => {
     const [guests, setGuests] = useState(1);
     const [platformFeeRate, setPlatformFeeRate] = useState(PLATFORM_FEE_RATE);
     const [listing, setListing] = useState<PostRecord | null>(null);
+    const [couponClaim, setCouponClaim] = useState(() => getStoredCouponClaim());
 
     const listingType = toInternalListingType(type);
 
@@ -234,6 +244,17 @@ export const ListingDetail: React.FC = () => {
             .catch(() => undefined);
         return () => {
             cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        const refreshCouponClaim = () => setCouponClaim(getStoredCouponClaim());
+        refreshCouponClaim();
+        window.addEventListener(COUPON_STORAGE_EVENT, refreshCouponClaim);
+        window.addEventListener('storage', refreshCouponClaim);
+        return () => {
+            window.removeEventListener(COUPON_STORAGE_EVENT, refreshCouponClaim);
+            window.removeEventListener('storage', refreshCouponClaim);
         };
     }, []);
 
@@ -310,15 +331,46 @@ export const ListingDetail: React.FC = () => {
     const isVirtualTour = isVirtualTourRecord(listing as Record<string, unknown> | null);
     const virtualDetails = getVirtualTourDetailsFromRecord(listing as Record<string, unknown> | null);
     const detailPresentation = getDetailPresentation(effectiveType, isVirtualTour);
-    const pricing = useMemo(
+    const basePricing = useMemo(
         () => feeBreakdown
             ? calculatePricingFromFeeBreakdown(feeBreakdown, guests, platformFeeRate)
             : calculatePricingFromProviderUnit(providerUnitPrice, guests, platformFeeRate),
         [feeBreakdown, providerUnitPrice, guests, platformFeeRate]
     );
+    const discountResult = useMemo(
+        () => applyListingDiscount(basePricing.total_price, feeBreakdown?.discount, platformFeeRate),
+        [basePricing.total_price, feeBreakdown?.discount, platformFeeRate]
+    );
+    const hasDiscount = discountResult.discount_amount > 0;
+    // With a vendor discount the tourist pays less; the platform fee stays a fixed
+    // share of the vendor payout, so every booking amount flows from the discounted total.
+    const pricing = useMemo(
+        () => (hasDiscount
+            ? {
+                ...basePricing,
+                total_price: discountResult.tourist_total,
+                platform_fee_amount: discountResult.platform_fee_amount,
+                provider_subtotal: discountResult.provider_payout_amount,
+                provider_payout_amount: discountResult.provider_payout_amount,
+                provider_unit_price: guests > 0
+                    ? Math.round((discountResult.provider_payout_amount / guests) * 100) / 100
+                    : discountResult.provider_payout_amount,
+                tourist_unit_price: guests > 0
+                    ? Math.round((discountResult.tourist_total / guests) * 100) / 100
+                    : discountResult.tourist_total,
+            }
+            : basePricing),
+        [basePricing, discountResult, guests, hasDiscount]
+    );
     const canBook = profile?.role === 'tourist';
     const canFavorite = profile?.role === 'tourist';
     const canReview = profile?.role === 'tourist';
+    const activeCouponCode = couponClaim?.code === FIRST_BOOKING_COUPON_CODE ? couponClaim.code : null;
+    const couponPreview = useMemo(
+        () => (activeCouponCode ? buildFirstBookingCouponPreview(pricing.total_price) : null),
+        [activeCouponCode, pricing.total_price]
+    );
+    const bookingDisplayTotal = couponPreview?.final_total ?? pricing.total_price;
     const bookingButtonDisabled = bookingLoading || Boolean(user && !canBook);
     const bookingButtonLabel = !user ? 'Login to Book' : canBook ? detailPresentation.buttonLabel : 'Tourist Only';
     const guestOptions = Array.from(
@@ -548,7 +600,7 @@ export const ListingDetail: React.FC = () => {
         const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
         if (!currentUserId) {
             setBookingError('Please log in to book this package.');
-            navigate('/login');
+            navigate(buildLoginPath());
             return;
         }
         if (!listingId) {
@@ -590,6 +642,7 @@ export const ListingDetail: React.FC = () => {
                 provider_payout_amount: pricing.provider_payout_amount,
                 booking_date: checkIn || null,
                 is_virtual_tour: isVirtualTour,
+                coupon_code: activeCouponCode,
             };
 
             const order = await createRazorpayOrder(bookingDraft);
@@ -742,7 +795,11 @@ export const ListingDetail: React.FC = () => {
     };
 
     const handleMessage = async () => {
-        if (!user || !ownerUserId || ownerUserId === user.id) return;
+        if (!user) {
+            navigate(buildLoginPath());
+            return;
+        }
+        if (!ownerUserId || ownerUserId === user.id) return;
         setMessageLoading(true);
         try {
             const conversation = await getOrCreateConversation(user.id, ownerUserId);
@@ -757,7 +814,7 @@ export const ListingDetail: React.FC = () => {
 
     const handleFavoriteToggle = async () => {
         if (!user || !listing?.id) {
-            navigate('/login');
+            navigate(buildLoginPath());
             return;
         }
         if (!canFavorite) {
@@ -785,7 +842,7 @@ export const ListingDetail: React.FC = () => {
     const handleReviewSave = async () => {
         const listingId = normalizeLooseString(listing?.id) || normalizeLooseString(id);
         if (!user || !listingId) {
-            navigate('/login');
+            navigate(buildLoginPath());
             return;
         }
         if (!canReview) {
@@ -1023,8 +1080,37 @@ export const ListingDetail: React.FC = () => {
                             <form onSubmit={handleBooking} className="listing-book-form">
                                 <div className="listing-book-head">
                                     <h3>{detailPresentation.bookingTitle}</h3>
-                                    <strong>Rs {pricing.total_price.toLocaleString()}</strong>
+                                    {hasDiscount ? (
+                                        <span className="listing-book-price-stack">
+                                            <span className="discount-price-before">Rs {discountResult.tourist_total_before_discount.toLocaleString()}</span>
+                                            <strong>Rs {bookingDisplayTotal.toLocaleString()}</strong>
+                                        </span>
+                                    ) : couponPreview ? (
+                                        <span className="listing-book-price-stack">
+                                            <span className="discount-price-before">Rs {pricing.total_price.toLocaleString()}</span>
+                                            <strong>Rs {bookingDisplayTotal.toLocaleString()}</strong>
+                                        </span>
+                                    ) : (
+                                        <strong>Rs {pricing.total_price.toLocaleString()}</strong>
+                                    )}
                                 </div>
+                                {hasDiscount && (
+                                    <p className="listing-book-discount-note">
+                                        <strong>{discountResult.discount_percent}% off</strong>
+                                        {discountResult.discount_label ? ` · ${discountResult.discount_label}` : ''}
+                                        {' '}— you save Rs {discountResult.discount_amount.toLocaleString()}
+                                    </p>
+                                )}
+
+                                {couponPreview && (
+                                    <div className="listing-book-coupon-note">
+                                        <BadgePercent size={18} />
+                                        <span>
+                                            <strong>{couponPreview.code} applied</strong>
+                                            <small>20% off your first provider-confirmed booking.</small>
+                                        </span>
+                                    </div>
+                                )}
 
                                 <label className="listing-book-field">
                                     <span>{detailPresentation.dateLabel}</span>
@@ -1047,9 +1133,29 @@ export const ListingDetail: React.FC = () => {
                                 </label>
 
                                 <div className="listing-book-total">
-                                    <span>Total</span>
+                                    <span>{couponPreview ? 'Listing total' : 'Total'}</span>
                                     <strong>Rs {pricing.total_price.toLocaleString()}</strong>
                                 </div>
+
+                                {hasDiscount && (
+                                    <div className="listing-book-total listing-book-total--discount">
+                                        <span>Discount ({discountResult.discount_percent}% off)</span>
+                                        <strong>-Rs {discountResult.discount_amount.toLocaleString()}</strong>
+                                    </div>
+                                )}
+
+                                {couponPreview && (
+                                    <>
+                                        <div className="listing-book-total listing-book-total--discount">
+                                            <span>Coupon ({couponPreview.code})</span>
+                                            <strong>-Rs {couponPreview.discount_amount.toLocaleString()}</strong>
+                                        </div>
+                                        <div className="listing-book-total listing-book-total--payable">
+                                            <span>Pay now</span>
+                                            <strong>Rs {couponPreview.final_total.toLocaleString()}</strong>
+                                        </div>
+                                    </>
+                                )}
 
                                 <div className="listing-book-total">
                                     <span>Includes platform fee ({Math.round(platformFeeRate * 100)}%)</span>

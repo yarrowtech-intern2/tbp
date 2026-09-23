@@ -62,6 +62,23 @@ const getListingStatusLabel = (status?: string | null) => {
     return status || 'pending';
 };
 
+type ListingStatusFilter = 'active' | 'all' | 'pending' | 'resubmitted' | 'live' | 'rejected';
+
+const normalizeListingStatus = (status?: string | null) => String(status || 'pending').trim().toLowerCase();
+
+const isListingReviewActionable = (status?: string | null) => {
+    const normalized = normalizeListingStatus(status);
+    return normalized === 'pending' || normalized === 'resubmitted';
+};
+
+const matchesListingStatusFilter = (status: string | null | undefined, filter: ListingStatusFilter) => {
+    const normalized = normalizeListingStatus(status);
+    if (filter === 'active') return isListingReviewActionable(normalized);
+    if (filter === 'all') return true;
+    if (filter === 'live') return normalized === 'live' || normalized === 'published' || normalized === 'approved';
+    return normalized === filter;
+};
+
 export const AdminConsole: React.FC = () => {
     const { user, isAdmin, loading } = useAuth();
     const [activeTab, setActiveTab] = useState<Tab>('providers');
@@ -77,7 +94,7 @@ export const AdminConsole: React.FC = () => {
     const [listingRejectReason, setListingRejectReason] = useState<Record<string, string>>({});
     const [verificationStatusFilter, setVerificationStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'resubmitted'>('all');
     const [verificationRoleFilter, setVerificationRoleFilter] = useState<'all' | 'tour_company' | 'tour_instructor' | 'tour_guide' | 'local_guide'>('all');
-    const [listingStatusFilter, setListingStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+    const [listingStatusFilter, setListingStatusFilter] = useState<ListingStatusFilter>('active');
     const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'tour' | 'activity' | 'guide'>('all');
     const [verificationSearch, setVerificationSearch] = useState('');
     const [listingSearch, setListingSearch] = useState('');
@@ -135,7 +152,7 @@ export const AdminConsole: React.FC = () => {
     const pendingCount = useMemo(() => queue.filter((i) => i.status === 'pending' || i.status === 'resubmitted').length, [queue]);
     const approvedCount = useMemo(() => queue.filter((i) => i.status === 'approved').length, [queue]);
     const rejectedCount = useMemo(() => queue.filter((i) => i.status === 'rejected').length, [queue]);
-    const pendingListingCount = useMemo(() => listingQueue.filter((i) => i.status === 'pending').length, [listingQueue]);
+    const pendingListingCount = useMemo(() => listingQueue.filter((i) => isListingReviewActionable(i.status)).length, [listingQueue]);
     const rejectedListingCount = useMemo(() => listingQueue.filter((i) => i.status === 'rejected').length, [listingQueue]);
 
     const filteredVerificationQueue = useMemo(() => {
@@ -163,7 +180,7 @@ export const AdminConsole: React.FC = () => {
         const q = listingSearch.trim().toLowerCase();
         return listingQueue
             .filter((item) => {
-                const matchStatus = listingStatusFilter === 'all' || item.status === listingStatusFilter;
+                const matchStatus = matchesListingStatusFilter(item.status, listingStatusFilter);
                 const normType = item.type === 'event' ? 'guide' : item.type;
                 const matchType = listingTypeFilter === 'all' || normType === listingTypeFilter;
                 const hay = [item.title, item.name, item.location, normType, item.sub_category].filter(Boolean).join(' ').toLowerCase();
@@ -175,6 +192,11 @@ export const AdminConsole: React.FC = () => {
                 return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
             });
     }, [listingQueue, listingSearch, listingSort, listingStatusFilter, listingTypeFilter]);
+
+    const selectedReviewableListingCount = useMemo(
+        () => filteredListingQueue.filter((item) => selectedListingIds.includes(item.id) && isListingReviewActionable(item.status)).length,
+        [filteredListingQueue, selectedListingIds],
+    );
 
     const filteredMapAccounts = useMemo(() => {
         const query = mapSearch.trim().toLowerCase();
@@ -250,7 +272,7 @@ export const AdminConsole: React.FC = () => {
     };
 
     const toggleAllListings = () => {
-        const ids = filteredListingQueue.map((i) => i.id);
+        const ids = filteredListingQueue.filter((i) => isListingReviewActionable(i.status)).map((i) => i.id);
         const allSelected = ids.length > 0 && ids.every((id) => selectedListingIds.includes(id));
         setSelectedListingIds(allSelected ? [] : ids);
     };
@@ -278,7 +300,7 @@ export const AdminConsole: React.FC = () => {
     };
 
     const handleBulkListingReview = async (decision: 'live' | 'rejected') => {
-        const items = filteredListingQueue.filter((i) => selectedListingIds.includes(i.id));
+        const items = filteredListingQueue.filter((i) => selectedListingIds.includes(i.id) && isListingReviewActionable(i.status));
         if (!items.length) return;
         setBulkBusy('listing');
         try {
@@ -310,7 +332,7 @@ export const AdminConsole: React.FC = () => {
     };
 
     const resetListingControls = () => {
-        setListingStatusFilter('all');
+        setListingStatusFilter('active');
         setListingTypeFilter('all');
         setListingSearch('');
         setListingSort('created_desc');
@@ -744,10 +766,12 @@ export const AdminConsole: React.FC = () => {
                                     value={listingStatusFilter}
                                     onChange={(e) => setListingStatusFilter(e.target.value as typeof listingStatusFilter)}
                                 >
-                                    <option value="all">All statuses</option>
+                                    <option value="active">Needs review</option>
                                     <option value="pending">Pending</option>
-                                    <option value="approved">Approved</option>
+                                    <option value="resubmitted">Resubmitted</option>
+                                    <option value="live">Live / approved</option>
                                     <option value="rejected">Rejected</option>
+                                    <option value="all">All statuses</option>
                                 </select>
                             </div>
                             <div className="ac-filter-group">
@@ -794,32 +818,32 @@ export const AdminConsole: React.FC = () => {
                                         <label className="ac-select-all-label">
                                             <input
                                                 type="checkbox"
-                                                checked={filteredListingQueue.length > 0 && filteredListingQueue.every((i) => selectedListingIds.includes(i.id))}
+                                                checked={filteredListingQueue.some((i) => isListingReviewActionable(i.status)) && filteredListingQueue.filter((i) => isListingReviewActionable(i.status)).every((i) => selectedListingIds.includes(i.id))}
                                                 onChange={toggleAllListings}
                                             />
-                                            Select visible
+                                            Select reviewable
                                         </label>
-                                        <span className="ac-bulk-count">{selectedListingIds.length} selected</span>
+                                        <span className="ac-bulk-count">{selectedReviewableListingCount} reviewable selected</span>
                                     </div>
                                     <div className="ac-bulk-actions">
                                         <button
                                             className="ac-btn ac-btn--approve"
-                                            disabled={selectedListingIds.length === 0 || bulkBusy === 'listing'}
+                                            disabled={selectedReviewableListingCount === 0 || bulkBusy === 'listing'}
                                             onClick={() => void handleBulkListingReview('live')}
                                         >
                                             {bulkBusy === 'listing' ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
-                                            Approve & Go Live ({selectedListingIds.length})
+                                            Approve & Go Live ({selectedReviewableListingCount})
                                         </button>
                                         <button
                                             className="ac-btn ac-btn--reject"
-                                            disabled={selectedListingIds.length === 0 || bulkBusy === 'listing'}
+                                            disabled={selectedReviewableListingCount === 0 || bulkBusy === 'listing'}
                                             onClick={() => {
-                                                if (filteredListingQueue.filter((i) => selectedListingIds.includes(i.id)).length)
-                                                    setBulkConfirmation({ target: 'listing', count: selectedListingIds.length });
+                                                if (selectedReviewableListingCount)
+                                                    setBulkConfirmation({ target: 'listing', count: selectedReviewableListingCount });
                                             }}
                                         >
                                             <XCircle size={14} />
-                                            Reject ({selectedListingIds.length})
+                                            Reject ({selectedReviewableListingCount})
                                         </button>
                                     </div>
                                 </div>
@@ -868,6 +892,7 @@ export const AdminConsole: React.FC = () => {
                                 <div className="ac-queue">
                                     {filteredListingQueue.map((listing) => {
                                         const isBusy = busyId === listing.id;
+                                        const canReview = isListingReviewActionable(listing.status);
                                         const normType = ((listing.type === 'event' ? 'guide' : listing.type) as 'tour' | 'activity' | 'guide');
                                         return (
                                             <article key={listing.id} className="ac-queue-card">
@@ -876,6 +901,7 @@ export const AdminConsole: React.FC = () => {
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedListingIds.includes(listing.id)}
+                                                            disabled={!canReview}
                                                             onChange={() => toggleListingSelection(listing.id)}
                                                         />
                                                         <div>
@@ -893,7 +919,7 @@ export const AdminConsole: React.FC = () => {
                                                     <div className="ac-queue-card-actions">
                                                         <button
                                                             className="ac-btn ac-btn--approve"
-                                                            disabled={isBusy || listing.status === 'live' || listing.status === 'published'}
+                                                            disabled={isBusy || !canReview}
                                                             onClick={() => void handleListingReview(listing.id, 'live')}
                                                         >
                                                             {isBusy ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
@@ -901,7 +927,7 @@ export const AdminConsole: React.FC = () => {
                                                         </button>
                                                         <button
                                                             className="ac-btn ac-btn--reject"
-                                                            disabled={isBusy || listing.status === 'rejected'}
+                                                            disabled={isBusy || !canReview}
                                                             onClick={() => void handleListingReview(listing.id, 'rejected')}
                                                         >
                                                             {isBusy ? <Loader2 className="animate-spin" size={14} /> : <XCircle size={14} />}

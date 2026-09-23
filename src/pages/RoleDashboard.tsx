@@ -243,6 +243,8 @@ const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
 
 const ADMIN_TOPBAR_NAV_KEYS: SidebarKey[] = [
     'moderation',
+    'accepted',
+    'rejected',
     'inquiries',
 ];
 
@@ -1317,7 +1319,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'bookings', label: 'Refunds', icon: ClipboardList },
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'moderation', label: 'Moderation', icon: SquarePen },
-                { key: 'accepted', label: 'Accepted', icon: CheckCircle2 },
+                { key: 'accepted', label: 'Approved', icon: CheckCircle2 },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
                 { key: 'users', label: 'Users', icon: Users },
                 { key: 'map', label: 'Map', icon: MapPin },
@@ -4173,10 +4175,18 @@ export const RoleDashboard: React.FC = () => {
                             />
                         </label>
                         <div className="rdb-moderation-summary-grid">
-                            <div><span>Pending</span><strong>{adminMetrics.pendingPosts}</strong></div>
-                            <div><span>Approved</span><strong>{adminMetrics.approvedPosts}</strong></div>
-                            <div><span>Rejected</span><strong>{adminMetrics.rejectedPosts}</strong></div>
-                            <div><span>Verifications</span><strong>{adminMetrics.pendingVerifications}</strong></div>
+                            <button type="button" className="rdb-moderation-summary-card is-active" onClick={() => goToSection('moderation')}>
+                                <span>Pending</span><strong>{adminMetrics.pendingPosts}</strong>
+                            </button>
+                            <button type="button" className="rdb-moderation-summary-card" onClick={() => goToSection('accepted')}>
+                                <span>Approved</span><strong>{adminMetrics.approvedPosts}</strong>
+                            </button>
+                            <button type="button" className="rdb-moderation-summary-card" onClick={() => goToSection('rejected')}>
+                                <span>Rejected</span><strong>{adminMetrics.rejectedPosts}</strong>
+                            </button>
+                            <Link className="rdb-moderation-summary-card" to="/admin">
+                                <span>Verifications</span><strong>{adminMetrics.pendingVerifications}</strong>
+                            </Link>
                         </div>
                         <div className="rdb-list rdb-moderation-queue-list">
                             {adminQueueRows.slice(0, 16).map((item) => (
@@ -4257,9 +4267,9 @@ export const RoleDashboard: React.FC = () => {
             return (
                 <section className="rdb-content-grid">
                     <article className="rdb-panel">
-                        <h2>Accepted Summary</h2>
+                        <h2>Approved Summary</h2>
                         <div className="rdb-stat-list">
-                            <div><span>Accepted Posts</span><strong>{adminAcceptedRows.length}</strong></div>
+                            <div><span>Approved Posts</span><strong>{adminAcceptedRows.length}</strong></div>
                             <div><span>Active Queue</span><strong>{adminQueueRows.length}</strong></div>
                             <div><span>Total Packages</span><strong>{adminMetrics.totalPackages}</strong></div>
                             <div><span>Selected</span><strong>{selectedAcceptedItem ? titleForPost(selectedAcceptedItem) : 'N/A'}</strong></div>
@@ -4267,14 +4277,14 @@ export const RoleDashboard: React.FC = () => {
                     </article>
                     <article className="rdb-panel rdb-panel-wide">
                         <div className="rdb-panel-head">
-                            <h2>Accepted Packages</h2>
+                            <h2>Approved Listings</h2>
                             <small>{query ? `Filtered by "${search}"` : `${adminAcceptedRows.length} records`}</small>
                         </div>
                         {renderAdminPackageGroups(
                             adminAcceptedRows,
                             selectedAcceptedId,
                             setSelectedAcceptedId,
-                            'No accepted listings found.',
+                            'No approved listings found.',
                         )}
                     </article>
                 </section>
@@ -4682,6 +4692,16 @@ export const RoleDashboard: React.FC = () => {
                                         </button>
                                     );
                                 })}
+                                <button
+                                    type="button"
+                                    className="rdb-admin-shortcut rdb-admin-shortcut--all-sections"
+                                    onClick={() => setAdminCompactNav(false)}
+                                    aria-label="Show all admin sections in the sidebar"
+                                    title="Show all admin sections in the sidebar"
+                                >
+                                    <Settings2 size={15} />
+                                    <span>All sections</span>
+                                </button>
                             </div>
                         )}
 

@@ -217,6 +217,7 @@
     border: 1px solid rgba(24, 21, 18, 0.10);
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.76);
+    position: relative;
 }
 
 .vto-listing-card img {
@@ -566,4 +567,19 @@ html.dark .vto-empty strong {
     .vto-room-actions {
         width: 100%;
     }
+}
+
+.vto-card-discount-badge {
+  --dsb-size: 52px;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 2;
+}
+
+.vto-card-price-stack {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }

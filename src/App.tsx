@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
@@ -11,13 +11,14 @@ import { AppSEO } from './components/SEO';
 import { AppSplashScreen } from './components/AppSplashScreen';
 import { AppTutorialProvider } from './context/AppTutorialContext';
 import { OFFICIAL_SOCIAL_LINKS } from './lib/appContent';
+import { buildLoginPath } from './lib/authRedirect';
+import { captureCouponFromUrl, FIRST_BOOKING_COUPON_CODE, FIRST_BOOKING_COUPON_PERCENT } from './lib/coupons';
 import { getNativeAppLinkPath, isNativeAuthCallbackUrl, sanitizeNativeNavigationPath } from './lib/nativeApp';
 import { resolveEffectiveAccountRole } from './lib/platform';
 import { supabase } from './lib/supabase';
 import { VIRTUAL_TOURS_ENABLED } from './lib/virtualTours';
 
 const Home5 = lazy(async () => ({ default: (await import('./pages/Home5')).Home5 }));
-const About2 = lazy(async () => ({ default: (await import('./pages/About2')).About2 }));
 const AboutFinal = lazy(async () => ({ default: (await import('./pages/AboutFinal')).AboutFinal }));
 const WhoMadeIt = lazy(async () => ({ default: (await import('./pages/WhoMadeIt')).WhoMadeIt }));
 const DashboardHome = lazy(async () => ({ default: (await import('./pages/DashboardHome')).DashboardHome }));
@@ -74,7 +75,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={buildLoginPath()} replace />;
   }
 
   return <>{children}</>;
@@ -168,14 +169,11 @@ const HomeRoute: React.FC = () => {
     return <NativeLoadingFallback />;
   }
 
-  if (user) {
-    if (providerAccount || isAdminAccount || marketingAccount) {
-      return <Navigate to="/dashboard" replace />;
-    }
-    return <DashboardHome />;
+  if (user && (providerAccount || isAdminAccount || marketingAccount)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
-  return <Home5 />;
+  return <DashboardHome />;
 };
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -188,7 +186,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={buildLoginPath()} replace />;
   }
 
   if (!isAdminAccount) {
@@ -208,7 +206,7 @@ const ProviderRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={buildLoginPath()} replace />;
   }
 
   if (!isProvider) {
@@ -230,7 +228,7 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={buildLoginPath()} replace />;
   }
 
   if (providerAccount || isAdminAccount || marketingAccount) {
@@ -252,6 +250,7 @@ function App() {
       <AppTutorialProvider>
         <div className={`app${user ? ' app-authenticated' : ''}`}>
           <AppSEO />
+          <CouponLinkCapture />
           <NativeDeepLinkHandler />
           <AppNavbar />
           <Suspense fallback={isNativePlatform ? <AppSplashScreen /> : null}>
@@ -261,7 +260,7 @@ function App() {
               <Route path="/home3" element={<Navigate to="/" replace />} />
               <Route path="/home4" element={<Navigate to="/" replace />} />
               <Route path="/home5" element={<Navigate to="/" replace />} />
-              <Route path="/about" element={<GuestOnlyRoute><About2 /></GuestOnlyRoute>} />
+              <Route path="/about" element={<Home5 />} />
               <Route path="/about2" element={<Navigate to="/about" replace />} />
               <Route path="/about-final" element={<AboutFinal />} />
               <Route path="/whomadeit" element={<WhoMadeIt />} />
@@ -309,6 +308,100 @@ function App() {
 const NativeLoadingFallback: React.FC = () => (
   Capacitor.isNativePlatform() ? <AppSplashScreen lightweight /> : null
 );
+
+const CouponLinkCapture: React.FC = () => {
+  const location = useLocation();
+  const [claimed, setClaimed] = useState(false);
+
+  useEffect(() => {
+    const claim = captureCouponFromUrl(location.search, `${location.pathname}${location.search}`);
+    if (!claim) return;
+    setClaimed(true);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!claimed) return;
+
+    document.body.classList.add('coupon-modal-open');
+    const hideTimer = window.setTimeout(() => setClaimed(false), 10000);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setClaimed(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.body.classList.remove('coupon-modal-open');
+      window.clearTimeout(hideTimer);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [claimed]);
+
+  if (!claimed) return null;
+
+  return (
+    <div className="coupon-modal-backdrop" onClick={() => setClaimed(false)}>
+      <div
+        className="coupon-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="coupon-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="coupon-modal-close"
+          onClick={() => setClaimed(false)}
+          aria-label="Dismiss coupon message"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="coupon-modal-badge-wrap" aria-hidden="true">
+          <span className="coupon-modal-ring" />
+          <span className="coupon-confetti coupon-confetti-1" />
+          <span className="coupon-confetti coupon-confetti-2" />
+          <span className="coupon-confetti coupon-confetti-3" />
+          <span className="coupon-confetti coupon-confetti-4" />
+          <span className="coupon-confetti coupon-confetti-5" />
+          <span className="coupon-confetti coupon-confetti-6" />
+          <svg className="coupon-modal-badge" viewBox="0 0 64 64" width="72" height="72">
+            <defs>
+              <linearGradient id="couponBadgeGradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#16a34a" />
+              </linearGradient>
+            </defs>
+            <circle cx="32" cy="32" r="30" fill="url(#couponBadgeGradient)" />
+            <text x="32" y="30" textAnchor="middle" fontSize="19" fontWeight="800" fill="#ffffff" fontFamily="inherit">
+              {FIRST_BOOKING_COUPON_PERCENT}%
+            </text>
+            <text x="32" y="45" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#ffffff" letterSpacing="1.5" fontFamily="inherit">
+              OFF
+            </text>
+          </svg>
+        </div>
+
+        <h2 id="coupon-modal-title" className="coupon-modal-title">Congratulations!</h2>
+        <p className="coupon-modal-subtitle">
+          You have earned a {FIRST_BOOKING_COUPON_PERCENT}% discount on your first booking.
+        </p>
+
+        <div className="coupon-modal-code">
+          <span>Coupon code</span>
+          <strong>{FIRST_BOOKING_COUPON_CODE}</strong>
+        </div>
+
+        <p className="coupon-modal-note">Applies automatically when your first booking is confirmed.</p>
+
+        <button type="button" className="coupon-modal-cta" onClick={() => setClaimed(false)}>
+          Start exploring
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const NativeDeepLinkHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -391,11 +484,9 @@ const NativeDeepLinkHandler: React.FC = () => {
 const HIDE_GLOBAL_CHROME_PATHS = ['/login', '/signup', '/home4', '/home5', '/terms', '/about', '/about2', '/about-final', '/whomadeit'];
 
 const AppNavbar: React.FC = () => {
-  const { user } = useAuth();
   const { pathname } = useLocation();
-  const isGuestLanding = !user && pathname === '/';
   const isDashboardRoute = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
-  if (isGuestLanding || isDashboardRoute || HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
+  if (isDashboardRoute || HIDE_GLOBAL_CHROME_PATHS.includes(pathname)) return null;
   return <Navbar />;
 };
 

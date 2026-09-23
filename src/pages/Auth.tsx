@@ -13,6 +13,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CircleBottomUp } from 'reicon-react';
 import { supabase } from '../lib/supabase';
+import { getSafeNextPath } from '../lib/authRedirect';
 import { getNativeOAuthRedirectUrl, isNativeApp } from '../lib/nativeApp';
 import { getProfile, signUpWithRole } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
@@ -404,7 +405,7 @@ export const Auth: React.FC = () => {
         setIsLogin(login);
         setError(null);
         setInfo(null);
-        navigate(login ? '/login' : '/signup', { replace: true });
+        navigate(`${login ? '/login' : '/signup'}${location.search}`, { replace: true });
     };
 
     const getSignupStepValue = (step: SignupStep) => {
@@ -557,7 +558,7 @@ export const Auth: React.FC = () => {
                 resolveEffectiveAccountRole(profileData?.role, metadataRole)
             );
 
-            navigate(destination);
+            navigate(getSafeNextPath(location.search, destination));
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
         } finally {
@@ -669,7 +670,7 @@ export const Auth: React.FC = () => {
             if (activeRole === 'tourist') {
                 const { data: sessionData } = await supabase.auth.getSession();
                 if (sessionData.session?.user) {
-                    navigate(TOURIST_EXPLORE_PATH);
+                    navigate(getSafeNextPath(location.search, TOURIST_EXPLORE_PATH));
                     return;
                 }
             }
@@ -716,7 +717,7 @@ export const Auth: React.FC = () => {
 
         try {
             const useNativeOAuth = isNativeApp();
-            const redirectTo = getOAuthRedirectUrl(TOURIST_EXPLORE_PATH);
+            const redirectTo = getOAuthRedirectUrl(getSafeNextPath(location.search, TOURIST_EXPLORE_PATH));
 
             if (mode === 'signup') {
                 setOAuthIntent({

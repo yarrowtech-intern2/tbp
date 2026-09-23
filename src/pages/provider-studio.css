@@ -45,6 +45,14 @@
     margin-bottom: 14px;
 }
 
+.ps-load-icon {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex: 0 0 18px;
+}
+
 .ps-title {
     margin: 0 0 8px;
     font-size: clamp(1.8rem, 4vw, 2.6rem);
@@ -169,6 +177,236 @@
     font-size: 0.87rem;
     color: var(--text-muted);
     line-height: 1.6;
+}
+
+.ps-flow-board {
+    background: color-mix(in srgb, var(--surface-main) 92%, var(--accent) 8%);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-light));
+    border-radius: 18px;
+    box-shadow: var(--shadow-subtle);
+    display: grid;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 14px;
+}
+
+.ps-flow-intro {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-width: 0;
+}
+
+.ps-flow-intro-copy {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.ps-flow-kicker {
+    align-items: center;
+    color: var(--accent);
+    display: inline-flex;
+    font-size: 0.68rem;
+    font-weight: 900;
+    gap: 6px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.ps-flow-intro h2 {
+    font-size: clamp(1.08rem, 6vw, 1.38rem);
+    line-height: 1.1;
+    margin: 0;
+}
+
+.ps-flow-intro p {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.ps-flow-meter {
+    --flow-color: #22c55e;
+    --flow-track: color-mix(in srgb, var(--text-muted) 17%, transparent);
+    align-items: center;
+    aspect-ratio: 1;
+    background: color-mix(in srgb, var(--surface-main) 90%, var(--flow-color) 10%);
+    border-radius: 50%;
+    box-shadow:
+        0 10px 22px color-mix(in srgb, var(--flow-color) 18%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, var(--flow-color) 24%, transparent);
+    display: inline-grid;
+    flex: 0 0 auto;
+    justify-items: center;
+    overflow: hidden;
+    place-items: center;
+    position: relative;
+    transition: background 0.22s ease, box-shadow 0.22s ease;
+    width: 78px;
+}
+
+.ps-flow-meter--low {
+    --flow-color: #ef4444;
+}
+
+.ps-flow-meter--mid {
+    --flow-color: #eab308;
+}
+
+.ps-flow-meter--high {
+    --flow-color: #22c55e;
+}
+
+.ps-flow-meter-ring {
+    inset: 6px;
+    position: absolute;
+    transform: rotate(-90deg);
+}
+
+.ps-flow-meter-track,
+.ps-flow-meter-progress {
+    fill: none;
+    stroke-width: 7;
+}
+
+.ps-flow-meter-track {
+    stroke: var(--flow-track);
+}
+
+.ps-flow-meter-progress {
+    stroke: var(--flow-color);
+    stroke-linecap: round;
+    transition: stroke 0.22s ease, stroke-dasharray 0.22s ease;
+}
+
+.ps-flow-meter-inner {
+    align-items: center;
+    color: var(--text-main);
+    display: grid;
+    gap: 1px;
+    justify-items: center;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+}
+
+.ps-flow-meter-inner strong {
+    color: var(--flow-color);
+    font-size: 1rem;
+    font-weight: 900;
+}
+
+.ps-flow-meter-inner small {
+    color: var(--text-muted);
+    font-size: 0.54rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.ps-flow-steps {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ps-flow-step {
+    background: var(--surface-main);
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    display: grid;
+    gap: 7px;
+    min-height: 96px;
+    padding: 10px;
+    position: relative;
+}
+
+.ps-flow-step-number {
+    align-items: center;
+    background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+    border-radius: 12px;
+    color: var(--text-main);
+    display: inline-flex;
+    font-size: 1rem;
+    font-weight: 900;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+}
+
+.ps-flow-step-icon {
+    align-items: center;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-radius: 999px;
+    color: var(--accent);
+    display: inline-flex;
+    height: 34px;
+    justify-content: center;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 34px;
+}
+
+.ps-flow-step-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding-right: 38px;
+}
+
+.ps-flow-step-copy strong {
+    color: var(--text-main);
+    font-size: 0.84rem;
+    line-height: 1.2;
+}
+
+.ps-flow-step-copy small {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    line-height: 1.35;
+}
+
+.ps-flow-step em {
+    align-items: center;
+    background: color-mix(in srgb, var(--text-muted) 11%, transparent);
+    border-radius: 999px;
+    color: var(--text-muted);
+    display: inline-flex;
+    font-size: 0.62rem;
+    font-style: normal;
+    font-weight: 900;
+    justify-self: start;
+    letter-spacing: 0.06em;
+    padding: 4px 7px;
+    text-transform: uppercase;
+}
+
+.ps-flow-step.is-active {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border-light));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+.ps-flow-step.is-active em {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.ps-flow-step.is-done {
+    border-color: color-mix(in srgb, #22c55e 46%, var(--border-light));
+}
+
+.ps-flow-step.is-done .ps-flow-step-number,
+.ps-flow-step.is-done em {
+    background: #22c55e;
+    color: #ffffff;
+}
+
+:root[data-theme='dark'] .ps-flow-board {
+    background: color-mix(in srgb, var(--surface-main) 82%, var(--accent) 10%);
 }
 
 /* ── Capability Strip ─────────────────────────────────────────── */
@@ -319,6 +557,78 @@
 .ps-form {
     display: grid;
     gap: 14px;
+}
+
+.ps-stage-banner {
+    align-items: center;
+    background: color-mix(in srgb, var(--surface-main) 70%, var(--bg-main));
+    border: 1.5px solid var(--border-light);
+    border-radius: 14px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 11px;
+}
+
+.ps-stage-badge {
+    align-items: center;
+    background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+    border-radius: 12px;
+    color: var(--text-main);
+    display: inline-flex;
+    font-size: 1.05rem;
+    font-weight: 900;
+    height: 40px;
+    justify-content: center;
+    width: 40px;
+}
+
+.ps-stage-banner strong {
+    color: var(--text-main);
+    display: block;
+    font-size: 0.9rem;
+    line-height: 1.2;
+}
+
+.ps-stage-banner p {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    line-height: 1.4;
+    margin: 2px 0 0;
+}
+
+.ps-stage-banner em {
+    align-items: center;
+    background: color-mix(in srgb, var(--text-muted) 11%, transparent);
+    border-radius: 999px;
+    color: var(--text-muted);
+    display: inline-flex;
+    font-size: 0.62rem;
+    font-style: normal;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    padding: 5px 8px;
+    text-transform: uppercase;
+}
+
+.ps-stage-banner.is-active {
+    border-color: color-mix(in srgb, var(--accent) 56%, var(--border-light));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.ps-stage-banner.is-active em {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.ps-stage-banner.is-complete {
+    border-color: color-mix(in srgb, #22c55e 45%, var(--border-light));
+}
+
+.ps-stage-banner.is-complete .ps-stage-badge,
+.ps-stage-banner.is-complete em {
+    background: #22c55e;
+    color: #ffffff;
 }
 
 .ps-field {
@@ -875,9 +1185,9 @@ html.dark .ps-type-guidance--activity {
 
 .ps-market-title-icon {
     flex: none;
-    height: 24px;
+    height: 28px;
     object-fit: contain;
-    width: 24px;
+    width: 28px;
 }
 
 .ps-market-status {
@@ -1217,10 +1527,10 @@ html.dark .ps-type-guidance--activity {
     background: #ffffff;
     border-radius: 50%;
     flex: none;
-    height: 34px;
+    height: 38px;
     object-fit: contain;
     padding: 4px;
-    width: 34px;
+    width: 38px;
 }
 
 .ps-market-fab-text {
@@ -1469,6 +1779,55 @@ html.dark .ps-type-guidance--activity {
 
 .ps-inventory-link:hover {
     opacity: 0.75;
+}
+
+.ps-next-card {
+    display: grid;
+    gap: 10px;
+}
+
+.ps-next-card .ps-card-title {
+    margin-bottom: 0;
+}
+
+.ps-next-flow {
+    display: grid;
+    gap: 8px;
+}
+
+.ps-next-flow div {
+    align-items: center;
+    background: color-mix(in srgb, var(--surface-main) 60%, var(--bg-main));
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    display: grid;
+    gap: 2px 10px;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 10px;
+}
+
+.ps-next-flow span {
+    align-items: center;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 999px;
+    color: var(--accent);
+    display: inline-flex;
+    grid-row: span 2;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+}
+
+.ps-next-flow strong {
+    color: var(--text-main);
+    font-size: 0.86rem;
+    line-height: 1.2;
+}
+
+.ps-next-flow small {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    line-height: 1.35;
 }
 
 .ps-listing-grid {
@@ -1777,6 +2136,15 @@ html.dark .ps-type-guidance--activity {
 
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (min-width: 640px) {
+    .ps-flow-board {
+        align-items: stretch;
+        grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+    }
+
+    .ps-flow-steps {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
     .ps-two-up {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1822,6 +2190,16 @@ html.dark .ps-type-guidance--activity {
 }
 
 @media (max-width: 520px) {
+    .ps-stage-banner {
+        align-items: start;
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .ps-stage-banner em {
+        grid-column: 2;
+        justify-self: start;
+    }
+
     .ps-image-upload-row {
         flex-direction: column;
         align-items: flex-start;
@@ -1829,6 +2207,21 @@ html.dark .ps-type-guidance--activity {
 
     .ps-upload-hint {
         text-align: left;
+    }
+}
+
+@media (max-width: 380px) {
+    .ps-flow-intro {
+        grid-template-columns: 1fr;
+    }
+
+    .ps-flow-meter {
+        justify-self: start;
+        width: 72px;
+    }
+
+    .ps-flow-steps {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1937,6 +2330,87 @@ html.dark .ps-type-guidance--activity {
     font-size: 0.64rem;
 }
 
+.ps-page--embedded .ps-flow-board {
+    border-radius: 14px;
+    gap: 9px;
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+.ps-page--embedded .ps-flow-kicker {
+    font-size: 0.58rem;
+}
+
+.ps-page--embedded .ps-flow-intro {
+    gap: 5px;
+}
+
+.ps-page--embedded .ps-flow-intro-copy {
+    gap: 5px;
+}
+
+.ps-page--embedded .ps-flow-intro h2 {
+    font-size: clamp(0.98rem, 3vw, 1.14rem);
+}
+
+.ps-page--embedded .ps-flow-intro p {
+    font-size: 0.7rem;
+}
+
+.ps-page--embedded .ps-flow-meter {
+    width: 62px;
+}
+
+.ps-page--embedded .ps-flow-meter-ring {
+    inset: 5px;
+}
+
+.ps-page--embedded .ps-flow-meter-inner strong {
+    font-size: 0.82rem;
+}
+
+.ps-page--embedded .ps-flow-meter-inner small {
+    font-size: 0.46rem;
+}
+
+.ps-page--embedded .ps-flow-steps {
+    gap: 6px;
+}
+
+.ps-page--embedded .ps-flow-step {
+    border-radius: 11px;
+    gap: 5px;
+    min-height: 78px;
+    padding: 8px;
+}
+
+.ps-page--embedded .ps-flow-step-number {
+    border-radius: 10px;
+    font-size: 0.9rem;
+    height: 32px;
+    width: 32px;
+}
+
+.ps-page--embedded .ps-flow-step-icon {
+    height: 28px;
+    right: 8px;
+    top: 8px;
+    width: 28px;
+}
+
+.ps-page--embedded .ps-flow-step-copy {
+    padding-right: 30px;
+}
+
+.ps-page--embedded .ps-flow-step-copy strong {
+    font-size: 0.72rem;
+}
+
+.ps-page--embedded .ps-flow-step-copy small,
+.ps-page--embedded .ps-flow-step em {
+    font-size: 0.56rem;
+}
+
 .ps-page--embedded .ps-capability-strip {
     gap: 7px;
     margin-bottom: 10px;
@@ -1999,6 +2473,32 @@ html.dark .ps-type-guidance--activity {
 
 .ps-page--embedded .ps-form {
     gap: 10px;
+}
+
+.ps-page--embedded .ps-stage-banner {
+    border-radius: 11px;
+    gap: 8px;
+    padding: 8px;
+}
+
+.ps-page--embedded .ps-stage-badge {
+    border-radius: 10px;
+    font-size: 0.9rem;
+    height: 34px;
+    width: 34px;
+}
+
+.ps-page--embedded .ps-stage-banner strong {
+    font-size: 0.78rem;
+}
+
+.ps-page--embedded .ps-stage-banner p {
+    font-size: 0.66rem;
+}
+
+.ps-page--embedded .ps-stage-banner em {
+    font-size: 0.56rem;
+    padding: 4px 7px;
 }
 
 .ps-page--embedded .ps-two-up {
@@ -2229,6 +2729,33 @@ html.dark .ps-type-guidance--activity {
     font-size: 0.68rem;
 }
 
+.ps-page--embedded .ps-next-card {
+    gap: 8px;
+}
+
+.ps-page--embedded .ps-next-flow {
+    gap: 6px;
+}
+
+.ps-page--embedded .ps-next-flow div {
+    border-radius: 10px;
+    gap: 1px 8px;
+    padding: 8px;
+}
+
+.ps-page--embedded .ps-next-flow span {
+    height: 28px;
+    width: 28px;
+}
+
+.ps-page--embedded .ps-next-flow strong {
+    font-size: 0.76rem;
+}
+
+.ps-page--embedded .ps-next-flow small {
+    font-size: 0.64rem;
+}
+
 .ps-page--embedded .ps-edit-btn {
     padding: 4px 7px;
     border-width: 1px;
@@ -2338,4 +2865,122 @@ html.dark .ps-type-guidance--activity {
         width: 52px;
         height: 46px;
     }
+}
+
+/* ── Vendor discount box ─────────────────────────────────────── */
+.ps-discount-box {
+    border: 1px dashed #f5c66b;
+    border-radius: 16px;
+    background: #fffaf0;
+    display: grid;
+    gap: 10px;
+    padding: 12px 14px;
+}
+
+.ps-discount-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.ps-discount-clear {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--border-light);
+    border-radius: 999px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.72rem;
+    font-weight: 700;
+    gap: 4px;
+    padding: 4px 10px;
+}
+
+.ps-discount-clear:hover:not(:disabled) {
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+.ps-discount-controls {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ps-discount-mode {
+    max-width: 110px;
+}
+
+.ps-discount-value {
+    max-width: 110px;
+}
+
+.ps-discount-label {
+    flex: 1;
+    min-width: 180px;
+}
+
+.ps-discount-preview {
+    display: grid;
+    gap: 10px;
+}
+
+.ps-discount-badge-preview {
+    background: #ffd42a;
+    border-radius: 10px;
+    color: #a11204;
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    justify-self: start;
+    padding: 5px 12px;
+    box-shadow: 0 2px 5px rgb(0 0 0 / 15%);
+}
+
+.ps-discount-math {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.ps-discount-math div {
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    background: var(--surface-main);
+    display: grid;
+    gap: 3px;
+    padding: 9px 11px;
+}
+
+.ps-discount-math span {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.ps-discount-math strong {
+    color: var(--text-main);
+    font-size: 0.92rem;
+}
+
+.ps-discount-math .ps-discount-final {
+    background: #eefaf1;
+    border-color: #7fd49b;
+}
+
+.ps-discount-math .ps-discount-final span,
+.ps-discount-math .ps-discount-final strong {
+    color: #116b3a;
+}
+
+.ps-discount-note {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    margin: 0;
 }

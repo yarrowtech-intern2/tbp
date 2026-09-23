@@ -18,7 +18,8 @@ import {
   type PostRecord,
   type UnifiedBooking,
 } from '../lib/destinations';
-import { calculatePricingFromProviderUnit } from '../lib/pricing';
+import { calculatePricingFromProviderUnit, resolveListingDisplayPricing } from '../lib/pricing';
+import { DiscountBadge, getListingDiscountPercentForCard } from '../components/DiscountBadge';
 import { isProviderRole, normalizeRoleValue, type ListingType } from '../lib/platform';
 import { VIRTUAL_TOURS_ENABLED, isVirtualTourRecord } from '../lib/virtualTours';
 import { onBookingSync } from '../lib/bookingSync';
@@ -190,7 +191,15 @@ const ExploreListingCard: React.FC<{
   const isLiveTour = isVirtualTourRecord(post);
   const presentation = getExplorePresentation(post);
   const price = formatPrice(post.price);
-  const displayedPrice = price === 'Custom' ? 'Price on request' : `${presentation.pricePrefix} ${price}`;
+  const discountPercent = getListingDiscountPercentForCard(post);
+  const displayPricing = discountPercent > 0 && price !== 'Custom'
+    ? resolveListingDisplayPricing({ price: post.price, feeBreakdown: post.fee_breakdown ?? null })
+    : null;
+  const displayedPrice = price === 'Custom'
+    ? 'Price on request'
+    : `${presentation.pricePrefix} ${displayPricing
+        ? `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotal)}`
+        : price}`;
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -315,6 +324,11 @@ const ExploreListingCard: React.FC<{
               </span>
               {isBooked && <span className="txp-card-booked">Booked</span>}
               {isLiveTour && <span className="txp-card-booked txp-card-booked--live">Live</span>}
+              {discountPercent > 0 && (
+                <span className="txp-card-discount-badge">
+                  <DiscountBadge discountPercent={discountPercent} />
+                </span>
+              )}
               {boosted && (
                 <span className="txp-card-boosted" aria-label="Boosted listing" title="Boosted">
                   <ArrowUpRight size={15} />
@@ -348,7 +362,18 @@ const ExploreListingCard: React.FC<{
               ))}
             </div>
             <div className="txp-card-actions">
-              <strong>{displayedPrice}</strong>
+              {displayPricing ? (
+                <span className="txp-card-price-stack">
+                  <span className="discount-price-before">
+                    Rs. {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotalBeforeDiscount)}
+                  </span>
+                  <strong>
+                    {presentation.pricePrefix} Rs. {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(displayPricing.touristTotal)}
+                  </strong>
+                </span>
+              ) : (
+                <strong>{displayedPrice}</strong>
+              )}
               <Link to={href} className="txp-card-book" onClick={(event) => event.stopPropagation()}>
                 {isBooked ? 'Book again' : presentation.cta}
               </Link>

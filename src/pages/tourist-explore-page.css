@@ -853,3 +853,30 @@
     height: 34px;
   }
 }
+
+.txp-card-discount-badge {
+  position: absolute;
+  right: 12px;
+  top: 52px;
+  z-index: 3;
+  filter: drop-shadow(0 2px 5px rgb(0 0 0 / 35%));
+}
+
+.txp-card--compact .txp-card-discount-badge {
+  --dsb-size: 48px;
+  right: 10px;
+  top: 44px;
+}
+
+.txp-card-price-stack {
+  align-items: baseline;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.txp-card-price-stack strong {
+  color: #7CFC9B;
+  font-weight: 900;
+}

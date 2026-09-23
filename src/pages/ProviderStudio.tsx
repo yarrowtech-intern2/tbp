@@ -39,12 +39,16 @@ import {
     type PostRecord,
 } from '../lib/destinations';
 import {
+    MAX_LISTING_DISCOUNT_PERCENT,
     PLATFORM_FEE_RATE,
+    applyListingDiscount,
     buildListingFeeBreakdownForStorage,
     calculatePricingFromFeeBreakdown,
-    calculatePricingFromProviderUnit,
+    normalizeListingDiscount,
+    resolveListingDisplayPricing,
     type ListingFeeBreakdown,
     type ListingFeeBreakdownBasis,
+    type ListingFeeDiscountMode,
     type ListingFeeBreakdownItem,
     type ListingFeeBreakdownStatus,
 } from '../lib/pricing';
@@ -195,6 +199,21 @@ const getDraftFeeItems = (breakdown?: ListingFeeBreakdown | null) => (
     breakdown?.items?.length ? breakdown.items : createDefaultFeeItems()
 );
 
+const DISCOUNT_MODE_OPTIONS: Array<{ value: ListingFeeDiscountMode; label: string }> = [
+    { value: 'percent', label: '% off' },
+    { value: 'flat', label: 'Rs off' },
+];
+
+const normalizeDiscountDraftValue = (value: unknown) => {
+    const amount = typeof value === 'number' ? value : Number(value || 0);
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    return Math.round(amount * 100) / 100;
+};
+
+const getDraftDiscount = (breakdown?: ListingFeeBreakdown | null): ListingFeeBreakdown['discount'] => (
+    breakdown?.discount ?? null
+);
+
 const TYPE_META: Record<ListingType, { icon: React.ReactNode; description: string }> = {
     tour: { icon: <Compass size={22} />, description: 'Itinerary-led guided tour' },
     activity: { icon: <Zap size={22} />, description: 'Hands-on guided activity' },
@@ -262,10 +281,15 @@ const readProviderStudioDraft = (userId: string, allowedTypes: ListingType[]): P
                 type,
                 gallery_images: normalizeImageList(rawForm.gallery_images || []),
                 price: typeof rawForm.price === 'number' ? rawForm.price : Number(rawForm.price || 0) || null,
-                fee_breakdown: buildDraftFeeBreakdown(
-                    normalizeFeeDraftItems(rawForm.fee_breakdown, typeof rawForm.price === 'number' ? rawForm.price : Number(rawForm.price || 0) || null),
-                    PLATFORM_FEE_RATE,
-                ),
+                fee_breakdown: {
+                    ...buildDraftFeeBreakdown(
+                        normalizeFeeDraftItems(rawForm.fee_breakdown, typeof rawForm.price === 'number' ? rawForm.price : Number(rawForm.price || 0) || null),
+                        PLATFORM_FEE_RATE,
+                    ),
+                    discount: normalizeListingDiscount(
+                        (rawForm.fee_breakdown as ListingFeeBreakdown | undefined)?.discount,
+                    ),
+                },
             },
             virtualDetails: normalizeVirtualTourDetails(parsed.virtualDetails),
             proofPhotoInput: typeof parsed.proofPhotoInput === 'string' ? parsed.proofPhotoInput : '',
@@ -316,8 +340,18 @@ const getStatusPillClass = (verificationStatus?: string | null) => {
 const getListingTitle = (listing: PostRecord) => listing.title || listing.name || 'Untitled listing';
 
 const COMPACT_LAYOUT_QUERY = '(max-width: 979px)';
+const STUDIO_LOAD_ICON_SRC = '/icons/load.gif';
 
 const formatRs = (value: number) => `Rs ${Math.round(value).toLocaleString()}`;
+
+const StudioLoadIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <img className={className || 'ps-load-icon'} src={STUDIO_LOAD_ICON_SRC} alt="" aria-hidden="true" />
+);
+
+const getFlowStateLabel = (done: boolean, active: boolean) => {
+    if (done) return 'Done';
+    return active ? 'Now' : 'Next';
+};
 
 const getPrimaryActionCopy = (type: ListingType) => {
     switch (type) {
@@ -659,10 +693,15 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 ? LOCAL_GUIDE_VIRTUAL_SUBCATEGORY
                 : listing.sub_category || '',
             price: typeof listing.price === 'number' ? listing.price : null,
-            fee_breakdown: buildDraftFeeBreakdown(
-                normalizeFeeDraftItems(listing.fee_breakdown, typeof listing.price === 'number' ? listing.price : null),
-                platformFeeRate,
-            ),
+            fee_breakdown: {
+                ...buildDraftFeeBreakdown(
+                    normalizeFeeDraftItems(listing.fee_breakdown, typeof listing.price === 'number' ? listing.price : null),
+                    platformFeeRate,
+                ),
+                discount: normalizeListingDiscount(
+                    (listing.fee_breakdown as ListingFeeBreakdown | undefined)?.discount,
+                ),
+            },
             starts_at: listing.starts_at || '',
             status: (listing.status as ListingInput['status']) || 'pending',
         });
@@ -745,6 +784,55 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         () => calculatePricingFromFeeBreakdown(feeBreakdownDraft, 1, platformFeeRate),
         [feeBreakdownDraft, platformFeeRate]
     );
+    const discountDraft = useMemo(() => getDraftDiscount(form.fee_breakdown), [form.fee_breakdown]);
+    const discountPreview = useMemo(
+        () => applyListingDiscount(pricingPreview.total_price, discountDraft, platformFeeRate),
+        [pricingPreview.total_price, discountDraft, platformFeeRate]
+    );
+    const hasDiscountPreview = discountPreview.discount_amount > 0;
+    const detailsStepDone = Boolean(form.title.trim() && form.location.trim());
+    const photosStepDone = galleryImages.length >= MIN_LISTING_IMAGES && Boolean(form.image_url && form.cover_image_url);
+    const priceStepDone = pricingPreview.provider_subtotal > 0;
+    const reviewStepDone = Boolean(form.description.trim()) && (editingListingId !== null || (acceptTerms && acceptAgreement));
+    const flowSteps = [
+        {
+            id: 'details',
+            number: '1',
+            title: 'Name and place',
+            cue: 'What is it? Where?',
+            icon: <Type size={18} />,
+            done: detailsStepDone,
+        },
+        {
+            id: 'photos',
+            number: '2',
+            title: 'Photos',
+            cue: `${galleryImages.length}/${MIN_LISTING_IMAGES} needed`,
+            icon: <Image size={18} />,
+            done: photosStepDone,
+        },
+        {
+            id: 'price',
+            number: '3',
+            title: 'Price',
+            cue: pricingPreview.provider_subtotal > 0 ? formatRs(pricingPreview.provider_subtotal) : 'Add fee',
+            icon: <ReceiptText size={18} />,
+            done: priceStepDone,
+        },
+        {
+            id: 'review',
+            number: '4',
+            title: 'Check and send',
+            cue: editingListingId ? 'Ready to update' : 'Agree and submit',
+            icon: <CheckCircle2 size={18} />,
+            done: reviewStepDone,
+        },
+    ];
+    const activeFlowStepId = flowSteps.find((step) => !step.done)?.id ?? flowSteps[flowSteps.length - 1].id;
+    const completedFlowSteps = flowSteps.filter((step) => step.done).length;
+    const flowProgress = Math.round((completedFlowSteps / flowSteps.length) * 100);
+    const flowTone = flowProgress <= 40 ? 'low' : flowProgress <= 70 ? 'mid' : 'high';
+    const listingKindLabel = getListingSingularCopy(form.type, studioRole);
     const marketInsight = useMemo(
         () => buildMarketPriceInsight({
             listingType: form.type,
@@ -822,7 +910,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setForm((current) => {
             const currentItems = getDraftFeeItems(current.fee_breakdown);
             const nextItems = updater(currentItems);
-            const nextBreakdown = buildDraftFeeBreakdown(nextItems, platformFeeRate);
+            // Keep the vendor discount intact while fee line items change.
+            const nextBreakdown = {
+                ...buildDraftFeeBreakdown(nextItems, platformFeeRate),
+                discount: getDraftDiscount(current.fee_breakdown),
+            };
             const nextPricing = calculatePricingFromFeeBreakdown(nextBreakdown, 1, platformFeeRate);
             return {
                 ...current,
@@ -845,6 +937,52 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const addCustomFeeItem = useCallback(() => {
         updateFeeItems((items) => [...items, createFeeItem('', true)]);
     }, [updateFeeItems]);
+
+    const updateDiscount = useCallback((patch: {
+        mode?: ListingFeeDiscountMode;
+        value?: number;
+        label?: string;
+    }) => {
+        setForm((current) => {
+            const currentItems = getDraftFeeItems(current.fee_breakdown);
+            const currentDiscount = getDraftDiscount(current.fee_breakdown);
+            const rawMode = patch.mode ?? currentDiscount?.mode ?? 'percent';
+            const rawValue = normalizeDiscountDraftValue(
+                patch.value !== undefined ? patch.value : currentDiscount?.value,
+            );
+            const nextDiscount = {
+                mode: rawMode,
+                // Keep the discount valid instead of silently dropping it when a
+                // vendor types past the 90% cap.
+                value: rawMode === 'percent'
+                    ? Math.min(rawValue, MAX_LISTING_DISCOUNT_PERCENT)
+                    : rawValue,
+                label: patch.label !== undefined
+                    ? patch.label
+                    : (currentDiscount?.label || ''),
+            };
+            const shouldKeepDraftDiscount = nextDiscount.value > 0
+                || nextDiscount.label.trim().length > 0
+                || patch.mode !== undefined;
+            const nextBreakdown = {
+                ...buildDraftFeeBreakdown(currentItems, platformFeeRate),
+                discount: shouldKeepDraftDiscount ? nextDiscount : null,
+            };
+            return { ...current, fee_breakdown: nextBreakdown };
+        });
+        setFeeBreakdownError(null);
+    }, [platformFeeRate]);
+
+    const clearDiscount = useCallback(() => {
+        setForm((current) => ({
+            ...current,
+            fee_breakdown: {
+                ...buildDraftFeeBreakdown(getDraftFeeItems(current.fee_breakdown), platformFeeRate),
+                discount: null,
+            },
+        }));
+        setFeeBreakdownError(null);
+    }, [platformFeeRate]);
 
     const removeCustomFeeItem = useCallback((itemId: string) => {
         updateFeeItems((items) => {
@@ -997,7 +1135,19 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             setFeeBreakdownError('Add a label for every fee item with an amount.');
             return;
         }
-        const submissionFeeBreakdown = buildListingFeeBreakdownForStorage(feeBreakdownDraft, platformFeeRate);
+        const submissionFeeBreakdown = buildListingFeeBreakdownForStorage(
+            {
+                ...feeBreakdownDraft,
+                discount: hasDiscountPreview
+                    ? {
+                        mode: discountDraft?.mode || 'percent',
+                        value: discountDraft?.value || 0,
+                        label: discountDraft?.label || null,
+                    }
+                    : null,
+            },
+            platformFeeRate,
+        );
         if (!submissionFeeBreakdown) {
             setFeeBreakdownError('Add at least one included fee item before posting.');
             return;
@@ -1236,7 +1386,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             >
                 <div className="ps-market-head">
                     <span className="ps-market-title">
-                        <img className="ps-market-title-icon" src="/icons/local-llm.gif" alt="" aria-hidden="true" />
+                        <StudioLoadIcon className="ps-market-title-icon" />
                         Market price check
                     </span>
                     {marketInsight && (
@@ -1350,7 +1500,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     aria-controls="ps-market-sheet"
                     onClick={() => setMarketSheetOpen((open) => !open)}
                 >
-                    <img className="ps-market-fab-icon" src="/icons/local-llm.gif" alt="" aria-hidden="true" />
+                    <StudioLoadIcon className="ps-market-fab-icon" />
                     <span className="ps-market-fab-text">
                         <span>Price check</span>
                         {marketInsight && <strong>{marketInsight.statusLabel}</strong>}
@@ -1384,10 +1534,6 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                 {/* Header */}
                 <div className="ps-header">
-                    <span className="ps-badge">
-                        <Sparkles size={12} />
-                        {localGuideStudio ? 'Live AR/VR Tours' : 'Provider Studio'}
-                    </span>
                     <h1 className="ps-title">{localGuideStudio ? 'Create Live AR/VR Tour' : 'Your Posting Studio'}</h1>
                     <p className="ps-subtitle">
                         {localGuideStudio
@@ -1425,6 +1571,62 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                         </div>
                     </div>
                 )}
+
+                <section className="ps-flow-board" aria-label="Posting flow">
+                    <div className="ps-flow-intro">
+                        <div className="ps-flow-intro-copy">
+                            <span className="ps-flow-kicker">
+                                <StudioLoadIcon />
+                                Simple path
+                            </span>
+                            <h2>{editingListingId ? `Update ${listingKindLabel}` : `Create ${listingKindLabel}`}</h2>
+                            <p>Follow the big numbers. Green is done. Orange is the next part.</p>
+                        </div>
+                        <div
+                            className={`ps-flow-meter ps-flow-meter--${flowTone}`}
+                            role="progressbar"
+                            aria-label="Posting completion"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={flowProgress}
+                        >
+                            <svg className="ps-flow-meter-ring" viewBox="0 0 64 64" aria-hidden="true">
+                                <circle className="ps-flow-meter-track" cx="32" cy="32" r="25" pathLength="100" />
+                                <circle
+                                    className="ps-flow-meter-progress"
+                                    cx="32"
+                                    cy="32"
+                                    r="25"
+                                    pathLength="100"
+                                    strokeDasharray={`${flowProgress} 100`}
+                                />
+                            </svg>
+                            <span className="ps-flow-meter-inner">
+                                <strong>{flowProgress}%</strong>
+                                <small>Done</small>
+                            </span>
+                        </div>
+                    </div>
+                    <div className="ps-flow-steps">
+                        {flowSteps.map((step) => {
+                            const active = step.id === activeFlowStepId;
+                            return (
+                                <div
+                                    key={step.id}
+                                    className={`ps-flow-step${step.done ? ' is-done' : ''}${active ? ' is-active' : ''}`}
+                                >
+                                    <span className="ps-flow-step-number">{step.number}</span>
+                                    <span className="ps-flow-step-icon">{step.icon}</span>
+                                    <span className="ps-flow-step-copy">
+                                        <strong>{step.title}</strong>
+                                        <small>{step.cue}</small>
+                                    </span>
+                                    <em>{getFlowStateLabel(step.done, active)}</em>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
 
                 {/* Quick-start capability chips */}
                 {allowedTypes.length > 0 && !localGuideStudio && (
@@ -1505,6 +1707,15 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                         )}
 
                         <form onSubmit={handleSubmit} className="ps-form">
+                            <div className={`ps-stage-banner${detailsStepDone ? ' is-complete' : ''}${activeFlowStepId === 'details' ? ' is-active' : ''}`}>
+                                <span className="ps-stage-badge">1</span>
+                                <div>
+                                    <strong>Name and place</strong>
+                                    <p>Tourists first see the title and location.</p>
+                                </div>
+                                <em>{getFlowStateLabel(detailsStepDone, activeFlowStepId === 'details')}</em>
+                            </div>
+
                             <label className="ps-field">
                                 <span className="ps-field-label"><Type size={13} /> {studioTypeGuidance.titleLabel}</span>
                                 <input
@@ -1819,6 +2030,15 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                 </section>
                             )}
 
+                            <div className={`ps-stage-banner${photosStepDone ? ' is-complete' : ''}${activeFlowStepId === 'photos' ? ' is-active' : ''}`}>
+                                <span className="ps-stage-badge">2</span>
+                                <div>
+                                    <strong>Photos</strong>
+                                    <p>{galleryImages.length}/{MIN_LISTING_IMAGES} required photos added.</p>
+                                </div>
+                                <em>{getFlowStateLabel(photosStepDone, activeFlowStepId === 'photos')}</em>
+                            </div>
+
                             <div className="ps-field">
                                 <span className="ps-field-label"><Image size={13} /> Listing Images ({galleryImages.length}/{MAX_LISTING_IMAGES})</span>
                                 <div className="ps-image-upload-row">
@@ -1918,6 +2138,15 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                 </div>
                             </div>
 
+                            <div className={`ps-stage-banner${priceStepDone ? ' is-complete' : ''}${activeFlowStepId === 'price' ? ' is-active' : ''}`}>
+                                <span className="ps-stage-badge">3</span>
+                                <div>
+                                    <strong>Price</strong>
+                                    <p>Enter fees. Tourist price updates by itself.</p>
+                                </div>
+                                <em>{getFlowStateLabel(priceStepDone, activeFlowStepId === 'price')}</em>
+                            </div>
+
                             <div className="ps-pricing-layout">
                                 <div className="ps-fee-section">
                                     <div className="ps-fee-section-head">
@@ -1997,18 +2226,104 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                                     {feeBreakdownError && <p className="ps-gallery-error">{feeBreakdownError}</p>}
 
+                                    <div className="ps-discount-box">
+                                        <div className="ps-discount-head">
+                                            <span className="ps-field-label"><Tag size={13} /> Discount (optional)</span>
+                                            {hasDiscountPreview && (
+                                                <button
+                                                    type="button"
+                                                    className="ps-discount-clear"
+                                                    onClick={clearDiscount}
+                                                    disabled={!canAccessStudio}
+                                                >
+                                                    <X size={12} /> Remove discount
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="ps-discount-controls">
+                                            <select
+                                                className="ps-select ps-discount-mode"
+                                                value={discountDraft?.mode || 'percent'}
+                                                onChange={(event) => updateDiscount({
+                                                    mode: event.target.value as ListingFeeDiscountMode,
+                                                    value: discountDraft?.value,
+                                                })}
+                                                disabled={!canAccessStudio}
+                                                aria-label="Discount type"
+                                            >
+                                                {DISCOUNT_MODE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                className="ps-input ps-discount-value"
+                                                type="number"
+                                                min="1"
+                                                max={discountDraft?.mode === 'flat' ? undefined : MAX_LISTING_DISCOUNT_PERCENT}
+                                                step="1"
+                                                value={discountDraft?.value || ''}
+                                                onChange={(event) => updateDiscount({ value: normalizeDiscountDraftValue(event.target.value) })}
+                                                placeholder={discountDraft?.mode === 'flat' ? 'Rs' : '%'}
+                                                disabled={!canAccessStudio}
+                                                aria-label="Discount value"
+                                            />
+                                            <input
+                                                className="ps-input ps-discount-label"
+                                                value={discountDraft?.label || ''}
+                                                onChange={(event) => updateDiscount({ label: event.target.value })}
+                                                placeholder="Optional label, e.g. Monsoon offer"
+                                                maxLength={40}
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </div>
+                                        {hasDiscountPreview ? (
+                                            <div className="ps-discount-preview">
+                                                <span className="ps-discount-badge-preview">
+                                                    {discountPreview.discount_percent}% OFF
+                                                </span>
+                                                <div className="ps-discount-math">
+                                                    <div>
+                                                        <span>Tourist price before</span>
+                                                        <strong>Rs {discountPreview.tourist_total_before_discount.toLocaleString()}</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span>Discount</span>
+                                                        <strong>-Rs {discountPreview.discount_amount.toLocaleString()}</strong>
+                                                    </div>
+                                                    <div className="ps-discount-final">
+                                                        <span>Final tourist price</span>
+                                                        <strong>Rs {discountPreview.tourist_total.toLocaleString()}</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span>You receive</span>
+                                                        <strong>Rs {discountPreview.provider_payout_amount.toLocaleString()}</strong>
+                                                    </div>
+                                                </div>
+                                                {discountDraft?.mode === 'flat' && pricingPreview.total_price > 0 && (
+                                                    <p className="ps-discount-note">
+                                                        Equals {discountPreview.discount_percent}% off the tourist price.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="ps-discount-note">
+                                                Slashed prices and a sale badge show on public cards automatically.
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="ps-fee-preview">
                                         <div>
                                             <span>{studioTypeGuidance.feeLabel.replace(' (Rs)', '')}</span>
-                                            <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong>
+                                            <strong>Rs {(hasDiscountPreview ? discountPreview.provider_payout_amount : pricingPreview.provider_subtotal).toLocaleString()}</strong>
                                         </div>
                                         <div>
                                             <span>Platform fee ({Math.round(platformFeeRate * 100)}%)</span>
-                                            <strong>Rs {pricingPreview.platform_fee_amount.toLocaleString()}</strong>
+                                            <strong>Rs {(hasDiscountPreview ? discountPreview.platform_fee_amount : pricingPreview.platform_fee_amount).toLocaleString()}</strong>
                                         </div>
                                         <div>
                                             <span>Tourist total shown</span>
-                                            <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong>
+                                            <strong>Rs {(hasDiscountPreview ? discountPreview.tourist_total : pricingPreview.total_price).toLocaleString()}</strong>
                                         </div>
                                         {pricingPreview.optional_total > 0 && (
                                             <div>
@@ -2040,8 +2355,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     />
                                     <p className="ps-price-note">
                                         {localGuideStudio ? 'Tourists see ' : form.type === 'tour' ? 'Package cards show ' : 'Activity cards show '}
-                                        <strong>Rs {pricingPreview.total_price.toLocaleString()}</strong> including platform fee.
-                                        You receive <strong>Rs {pricingPreview.provider_subtotal.toLocaleString()}</strong> for one {studioTypeGuidance.priceNote}.
+                                        <strong>Rs {(hasDiscountPreview ? discountPreview.tourist_total : pricingPreview.total_price).toLocaleString()}</strong>
+                                        {hasDiscountPreview ? ' after discount, including platform fee.' : ' including platform fee.'}
+                                        You receive <strong>Rs {(hasDiscountPreview ? discountPreview.provider_payout_amount : pricingPreview.provider_subtotal).toLocaleString()}</strong> for one {studioTypeGuidance.priceNote}.
                                     </p>
                                 </label>
                                 <label className="ps-field">
@@ -2054,6 +2370,15 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                         disabled={!canAccessStudio}
                                     />
                                 </label>
+                            </div>
+
+                            <div className={`ps-stage-banner${reviewStepDone ? ' is-complete' : ''}${activeFlowStepId === 'review' ? ' is-active' : ''}`}>
+                                <span className="ps-stage-badge">4</span>
+                                <div>
+                                    <strong>Check and send</strong>
+                                    <p>Tell the story, accept terms, then send to admin.</p>
+                                </div>
+                                <em>{getFlowStateLabel(reviewStepDone, activeFlowStepId === 'review')}</em>
                             </div>
 
                             <label className="ps-field">
@@ -2113,14 +2438,39 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     </article>
 
                     <div className="ps-side-stack">
-                    {renderMarketDock()}
+                        {renderMarketDock()}
+
+                        <article className="ps-card ps-next-card" aria-label="What happens after submit">
+                            <span className="ps-card-label">
+                                <CheckCircle2 size={11} />
+                                After submit
+                            </span>
+                            <h2 className="ps-card-title">Review path</h2>
+                            <div className="ps-next-flow">
+                                <div>
+                                    <span><Upload size={16} /></span>
+                                    <strong>You send it</strong>
+                                    <small>Listing goes to admin.</small>
+                                </div>
+                                <div>
+                                    <span><ShieldAlert size={16} /></span>
+                                    <strong>Admin checks</strong>
+                                    <small>Approved, live, or needs edits.</small>
+                                </div>
+                                <div>
+                                    <span><StudioLoadIcon /></span>
+                                    <strong>Tourists see it</strong>
+                                    <small>Bookings can start.</small>
+                                </div>
+                            </div>
+                        </article>
 
                     {/* ── Inventory Card ── */}
                     <article className="ps-card ps-inventory-card">
                         <div className="ps-card-head">
                             <div>
                                 <span className="ps-card-label">
-                                    <Sparkles size={11} />
+                                    <StudioLoadIcon />
                                     {localGuideStudio ? 'Live Tour History' : 'Posting History'}
                                 </span>
                                 <h2 className="ps-card-title">{localGuideStudio ? 'Your live tours' : 'Your listings'}</h2>
@@ -2177,11 +2527,20 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                                     <span className={getStatusDotClass(listing.status)}>
                                                         {getListingStatusLabel(listing.status)}
                                                     </span>
-                                                    {typeof listing.price === 'number' && (
-                                                        <span className="ps-price">
-                                                            You receive Rs {listing.price.toLocaleString()} · Tourist sees Rs {calculatePricingFromProviderUnit(listing.price, 1, platformFeeRate).tourist_unit_price.toLocaleString()}
-                                                        </span>
-                                                    )}
+                                                    {typeof listing.price === 'number' && (() => {
+                                                        const listingPricing = resolveListingDisplayPricing({
+                                                            price: listing.price,
+                                                            feeBreakdown: listing.fee_breakdown ?? null,
+                                                            platformFeeRate,
+                                                        });
+                                                        return (
+                                                            <span className="ps-price">
+                                                                {listingPricing.discountPercent > 0
+                                                                    ? `You receive Rs ${Math.round(listingPricing.touristTotal / (1 + platformFeeRate)).toLocaleString()} · Tourist sees Rs ${Math.round(listingPricing.touristTotal).toLocaleString()} (${Math.round(listingPricing.discountPercent)}% off)`
+                                                                    : `You receive Rs ${listing.price.toLocaleString()} · Tourist sees Rs ${Math.round(listingPricing.touristTotalBeforeDiscount).toLocaleString()}`}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>

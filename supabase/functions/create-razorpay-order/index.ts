@@ -30,11 +30,14 @@ interface CreateOrderBody {
     provider_payout_amount?: number;
     booking_date?: string | null;
     is_virtual_tour?: boolean;
+    coupon_code?: string | null;
     currency?: string;
 }
 
 type ListingType = 'tour' | 'activity' | 'guide';
 const PLATFORM_FEE_RATE = 0.15;
+const FIRST_CONFIRMED_BOOKING_STATUSES = ['confirmed', 'accepted', 'completed'];
+const ACTIVE_REDEMPTION_STATUSES = ['reserved', 'paid_pending', 'used'];
 
 const encoder = new TextEncoder();
 const LEGACY_LISTING_ID_COLUMNS = ['listing_id', 'post_id', 'activity_id'] as const;
@@ -96,6 +99,168 @@ const normalizeLooseString = (value: unknown): string => {
     const lowered = trimmed.toLowerCase();
     if (lowered === 'undefined' || lowered === 'null') return '';
     return trimmed;
+};
+
+const normalizeCouponCode = (value: unknown): string => {
+    const normalized = normalizeLooseString(value).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    return normalized;
+};
+
+interface CouponRow {
+    id: string;
+    code: string;
+    discount_type: 'percent' | 'flat';
+    discount_value: number | string;
+    max_discount_amount?: number | string | null;
+    active: boolean;
+    funded_by: 'platform' | 'provider' | 'shared';
+    first_confirmed_booking_only?: boolean | null;
+    starts_at?: string | null;
+    expires_at?: string | null;
+    max_redemptions?: number | null;
+    max_redemptions_per_user?: number | null;
+}
+
+interface CouponApplication {
+    coupon: CouponRow;
+    originalTotalPrice: number;
+    finalTotalPrice: number;
+    discountAmount: number;
+    platformFeeAmount: number;
+    platformSubsidyAmount: number;
+}
+
+const couponError = (message: string) => ({ status: 400, message });
+
+const parseCouponAmount = (value: unknown): number => {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const hasFirstConfirmedBooking = async (
+    admin: ReturnType<typeof createClient>,
+    userId: string,
+): Promise<boolean> => {
+    const { data, error } = await admin
+        .from('bookings')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('payment_status', 'paid')
+        .in('status', FIRST_CONFIRMED_BOOKING_STATUSES)
+        .limit(1);
+
+    if (error) throw error;
+    return Boolean(data?.length);
+};
+
+const expireOldCouponReservations = async (
+    admin: ReturnType<typeof createClient>,
+    userId: string,
+) => {
+    const now = new Date().toISOString();
+    const { error } = await admin
+        .from('coupon_redemptions')
+        .update({ status: 'expired', updated_at: now })
+        .eq('user_id', userId)
+        .eq('status', 'reserved')
+        .lt('reserved_until', now);
+    if (error) throw error;
+};
+
+const countCouponRedemptions = async (
+    admin: ReturnType<typeof createClient>,
+    couponId: string,
+    statuses: string[],
+    userId?: string,
+): Promise<number> => {
+    let query = admin
+        .from('coupon_redemptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('coupon_id', couponId)
+        .in('status', statuses);
+
+    if (userId) query = query.eq('user_id', userId);
+
+    const { count, error } = await query;
+    if (error) throw error;
+    return count || 0;
+};
+
+const resolveCouponApplication = async (
+    admin: ReturnType<typeof createClient>,
+    args: {
+        code: string;
+        userId: string;
+        originalTotalPrice: number;
+        providerSubtotal: number;
+        platformFeeAmount: number;
+    }
+): Promise<CouponApplication | null> => {
+    if (!args.code) return null;
+
+    await expireOldCouponReservations(admin, args.userId);
+
+    const { data, error } = await admin
+        .from('coupons')
+        .select('*')
+        .eq('code', args.code)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (!data) throw couponError('Coupon code is not valid.');
+
+    const coupon = data as CouponRow;
+    if (!coupon.active) throw couponError('Coupon code is not active.');
+
+    const nowMs = Date.now();
+    if (coupon.starts_at && Date.parse(coupon.starts_at) > nowMs) {
+        throw couponError('Coupon code is not active yet.');
+    }
+    if (coupon.expires_at && Date.parse(coupon.expires_at) <= nowMs) {
+        throw couponError('Coupon code has expired.');
+    }
+
+    if (coupon.first_confirmed_booking_only && await hasFirstConfirmedBooking(admin, args.userId)) {
+        throw couponError('FIRST20 is only available before your first confirmed booking.');
+    }
+
+    const activeUserRedemptions = await countCouponRedemptions(admin, coupon.id, ACTIVE_REDEMPTION_STATUSES, args.userId);
+    if (activeUserRedemptions >= (coupon.max_redemptions_per_user || 1)) {
+        throw couponError('This coupon is already reserved or used on your account.');
+    }
+
+    if (coupon.max_redemptions) {
+        const activeCouponRedemptions = await countCouponRedemptions(admin, coupon.id, ACTIVE_REDEMPTION_STATUSES);
+        if (activeCouponRedemptions >= coupon.max_redemptions) {
+            throw couponError('Coupon redemption limit has been reached.');
+        }
+    }
+
+    const discountValue = parseCouponAmount(coupon.discount_value);
+    const rawDiscount = coupon.discount_type === 'flat'
+        ? discountValue
+        : args.originalTotalPrice * (discountValue / 100);
+    const maxDiscount = parseCouponAmount(coupon.max_discount_amount);
+    const cappedDiscount = maxDiscount > 0 ? Math.min(rawDiscount, maxDiscount) : rawDiscount;
+    const discountAmount = roundMoney(Math.max(0, Math.min(args.originalTotalPrice, cappedDiscount)));
+    if (discountAmount <= 0) return null;
+
+    const finalTotalPrice = roundMoney(Math.max(1, args.originalTotalPrice - discountAmount));
+    const platformFeeAmount = coupon.funded_by === 'platform'
+        ? roundMoney(finalTotalPrice - args.providerSubtotal)
+        : roundMoney(Math.max(0, args.platformFeeAmount - discountAmount));
+    const platformSubsidyAmount = coupon.funded_by === 'platform'
+        ? roundMoney(Math.max(0, args.providerSubtotal - finalTotalPrice))
+        : 0;
+
+    return {
+        coupon,
+        originalTotalPrice: args.originalTotalPrice,
+        finalTotalPrice,
+        discountAmount,
+        platformFeeAmount,
+        platformSubsidyAmount,
+    };
 };
 
 const deterministicListingUuid = async (listingType: string, listingId: string): Promise<string> => {
@@ -218,6 +383,7 @@ Deno.serve(async (req) => {
         const numberOfPeople = normalizeInteger(body.number_of_people, 1);
         const requestedPlatformFeeRate = toOptionalPositiveNumber(body.platform_fee_rate);
         const currency = typeof body.currency === 'string' ? body.currency.trim().toUpperCase() : 'INR';
+        const couponCode = normalizeCouponCode(body.coupon_code);
 
         if (!listingId || !listingTypeInput || !listingTitleInput) {
             return jsonResponse(400, { error: 'listing_id, listing_type, and listing_title are required.' });
@@ -290,7 +456,19 @@ Deno.serve(async (req) => {
             });
         }
 
-        const amountInPaise = Math.round(pricing.totalPrice * 100);
+        const couponApplication = await resolveCouponApplication(admin, {
+            code: couponCode,
+            userId: user.id,
+            originalTotalPrice: pricing.totalPrice,
+            providerSubtotal: pricing.providerSubtotal,
+            platformFeeAmount: pricing.platformFeeAmount,
+        });
+        const finalTotalPrice = couponApplication?.finalTotalPrice ?? pricing.totalPrice;
+        const finalPlatformFeeAmount = couponApplication?.platformFeeAmount ?? pricing.platformFeeAmount;
+        const couponDiscountAmount = couponApplication?.discountAmount ?? 0;
+        const platformSubsidyAmount = couponApplication?.platformSubsidyAmount ?? 0;
+
+        const amountInPaise = Math.round(finalTotalPrice * 100);
         if (amountInPaise <= 0) {
             return jsonResponse(400, { error: 'total_price must be greater than zero.' });
         }
@@ -312,11 +490,12 @@ Deno.serve(async (req) => {
                 number_of_people: String(numberOfPeople),
                 provider_user_id: providerUserId,
                 unit_price: String(pricing.providerUnitPrice),
-                total_price: String(pricing.totalPrice),
-                tourist_unit_price: String(pricing.touristUnitPrice),
+                total_price: String(finalTotalPrice),
+                tourist_unit_price: String(roundMoney(finalTotalPrice / numberOfPeople)),
                 platform_fee_rate: String(pricing.platformFeeRate),
-                platform_fee_amount: String(pricing.platformFeeAmount),
+                platform_fee_amount: String(finalPlatformFeeAmount),
                 provider_payout_amount: String(pricing.providerSubtotal),
+                coupon_code: couponApplication?.coupon.code || '',
                 booking_date: body.booking_date || '',
                 is_virtual_tour: isVirtualTour ? 'true' : 'false',
             },
@@ -351,6 +530,45 @@ Deno.serve(async (req) => {
             return jsonResponse(502, { error: 'Razorpay did not return an order id.' });
         }
 
+        let couponRedemptionId: string | null = null;
+        if (couponApplication) {
+            const reservedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            const redemptionInsert = await admin
+                .from('coupon_redemptions')
+                .insert([{
+                    coupon_id: couponApplication.coupon.id,
+                    user_id: user.id,
+                    code: couponApplication.coupon.code,
+                    status: 'reserved',
+                    source: 'qr_leaflet',
+                    listing_id: listingId,
+                    listing_type: listingType,
+                    payment_order_id: orderId,
+                    original_total_price: couponApplication.originalTotalPrice,
+                    discount_amount: couponApplication.discountAmount,
+                    final_total_price: couponApplication.finalTotalPrice,
+                    reserved_until: reservedUntil,
+                    metadata: {
+                        funded_by: couponApplication.coupon.funded_by,
+                        number_of_people: numberOfPeople,
+                        provider_payout_amount: pricing.providerSubtotal,
+                        platform_fee_amount: finalPlatformFeeAmount,
+                        platform_subsidy_amount: platformSubsidyAmount,
+                    },
+                }])
+                .select('id')
+                .maybeSingle();
+
+            if (redemptionInsert.error || !redemptionInsert.data?.id) {
+                const message = redemptionInsert.error?.code === '23505'
+                    ? 'This coupon is already reserved or used on your account.'
+                    : redemptionInsert.error?.message || 'Could not reserve coupon.';
+                return jsonResponse(400, { error: message });
+            }
+
+            couponRedemptionId = String(redemptionInsert.data.id);
+        }
+
         let uuidListingIdFallback: string | null = null;
         const travelerProfile = await admin
             .from('profiles')
@@ -375,10 +593,18 @@ Deno.serve(async (req) => {
             listing_image: listingImage || null,
             number_of_people: numberOfPeople,
             unit_price: pricing.providerUnitPrice,
-            total_price: pricing.totalPrice,
+            total_price: finalTotalPrice,
             platform_fee_rate: pricing.platformFeeRate,
-            platform_fee_amount: pricing.platformFeeAmount,
+            platform_fee_amount: finalPlatformFeeAmount,
             provider_payout_amount: pricing.providerSubtotal,
+            coupon_id: couponApplication?.coupon.id || null,
+            coupon_redemption_id: couponRedemptionId,
+            coupon_code: couponApplication?.coupon.code || null,
+            coupon_discount_amount: couponDiscountAmount,
+            coupon_original_total_price: couponApplication?.originalTotalPrice || null,
+            coupon_final_total_price: couponApplication?.finalTotalPrice || null,
+            coupon_funded_by: couponApplication?.coupon.funded_by || null,
+            platform_subsidy_amount: platformSubsidyAmount,
             payout_status: 'pending_provider_acceptance',
             user_name: travelerName,
             user_email: travelerEmail,
@@ -488,8 +714,25 @@ Deno.serve(async (req) => {
             amount: responseJson.amount,
             currency: responseJson.currency,
             key_id: razorpayKeyId,
+            coupon: couponApplication ? {
+                code: couponApplication.coupon.code,
+                discount_amount: couponApplication.discountAmount,
+                original_total_price: couponApplication.originalTotalPrice,
+                final_total_price: couponApplication.finalTotalPrice,
+            } : null,
         });
     } catch (error) {
+        if (
+            error
+            && typeof error === 'object'
+            && 'status' in error
+            && 'message' in error
+            && typeof (error as { status?: unknown }).status === 'number'
+        ) {
+            return jsonResponse((error as { status: number }).status, {
+                error: String((error as { message: unknown }).message),
+            });
+        }
         if (error instanceof Error && error.message === 'Unauthorized') {
             return jsonResponse(401, { error: 'Unauthorized' });
         }

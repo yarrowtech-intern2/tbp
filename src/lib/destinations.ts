@@ -35,6 +35,8 @@ export interface Destination {
     description: string;
     category: string;
     user_id: string;
+    /** Present on unified post rows; carries vendor discount for display. */
+    fee_breakdown?: unknown;
 }
 
 export interface Profile {
@@ -385,6 +387,14 @@ export interface UnifiedBooking {
     platform_fee_rate?: number | null;
     platform_fee_amount?: number | null;
     provider_payout_amount?: number | null;
+    coupon_id?: string | null;
+    coupon_redemption_id?: string | null;
+    coupon_code?: string | null;
+    coupon_discount_amount?: number | null;
+    coupon_original_total_price?: number | null;
+    coupon_final_total_price?: number | null;
+    coupon_funded_by?: string | null;
+    platform_subsidy_amount?: number | null;
     payout_status?: string | null;
     payout_processed_at?: string | null;
     payout_reference?: string | null;
@@ -1079,6 +1089,14 @@ const mapUnifiedBooking = (row: Record<string, unknown>): UnifiedBooking => ({
     platform_fee_rate: typeof row.platform_fee_rate === 'number' ? row.platform_fee_rate : null,
     platform_fee_amount: typeof row.platform_fee_amount === 'number' ? row.platform_fee_amount : null,
     provider_payout_amount: typeof row.provider_payout_amount === 'number' ? row.provider_payout_amount : null,
+    coupon_id: typeof row.coupon_id === 'string' ? row.coupon_id : null,
+    coupon_redemption_id: typeof row.coupon_redemption_id === 'string' ? row.coupon_redemption_id : null,
+    coupon_code: typeof row.coupon_code === 'string' ? row.coupon_code : null,
+    coupon_discount_amount: typeof row.coupon_discount_amount === 'number' ? row.coupon_discount_amount : null,
+    coupon_original_total_price: typeof row.coupon_original_total_price === 'number' ? row.coupon_original_total_price : null,
+    coupon_final_total_price: typeof row.coupon_final_total_price === 'number' ? row.coupon_final_total_price : null,
+    coupon_funded_by: typeof row.coupon_funded_by === 'string' ? row.coupon_funded_by : null,
+    platform_subsidy_amount: typeof row.platform_subsidy_amount === 'number' ? row.platform_subsidy_amount : null,
     payout_status: typeof row.payout_status === 'string' ? row.payout_status : null,
     payout_processed_at: typeof row.payout_processed_at === 'string' ? row.payout_processed_at : null,
     payout_reference: typeof row.payout_reference === 'string' ? row.payout_reference : null,
