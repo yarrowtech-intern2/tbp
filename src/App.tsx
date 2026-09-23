@@ -12,7 +12,7 @@ import { AppSplashScreen } from './components/AppSplashScreen';
 import { AppTutorialProvider } from './context/AppTutorialContext';
 import { OFFICIAL_SOCIAL_LINKS } from './lib/appContent';
 import { buildLoginPath } from './lib/authRedirect';
-import { captureCouponFromUrl, FIRST_BOOKING_COUPON_CODE, FIRST_BOOKING_COUPON_PERCENT } from './lib/coupons';
+import { captureCouponFromUrl, FIRST_BOOKING_COUPON_CODE, FIRST_BOOKING_COUPON_PERCENT, getCouponCodeFromUrl } from './lib/coupons';
 import { getNativeAppLinkPath, isNativeAuthCallbackUrl, sanitizeNativeNavigationPath } from './lib/nativeApp';
 import { resolveEffectiveAccountRole } from './lib/platform';
 import { supabase } from './lib/supabase';
@@ -311,21 +311,23 @@ const NativeLoadingFallback: React.FC = () => (
 
 const CouponLinkCapture: React.FC = () => {
   const location = useLocation();
-  const [claimed, setClaimed] = useState(false);
+  const locationKey = `${location.pathname}${location.search}`;
+  const codeInUrl = getCouponCodeFromUrl(location.search);
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const visible = Boolean(codeInUrl) && dismissedKey !== locationKey;
 
   useEffect(() => {
-    const claim = captureCouponFromUrl(location.search, `${location.pathname}${location.search}`);
-    if (!claim) return;
-    setClaimed(true);
-  }, [location.pathname, location.search]);
+    if (!codeInUrl) return;
+    captureCouponFromUrl(location.search, locationKey);
+  }, [codeInUrl, location.search, locationKey]);
 
   useEffect(() => {
-    if (!claimed) return;
+    if (!visible) return;
 
     document.body.classList.add('coupon-modal-open');
-    const hideTimer = window.setTimeout(() => setClaimed(false), 10000);
+    const hideTimer = window.setTimeout(() => setDismissedKey(locationKey), 10000);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setClaimed(false);
+      if (event.key === 'Escape') setDismissedKey(locationKey);
     };
     window.addEventListener('keydown', onKeyDown);
 
@@ -334,12 +336,14 @@ const CouponLinkCapture: React.FC = () => {
       window.clearTimeout(hideTimer);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [claimed]);
+  }, [visible, locationKey]);
 
-  if (!claimed) return null;
+  if (!visible) return null;
+
+  const dismiss = () => setDismissedKey(locationKey);
 
   return (
-    <div className="coupon-modal-backdrop" onClick={() => setClaimed(false)}>
+    <div className="coupon-modal-backdrop" onClick={dismiss}>
       <div
         className="coupon-modal"
         role="dialog"
@@ -350,7 +354,7 @@ const CouponLinkCapture: React.FC = () => {
         <button
           type="button"
           className="coupon-modal-close"
-          onClick={() => setClaimed(false)}
+          onClick={dismiss}
           aria-label="Dismiss coupon message"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -374,12 +378,16 @@ const CouponLinkCapture: React.FC = () => {
               </linearGradient>
             </defs>
             <circle cx="32" cy="32" r="30" fill="url(#couponBadgeGradient)" />
-            <text x="32" y="30" textAnchor="middle" fontSize="19" fontWeight="800" fill="#ffffff" fontFamily="inherit">
-              {FIRST_BOOKING_COUPON_PERCENT}%
-            </text>
-            <text x="32" y="45" textAnchor="middle" fontSize="9.5" fontWeight="700" fill="#ffffff" letterSpacing="1.5" fontFamily="inherit">
-              OFF
-            </text>
+            <path
+              className="coupon-modal-check"
+              d="M19 33 L27.5 41.5 L46 21"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="4.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              pathLength="1"
+            />
           </svg>
         </div>
 
@@ -395,7 +403,7 @@ const CouponLinkCapture: React.FC = () => {
 
         <p className="coupon-modal-note">Applies automatically when your first booking is confirmed.</p>
 
-        <button type="button" className="coupon-modal-cta" onClick={() => setClaimed(false)}>
+        <button type="button" className="coupon-modal-cta" onClick={dismiss}>
           Start exploring
         </button>
       </div>

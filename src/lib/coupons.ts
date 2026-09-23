@@ -83,7 +83,8 @@ export const clearStoredCouponClaim = () => {
 
 export const getStoredCouponCode = (): string | null => getStoredCouponClaim()?.code || null;
 
-export const captureCouponFromUrl = (search: string, sourcePath?: string | null): StoredCouponClaim | null => {
+/** Pure read of a supported coupon code out of a location.search string — no storage writes. */
+export const getCouponCodeFromUrl = (search: string): string | null => {
     const params = new URLSearchParams(search);
     const candidates = [
         params.get('coupon'),
@@ -92,7 +93,11 @@ export const captureCouponFromUrl = (search: string, sourcePath?: string | null)
         params.get('promo'),
         params.get('promo_code'),
     ];
-    const code = candidates.find((value) => isSupportedCouponCode(value));
+    return candidates.find((value) => isSupportedCouponCode(value)) || null;
+};
+
+export const captureCouponFromUrl = (search: string, sourcePath?: string | null): StoredCouponClaim | null => {
+    const code = getCouponCodeFromUrl(search);
     return code ? saveCouponClaim(code, sourcePath) : null;
 };
 
