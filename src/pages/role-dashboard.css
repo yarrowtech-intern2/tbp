@@ -2398,6 +2398,20 @@
     transition: transform 0.16s ease, opacity 0.16s ease;
 }
 
+.rdb-admin-sidebar-profile {
+    display: none;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--rdb-admin-chip);
+    color: var(--rdb-admin-icon-foreground);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
 .rdb-admin-sidebar-theme {
     display: none;
     width: 56px;
@@ -2426,6 +2440,7 @@
     transition: transform 0.16s ease, opacity 0.16s ease;
 }
 
+.rdb-admin-sidebar-profile:hover,
 .rdb-admin-sidebar-theme:hover,
 .rdb-admin-sidebar-back:hover,
 .rdb-admin-sidebar-logout:hover {
@@ -2513,14 +2528,14 @@
     transform: translateY(-1px);
 }
 
-.rdb-admin-topbar-shortcuts {
+.rdb-admin-secondary-nav {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
 }
 
-.rdb-admin-shortcut {
+.rdb-admin-secondary-nav-item {
     min-height: 38px;
     border: 1px solid color-mix(in srgb, var(--rdb-admin-icon) 18%, transparent);
     border-radius: 999px;
@@ -2531,21 +2546,22 @@
     gap: 8px;
     padding: 0 12px;
     cursor: pointer;
+    position: relative;
     transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
 }
 
-.rdb-admin-shortcut:hover {
+.rdb-admin-secondary-nav-item:hover {
     transform: translateY(-1px);
     background: color-mix(in srgb, var(--rdb-admin-card-soft) 68%, var(--rdb-admin-card));
 }
 
-.rdb-admin-shortcut span {
+.rdb-admin-secondary-nav-item span {
     font-size: 0.78rem;
     font-weight: 700;
     color: inherit;
 }
 
-.rdb-admin-shortcut strong {
+.rdb-admin-secondary-nav-item strong {
     width: 10px;
     min-width: 10px;
     height: 10px;
@@ -2565,18 +2581,9 @@
     animation: rdb-admin-section-dot-pulse 1.45s ease-in-out infinite;
 }
 
-.rdb-admin-shortcut.is-active {
+.rdb-admin-secondary-nav-item.is-active {
     background: color-mix(in srgb, var(--accent) 18%, var(--rdb-admin-card));
     border-color: color-mix(in srgb, var(--accent) 44%, transparent);
-    color: var(--rdb-admin-text-strong);
-}
-
-.rdb-admin-shortcut--all-sections {
-    border-style: dashed;
-    color: var(--rdb-admin-text-muted);
-}
-
-.rdb-admin-shortcut--all-sections:hover {
     color: var(--rdb-admin-text-strong);
 }
 
@@ -2765,7 +2772,7 @@
 @media (prefers-reduced-motion: reduce) {
     .rdb-admin-ctrl-badge,
     .rdb-nav-count,
-    .rdb-admin-shortcut strong,
+    .rdb-admin-secondary-nav-item strong,
     .rdb-admin-mobile-menu-item strong {
         animation: none;
     }
@@ -3529,6 +3536,11 @@
         color: #111;
     }
 
+    .rdb-shell--admin .rdb-admin-sidebar-profile {
+        display: flex;
+        margin: 0 auto 8px;
+    }
+
     .rdb-shell--admin .rdb-admin-sidebar-theme {
         display: flex;
         margin: 0 auto 8px;
@@ -3660,10 +3672,6 @@
     .rdb-admin-topbar.is-mobile .rdb-admin-menu-btn {
         width: 52px;
         height: 52px;
-    }
-
-    .rdb-admin-topbar-shortcuts {
-        display: none;
     }
 
     .rdb-admin-mobile-menu {

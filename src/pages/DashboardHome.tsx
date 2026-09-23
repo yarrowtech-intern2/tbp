@@ -590,14 +590,6 @@ const ListingCard: React.FC<{
           <div className="listing-card-actions">
             <span className="listing-card-price">{priceLabel}</span>
             <div className="listing-card-cta-cluster">
-              <Link
-                to={`/listings/${listingTypePath}/${post.id}`}
-                className="listing-btn-book"
-                aria-label={isBooked ? `Book ${title} again` : `Book ${title}`}
-                onClick={(event) => event.stopPropagation()}
-              >
-                {bookingCtaLabel}
-              </Link>
               <button
                 type="button"
                 className="listing-btn-share"

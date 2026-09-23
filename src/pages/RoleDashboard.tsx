@@ -21,6 +21,7 @@ import {
     MapPin,
     Package,
     RadioTower,
+    Rss,
     Search,
     Settings2,
     Star,
@@ -58,6 +59,7 @@ import {
     getModerationAuditLogs,
     getMyAds,
     getMyPosts,
+    getNewsletterSubscribers,
     getPosts,
     getProviderBookings,
     respondToBookingRequest,
@@ -73,6 +75,7 @@ import {
     type ListingReviewRecord,
     type ListingReviewSummary,
     type ModerationAuditLogRecord,
+    type NewsletterSubscriber,
     type PostRecord,
     type UnifiedBooking,
     type VerificationRecord,
@@ -135,7 +138,8 @@ type SidebarKey =
     | 'rejected'
     | 'users'
     | 'map'
-    | 'audits';
+    | 'audits'
+    | 'newsletter';
 
 type AdminProfileRow = {
     id: string;
@@ -225,14 +229,6 @@ type MobileNavItem = {
     to?: string;
 };
 
-const ADMIN_PRIMARY_NAV_KEYS: SidebarKey[] = [
-    'overview',
-    'moderation',
-    'bookings',
-    'revenue',
-    'messages',
-];
-
 const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
     'overview',
     'moderation',
@@ -241,11 +237,14 @@ const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
     'messages',
 ];
 
-const ADMIN_TOPBAR_NAV_KEYS: SidebarKey[] = [
+const ADMIN_SIDEBAR_NAV_KEYS: SidebarKey[] = [
+    'overview',
     'moderation',
-    'accepted',
-    'rejected',
-    'inquiries',
+    'bookings',
+    'revenue',
+    'messages',
+    'users',
+    'map',
 ];
 
 const ADMIN_DEFAULT_SECTION_OPTIONS: SidebarKey[] = [
@@ -579,6 +578,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'users') return 'users';
     if (normalized === 'map') return 'map';
     if (normalized === 'audits' || normalized === 'audit') return 'audits';
+    if (normalized === 'newsletter') return 'newsletter';
     return null;
 };
 
@@ -651,7 +651,6 @@ const getNotificationDashboardSection = (
 const getDashboardSectionStorageKey = (role: DashboardRole) => `tbp.dashboard.active-section.${role}`;
 const ADMIN_DEFAULT_SECTION_STORAGE_KEY = 'tbp.dashboard.admin.default-section';
 const ADMIN_REFRESH_INTERVAL_STORAGE_KEY = 'tbp.dashboard.admin.refresh-interval-ms';
-const ADMIN_COMPACT_NAV_STORAGE_KEY = 'tbp.dashboard.admin.compact-nav';
 
 const LazyAdminAccountMap = lazy(async () => {
     const module = await import('../components/admin/AdminAccountMap');
@@ -811,6 +810,10 @@ export const RoleDashboard: React.FC = () => {
     const [adminModerationSearch, setAdminModerationSearch] = useState('');
     const [mapFetching, setMapFetching] = useState(false);
     const [mapLoaded, setMapLoaded] = useState(false);
+    const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
+    const [newsletterFetching, setNewsletterFetching] = useState(false);
+    const [newsletterLoaded, setNewsletterLoaded] = useState(false);
+    const [newsletterSearch, setNewsletterSearch] = useState('');
     const [providerBookingStatusFilter, setProviderBookingStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected'>('all');
     const [providerPaymentStatusFilter, setProviderPaymentStatusFilter] = useState<'all' | 'pending' | 'paid' | 'refunded'>('all');
     const [providerPackageTypeFilter, setProviderPackageTypeFilter] = useState<'all' | 'tour' | 'activity' | 'guide'>('all');
@@ -838,15 +841,6 @@ export const RoleDashboard: React.FC = () => {
             return ADMIN_REFRESH_INTERVAL_OPTIONS.some((item) => item.value === raw) ? raw : 30000;
         } catch {
             return 30000;
-        }
-    });
-    const [adminCompactNav, setAdminCompactNav] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return true;
-        try {
-            const raw = window.localStorage.getItem(ADMIN_COMPACT_NAV_STORAGE_KEY);
-            return raw === null ? true : raw === 'true';
-        } catch {
-            return true;
         }
     });
     const [showAdminRecentActivity, setShowAdminRecentActivity] = useState(false);
@@ -997,15 +991,6 @@ export const RoleDashboard: React.FC = () => {
     }, [adminRefreshIntervalMs]);
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        try {
-            window.localStorage.setItem(ADMIN_COMPACT_NAV_STORAGE_KEY, String(adminCompactNav));
-        } catch {
-            // Ignore storage failures.
-        }
-    }, [adminCompactNav]);
-
-    useEffect(() => {
         if (!routeRole || routeRole !== effectiveRole) return;
 
         const parsedSection = requestedSection
@@ -1148,6 +1133,26 @@ export const RoleDashboard: React.FC = () => {
             setMapFetching(false);
         }
     }, [effectiveRole, mapFetching, mapLoaded]);
+
+    const loadNewsletterSubscribers = useCallback(async (force = false) => {
+        if (effectiveRole !== 'admin') return;
+        if (newsletterFetching) return;
+        if (newsletterLoaded && !force) return;
+
+        setNewsletterFetching(true);
+        try {
+            const subscribers = await getNewsletterSubscribers();
+            setNewsletterSubscribers(subscribers);
+            setNewsletterLoaded(true);
+        } finally {
+            setNewsletterFetching(false);
+        }
+    }, [effectiveRole, newsletterFetching, newsletterLoaded]);
+
+    useEffect(() => {
+        if (effectiveRole !== 'admin' || activeSection !== 'newsletter') return;
+        void loadNewsletterSubscribers();
+    }, [activeSection, effectiveRole, loadNewsletterSubscribers]);
 
     useEffect(() => {
         if (!user || profileLoading) return;
@@ -1322,6 +1327,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'accepted', label: 'Approved', icon: CheckCircle2 },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
                 { key: 'users', label: 'Users', icon: Users },
+                { key: 'newsletter', label: 'Newsletter', icon: Rss },
                 { key: 'map', label: 'Map', icon: MapPin },
                 { key: 'audits', label: 'Settings', icon: Settings2 },
                 { key: 'rejected', label: 'Rejected', icon: Shield },
@@ -1414,14 +1420,13 @@ export const RoleDashboard: React.FC = () => {
 
     const adminSidebarNavItems = useMemo(() => {
         if (effectiveRole !== 'admin') return navItems;
-        if (!adminCompactNav) return navItems;
-        return navItems.filter((item) => ADMIN_PRIMARY_NAV_KEYS.includes(item.key));
-    }, [adminCompactNav, effectiveRole, navItems]);
+        return navItems.filter((item) => ADMIN_SIDEBAR_NAV_KEYS.includes(item.key));
+    }, [effectiveRole, navItems]);
 
     const adminTopbarNavItems = useMemo(() => {
-        if (effectiveRole !== 'admin' || !adminCompactNav) return [];
-        return navItems.filter((item) => ADMIN_TOPBAR_NAV_KEYS.includes(item.key));
-    }, [adminCompactNav, effectiveRole, navItems]);
+        if (effectiveRole !== 'admin') return [];
+        return navItems.filter((item) => !ADMIN_SIDEBAR_NAV_KEYS.includes(item.key));
+    }, [effectiveRole, navItems]);
 
     const query = search.trim().toLowerCase();
 
@@ -2033,6 +2038,45 @@ export const RoleDashboard: React.FC = () => {
 
     const adminUserRows = adminUsers
         .filter((item) => !query || `${item.full_name || ''} ${item.email || ''} ${item.role || ''}`.toLowerCase().includes(query));
+
+    const newsletterFilteredRows = newsletterSubscribers
+        .filter((item) => {
+            const q = newsletterSearch.trim().toLowerCase();
+            if (!q) return true;
+            return `${item.email || ''} ${item.full_name || ''}`.toLowerCase().includes(q);
+        });
+
+    const exportNewsletterSubscribersCsv = () => {
+        const rows = newsletterFilteredRows;
+        const escapeCsv = (value: unknown) => {
+            const text = String(value ?? '');
+            if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                return `"${text.replace(/"/g, '""')}"`;
+            }
+            return text;
+        };
+
+        const header = ['email', 'full_name', 'status', 'source', 'subscribed_at'];
+        const lines = rows.map((item) => ([
+            item.email,
+            item.full_name || '',
+            item.status,
+            item.source,
+            item.subscribed_at || '',
+        ]).map(escapeCsv).join(','));
+
+        const csv = `${header.join(',')}\n${lines.join('\n')}`;
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        anchor.href = url;
+        anchor.download = `newsletter-subscribers-${dateStamp}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+    };
 
     const adminBookingRows = adminBookings
         .filter((item) => !query || `${item.id || ''} ${item.listing_title || ''} ${item.status || ''} ${item.payment_status || ''} ${item.refund_status || ''} ${item.traveler_name || ''} ${item.traveler_email || ''} ${item.refund_request_reason || ''}`.toLowerCase().includes(query));
@@ -4114,6 +4158,71 @@ export const RoleDashboard: React.FC = () => {
             );
         }
 
+        if (activeSection === 'newsletter') {
+            return (
+                <section className="rdb-content-grid">
+                    <article className="rdb-panel">
+                        <h2>Newsletter</h2>
+                        <div className="rdb-user-split">
+                            <div><p>Subscribers</p><strong>{newsletterSubscribers.length}</strong></div>
+                        </div>
+                        <button
+                            type="button"
+                            className="rdb-btn rdb-btn-full"
+                            onClick={exportNewsletterSubscribersCsv}
+                            disabled={newsletterFilteredRows.length === 0}
+                        >
+                            Download CSV
+                        </button>
+                    </article>
+                    <article className="rdb-panel rdb-panel-wide">
+                        <div className="rdb-panel-head">
+                            <h2>Newsletter Subscribers</h2>
+                            <small>{newsletterSearch ? `Filtered by "${newsletterSearch}"` : `${newsletterFilteredRows.length} records`}</small>
+                            <button
+                                type="button"
+                                className="rdb-row-edit-link"
+                                onClick={() => void loadNewsletterSubscribers(true)}
+                            >
+                                Refresh
+                            </button>
+                        </div>
+                        <label className="rdb-moderation-search">
+                            <Search size={15} aria-hidden="true" />
+                            <input
+                                type="search"
+                                value={newsletterSearch}
+                                onChange={(event) => setNewsletterSearch(event.target.value)}
+                                placeholder="Search email or name"
+                                aria-label="Search newsletter subscribers"
+                            />
+                        </label>
+                        <div className="rdb-list">
+                            {newsletterFetching && newsletterFilteredRows.length === 0 ? (
+                                <div className="rdb-loading">
+                                    <Loader2 size={32} className="animate-spin" />
+                                    <p>Loading subscribers…</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {newsletterFilteredRows.slice(0, 50).map((item) => (
+                                        <div key={item.id} className="rdb-list-row">
+                                            <div>
+                                                <p>{item.full_name || item.email}</p>
+                                                <small>{item.email} - {item.source}</small>
+                                            </div>
+                                            <small>{item.status}</small>
+                                        </div>
+                                    ))}
+                                    {newsletterFilteredRows.length === 0 && <p className="rdb-empty">No newsletter subscribers yet.</p>}
+                                </>
+                            )}
+                        </div>
+                    </article>
+                </section>
+            );
+        }
+
         if (activeSection === 'map') {
             return (
                 <section className="rdb-panel rdb-panel-wide rdb-map-coming-soon-panel">
@@ -4357,18 +4466,6 @@ export const RoleDashboard: React.FC = () => {
                                 </select>
                             </label>
 
-                            <label className="rdb-settings-toggle">
-                                <input
-                                    type="checkbox"
-                                    checked={adminCompactNav}
-                                    onChange={(event) => setAdminCompactNav(event.target.checked)}
-                                />
-                                <div>
-                                    <strong>Compact navigation</strong>
-                                    <small>Keep only primary sections in the sidebar and move secondary admin views into the topbar.</small>
-                                </div>
-                            </label>
-
                             <button
                                 type="button"
                                 className={`rdb-settings-action${showAdminRecentActivity ? ' is-active' : ''}`}
@@ -4521,7 +4618,7 @@ export const RoleDashboard: React.FC = () => {
             <div className="container rdb-shell rdb-shell--admin">
                 <aside className="rdb-sidebar">
                     <nav className="rdb-nav" aria-label="Dashboard menu">
-                        {(effectiveRole === 'admin' ? adminSidebarNavItems : navItems).map((item) => {
+                        {adminSidebarNavItems.map((item) => {
                             const Icon = item.icon;
                             const count = sectionCounts[item.key];
                             const hasCount = typeof count === 'number' && count > 0;
@@ -4553,6 +4650,16 @@ export const RoleDashboard: React.FC = () => {
                             );
                         })}
                     </nav>
+
+                    <button
+                        type="button"
+                        className="rdb-admin-sidebar-profile"
+                        onClick={() => navigate('/profile')}
+                        title="Profile"
+                        aria-label="Open profile"
+                    >
+                        <UserCircle2 size={20} />
+                    </button>
 
                     <button
                         type="button"
@@ -4669,7 +4776,7 @@ export const RoleDashboard: React.FC = () => {
                         </div>
 
                         {effectiveRole === 'admin' && isDesktopDashboard && adminTopbarNavItems.length > 0 && (
-                            <div className="rdb-admin-topbar-shortcuts" aria-label="Admin shortcuts">
+                            <div className="rdb-admin-secondary-nav" aria-label="More admin sections">
                                 {adminTopbarNavItems.map((item) => {
                                     const Icon = item.icon;
                                     const isActive = item.key === activeSection;
@@ -4678,8 +4785,8 @@ export const RoleDashboard: React.FC = () => {
                                     return (
                                         <button
                                             type="button"
-                                            key={`topbar-${item.key}`}
-                                            className={`rdb-admin-shortcut${isActive ? ' is-active' : ''}`}
+                                            key={`secondary-${item.key}`}
+                                            className={`rdb-admin-secondary-nav-item${isActive ? ' is-active' : ''}`}
                                             onClick={() => openDashboardSection(item.key)}
                                             aria-label={hasCount ? `${item.label}, ${count} pending` : item.label}
                                             title={hasCount ? `${item.label}: ${count} pending` : item.label}
@@ -4692,16 +4799,6 @@ export const RoleDashboard: React.FC = () => {
                                         </button>
                                     );
                                 })}
-                                <button
-                                    type="button"
-                                    className="rdb-admin-shortcut rdb-admin-shortcut--all-sections"
-                                    onClick={() => setAdminCompactNav(false)}
-                                    aria-label="Show all admin sections in the sidebar"
-                                    title="Show all admin sections in the sidebar"
-                                >
-                                    <Settings2 size={15} />
-                                    <span>All sections</span>
-                                </button>
                             </div>
                         )}
 

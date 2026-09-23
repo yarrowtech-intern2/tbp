@@ -7,6 +7,7 @@ export type OAuthIntent = {
     country?: string | null;
     city?: string | null;
     bio?: string | null;
+    newsletterOptIn?: boolean;
 };
 
 const OAUTH_INTENT_STORAGE_KEY = 'tbp.oauth.intent';
@@ -40,6 +41,7 @@ export const getOAuthIntent = (): OAuthIntent | null => {
             country: normalizeOptionalString(parsed.country),
             city: normalizeOptionalString(parsed.city),
             bio: normalizeOptionalString(parsed.bio),
+            newsletterOptIn: parsed.newsletterOptIn === true,
         };
     } catch {
         return null;

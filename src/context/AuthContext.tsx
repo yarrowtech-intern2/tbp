@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { createOrUpdateProfileFromSignup, getProfile } from '../lib/destinations';
+import { createOrUpdateProfileFromSignup, getProfile, subscribeToNewsletter } from '../lib/destinations';
 import type { Profile, SignupInput } from '../lib/destinations';
 import { clearOAuthIntent, getOAuthIntent, isGoogleTouristSignupIntent } from '../lib/oauthIntent';
 import {
@@ -167,6 +167,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         signupInputFromGoogleTouristIntent(currentUser, profileData, oauthIntent)
                     );
                     profileData = await getProfile(currentUser.id);
+                    if (oauthIntent.newsletterOptIn && currentUser.email) {
+                        void subscribeToNewsletter(currentUser.email, {
+                            userId: currentUser.id,
+                            fullName: profileData?.full_name,
+                        });
+                    }
                 } catch (error) {
                     console.error('Failed creating tourist profile from Google signup:', error);
                 }

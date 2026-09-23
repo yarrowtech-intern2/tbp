@@ -15,7 +15,7 @@ import { CircleBottomUp } from 'reicon-react';
 import { supabase } from '../lib/supabase';
 import { getSafeNextPath } from '../lib/authRedirect';
 import { getNativeOAuthRedirectUrl, isNativeApp } from '../lib/nativeApp';
-import { getProfile, signUpWithRole } from '../lib/destinations';
+import { getProfile, signUpWithRole, subscribeToNewsletter } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
 import {
     DEFAULT_SIGNUP_VALUES,
@@ -269,6 +269,7 @@ export const Auth: React.FC = () => {
     const [forgotEmail, setForgotEmail] = useState('');
     const [recoveryPassword, setRecoveryPassword] = useState('');
     const [acceptTerms, setAcceptTerms] = useState(false);
+    const [subscribeNewsletter, setSubscribeNewsletter] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [signupStepIndex, setSignupStepIndex] = useState(0);
     const [countrySearch, setCountrySearch] = useState('');
@@ -667,6 +668,13 @@ export const Auth: React.FC = () => {
                 worksUnderCompany: formValues.worksUnderCompany,
             });
 
+            if (subscribeNewsletter) {
+                void subscribeToNewsletter(formValues.email, {
+                    userId: signupResult.user?.id,
+                    fullName: formValues.fullName,
+                });
+            }
+
             if (activeRole === 'tourist') {
                 const { data: sessionData } = await supabase.auth.getSession();
                 if (sessionData.session?.user) {
@@ -688,6 +696,7 @@ export const Auth: React.FC = () => {
             clearAuthDraft();
             setFormValues(DEFAULT_SIGNUP_VALUES);
             setAcceptTerms(false);
+            setSubscribeNewsletter(false);
             setIsLogin(true);
             setLoginEmail(formValues.email);
             setLoginPassword('');
@@ -729,6 +738,7 @@ export const Auth: React.FC = () => {
                     country: formValues.country,
                     city: formValues.city,
                     bio: formValues.bio,
+                    newsletterOptIn: subscribeNewsletter,
                 });
             } else {
                 clearOAuthIntent();
@@ -1077,6 +1087,15 @@ export const Auth: React.FC = () => {
                                                     </button>
                                                 </label>
 
+                                                <label className="auth-check-row auth-check-row-full">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={subscribeNewsletter}
+                                                        onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+                                                    />
+                                                    <span>Send me newsletter emails with travel deals and updates</span>
+                                                </label>
+
                                                 <div className="auth-tourist-actions">
                                                     <button type="button" className="auth-secondary-btn" onClick={goToPreviousSignupStep}>
                                                         Back
@@ -1338,6 +1357,15 @@ export const Auth: React.FC = () => {
                                                             <button type="button" className="auth-text-link" onClick={() => navigate('/terms')}>
                                                                 Terms &amp; Condition
                                                             </button>
+                                                        </label>
+
+                                                        <label className="auth-check-row auth-check-row-full auth-terms-check--compact">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={subscribeNewsletter}
+                                                                onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+                                                            />
+                                                            <span>Send me newsletter emails with travel deals and updates</span>
                                                         </label>
 
                                                         {activeRole === 'tourist' && (

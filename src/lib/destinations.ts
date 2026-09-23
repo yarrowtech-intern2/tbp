@@ -2884,6 +2884,59 @@ export const signUpWithRole = async (input: SignupInput) => {
     return { ...data, welcomeEmail };
 };
 
+export interface NewsletterSubscriber {
+    id: string;
+    email: string;
+    full_name: string | null;
+    user_id: string | null;
+    source: string;
+    status: 'subscribed' | 'unsubscribed';
+    subscribed_at: string;
+    unsubscribed_at: string | null;
+    created_at: string;
+}
+
+export const subscribeToNewsletter = async (
+    email: string,
+    opts?: { userId?: string | null; fullName?: string | null; source?: string }
+): Promise<NewsletterSubscriber | null> => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
+    const { data, error } = await supabase
+        .from('newsletter_subscribers')
+        .upsert(
+            {
+                email: normalizedEmail,
+                user_id: opts?.userId || null,
+                full_name: opts?.fullName || null,
+                source: opts?.source || 'signup',
+                status: 'subscribed',
+                subscribed_at: new Date().toISOString(),
+                unsubscribed_at: null,
+            },
+            { onConflict: 'email' }
+        )
+        .select()
+        .maybeSingle();
+
+    if (error) {
+        console.error('Failed to subscribe to newsletter:', error.message);
+        return null;
+    }
+    return data as NewsletterSubscriber | null;
+};
+
+export const getNewsletterSubscribers = async (): Promise<NewsletterSubscriber[]> => {
+    const { data, error } = await supabase
+        .from('newsletter_subscribers')
+        .select('*')
+        .order('subscribed_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []) as NewsletterSubscriber[];
+};
+
 export const getBookings = async (userId: string): Promise<UnifiedBooking[]> => {
     let unified: { data: unknown[] | null; error: { message?: string } | null } = { data: null, error: null };
     let legacy: { data: unknown[] | null; error: { message?: string } | null } = { data: null, error: null };

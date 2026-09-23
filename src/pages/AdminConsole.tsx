@@ -3,10 +3,12 @@ import {
     Activity,
     CheckCircle2,
     Clock,
+    Download,
     FileText,
     Globe2,
     Layers,
     Loader2,
+    Mail,
     RefreshCw,
     ShieldAlert,
     ShieldCheck,
@@ -19,11 +21,13 @@ import {
     getAdminAccountLocations,
     getContentModerationQueue,
     getModerationAuditLogs,
+    getNewsletterSubscribers,
     getVerificationQueue,
     reviewListing,
     reviewVerificationApplication,
     type AdminAccountLocationRecord,
     type ModerationAuditLogRecord,
+    type NewsletterSubscriber,
     type PostRecord,
     type VerificationRecord,
 } from '../lib/destinations';
@@ -33,7 +37,7 @@ import { LISTING_LABELS, getRoleLabel } from '../lib/platform';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import './admin-console.css';
 
-type Tab = 'providers' | 'listings' | 'audit' | 'map';
+type Tab = 'providers' | 'listings' | 'audit' | 'map' | 'newsletter';
 
 type BulkConfirmationState =
     | { target: 'verification'; count: number }
@@ -86,6 +90,8 @@ export const AdminConsole: React.FC = () => {
     const [listingQueue, setListingQueue] = useState<PostRecord[]>([]);
     const [auditLogs, setAuditLogs] = useState<ModerationAuditLogRecord[]>([]);
     const [accountLocations, setAccountLocations] = useState<AdminAccountLocationRecord[]>([]);
+    const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
+    const [newsletterSearch, setNewsletterSearch] = useState('');
     const [busyId, setBusyId] = useState<string | null>(null);
     const [fetching, setFetching] = useState(true);
     const [mapFetching, setMapFetching] = useState(false);
@@ -112,14 +118,16 @@ export const AdminConsole: React.FC = () => {
     const loadQueue = useCallback(async () => {
         setFetching(true);
         try {
-            const [data, listings, logs] = await Promise.all([
+            const [data, listings, logs, subscribers] = await Promise.all([
                 getVerificationQueue(),
                 getContentModerationQueue(),
                 getModerationAuditLogs(),
+                getNewsletterSubscribers(),
             ]);
             setQueue(data);
             setListingQueue(listings);
             setAuditLogs(logs);
+            setNewsletterSubscribers(subscribers);
         } finally {
             setFetching(false);
         }
@@ -224,6 +232,47 @@ export const AdminConsole: React.FC = () => {
                 return rightTime - leftTime;
             });
     }, [accountLocations, mapRoleFilter, mapSearch]);
+
+    const filteredNewsletterSubscribers = useMemo(() => {
+        const q = newsletterSearch.trim().toLowerCase();
+        return newsletterSubscribers.filter((item) => {
+            if (!q) return true;
+            const hay = [item.email, item.full_name].filter(Boolean).join(' ').toLowerCase();
+            return hay.includes(q);
+        });
+    }, [newsletterSubscribers, newsletterSearch]);
+
+    const exportNewsletterSubscribersCsv = () => {
+        const rows = filteredNewsletterSubscribers;
+        const escapeCsv = (value: unknown) => {
+            const text = String(value ?? '');
+            if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                return `"${text.replace(/"/g, '""')}"`;
+            }
+            return text;
+        };
+
+        const header = ['email', 'full_name', 'status', 'source', 'subscribed_at'];
+        const lines = rows.map((item) => ([
+            item.email,
+            item.full_name || '',
+            item.status,
+            item.source,
+            item.subscribed_at || '',
+        ]).map(escapeCsv).join(','));
+
+        const csv = `${header.join(',')}\n${lines.join('\n')}`;
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        anchor.href = url;
+        anchor.download = `newsletter-subscribers-${dateStamp}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+    };
 
     const handleReview = async (item: VerificationRecord, decision: 'approved' | 'rejected') => {
         setBusyId(item.id);
@@ -459,6 +508,14 @@ export const AdminConsole: React.FC = () => {
                         <Globe2 size={15} />
                         Map
                         <span className="ac-tab-count">{accountLocations.length}</span>
+                    </button>
+                    <button
+                        className={`ac-tab${activeTab === 'newsletter' ? ' ac-tab--active' : ''}`}
+                        onClick={() => setActiveTab('newsletter')}
+                    >
+                        <Mail size={15} />
+                        Newsletter
+                        <span className="ac-tab-count">{newsletterSubscribers.length}</span>
                     </button>
                 </div>
 
@@ -1087,6 +1144,88 @@ export const AdminConsole: React.FC = () => {
                                             </div>
                                             <div className="ac-audit-clock">
                                                 {log.created_at ? new Date(log.created_at).toLocaleTimeString() : ''}
+                                            </div>
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ═══════════════════════════════════════
+                    TAB: NEWSLETTER
+                ═══════════════════════════════════════ */}
+                {activeTab === 'newsletter' && (
+                    <div>
+                        <div className="ac-section-head">
+                            <div>
+                                <h2 className="ac-section-title">Newsletter Subscribers</h2>
+                                <p className="ac-section-sub">
+                                    {newsletterSubscribers.length} subscriber{newsletterSubscribers.length === 1 ? '' : 's'} opted in for newsletter emails.
+                                </p>
+                            </div>
+                            <button
+                                className="ac-refresh-btn"
+                                onClick={exportNewsletterSubscribersCsv}
+                                disabled={filteredNewsletterSubscribers.length === 0}
+                            >
+                                <Download size={15} />
+                                Download CSV
+                            </button>
+                        </div>
+
+                        <div className="ac-filter-bar">
+                            <div className="ac-filter-group" style={{ minWidth: '180px', flex: 2 }}>
+                                <span className="ac-filter-label">Search</span>
+                                <input
+                                    className="ac-filter-input"
+                                    value={newsletterSearch}
+                                    onChange={(e) => setNewsletterSearch(e.target.value)}
+                                    placeholder="Email or name…"
+                                />
+                            </div>
+                            <button className="ac-filter-reset" onClick={() => setNewsletterSearch('')}>
+                                Reset
+                            </button>
+                        </div>
+
+                        {fetching ? (
+                            <div className="ac-loading"><Loader2 className="animate-spin" size={32} /></div>
+                        ) : filteredNewsletterSubscribers.length === 0 ? (
+                            <div className="ac-empty">
+                                <Mail size={32} />
+                                <strong>No newsletter subscribers yet</strong>
+                                <p>Subscribers who opt in during registration will appear here.</p>
+                            </div>
+                        ) : (
+                            <div className="ac-audit-list">
+                                {filteredNewsletterSubscribers.map((subscriber) => (
+                                    <article key={subscriber.id} className="ac-audit-row">
+                                        <div style={{ flex: '1 1 360px', minWidth: 0 }}>
+                                            <div className="ac-audit-action">{subscriber.full_name || subscriber.email}</div>
+                                            <div className="ac-audit-pills">
+                                                <span className="ac-pill" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
+                                                    {subscriber.email}
+                                                </span>
+                                                <span
+                                                    className="ac-pill"
+                                                    style={{
+                                                        background: subscriber.status === 'subscribed' ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)',
+                                                        color: subscriber.status === 'subscribed' ? '#15803d' : '#b91c1c',
+                                                    }}
+                                                >
+                                                    {subscriber.status}
+                                                </span>
+                                            </div>
+                                            <p className="ac-audit-meta">Source: {subscriber.source}</p>
+                                        </div>
+                                        <div className="ac-audit-time">
+                                            <div className="ac-audit-date">
+                                                {subscriber.subscribed_at ? new Date(subscriber.subscribed_at).toLocaleDateString() : 'Unknown'}
+                                            </div>
+                                            <div className="ac-audit-clock">
+                                                {subscriber.subscribed_at ? new Date(subscriber.subscribed_at).toLocaleTimeString() : ''}
                                             </div>
                                         </div>
                                     </article>
