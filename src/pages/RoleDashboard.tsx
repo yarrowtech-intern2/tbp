@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    BarChart3,
     Bell,
     CalendarDays,
     CheckCircle2,
@@ -139,7 +140,8 @@ type SidebarKey =
     | 'users'
     | 'map'
     | 'audits'
-    | 'newsletter';
+    | 'newsletter'
+    | 'analytics';
 
 type AdminProfileRow = {
     id: string;
@@ -239,6 +241,7 @@ const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
 
 const ADMIN_SIDEBAR_NAV_KEYS: SidebarKey[] = [
     'overview',
+    'analytics',
     'moderation',
     'bookings',
     'revenue',
@@ -579,6 +582,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'map') return 'map';
     if (normalized === 'audits' || normalized === 'audit') return 'audits';
     if (normalized === 'newsletter') return 'newsletter';
+    if (normalized === 'analytics' || normalized === 'traffic' || normalized === 'insights') return 'analytics';
     return null;
 };
 
@@ -655,6 +659,11 @@ const ADMIN_REFRESH_INTERVAL_STORAGE_KEY = 'tbp.dashboard.admin.refresh-interval
 const LazyAdminAccountMap = lazy(async () => {
     const module = await import('../components/admin/AdminAccountMap');
     return { default: module.AdminAccountMap };
+});
+
+const LazyAdminAnalytics = lazy(async () => {
+    const module = await import('../components/admin/AdminAnalytics');
+    return { default: module.AdminAnalytics };
 });
 
 const LazyProviderStudio = lazy(async () => {
@@ -1318,6 +1327,7 @@ export const RoleDashboard: React.FC = () => {
         if (effectiveRole === 'admin') {
             return [
                 { key: 'overview', label: 'Dashboard', icon: FileText },
+                { key: 'analytics', label: 'Analytics', icon: BarChart3 },
                 { key: 'content', label: 'Content', icon: Megaphone },
                 { key: 'inquiries', label: 'Contact Leads', icon: Mail },
                 { key: 'crm', label: 'CRM', icon: Contact2 },
@@ -4154,6 +4164,16 @@ export const RoleDashboard: React.FC = () => {
                             {adminUserRows.length === 0 && <p className="rdb-empty">No matching users.</p>}
                         </div>
                     </article>
+                </section>
+            );
+        }
+
+        if (activeSection === 'analytics') {
+            return (
+                <section className="rdb-panel rdb-panel-wide">
+                    <Suspense fallback={<div className="rdb-loading"><Loader2 size={32} className="animate-spin" /><p>Loading analytics…</p></div>}>
+                        <LazyAdminAnalytics />
+                    </Suspense>
                 </section>
             );
         }

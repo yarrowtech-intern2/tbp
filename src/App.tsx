@@ -13,6 +13,8 @@ import { AppTutorialProvider } from './context/AppTutorialContext';
 import { OFFICIAL_SOCIAL_LINKS } from './lib/appContent';
 import { buildLoginPath } from './lib/authRedirect';
 import { captureCouponFromUrl, FIRST_BOOKING_COUPON_CODE, FIRST_BOOKING_COUPON_PERCENT, getCouponCodeFromUrl } from './lib/coupons';
+import { AnalyticsTracker } from './components/AnalyticsTracker';
+import { trackAuthEvent } from './lib/analytics';
 import { getNativeAppLinkPath, isNativeAuthCallbackUrl, sanitizeNativeNavigationPath } from './lib/nativeApp';
 import { resolveEffectiveAccountRole } from './lib/platform';
 import { supabase } from './lib/supabase';
@@ -125,7 +127,10 @@ const AuthCallback: React.FC = () => {
           if (!data.session) throw new Error('OAuth callback did not include a session.');
         }
 
-        if (mounted) navigate(nextPath, { replace: true });
+        if (mounted) {
+          trackAuthEvent('login', undefined, 'oauth');
+          navigate(nextPath, { replace: true });
+        }
       } catch (error) {
         console.error('OAuth session exchange failed:', error);
         if (mounted) navigate('/login', { replace: true });
@@ -251,6 +256,7 @@ function App() {
         <div className={`app${user ? ' app-authenticated' : ''}`}>
           <AppSEO />
           <CouponLinkCapture />
+          <AnalyticsTracker />
           <NativeDeepLinkHandler />
           <AppNavbar />
           <Suspense fallback={isNativePlatform ? <AppSplashScreen /> : null}>

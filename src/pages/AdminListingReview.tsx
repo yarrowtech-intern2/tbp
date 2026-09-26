@@ -13,6 +13,7 @@ import {
 } from '../lib/destinations';
 import { getRoleLabel } from '../lib/platform';
 import { CAMERA_TYPE_LABELS, getVirtualTourDetailsFromRecord, isVirtualTourRecord } from '../lib/virtualTours';
+import { formatGroupSize, normalizeListingGuidelines, resolveGroupSize } from '../lib/listingGuidelines';
 import { FeeBreakdownView } from '../components/FeeBreakdownView';
 import './admin-listing-review.css';
 
@@ -326,7 +327,33 @@ export const AdminListingReview: React.FC = () => {
                                     <span>Price: <strong>{formatCurrency(listing.price)}</strong></span>
                                     <span>Start: <strong>{formatDate(listing.starts_at)}</strong></span>
                                     <span>Created: <strong>{formatDate(listing.created_at)}</strong></span>
+                                    <span>
+                                        Group size: <strong>{formatGroupSize(
+                                            resolveGroupSize(listing.min_guests, listing.max_guests).min,
+                                            resolveGroupSize(listing.min_guests, listing.max_guests).max,
+                                        ) || 'Not set'}</strong>
+                                    </span>
                                 </div>
+                                {(() => {
+                                    const guidelines = normalizeListingGuidelines(listing.guidelines);
+                                    const blocks = [
+                                        { title: "Do's", items: guidelines.dos },
+                                        { title: "Don'ts", items: guidelines.donts },
+                                        { title: 'Rules', items: guidelines.rules },
+                                        { title: 'What to carry', items: guidelines.what_to_carry },
+                                    ].filter((block) => block.items.length > 0);
+                                    if (blocks.length === 0) return null;
+                                    return (
+                                        <div className="alr-guidelines">
+                                            {blocks.map((block) => (
+                                                <div key={block.title}>
+                                                    <strong>{block.title}</strong>
+                                                    <ul>{block.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
                                 <Link to={`/listings/${listingTypePath}/${listing.id}`} className="alr-view-link">
                                     Open Public Listing
                                 </Link>

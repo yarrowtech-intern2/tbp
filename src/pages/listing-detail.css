@@ -809,3 +809,91 @@
   color: #0c7a3d;
   font-weight: 800;
 }
+
+.listing-book-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.listing-guidelines {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--surface-main);
+}
+
+.listing-guidelines-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.listing-guidelines-head > span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.listing-guidelines-head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--success-text);
+  background: var(--success-bg);
+}
+
+.listing-guidelines-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.listing-guidelines-card {
+  --lg-accent: #2563eb;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border-left: 3px solid var(--lg-accent);
+  background: color-mix(in srgb, var(--lg-accent) 8%, var(--surface-main));
+}
+
+.listing-guidelines-card--do { --lg-accent: #16a34a; }
+.listing-guidelines-card--dont { --lg-accent: #dc2626; }
+.listing-guidelines-card--rule { --lg-accent: #d97706; }
+.listing-guidelines-card--carry { --lg-accent: #2563eb; }
+
+.listing-guidelines-card h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  color: var(--text-main);
+}
+
+.listing-guidelines-card h4 svg { color: var(--lg-accent); }
+
+.listing-guidelines-card ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: var(--text-main);
+}
+
+@media (max-width: 720px) {
+  .listing-guidelines-grid { grid-template-columns: 1fr; }
+}

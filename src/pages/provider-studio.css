@@ -2984,3 +2984,43 @@ html.dark .ps-type-guidance--activity {
     font-size: 0.78rem;
     margin: 0;
 }
+
+.ps-guidelines {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    background: var(--surface-muted);
+}
+
+.ps-guidelines-head strong {
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.ps-guidelines-head p {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.ps-guidelines-size {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.ps-guidelines-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 720px) {
+    .ps-guidelines-size,
+    .ps-guidelines-grid {
+        grid-template-columns: 1fr;
+    }
+}

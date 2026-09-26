@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BadgePercent, Calendar, CalendarDays, Clock, Compass, Facebook, Heart, Instagram, Loader2, Map, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users, Zap } from 'lucide-react';
+import { ArrowLeft, Backpack, BadgePercent, Ban, Calendar, CalendarDays, CheckCircle2, Clock, Compass, Facebook, FileText, Heart, Instagram, Loader2, Map, MapPin, MessageCircle, Share2, ShieldCheck, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { trackEvent } from '../lib/analytics';
 import { buildLoginPath } from '../lib/authRedirect';
+import { formatGroupSize, hasListingGuidelines, normalizeListingGuidelines, resolveGroupSize } from '../lib/listingGuidelines';
 import {
     addListingFavorite,
     getCurrentUserListingReview,
@@ -210,7 +212,7 @@ export const ListingDetail: React.FC = () => {
     const [selectedRating, setSelectedRating] = useState(0);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [checkIn, setCheckIn] = useState('');
-    const [guests, setGuests] = useState(1);
+    const [requestedGuests, setGuests] = useState(1);
     const [platformFeeRate, setPlatformFeeRate] = useState(PLATFORM_FEE_RATE);
     const [listing, setListing] = useState<PostRecord | null>(null);
     const [couponClaim, setCouponClaim] = useState(() => getStoredCouponClaim());
@@ -330,6 +332,17 @@ export const ListingDetail: React.FC = () => {
         : (listingType || 'activity');
     const isVirtualTour = isVirtualTourRecord(listing as Record<string, unknown> | null);
     const virtualDetails = getVirtualTourDetailsFromRecord(listing as Record<string, unknown> | null);
+    const listingGuidelines = normalizeListingGuidelines(listing?.guidelines);
+    const providerGroupSize = resolveGroupSize(listing?.min_guests, listing?.max_guests);
+    const providerMinGuests = providerGroupSize.error ? null : providerGroupSize.min;
+    const providerMaxGuests = providerGroupSize.error ? null : providerGroupSize.max;
+    const minGuests = providerMinGuests ?? 1;
+    const maxGuests = Math.max(
+        minGuests,
+        providerMaxGuests ?? Math.min(Math.max(virtualDetails?.max_guests || 6, 1), 25),
+    );
+    const guests = Math.min(Math.max(requestedGuests, minGuests), maxGuests);
+    const groupSizeLabel = formatGroupSize(providerMinGuests, providerMaxGuests);
     const detailPresentation = getDetailPresentation(effectiveType, isVirtualTour);
     const basePricing = useMemo(
         () => feeBreakdown
@@ -374,8 +387,8 @@ export const ListingDetail: React.FC = () => {
     const bookingButtonDisabled = bookingLoading || Boolean(user && !canBook);
     const bookingButtonLabel = !user ? 'Login to Book' : canBook ? detailPresentation.buttonLabel : 'Tourist Only';
     const guestOptions = Array.from(
-        { length: Math.min(Math.max(virtualDetails?.max_guests || 6, 1), 25) },
-        (_, index) => index + 1,
+        { length: maxGuests - minGuests + 1 },
+        (_, index) => minGuests + index,
     );
     const shareUrl = useMemo(() => {
         if (typeof window === 'undefined') return '';
@@ -620,6 +633,7 @@ export const ListingDetail: React.FC = () => {
             return;
         }
 
+        trackEvent('booking_started', { target: `${effectiveType}:${listingId}` });
         setBookingLoading(true);
         setConfirmingBooking(false);
         setBookingAwaitingProvider(false);
@@ -1005,6 +1019,31 @@ export const ListingDetail: React.FC = () => {
                                     </div>
                                 </section>
                             )}
+                            {(groupSizeLabel || hasListingGuidelines(listingGuidelines)) && (
+                                <section className="listing-guidelines" aria-label="Before you book">
+                                    <div className="listing-guidelines-head">
+                                        <span>Before you book</span>
+                                        {groupSizeLabel && (
+                                            <strong><Users size={14} /> Group size: {groupSizeLabel}</strong>
+                                        )}
+                                    </div>
+                                    <div className="listing-guidelines-grid">
+                                        {([
+                                            { key: 'dos', title: "Do's", tone: 'do', icon: <CheckCircle2 size={15} />, items: listingGuidelines.dos },
+                                            { key: 'donts', title: "Don'ts", tone: 'dont', icon: <Ban size={15} />, items: listingGuidelines.donts },
+                                            { key: 'rules', title: 'Rules', tone: 'rule', icon: <FileText size={15} />, items: listingGuidelines.rules },
+                                            { key: 'what_to_carry', title: 'What to carry', tone: 'carry', icon: <Backpack size={15} />, items: listingGuidelines.what_to_carry },
+                                        ] as const).filter((block) => block.items.length > 0).map((block) => (
+                                            <div key={block.key} className={`listing-guidelines-card listing-guidelines-card--${block.tone}`}>
+                                                <h4>{block.icon}{block.title}</h4>
+                                                <ul>
+                                                    {block.items.map((item) => <li key={item}>{item}</li>)}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
                             <FeeBreakdownView
                                 feeBreakdown={feeBreakdown}
                                 peopleCount={guests}
@@ -1130,6 +1169,7 @@ export const ListingDetail: React.FC = () => {
                                             ))}
                                         </select>
                                     </span>
+                                    {groupSizeLabel && <small className="listing-book-hint">Provider accepts {groupSizeLabel} per booking.</small>}
                                 </label>
 
                                 <div className="listing-book-total">

@@ -24,6 +24,7 @@ import {
     type ListingFeeBreakdown,
 } from './pricing';
 import { normalizeVirtualTourDetails, type VirtualTourDetails } from './virtualTours';
+import { normalizeListingGuidelines, resolveGroupSize, type ListingGuidelines } from './listingGuidelines';
 
 export interface Destination {
     id: string;
@@ -107,6 +108,9 @@ export interface PostRecord {
     virtual_tour_details?: VirtualTourDetails | Record<string, unknown> | null;
     delivery_mode?: string | null;
     experience_mode?: string | null;
+    guidelines?: ListingGuidelines | Record<string, unknown> | null;
+    min_guests?: number | null;
+    max_guests?: number | null;
     is_boosted?: boolean | null;
     boost_start?: string | null;
     boost_end?: string | null;
@@ -135,6 +139,9 @@ export interface ListingInput {
     virtual_tour_details?: VirtualTourDetails | Record<string, unknown> | null;
     delivery_mode?: string | null;
     experience_mode?: string | null;
+    guidelines?: ListingGuidelines | null;
+    min_guests?: number | null;
+    max_guests?: number | null;
     starts_at?: string | null;
     status?: ListingStatus;
     rejection_reason?: string | null;
@@ -1742,6 +1749,10 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
     const normalizedVirtualTourDetails = listing.is_virtual_tour
         ? normalizeVirtualTourDetails(listing.virtual_tour_details)
         : {};
+    const groupSize = resolveGroupSize(listing.min_guests, listing.max_guests);
+    if (groupSize.error) {
+        throw new Error(groupSize.error);
+    }
     const payload: Record<string, unknown> = {
         ...listing,
         title: normalizedTitle,
@@ -1759,6 +1770,9 @@ export const createOrUpdateListing = async (listing: ListingInput) => {
         virtual_tour_details: normalizedVirtualTourDetails,
         delivery_mode: listing.is_virtual_tour === true ? listing.delivery_mode : null,
         experience_mode: listing.is_virtual_tour === true ? listing.experience_mode : null,
+        guidelines: normalizeListingGuidelines(listing.guidelines),
+        min_guests: groupSize.min,
+        max_guests: groupSize.max,
         status: normalizedStatus,
         rejection_reason: null,
         reviewed_at: null,

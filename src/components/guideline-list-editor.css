@@ -1,0 +1,128 @@
+.gle {
+  --gle-accent: #2563eb;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--gle-accent);
+  border-radius: 14px;
+  background: var(--surface-main);
+}
+
+.gle--do { --gle-accent: #16a34a; }
+.gle--dont { --gle-accent: #dc2626; }
+.gle--rule { --gle-accent: #d97706; }
+.gle--carry { --gle-accent: #2563eb; }
+
+.gle-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gle-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.gle-title svg { color: var(--gle-accent); }
+
+.gle-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.gle-hint {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.gle-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gle-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--gle-accent) 9%, var(--surface-main));
+}
+
+.gle-list li button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.gle-list li button:hover {
+  background: color-mix(in srgb, var(--gle-accent) 18%, transparent);
+  color: var(--text-main);
+}
+
+.gle-add {
+  display: flex;
+  gap: 8px;
+}
+
+.gle-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--surface-main);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.gle-add input:focus {
+  outline: none;
+  border-color: var(--gle-accent);
+}
+
+.gle-add button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--gle-accent);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gle-add button:disabled,
+.gle-add input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

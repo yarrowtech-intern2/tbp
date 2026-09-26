@@ -14,6 +14,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { CircleBottomUp } from 'reicon-react';
 import { supabase } from '../lib/supabase';
 import { getSafeNextPath } from '../lib/authRedirect';
+import { trackAuthEvent } from '../lib/analytics';
 import { getNativeOAuthRedirectUrl, isNativeApp } from '../lib/nativeApp';
 import { getProfile, signUpWithRole, subscribeToNewsletter } from '../lib/destinations';
 import { clearOAuthIntent, setOAuthIntent } from '../lib/oauthIntent';
@@ -559,6 +560,7 @@ export const Auth: React.FC = () => {
                 resolveEffectiveAccountRole(profileData?.role, metadataRole)
             );
 
+            trackAuthEvent('login', signedInUser?.id);
             navigate(getSafeNextPath(location.search, destination));
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
@@ -678,6 +680,7 @@ export const Auth: React.FC = () => {
             if (activeRole === 'tourist') {
                 const { data: sessionData } = await supabase.auth.getSession();
                 if (sessionData.session?.user) {
+                    trackAuthEvent('signup', sessionData.session.user.id);
                     navigate(getSafeNextPath(location.search, TOURIST_EXPLORE_PATH));
                     return;
                 }

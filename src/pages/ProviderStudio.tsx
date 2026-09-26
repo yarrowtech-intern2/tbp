@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    Backpack,
+    Ban,
     Calendar,
     Camera,
     CheckCircle2,
@@ -29,6 +31,14 @@ import {
     Zap,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { GuidelineListEditor } from '../components/GuidelineListEditor';
+import {
+    EMPTY_LISTING_GUIDELINES,
+    MAX_LISTING_GROUP_SIZE,
+    normalizeListingGuidelines,
+    resolveGroupSize,
+    type GuidelineKey,
+} from '../lib/listingGuidelines';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -232,6 +242,9 @@ const EMPTY_FORM = (type: ListingType): ListingInput => ({
     price: null,
     fee_breakdown: buildDraftFeeBreakdown(createDefaultFeeItems(), PLATFORM_FEE_RATE),
     starts_at: '',
+    guidelines: EMPTY_LISTING_GUIDELINES(),
+    min_guests: null,
+    max_guests: null,
     status: 'pending',
 });
 
@@ -280,6 +293,7 @@ const readProviderStudioDraft = (userId: string, allowedTypes: ListingType[]): P
                 ...rawForm,
                 type,
                 gallery_images: normalizeImageList(rawForm.gallery_images || []),
+                guidelines: normalizeListingGuidelines(rawForm.guidelines),
                 price: typeof rawForm.price === 'number' ? rawForm.price : Number(rawForm.price || 0) || null,
                 fee_breakdown: {
                     ...buildDraftFeeBreakdown(
@@ -560,6 +574,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [galleryError, setGalleryError] = useState<string | null>(null);
     const [virtualDetailsError, setVirtualDetailsError] = useState<string | null>(null);
     const [feeBreakdownError, setFeeBreakdownError] = useState<string | null>(null);
+    const [groupSizeError, setGroupSizeError] = useState<string | null>(null);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptAgreement, setAcceptAgreement] = useState(false);
     const [consentError, setConsentError] = useState<string | null>(null);
@@ -703,6 +718,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 ),
             },
             starts_at: listing.starts_at || '',
+            guidelines: normalizeListingGuidelines(listing.guidelines),
+            min_guests: typeof listing.min_guests === 'number' ? listing.min_guests : null,
+            max_guests: typeof listing.max_guests === 'number' ? listing.max_guests : null,
             status: (listing.status as ListingInput['status']) || 'pending',
         });
         setVirtualDetails(normalizeVirtualTourDetails(listing.virtual_tour_details));
@@ -991,6 +1009,13 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         });
     }, [updateFeeItems]);
 
+    const setGuidelineItems = useCallback((key: GuidelineKey, items: string[]) => {
+        setForm((current) => ({
+            ...current,
+            guidelines: { ...normalizeListingGuidelines(current.guidelines), [key]: items },
+        }));
+    }, []);
+
     const applyGallery = useCallback((nextImages: string[]) => {
         const cleaned = normalizeImageList(nextImages);
         setForm((current) => {
@@ -1152,6 +1177,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             setFeeBreakdownError('Add at least one included fee item before posting.');
             return;
         }
+        const submittedGroupSize = resolveGroupSize(form.min_guests, form.max_guests);
+        if (submittedGroupSize.error) {
+            setGroupSizeError(submittedGroupSize.error);
+            return;
+        }
         const submittedVirtualDetails = normalizeVirtualTourDetails(virtualDetails);
         if (localGuideStudio) {
             if (!form.location.trim() || !submittedVirtualDetails.spot_location.trim()) {
@@ -1184,6 +1214,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setGalleryError(null);
         setFeeBreakdownError(null);
         setVirtualDetailsError(null);
+        setGroupSizeError(null);
         setSaving(true);
         try {
             await createOrUpdateListing({
@@ -1205,6 +1236,9 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                 rejection_reason: null,
                 price: submissionPricing.provider_subtotal,
                 starts_at: form.starts_at || null,
+                guidelines: normalizeListingGuidelines(form.guidelines),
+                min_guests: submittedGroupSize.min,
+                max_guests: submittedGroupSize.max,
                 description: localGuideStudio
                     ? buildVirtualTourDescription(form.description, submittedVirtualDetails)
                     : form.description,
@@ -2392,6 +2426,94 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                                     required
                                 />
                             </label>
+
+                            <section className="ps-guidelines" aria-label="Group size and guest guidelines">
+                                <div className="ps-guidelines-head">
+                                    <strong>Group size and guest guidelines</strong>
+                                    <p>Shown to travelers on your listing before they book. All optional, but they reduce cancellations and questions.</p>
+                                </div>
+
+                                <div className="ps-guidelines-size">
+                                    <label className="ps-field">
+                                        <span className="ps-field-label"><Users size={13} /> Minimum heads</span>
+                                        <input
+                                            className="ps-input"
+                                            type="number"
+                                            min={1}
+                                            max={MAX_LISTING_GROUP_SIZE}
+                                            inputMode="numeric"
+                                            placeholder="e.g. 2"
+                                            value={form.min_guests ?? ''}
+                                            onChange={(e) => {
+                                                setGroupSizeError(null);
+                                                setForm((f) => ({ ...f, min_guests: e.target.value === '' ? null : Number(e.target.value) }));
+                                            }}
+                                            disabled={!canAccessStudio}
+                                        />
+                                    </label>
+                                    <label className="ps-field">
+                                        <span className="ps-field-label"><Users size={13} /> Maximum heads</span>
+                                        <input
+                                            className="ps-input"
+                                            type="number"
+                                            min={1}
+                                            max={MAX_LISTING_GROUP_SIZE}
+                                            inputMode="numeric"
+                                            placeholder="e.g. 12"
+                                            value={form.max_guests ?? ''}
+                                            onChange={(e) => {
+                                                setGroupSizeError(null);
+                                                setForm((f) => ({ ...f, max_guests: e.target.value === '' ? null : Number(e.target.value) }));
+                                            }}
+                                            disabled={!canAccessStudio}
+                                        />
+                                    </label>
+                                </div>
+                                {groupSizeError && <p className="ps-gallery-error" role="alert">{groupSizeError}</p>}
+
+                                <div className="ps-guidelines-grid">
+                                    <GuidelineListEditor
+                                        label="Do's"
+                                        hint="What guests should do."
+                                        icon={<CheckCircle2 size={14} />}
+                                        tone="do"
+                                        placeholder="e.g. Reach the meeting point 15 minutes early"
+                                        items={form.guidelines?.dos || []}
+                                        disabled={!canAccessStudio}
+                                        onChange={(items) => setGuidelineItems('dos', items)}
+                                    />
+                                    <GuidelineListEditor
+                                        label="Don'ts"
+                                        hint="What guests must avoid."
+                                        icon={<Ban size={14} />}
+                                        tone="dont"
+                                        placeholder="e.g. Do not litter or feed wildlife"
+                                        items={form.guidelines?.donts || []}
+                                        disabled={!canAccessStudio}
+                                        onChange={(items) => setGuidelineItems('donts', items)}
+                                    />
+                                    <GuidelineListEditor
+                                        label="Rules"
+                                        hint="Policies guests agree to by booking."
+                                        icon={<FileText size={14} />}
+                                        tone="rule"
+                                        placeholder="e.g. Minimum age 12 years"
+                                        items={form.guidelines?.rules || []}
+                                        disabled={!canAccessStudio}
+                                        onChange={(items) => setGuidelineItems('rules', items)}
+                                    />
+                                    <GuidelineListEditor
+                                        label="What to carry"
+                                        hint="Items guests should bring."
+                                        icon={<Backpack size={14} />}
+                                        tone="carry"
+                                        placeholder="e.g. Valid photo ID, water bottle"
+                                        items={form.guidelines?.what_to_carry || []}
+                                        disabled={!canAccessStudio}
+                                        onChange={(items) => setGuidelineItems('what_to_carry', items)}
+                                    />
+                                </div>
+                            </section>
 
                             {!editingListingId && (
                                 <div className="ps-consent-block">
