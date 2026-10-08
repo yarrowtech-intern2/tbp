@@ -5,6 +5,7 @@ import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents, ZoomCo
 import 'leaflet/dist/leaflet.css';
 import {
   Compass,
+  LayoutGrid,
   LocateFixed,
   MapPinned,
   MapPinPlus,
@@ -22,7 +23,23 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { PujaGuidePanel } from '../components/map/PujaGuidePanel';
 import { getPandal, loadPandalPlan, PUJA_PANDALS, savePandalPlan } from '../lib/pujaGuide';
+import { ExplorePanel } from '../components/map/ExplorePanel';
+import { LandmarkLayerControl } from '../components/map/LandmarkLayerControl';
+import { LandmarkMarkers } from '../components/map/LandmarkMarkers';
+import { LandmarkSheet } from '../components/map/LandmarkSheet';
+import { MapDownloadButton } from '../components/map/MapDownloadButton';
 import {
+  getLandmarkCategory,
+  KOLKATA_LANDMARKS,
+  LANDMARK_CATEGORIES,
+  LANDMARK_ZONES,
+  type Landmark,
+  type LandmarkCategoryKey,
+  type LandmarkZone,
+} from '../lib/kolkataLandmarks';
+import { clampBounds, EXPLORE_GROUPS, fetchExplorePlaces, findExploreCategory, type ExplorePlace } from '../lib/placeExplorer';
+import {
+  buildEmojiMarkerIcon,
   buildPinIcon,
   categoryFromLabel,
   createMapPin,
@@ -204,6 +221,33 @@ const MAP2_ATTRACTIONS: Map2Attraction[] = [
   },
 ];
 
+/** Zone and emoji category of the 12 curated places, so they filter and look like the rest of the famous places. */
+const ATTRACTION_META: Record<string, { zone: LandmarkZone; category: LandmarkCategoryKey }> = {
+  'map2-victoria-memorial': { zone: 'Central', category: 'heritage' },
+  'map2-indian-museum': { zone: 'Central', category: 'museums' },
+  'map2-howrah-bridge': { zone: 'West', category: 'bridges' },
+  'map2-dakshineswar': { zone: 'North', category: 'temples' },
+  'map2-belur-math': { zone: 'West', category: 'temples' },
+  'map2-prinsep-ghat': { zone: 'Central', category: 'waterfront' },
+  'map2-st-pauls': { zone: 'Central', category: 'churches' },
+  'map2-birla-planetarium': { zone: 'Central', category: 'fun' },
+  'map2-kalighat': { zone: 'South', category: 'temples' },
+  'map2-kumartuli': { zone: 'North', category: 'art' },
+  'map2-science-city': { zone: 'East', category: 'fun' },
+  'map2-eco-park': { zone: 'East', category: 'parks' },
+};
+
+/** When two places collide at a low zoom, the category listed first keeps the pin. */
+const LANDMARK_PRIORITY: LandmarkCategoryKey[] = [
+  'heritage', 'temples', 'museums', 'parks', 'churches', 'mosques', 'waterfront', 'bridges', 'art', 'theatres',
+  'stadiums', 'fun', 'education', 'markets', 'books', 'transport', 'hotels', 'food',
+  'rest-bengali', 'rest-indian', 'rest-chinese', 'rest-sweets', 'rest-cabin',
+];
+
+const SORTED_LANDMARKS = [...KOLKATA_LANDMARKS].sort(
+  (left, right) => LANDMARK_PRIORITY.indexOf(left.category) - LANDMARK_PRIORITY.indexOf(right.category),
+);
+
 const toRoutePlace = (pointItem: Map2Attraction): RoutePlace => ({
   id: pointItem.id,
   name: pointItem.name,
@@ -299,9 +343,11 @@ const StarRating: React.FC<{ value: number; size?: number }> = ({ value, size = 
 const Map2Bridge: React.FC<{
   mapRef: React.MutableRefObject<LeafletMap | null>;
   onMapClick?: (position: { lat: number; lng: number }) => void;
-}> = ({ mapRef, onMapClick }) => {
+  onMoveEnd?: () => void;
+}> = ({ mapRef, onMapClick, onMoveEnd }) => {
   const map = useMapEvents({
     click: (event) => onMapClick?.({ lat: event.latlng.lat, lng: event.latlng.lng }),
+    moveend: () => onMoveEnd?.(),
   });
   useEffect(() => {
     mapRef.current = map;
@@ -378,6 +424,26 @@ export const Map2Page: React.FC = () => {
   const [selectedPandalId, setSelectedPandalId] = useState<string | null>(null);
   const [pujaRoute, setPujaRoute] = useState<PlannedRoute | null>(null);
   const [showPlanOnly, setShowPlanOnly] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
+  const [exploreGroupKey, setExploreGroupKey] = useState(EXPLORE_GROUPS[0].key);
+  const [exploreCategoryKey, setExploreCategoryKey] = useState<string | null>(null);
+  const [explorePlaces, setExplorePlaces] = useState<ExplorePlace[]>([]);
+  const [exploreLoading, setExploreLoading] = useState(false);
+  const [exploreStatus, setExploreStatus] = useState('');
+  const [selectedExplorePlace, setSelectedExplorePlace] = useState<ExplorePlace | null>(null);
+  const [exploreAreaStale, setExploreAreaStale] = useState(false);
+  const [exploreRoute, setExploreRoute] = useState<PlannedRoute | null>(null);
+  const [exploreRouteLoading, setExploreRouteLoading] = useState(false);
+  const exploreRequestRef = useRef(0);
+  const [landmarksOn, setLandmarksOn] = useState(true);
+  const [landmarkPanelOpen, setLandmarkPanelOpen] = useState(false);
+  const [landmarkZone, setLandmarkZone] = useState<LandmarkZone | 'All'>('All');
+  const [hiddenCategories, setHiddenCategories] = useState<Set<LandmarkCategoryKey>>(() => new Set());
+  const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
+  const [landmarkRoute, setLandmarkRoute] = useState<PlannedRoute | null>(null);
+  const [landmarkRouteLoading, setLandmarkRouteLoading] = useState(false);
+  const [landmarkStatus, setLandmarkStatus] = useState('');
+  const exploreCategory = findExploreCategory(exploreCategoryKey);
   const selectedPandal = selectedPandalId ? getPandal(selectedPandalId) : null;
   const userId = user?.id || null;
 
@@ -393,13 +459,53 @@ export const Map2Page: React.FC = () => {
     () => new Set([startId, endId, ...routeStops.map((item) => item.id)]),
     [endId, routeStops, startId],
   );
-  const filteredAttractions = useMemo(() => {
+  const searchResults = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return MAP2_ATTRACTIONS;
-    return MAP2_ATTRACTIONS.filter((item) => (
-      `${item.name} ${item.category} ${item.summary}`.toLowerCase().includes(normalized)
-    ));
+    if (!normalized) return [];
+    const fromAttractions = MAP2_ATTRACTIONS
+      .filter((item) => `${item.name} ${item.category} ${item.summary}`.toLowerCase().includes(normalized))
+      .map((item) => ({ kind: 'attraction' as const, id: item.id, name: item.name, label: item.category, attraction: item }));
+    const fromLandmarks = KOLKATA_LANDMARKS
+      .filter((item) => `${item.name} ${getLandmarkCategory(item.category).label} ${item.zone} ${item.summary}`.toLowerCase().includes(normalized))
+      .map((item) => ({ kind: 'landmark' as const, id: item.id, name: item.name, label: `${getLandmarkCategory(item.category).label} · ${item.zone}`, landmark: item }));
+    return [...fromAttractions, ...fromLandmarks].slice(0, 6);
   }, [query]);
+
+  const isLayerVisible = (zone: LandmarkZone, category: LandmarkCategoryKey) => (
+    landmarksOn && (landmarkZone === 'All' || landmarkZone === zone) && !hiddenCategories.has(category)
+  );
+  const visibleAttractions = useMemo(
+    () => MAP2_ATTRACTIONS.filter((item) => {
+      const meta = ATTRACTION_META[item.id];
+      return !meta || isLayerVisible(meta.zone, meta.category);
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [landmarksOn, landmarkZone, hiddenCategories],
+  );
+  const visibleLandmarks = useMemo(
+    () => SORTED_LANDMARKS.filter((item) => isLayerVisible(item.zone, item.category)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [landmarksOn, landmarkZone, hiddenCategories],
+  );
+  const reservedSpots = useMemo(() => visibleAttractions.map((item) => ({ lat: item.lat, lng: item.lng })), [visibleAttractions]);
+  const layerZoneCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const zone of LANDMARK_ZONES) counts[zone] = KOLKATA_LANDMARKS.filter((item) => item.zone === zone).length;
+    for (const meta of Object.values(ATTRACTION_META)) counts[meta.zone] += 1;
+    return counts;
+  }, []);
+  const layerCategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const category of LANDMARK_CATEGORIES) counts[category.key] = 0;
+    for (const item of KOLKATA_LANDMARKS) {
+      if (landmarkZone === 'All' || item.zone === landmarkZone) counts[item.category] += 1;
+    }
+    for (const meta of Object.values(ATTRACTION_META)) {
+      if (landmarkZone === 'All' || meta.zone === landmarkZone) counts[meta.category] += 1;
+    }
+    return counts;
+  }, [landmarkZone]);
+  const layerTotal = visibleAttractions.length + visibleLandmarks.length;
 
   useEffect(() => () => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -436,7 +542,105 @@ export const Map2Page: React.FC = () => {
     void savePandalPlan(userId, ids).catch(() => undefined);
   };
 
+  const closeExplore = () => {
+    setExploreOpen(false);
+    setExploreCategoryKey(null);
+    setExplorePlaces([]);
+    setSelectedExplorePlace(null);
+    setExploreStatus('');
+    setExploreAreaStale(false);
+    setExploreRoute(null);
+  };
+
+  /** Loads places of a category inside the current map view (trimmed to ~9 km around its centre). */
+  const loadExplorePlaces = async (categoryKey: string) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const viewBounds = map.getBounds();
+    const { trimmed } = clampBounds({
+      south: viewBounds.getSouth(), west: viewBounds.getWest(), north: viewBounds.getNorth(), east: viewBounds.getEast(),
+    });
+    const requestId = exploreRequestRef.current + 1;
+    exploreRequestRef.current = requestId;
+    setExploreLoading(true);
+    setExploreAreaStale(false);
+    setSelectedExplorePlace(null);
+    setExploreRoute(null);
+    setExploreStatus('Searching this area...');
+    try {
+      const rows = await fetchExplorePlaces(categoryKey, {
+        south: viewBounds.getSouth(), west: viewBounds.getWest(), north: viewBounds.getNorth(), east: viewBounds.getEast(),
+      });
+      if (exploreRequestRef.current !== requestId) return;
+      setExplorePlaces(rows);
+      const label = findExploreCategory(categoryKey)?.category.label.toLowerCase() || 'places';
+      setExploreStatus(rows.length
+        ? `${rows.length} ${label} found${trimmed ? ' near the centre of the map. Zoom in to search a smaller area.' : ' in this area.'}`
+        : `No ${label} found here. Move the map and tap "Search this area".`);
+    } catch (error) {
+      if (exploreRequestRef.current !== requestId) return;
+      setExplorePlaces([]);
+      setExploreStatus(error instanceof Error ? error.message : 'Could not load places.');
+    } finally {
+      if (exploreRequestRef.current === requestId) setExploreLoading(false);
+    }
+  };
+
+  const handleExploreCategory = (categoryKey: string | null) => {
+    setExploreCategoryKey(categoryKey);
+    setExplorePlaces([]);
+    setSelectedExplorePlace(null);
+    setExploreRoute(null);
+    setExploreStatus('');
+    if (categoryKey) void loadExplorePlaces(categoryKey);
+  };
+
+  const toggleExplore = () => {
+    clearLandmark();
+    if (exploreOpen) {
+      closeExplore();
+      return;
+    }
+    setExploreOpen(true);
+    setPujaOpen(false);
+    setSelectedPoint(null);
+    setSelectedPin(null);
+    setRouteOpen(false);
+    closePinForm();
+  };
+
+  const handleRouteToPlace = async (place: ExplorePlace) => {
+    setExploreRouteLoading(true);
+    setExploreStatus('Finding your location...');
+    try {
+      const me = userLocation || await getCurrentDevicePosition();
+      setUserLocation({ lat: me.lat, lng: me.lng });
+      setExploreStatus('Building route...');
+      const start: RoutePlace = {
+        id: 'me', name: 'Your location', lat: me.lat, lng: me.lng, category: 'Start',
+        kind: 'suggested', visited: false, display_name: 'Your location', source: 'system',
+      };
+      const destination: RoutePlace = {
+        id: place.id, name: place.name, lat: place.lat, lng: place.lng, category: exploreCategory?.category.label || 'Place',
+        kind: 'suggested', visited: false, display_name: place.address || place.name, source: 'overpass',
+      };
+      setExploreRoute(await buildSmartRoute({ start, destination, travelMode: 'driving' }));
+      setExploreStatus('');
+    } catch (error) {
+      setExploreStatus(error instanceof Error ? error.message : 'Could not build a route.');
+    } finally {
+      setExploreRouteLoading(false);
+    }
+  };
+
+  const handlePinExplorePlace = (place: ExplorePlace) => {
+    closeExplore();
+    void handleStartPin({ lat: place.lat, lng: place.lng, title: place.name });
+  };
+
   const togglePuja = () => {
+    closeExplore();
+    clearLandmark();
     setPujaOpen((current) => !current);
     setSelectedPandalId(null);
     setSelectedPoint(null);
@@ -445,7 +649,62 @@ export const Map2Page: React.FC = () => {
     closePinForm();
   };
 
+  const clearLandmark = () => {
+    setSelectedLandmark(null);
+    setLandmarkRoute(null);
+    setLandmarkStatus('');
+  };
+
+  const handleLandmarkClick = (landmark: Landmark) => {
+    setSelectedLandmark(landmark);
+    setLandmarkRoute(null);
+    setLandmarkStatus('');
+    setSelectedPoint(null);
+    setSelectedPin(null);
+    setPinFormOpen(false);
+    setRouteOpen(false);
+  };
+
+  const handleRouteToLandmark = async (landmark: Landmark) => {
+    setLandmarkRouteLoading(true);
+    setLandmarkStatus('Finding your location...');
+    try {
+      const me = userLocation || await getCurrentDevicePosition();
+      setUserLocation({ lat: me.lat, lng: me.lng });
+      setLandmarkStatus('Building route...');
+      const start: RoutePlace = {
+        id: 'me', name: 'Your location', lat: me.lat, lng: me.lng, category: 'Start',
+        kind: 'suggested', visited: false, display_name: 'Your location', source: 'system',
+      };
+      const destination: RoutePlace = {
+        id: landmark.id, name: landmark.name, lat: landmark.lat, lng: landmark.lng, category: getLandmarkCategory(landmark.category).label,
+        kind: 'suggested', visited: false, display_name: landmark.name, source: 'system',
+      };
+      setLandmarkRoute(await buildSmartRoute({ start, destination, travelMode: 'driving' }));
+      setLandmarkStatus('');
+    } catch (error) {
+      setLandmarkStatus(error instanceof Error ? error.message : 'Could not build a route.');
+    } finally {
+      setLandmarkRouteLoading(false);
+    }
+  };
+
+  const handlePinLandmark = (landmark: Landmark) => {
+    clearLandmark();
+    void handleStartPin({ lat: landmark.lat, lng: landmark.lng, title: landmark.name });
+  };
+
+  const toggleLandmarkCategory = (key: LandmarkCategoryKey) => {
+    setHiddenCategories((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const handlePointClick = (pointItem: Map2Attraction) => {
+    clearLandmark();
     setSelectedPoint(pointItem);
     setSelectedPin(null);
     setPinFormOpen(false);
@@ -453,6 +712,7 @@ export const Map2Page: React.FC = () => {
   };
 
   const handlePinClick = (pin: MapPinRecord) => {
+    clearLandmark();
     setSelectedPin(pin);
     setSelectedPoint(null);
     setPinFormOpen(false);
@@ -466,16 +726,23 @@ export const Map2Page: React.FC = () => {
   };
 
   /** Opens the pin form with the draft pin on the user's location, or the map centre if that is unavailable. */
-  const handleStartPin = async () => {
+  const handleStartPin = async (prefill?: { lat: number; lng: number; title: string }) => {
+    clearLandmark();
     setSelectedPoint(null);
     setSelectedPin(null);
     setRouteOpen(false);
-    setPinTitle('');
+    setPinTitle(prefill?.title || '');
     setPinReview('');
     setPinRating(5);
     setPinStatus(user ? 'Finding your location...' : '');
     setPinFormOpen(true);
     if (!user) return;
+
+    if (prefill) {
+      setDraftPin({ lat: prefill.lat, lng: prefill.lng });
+      setPinStatus('Pinned at this place. Choose a category and add your review.');
+      return;
+    }
 
     const center = mapRef.current?.getCenter();
     setDraftPin(center ? { lat: center.lat, lng: center.lng } : { lat: MAP2_CENTER[0], lng: MAP2_CENTER[1] });
@@ -695,19 +962,48 @@ export const Map2Page: React.FC = () => {
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          crossOrigin="anonymous"
         />
         <ZoomControl position="bottomright" />
         <Map2Viewport
-          routePoints={(pujaOpen ? pujaRoute : plannedRoute)?.route_points || []}
-          selectedPoint={pujaOpen ? selectedPandal : selectedPoint || selectedPin}
+          routePoints={(exploreOpen ? exploreRoute : pujaOpen ? pujaRoute : landmarkRoute || plannedRoute)?.route_points || []}
+          selectedPoint={exploreOpen ? selectedExplorePlace : pujaOpen ? selectedPandal : selectedPoint || selectedPin || selectedLandmark}
           userLocation={userLocation}
         />
         <Map2Bridge
           mapRef={mapRef}
           onMapClick={pinFormOpen && user ? (position) => setDraftPin(position) : undefined}
+          onMoveEnd={exploreOpen && exploreCategoryKey && !exploreLoading ? () => setExploreAreaStale(true) : undefined}
         />
 
-        {!pujaOpen && plannedRoute?.route_points.length ? (
+        {exploreOpen && exploreRoute?.route_points.length ? (
+          <Polyline
+            pathOptions={{ color: '#2563eb', weight: 6, opacity: 0.88, lineCap: 'round', lineJoin: 'round' }}
+            positions={exploreRoute.route_points}
+          />
+        ) : null}
+
+        {exploreOpen && exploreCategory ? explorePlaces.map((place) => (
+          <Marker
+            key={place.id}
+            icon={buildEmojiMarkerIcon(exploreCategory.category.emoji, {
+              active: selectedExplorePlace?.id === place.id,
+            })}
+            position={[place.lat, place.lng]}
+            zIndexOffset={selectedExplorePlace?.id === place.id ? 800 : 400}
+            eventHandlers={{ click: () => { setSelectedExplorePlace(place); setExploreRoute(null); } }}
+            title={place.name}
+          />
+        )) : null}
+
+        {!exploreOpen && !pujaOpen && landmarkRoute?.route_points.length ? (
+          <Polyline
+            pathOptions={{ color: '#2563eb', weight: 6, opacity: 0.88, lineCap: 'round', lineJoin: 'round' }}
+            positions={landmarkRoute.route_points}
+          />
+        ) : null}
+
+        {!exploreOpen && !pujaOpen && plannedRoute?.route_points.length ? (
           <Polyline
             pathOptions={{ color: '#ff741d', weight: 6, opacity: 0.92, lineCap: 'round', lineJoin: 'round' }}
             positions={plannedRoute.route_points}
@@ -744,18 +1040,37 @@ export const Map2Page: React.FC = () => {
           <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]} />
         ) : null}
 
-        {!pujaOpen && MAP2_ATTRACTIONS.map((pointItem) => (
-          <Marker
-            key={pointItem.id}
-            icon={buildPinIcon(categoryFromLabel(pointItem.category), {
-              active: selectedPoint?.id === pointItem.id,
-              route: routePointIds.has(pointItem.id),
-            })}
-            position={[pointItem.lat, pointItem.lng]}
-            eventHandlers={{ click: () => handlePointClick(pointItem) }}
-            title={pointItem.name}
+        {!pujaOpen && visibleAttractions.map((pointItem) => {
+          const meta = ATTRACTION_META[pointItem.id];
+          const category = meta ? getLandmarkCategory(meta.category) : null;
+          return (
+            <Marker
+              key={pointItem.id}
+              icon={category
+                ? buildEmojiMarkerIcon(category.emoji, {
+                  active: selectedPoint?.id === pointItem.id,
+                  route: routePointIds.has(pointItem.id),
+                })
+                : buildPinIcon(categoryFromLabel(pointItem.category), {
+                  active: selectedPoint?.id === pointItem.id,
+                  route: routePointIds.has(pointItem.id),
+                })}
+              position={[pointItem.lat, pointItem.lng]}
+              zIndexOffset={200}
+              eventHandlers={{ click: () => handlePointClick(pointItem) }}
+              title={pointItem.name}
+            />
+          );
+        })}
+
+        {!pujaOpen && !exploreOpen && landmarksOn ? (
+          <LandmarkMarkers
+            landmarks={visibleLandmarks}
+            reserved={reservedSpots}
+            selectedId={selectedLandmark?.id || null}
+            onSelect={handleLandmarkClick}
           />
-        ))}
+        ) : null}
 
         {!pujaOpen && pins.map((pin) => (
           <Marker
@@ -810,8 +1125,19 @@ export const Map2Page: React.FC = () => {
         <div className="map2-toolbar" aria-label="Map controls">
           <button
             type="button"
+            className={`map2-tool${exploreOpen ? ' is-active' : ''}`}
+            onClick={toggleExplore}
+            aria-label="Explore nearby"
+            title="Explore nearby"
+            aria-pressed={exploreOpen}
+          >
+            <LayoutGrid size={19} />
+          </button>
+          <button
+            type="button"
             className={`map2-tool${pinFormOpen ? ' is-active' : ''}`}
             onClick={() => {
+              closeExplore();
               setPujaOpen(false);
               if (pinFormOpen) closePinForm();
               else void handleStartPin();
@@ -829,6 +1155,8 @@ export const Map2Page: React.FC = () => {
               setSelectedPoint(null);
               setSelectedPin(null);
               setPujaOpen(false);
+              closeExplore();
+              clearLandmark();
               closePinForm();
             }}
             aria-label="Route creator"
@@ -867,6 +1195,36 @@ export const Map2Page: React.FC = () => {
         </button>
       </div>
 
+      {exploreOpen ? (
+        <ExplorePanel
+          groupKey={exploreGroupKey}
+          onGroupChange={setExploreGroupKey}
+          categoryKey={exploreCategoryKey}
+          onCategoryChange={handleExploreCategory}
+          places={explorePlaces}
+          loading={exploreLoading}
+          status={exploreStatus}
+          selectedPlace={selectedExplorePlace}
+          onSelectPlace={(place) => { setSelectedExplorePlace(place); setExploreRoute(null); }}
+          route={exploreRoute}
+          routeLoading={exploreRouteLoading}
+          onRouteToPlace={(place) => void handleRouteToPlace(place)}
+          onPinPlace={handlePinExplorePlace}
+          onClose={closeExplore}
+        />
+      ) : null}
+
+      {exploreOpen && exploreCategoryKey && (exploreAreaStale || exploreLoading) ? (
+        <button
+          type="button"
+          className="map2-search-area"
+          onClick={() => void loadExplorePlaces(exploreCategoryKey)}
+          disabled={exploreLoading}
+        >
+          {exploreLoading ? 'Searching…' : 'Search this area'}
+        </button>
+      ) : null}
+
       {pujaOpen ? (
         <PujaGuidePanel
           userId={userId}
@@ -885,18 +1243,19 @@ export const Map2Page: React.FC = () => {
 
       {searchOpen && query.trim() && (
         <section className="map2-search-results" aria-label="Matching tourist places">
-          {filteredAttractions.length ? filteredAttractions.slice(0, 5).map((item) => (
+          {searchResults.length ? searchResults.map((item) => (
             <button
               type="button"
-              key={item.id}
+              key={`${item.kind}-${item.id}`}
               onClick={() => {
-                handlePointClick(item);
+                if (item.kind === 'attraction') handlePointClick(item.attraction);
+                else handleLandmarkClick(item.landmark);
                 setQuery('');
                 setSearchOpen(false);
               }}
             >
               <span>{item.name}</span>
-              <small>{item.category}</small>
+              <small>{item.label}</small>
             </button>
           )) : (
             <p>No places found.</p>
@@ -1143,6 +1502,43 @@ export const Map2Page: React.FC = () => {
           </aside>
         );
       })() : null}
+
+      {selectedLandmark && !selectedPoint && !selectedPin && !routeOpen && !pinFormOpen && !pujaOpen && !exploreOpen ? (
+        <LandmarkSheet
+          landmark={selectedLandmark}
+          route={landmarkRoute}
+          routeLoading={landmarkRouteLoading}
+          status={landmarkStatus}
+          onRoute={(landmark) => void handleRouteToLandmark(landmark)}
+          onPin={handlePinLandmark}
+          onClose={clearLandmark}
+        />
+      ) : null}
+
+      {pujaOpen || exploreOpen ? (
+        <section className="map2-landmarks is-covered" aria-label="Map download">
+          <div className="map2-landmarks-row">
+            <MapDownloadButton getMap={() => mapRef.current} />
+          </div>
+        </section>
+      ) : (
+        <LandmarkLayerControl
+          open={landmarkPanelOpen}
+          onOpenChange={setLandmarkPanelOpen}
+          enabled={landmarksOn}
+          onEnabledChange={setLandmarksOn}
+          zone={landmarkZone}
+          onZoneChange={setLandmarkZone}
+          hiddenCategories={hiddenCategories}
+          onToggleCategory={toggleLandmarkCategory}
+          onReset={() => { setLandmarksOn(true); setLandmarkZone('All'); setHiddenCategories(new Set()); }}
+          zoneCounts={layerZoneCounts}
+          categoryCounts={layerCategoryCounts}
+          total={layerTotal}
+          covered={Boolean(selectedPoint || selectedPin || selectedLandmark || routeOpen || pinFormOpen)}
+          actions={<MapDownloadButton getMap={() => mapRef.current} />}
+        />
+      )}
 
       {selectedPoint && !routeOpen && !pinFormOpen ? (
         <aside className="map2-detail-sheet" aria-label={`${selectedPoint.name} details`}>

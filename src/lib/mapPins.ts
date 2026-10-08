@@ -115,6 +115,30 @@ export const buildPinIcon = (category: PinCategory, options: { active?: boolean;
     return icon;
 };
 
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+
+/**
+ * A plain emoji used directly as the map marker (no pin shape). Used for the famous places, the curated
+ * places and "Explore nearby" results. A white halo and soft shadow keep it readable on any map tile.
+ */
+export const buildEmojiMarkerIcon = (emoji: string, options: { active?: boolean; route?: boolean } = {}): DivIcon => {
+    const cacheKey = `emoji:${emoji}:${options.active ? 1 : 0}:${options.route ? 1 : 0}`;
+    const cached = iconCache.get(cacheKey);
+    if (cached) return cached;
+
+    const size = options.active ? 44 : 32;
+    const html = `<span class="map2-emoji-marker${options.active ? ' is-active' : ''}${options.route ? ' is-route' : ''}" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.72)}px" aria-hidden="true">${escapeHtml(emoji)}</span>`;
+
+    const icon = divIcon({
+        className: '',
+        html,
+        iconSize: point(size, size),
+        iconAnchor: point(size / 2, size / 2),
+    });
+    iconCache.set(cacheKey, icon);
+    return icon;
+};
+
 export interface MapPinRecord {
     id: string;
     user_id: string;

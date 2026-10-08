@@ -1207,6 +1207,580 @@
   background: rgba(255, 255, 255, 0.24);
 }
 
+/* Explore nearby ---------------------------------------------------------- */
+.map2-emoji-marker {
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  filter:
+    drop-shadow(0 0 1px #ffffff)
+    drop-shadow(0 0 2px #ffffff)
+    drop-shadow(0 2px 3px rgba(20, 20, 20, 0.4));
+  transition: transform 0.15s ease;
+  cursor: pointer;
+}
+
+.map2-emoji-marker:hover {
+  transform: scale(1.18);
+}
+
+.map2-emoji-marker.is-active {
+  filter:
+    drop-shadow(0 0 2px #ffffff)
+    drop-shadow(0 0 4px #ffffff)
+    drop-shadow(0 4px 6px rgba(20, 20, 20, 0.45));
+}
+
+.map2-emoji-marker.is-route {
+  filter:
+    drop-shadow(0 0 2px #ffffff)
+    drop-shadow(0 0 5px #ff741d)
+    drop-shadow(0 2px 3px rgba(20, 20, 20, 0.4));
+}
+
+.map2-explore-groups {
+  display: flex;
+  gap: 6px;
+  margin: 0 -2px;
+  padding: 2px 2px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.map2-explore-groups::-webkit-scrollbar {
+  display: none;
+}
+
+.map2-explore-groups button {
+  flex: none;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #111111;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.map2-explore-groups button.is-active {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+  box-shadow: inset 0 -3px 0 var(--group-color);
+}
+
+.map2-explore-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.map2-explore-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px 0 8px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.map2-explore-chips button span {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.map2-explore-chips button.is-active {
+  border-color: #111111;
+  background: var(--group-color);
+  box-shadow: 0 0 0 1px #111111;
+}
+
+.map2-explore-emoji {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid #171717;
+  border-radius: 50%;
+  background: var(--group-color);
+  font-size: 1.05rem;
+}
+
+.map2-explore-facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.86rem;
+}
+
+.map2-explore-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.map2-explore-facts li > svg,
+.map2-explore-facts li > span {
+  flex: none;
+  margin-top: 2px;
+}
+
+.map2-explore-facts a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.map2-explore-facts .is-muted {
+  color: rgba(17, 17, 17, 0.55);
+}
+
+.map2-explore-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
+  gap: 8px;
+}
+
+.map2-explore-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(17, 17, 17, 0.55);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.map2-search-area {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 92px);
+  left: 50%;
+  z-index: 950;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  box-shadow: 0 12px 26px rgba(20, 20, 20, 0.28);
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.map2-search-area:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+:root[data-theme='dark'] .map2-explore-groups button,
+:root[data-theme='dark'] .map2-explore-chips button {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] .map2-explore-groups button.is-active {
+  background: #f8fafc;
+  color: #111111;
+}
+
+:root[data-theme='dark'] .map2-explore-chips button.is-active {
+  background: var(--group-color);
+  color: #111111;
+  box-shadow: 0 0 0 1px #f8fafc;
+}
+
+:root[data-theme='dark'] .map2-explore-facts .is-muted,
+:root[data-theme='dark'] .map2-explore-source {
+  color: rgba(248, 250, 252, 0.65);
+}
+
+:root[data-theme='dark'] .map2-search-area {
+  background: #f8fafc;
+  color: #111111;
+}
+
+/* Famous places layer ----------------------------------------------------- */
+.map2-landmarks {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  left: 12px;
+  z-index: 900;
+  display: grid;
+  gap: 8px;
+  width: min(440px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+.map2-landmarks > * {
+  pointer-events: auto;
+}
+
+.map2-landmarks-toggle {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  box-shadow: 0 12px 26px rgba(20, 20, 20, 0.28);
+  cursor: pointer;
+}
+
+.map2-landmarks-toggle small {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.map2-landmarks-toggle svg {
+  transition: transform 0.18s ease;
+}
+
+.map2-landmarks-toggle svg.is-open {
+  transform: rotate(180deg);
+}
+
+.map2-landmarks-panel {
+  display: grid;
+  gap: 12px;
+  max-height: min(56dvh, 460px);
+  padding: 14px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 22px;
+  background: rgba(232, 232, 232, 0.95);
+  box-shadow: 0 18px 36px rgba(20, 20, 20, 0.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.map2-landmarks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.map2-landmarks-switch {
+  flex: 1;
+  padding: 0;
+  background: transparent;
+}
+
+.map2-landmarks-reset {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(17, 17, 17, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.map2-landmarks-zones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.map2-landmarks-zones button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #111111;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.map2-landmarks-zones button small {
+  color: rgba(17, 17, 17, 0.55);
+  font-size: 0.72rem;
+}
+
+.map2-landmarks-zones button.is-active {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+}
+
+.map2-landmarks-zones button.is-active small {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.map2-landmarks-cats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.map2-landmarks-cats button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 4px 10px 4px 5px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.map2-landmarks-cats button i {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid #171717;
+  border-radius: 50%;
+  background: var(--cat-color);
+  font-size: 0.95rem;
+  font-style: normal;
+  line-height: 1;
+}
+
+.map2-landmarks-cats button span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map2-landmarks-cats button small {
+  color: rgba(17, 17, 17, 0.55);
+  font-size: 0.72rem;
+}
+
+.map2-landmarks-cats button.is-off {
+  background: rgba(255, 255, 255, 0.45);
+  opacity: 0.55;
+}
+
+.map2-landmarks-cats button.is-off i {
+  background: #d4d4d8;
+  filter: grayscale(1);
+}
+
+.map2-landmarks-cats button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.map2-landmarks-hint {
+  margin: 0;
+  color: rgba(17, 17, 17, 0.6);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.map2-landmark-kicker {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+}
+
+.map2-landmark-kicker i {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid #171717;
+  border-radius: 50%;
+  background: var(--cat-color);
+  font-size: 0.78rem;
+  font-style: normal;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.map2-detail-sheet .map2-route-metrics {
+  margin: 0;
+}
+
+.map2-landmarks-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.map2-download {
+  position: relative;
+}
+
+.map2-download-toggle {
+  background: #ffffff;
+  color: #111111;
+  border-color: #111111;
+}
+
+.map2-download-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  gap: 6px;
+  width: 230px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 18px;
+  background: rgba(240, 240, 240, 0.97);
+  box-shadow: 0 18px 36px rgba(20, 20, 20, 0.24);
+}
+
+.map2-download-menu p {
+  margin: 0 2px 2px;
+  color: rgba(17, 17, 17, 0.62);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.map2-download-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111111;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.map2-download-menu button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.map2-download-menu button span {
+  display: grid;
+}
+
+.map2-download-menu button small {
+  color: rgba(17, 17, 17, 0.55);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.map2-download-menu .map2-download-error {
+  margin: 0 2px;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+:root[data-theme='dark'] .map2-download-toggle {
+  background: #f8fafc;
+  color: #111111;
+}
+
+:root[data-theme='dark'] .map2-download-menu {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(24, 24, 24, 0.97);
+}
+
+:root[data-theme='dark'] .map2-download-menu p,
+:root[data-theme='dark'] .map2-download-menu button small {
+  color: rgba(248, 250, 252, 0.68);
+}
+
+:root[data-theme='dark'] .map2-download-menu button {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+@media (max-width: 767px) {
+  .map2-landmarks.is-covered {
+    display: none;
+  }
+}
+
+:root[data-theme='dark'] .map2-landmarks-panel {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(24, 24, 24, 0.94);
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] .map2-landmarks-toggle {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+:root[data-theme='dark'] .map2-landmarks-reset {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme='dark'] .map2-landmarks-zones button,
+:root[data-theme='dark'] .map2-landmarks-cats button {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] .map2-landmarks-zones button.is-active {
+  background: #f8fafc;
+  color: #111111;
+}
+
+:root[data-theme='dark'] .map2-landmarks-zones button.is-active small {
+  color: rgba(17, 17, 17, 0.6);
+}
+
+:root[data-theme='dark'] .map2-landmarks-zones button small,
+:root[data-theme='dark'] .map2-landmarks-cats button small,
+:root[data-theme='dark'] .map2-landmarks-hint {
+  color: rgba(248, 250, 252, 0.65);
+}
+
 @media (min-width: 768px) {
   .map2-top-controls {
     top: 28px;
