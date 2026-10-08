@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Building2, Calendar, Camera, Check, ChevronLeft, ClipboardList, Globe, Home, Languages,
     KeyRound, LayoutDashboard, Loader2, LogOut, MapPin, MessageSquare, Moon, Package, Phone, RefreshCcw, Shield, ShieldAlert, Sparkles,
-    Search, Sun, Trash2, UserCircle2, Users, X,
+    Mail, Search, Sun, Trash2, UserCircle2, Users, X,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogoutConfirmModal } from '../components/LogoutConfirmModal';
@@ -15,7 +15,7 @@ import { getProfileAvatarUrl } from '../lib/avatar';
 import { uploadCloudinaryImage } from '../lib/cloudinaryUpload';
 import {
     getBookings, getConversations, getFavoriteListings,
-    getLatestVerification, getProfileFollowStats, getProviderBookings,
+    getLatestVerification, getMyNewsletterStatus, setMyNewsletterSubscription, getProfileFollowStats, getProviderBookings,
     resubmitVerificationApplication, updateProfile,
     type FavoriteListingRecord, type UnifiedBooking, type VerificationRecord,
 } from '../lib/destinations';
@@ -105,6 +105,59 @@ const ToggleSwitch: React.FC<{ on: boolean; onToggle: () => void; label: string 
         <span className="prf-toggle-knob" />
     </button>
 );
+
+/** Settings row: the signed-in user's own newsletter subscription. */
+const NewsletterSettingRow: React.FC = () => {
+    const [subscribed, setSubscribed] = useState<boolean | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+        getMyNewsletterStatus()
+            .then((status) => { if (!cancelled) setSubscribed(status === 'subscribed'); })
+            .catch(() => { if (!cancelled) { setSubscribed(false); setMessage('Could not load your newsletter setting.'); } });
+        return () => { cancelled = true; };
+    }, []);
+
+    const toggle = async () => {
+        if (subscribed === null || saving) return;
+        const next = !subscribed;
+        setSaving(true);
+        setSubscribed(next);
+        setMessage('');
+        try {
+            const status = await setMyNewsletterSubscription(next);
+            setSubscribed(status === 'subscribed');
+        } catch (error) {
+            setSubscribed(!next);
+            setMessage(error instanceof Error ? error.message : 'Could not update your newsletter setting.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="prf-setting-row">
+            <div className="prf-setting-left">
+                <div className="prf-setting-icon">
+                    <Mail size={16} />
+                </div>
+                <div>
+                    <p className="prf-setting-label">Newsletter</p>
+                    <p className="prf-setting-sub">
+                        {message || (subscribed === null
+                            ? 'Loading…'
+                            : subscribed
+                                ? 'You get travel deals and updates by email'
+                                : 'Get travel deals and updates by email')}
+                    </p>
+                </div>
+            </div>
+            <ToggleSwitch on={Boolean(subscribed)} onToggle={() => void toggle()} label={subscribed ? 'Unsubscribe from newsletter' : 'Subscribe to newsletter'} />
+        </div>
+    );
+};
 
 type EditFormState = {
     full_name: string;
@@ -1154,6 +1207,10 @@ export const Profile: React.FC = () => {
                         </div>
                         <ToggleSwitch on={isDark} onToggle={toggleTheme} label="Toggle dark mode" />
                     </div>
+
+                    <div className="prf-setting-sep" />
+
+                    <NewsletterSettingRow />
 
                     <div className="prf-setting-sep" />
 

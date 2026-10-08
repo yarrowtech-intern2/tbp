@@ -2910,35 +2910,72 @@ export interface NewsletterSubscriber {
     created_at: string;
 }
 
+/** Records a newsletter opt-in. Works without a session (e.g. right after signup, before email confirmation). */
 export const subscribeToNewsletter = async (
     email: string,
     opts?: { userId?: string | null; fullName?: string | null; source?: string }
-): Promise<NewsletterSubscriber | null> => {
+): Promise<boolean> => {
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail) return null;
+    if (!normalizedEmail) return false;
 
-    const { data, error } = await supabase
-        .from('newsletter_subscribers')
-        .upsert(
-            {
-                email: normalizedEmail,
-                user_id: opts?.userId || null,
-                full_name: opts?.fullName || null,
-                source: opts?.source || 'signup',
-                status: 'subscribed',
-                subscribed_at: new Date().toISOString(),
-                unsubscribed_at: null,
-            },
-            { onConflict: 'email' }
-        )
-        .select()
-        .maybeSingle();
+    const { error } = await supabase.rpc('newsletter_subscribe', {
+        p_email: normalizedEmail,
+        p_full_name: opts?.fullName || null,
+        p_user_id: opts?.userId || null,
+        p_source: opts?.source || 'signup',
+    });
 
     if (error) {
         console.error('Failed to subscribe to newsletter:', error.message);
-        return null;
+        return false;
     }
-    return data as NewsletterSubscriber | null;
+    return true;
+};
+
+export type MyNewsletterStatus = 'subscribed' | 'unsubscribed' | 'none';
+
+export const getMyNewsletterStatus = async (): Promise<MyNewsletterStatus> => {
+    const { data, error } = await supabase.rpc('my_newsletter_subscription');
+    if (error) throw new Error(error.message || 'Could not load your newsletter setting.');
+    return (data === 'subscribed' || data === 'unsubscribed' ? data : 'none') as MyNewsletterStatus;
+};
+
+export const setMyNewsletterSubscription = async (subscribed: boolean): Promise<MyNewsletterStatus> => {
+    const { data, error } = await supabase.rpc('set_my_newsletter_subscription', { p_subscribed: subscribed });
+    if (error) throw new Error(error.message || 'Could not update your newsletter setting.');
+    return data === 'subscribed' ? 'subscribed' : 'unsubscribed';
+};
+
+export interface NewsletterExportRow {
+    id: string;
+    email: string;
+    full_name: string | null;
+    status: 'subscribed' | 'unsubscribed';
+    source: string;
+    subscribed_at: string;
+    unsubscribed_at: string | null;
+    user_id: string | null;
+    phone: string | null;
+    role: string | null;
+    account_created_at: string | null;
+}
+
+/** Admin/marketing: subscribers with the matching account's phone, role and signup date. */
+export const getNewsletterExportRows = async (): Promise<NewsletterExportRow[]> => {
+    const { data, error } = await supabase.rpc('newsletter_subscribers_export');
+    if (error) throw new Error(error.message || 'Could not load newsletter subscribers.');
+    return (data || []) as NewsletterExportRow[];
+};
+
+export const setNewsletterSubscriberStatus = async (id: string, status: 'subscribed' | 'unsubscribed'): Promise<void> => {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+        .from('newsletter_subscribers')
+        .update(status === 'subscribed'
+            ? { status, subscribed_at: now, unsubscribed_at: null }
+            : { status, unsubscribed_at: now })
+        .eq('id', id);
+    if (error) throw new Error(error.message || 'Could not update the subscriber.');
 };
 
 export const getNewsletterSubscribers = async (): Promise<NewsletterSubscriber[]> => {

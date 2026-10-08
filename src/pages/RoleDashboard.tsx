@@ -61,7 +61,6 @@ import {
     getModerationAuditLogs,
     getMyAds,
     getMyPosts,
-    getNewsletterSubscribers,
     getPosts,
     getProviderBookings,
     respondToBookingRequest,
@@ -77,7 +76,6 @@ import {
     type ListingReviewRecord,
     type ListingReviewSummary,
     type ModerationAuditLogRecord,
-    type NewsletterSubscriber,
     type PostRecord,
     type UnifiedBooking,
     type VerificationRecord,
@@ -606,6 +604,7 @@ const parseMarketingSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'content' || normalized === 'marketing' || normalized === 'copy') return 'greetings';
     if (normalized === 'messages' || normalized === 'notifications') return 'messages';
     if (normalized === 'analytics' || normalized === 'traffic' || normalized === 'insights') return 'analytics';
+    if (normalized === 'newsletter' || normalized === 'subscribers') return 'newsletter';
     return null;
 };
 
@@ -678,6 +677,11 @@ const LazyProviderPujaGuide = lazy(async () => {
 const LazyAdminPujaGuides = lazy(async () => {
     const module = await import('../components/puja/AdminPujaGuidesPanel');
     return { default: module.AdminPujaGuidesPanel };
+});
+
+const LazyNewsletterSubscribers = lazy(async () => {
+    const module = await import('../components/admin/NewsletterSubscribersPanel');
+    return { default: module.NewsletterSubscribersPanel };
 });
 
 const LazyAdminAnalytics = lazy(async () => {
@@ -848,10 +852,6 @@ export const RoleDashboard: React.FC = () => {
     const [adminModerationSearch, setAdminModerationSearch] = useState('');
     const [mapFetching, setMapFetching] = useState(false);
     const [mapLoaded, setMapLoaded] = useState(false);
-    const [newsletterSubscribers, setNewsletterSubscribers] = useState<NewsletterSubscriber[]>([]);
-    const [newsletterFetching, setNewsletterFetching] = useState(false);
-    const [newsletterLoaded, setNewsletterLoaded] = useState(false);
-    const [newsletterSearch, setNewsletterSearch] = useState('');
     const [providerBookingStatusFilter, setProviderBookingStatusFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected'>('all');
     const [providerPaymentStatusFilter, setProviderPaymentStatusFilter] = useState<'all' | 'pending' | 'paid' | 'refunded'>('all');
     const [providerPackageTypeFilter, setProviderPackageTypeFilter] = useState<'all' | 'tour' | 'activity' | 'guide'>('all');
@@ -1172,26 +1172,6 @@ export const RoleDashboard: React.FC = () => {
         }
     }, [effectiveRole, mapFetching, mapLoaded]);
 
-    const loadNewsletterSubscribers = useCallback(async (force = false) => {
-        if (effectiveRole !== 'admin') return;
-        if (newsletterFetching) return;
-        if (newsletterLoaded && !force) return;
-
-        setNewsletterFetching(true);
-        try {
-            const subscribers = await getNewsletterSubscribers();
-            setNewsletterSubscribers(subscribers);
-            setNewsletterLoaded(true);
-        } finally {
-            setNewsletterFetching(false);
-        }
-    }, [effectiveRole, newsletterFetching, newsletterLoaded]);
-
-    useEffect(() => {
-        if (effectiveRole !== 'admin' || activeSection !== 'newsletter') return;
-        void loadNewsletterSubscribers();
-    }, [activeSection, effectiveRole, loadNewsletterSubscribers]);
-
     useEffect(() => {
         if (!user || profileLoading) return;
         let cancelled = false;
@@ -1413,6 +1393,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'contact', label: 'Edit Contact Info', icon: Megaphone },
                 { key: 'inquiries', label: 'Contact Leads', icon: Mail },
                 { key: 'crm', label: 'CRM', icon: Contact2 },
+                { key: 'newsletter', label: 'Newsletter', icon: Rss },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },
             ];
         }
@@ -2082,45 +2063,6 @@ export const RoleDashboard: React.FC = () => {
 
     const adminUserRows = adminUsers
         .filter((item) => !query || `${item.full_name || ''} ${item.email || ''} ${item.role || ''}`.toLowerCase().includes(query));
-
-    const newsletterFilteredRows = newsletterSubscribers
-        .filter((item) => {
-            const q = newsletterSearch.trim().toLowerCase();
-            if (!q) return true;
-            return `${item.email || ''} ${item.full_name || ''}`.toLowerCase().includes(q);
-        });
-
-    const exportNewsletterSubscribersCsv = () => {
-        const rows = newsletterFilteredRows;
-        const escapeCsv = (value: unknown) => {
-            const text = String(value ?? '');
-            if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-                return `"${text.replace(/"/g, '""')}"`;
-            }
-            return text;
-        };
-
-        const header = ['email', 'full_name', 'status', 'source', 'subscribed_at'];
-        const lines = rows.map((item) => ([
-            item.email,
-            item.full_name || '',
-            item.status,
-            item.source,
-            item.subscribed_at || '',
-        ]).map(escapeCsv).join(','));
-
-        const csv = `${header.join(',')}\n${lines.join('\n')}`;
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        const dateStamp = new Date().toISOString().slice(0, 10);
-        anchor.href = url;
-        anchor.download = `newsletter-subscribers-${dateStamp}.csv`;
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(url);
-    };
 
     const adminBookingRows = adminBookings
         .filter((item) => !query || `${item.id || ''} ${item.listing_title || ''} ${item.status || ''} ${item.payment_status || ''} ${item.refund_status || ''} ${item.traveler_name || ''} ${item.traveler_email || ''} ${item.refund_request_reason || ''}`.toLowerCase().includes(query));
@@ -3685,6 +3627,16 @@ export const RoleDashboard: React.FC = () => {
     };
 
     const renderMarketingSection = () => {
+        if (activeSection === 'newsletter') {
+            return (
+                <section className="rdb-panel rdb-panel-wide">
+                    <Suspense fallback={<div className="rdb-loading"><Loader2 size={32} className="animate-spin" /><p>Loading subscribers…</p></div>}>
+                        <LazyNewsletterSubscribers />
+                    </Suspense>
+                </section>
+            );
+        }
+
         if (activeSection === 'analytics') {
             return (
                 <section className="rdb-panel rdb-panel-wide">
@@ -4264,65 +4216,10 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'newsletter') {
             return (
-                <section className="rdb-content-grid">
-                    <article className="rdb-panel">
-                        <h2>Newsletter</h2>
-                        <div className="rdb-user-split">
-                            <div><p>Subscribers</p><strong>{newsletterSubscribers.length}</strong></div>
-                        </div>
-                        <button
-                            type="button"
-                            className="rdb-btn rdb-btn-full"
-                            onClick={exportNewsletterSubscribersCsv}
-                            disabled={newsletterFilteredRows.length === 0}
-                        >
-                            Download CSV
-                        </button>
-                    </article>
-                    <article className="rdb-panel rdb-panel-wide">
-                        <div className="rdb-panel-head">
-                            <h2>Newsletter Subscribers</h2>
-                            <small>{newsletterSearch ? `Filtered by "${newsletterSearch}"` : `${newsletterFilteredRows.length} records`}</small>
-                            <button
-                                type="button"
-                                className="rdb-row-edit-link"
-                                onClick={() => void loadNewsletterSubscribers(true)}
-                            >
-                                Refresh
-                            </button>
-                        </div>
-                        <label className="rdb-moderation-search">
-                            <Search size={15} aria-hidden="true" />
-                            <input
-                                type="search"
-                                value={newsletterSearch}
-                                onChange={(event) => setNewsletterSearch(event.target.value)}
-                                placeholder="Search email or name"
-                                aria-label="Search newsletter subscribers"
-                            />
-                        </label>
-                        <div className="rdb-list">
-                            {newsletterFetching && newsletterFilteredRows.length === 0 ? (
-                                <div className="rdb-loading">
-                                    <Loader2 size={32} className="animate-spin" />
-                                    <p>Loading subscribers…</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {newsletterFilteredRows.slice(0, 50).map((item) => (
-                                        <div key={item.id} className="rdb-list-row">
-                                            <div>
-                                                <p>{item.full_name || item.email}</p>
-                                                <small>{item.email} - {item.source}</small>
-                                            </div>
-                                            <small>{item.status}</small>
-                                        </div>
-                                    ))}
-                                    {newsletterFilteredRows.length === 0 && <p className="rdb-empty">No newsletter subscribers yet.</p>}
-                                </>
-                            )}
-                        </div>
-                    </article>
+                <section className="rdb-panel rdb-panel-wide">
+                    <Suspense fallback={<div className="rdb-loading"><Loader2 size={32} className="animate-spin" /><p>Loading subscribers…</p></div>}>
+                        <LazyNewsletterSubscribers />
+                    </Suspense>
                 </section>
             );
         }
