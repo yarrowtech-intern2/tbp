@@ -5,7 +5,7 @@ import { getLandmarkCategory, type Landmark } from '../../lib/kolkataLandmarks';
 
 /** From this zoom level every place is drawn; below it only one pin per screen cell, so Central Kolkata stays readable. */
 const FULL_DETAIL_ZOOM = 15;
-const CELL_PX = 38;
+const CELL_PX = 46;
 
 interface LandmarkMarkersProps {
     /** Landmarks to draw, most important first: when two collide at a low zoom, the earlier one wins. */

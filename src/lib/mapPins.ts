@@ -126,7 +126,7 @@ export const buildEmojiMarkerIcon = (emoji: string, options: { active?: boolean;
     const cached = iconCache.get(cacheKey);
     if (cached) return cached;
 
-    const size = options.active ? 44 : 32;
+    const size = options.active ? 54 : 40;
     const html = `<span class="map2-emoji-marker${options.active ? ' is-active' : ''}${options.route ? ' is-route' : ''}" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.72)}px" aria-hidden="true">${escapeHtml(emoji)}</span>`;
 
     const icon = divIcon({
