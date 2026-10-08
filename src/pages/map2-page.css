@@ -62,7 +62,7 @@
   display: block;
   line-height: 0;
   filter: drop-shadow(0 6px 8px rgba(20, 20, 20, 0.28));
-  transform-origin: 22% 84%;
+  transform-origin: 50% 95%;
   transition: transform 0.18s ease;
 }
 
@@ -75,6 +75,12 @@
     drop-shadow(0 0 0 #ffffff)
     drop-shadow(0 0 3px #ff741d)
     drop-shadow(0 6px 8px rgba(20, 20, 20, 0.28));
+}
+
+.map2-tack.is-planned {
+  filter:
+    drop-shadow(0 0 2px #ffffff)
+    drop-shadow(0 6px 10px rgba(225, 29, 72, 0.45));
 }
 
 .map2-tack.is-active,
@@ -1116,6 +1122,89 @@
 :root[data-theme='dark'] .map2-puja-price,
 :root[data-theme='dark'] .map2-puja-status {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.map2-puja-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.map2-puja-switch.is-disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.map2-puja-switch > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.map2-puja-switch small {
+  color: rgba(17, 17, 17, 0.58);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.map2-puja-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.map2-puja-switch-track {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.2);
+  transition: background 0.18s ease;
+}
+
+.map2-puja-switch-track span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s ease;
+}
+
+.map2-puja-switch input:checked + .map2-puja-switch-track {
+  background: #e11d48;
+}
+
+.map2-puja-switch input:checked + .map2-puja-switch-track span {
+  transform: translateX(16px);
+}
+
+.map2-puja-switch input:focus-visible + .map2-puja-switch-track {
+  outline: 2px solid #e11d48;
+  outline-offset: 2px;
+}
+
+:root[data-theme='dark'] .map2-puja-switch {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+:root[data-theme='dark'] .map2-puja-switch small {
+  color: rgba(248, 250, 252, 0.7);
+}
+
+:root[data-theme='dark'] .map2-puja-switch-track {
+  background: rgba(255, 255, 255, 0.24);
 }
 
 @media (min-width: 768px) {

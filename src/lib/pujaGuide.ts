@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { createNotification } from './destinations';
 
-export type PandalZone = 'North' | 'Central' | 'Salt Lake' | 'South';
+export type PandalZone = 'North' | 'Central' | 'East' | 'South';
 
 export interface PujaPandal {
     id: string;
@@ -30,10 +30,10 @@ export const PUJA_PANDALS: PujaPandal[] = [
     { id: 'mohammad-ali-park', name: 'Mohammad Ali Park', area: 'Central Avenue', zone: 'Central', lat: 22.5796, lng: 88.3604, highlight: 'Central Kolkata crowd-puller with large, elaborate pandals.' },
     { id: 'college-square', name: 'College Square Sarbojanin', area: 'College Street', zone: 'Central', lat: 22.5751, lng: 88.3634, highlight: 'Lit up around the College Square pond; striking at night.' },
     { id: 'santosh-mitra-square', name: 'Santosh Mitra Square', area: 'Sealdah', zone: 'Central', lat: 22.5651, lng: 88.3671, highlight: 'Famous for grand replica-style pandals and very large crowds.' },
-    { id: 'sreebhumi', name: 'Sreebhumi Sporting Club', area: 'Lake Town', zone: 'Salt Lake', lat: 22.6055, lng: 88.4022, highlight: 'One of the most visited pandals; expect long queues after dark.' },
-    { id: 'lake-town-adhibasi-brinda', name: 'Lake Town Adhibasi Brinda', area: 'Lake Town', zone: 'Salt Lake', lat: 22.6039, lng: 88.4004, highlight: 'Close to Sreebhumi, easy to visit on the same stop.' },
-    { id: 'fd-block', name: 'FD Block Salt Lake', area: 'Salt Lake Sector III', zone: 'Salt Lake', lat: 22.5886, lng: 88.4071, highlight: 'Well-known Salt Lake puja with spacious grounds.' },
-    { id: 'bj-block', name: 'BJ Block Salt Lake', area: 'Salt Lake Sector II', zone: 'Salt Lake', lat: 22.5834, lng: 88.4181, highlight: 'Popular Salt Lake theme pandal.' },
+    { id: 'sreebhumi', name: 'Sreebhumi Sporting Club', area: 'Lake Town', zone: 'East', lat: 22.6055, lng: 88.4022, highlight: 'One of the most visited pandals; expect long queues after dark.' },
+    { id: 'lake-town-adhibasi-brinda', name: 'Lake Town Adhibasi Brinda', area: 'Lake Town', zone: 'East', lat: 22.6039, lng: 88.4004, highlight: 'Close to Sreebhumi, easy to visit on the same stop.' },
+    { id: 'fd-block', name: 'FD Block Salt Lake', area: 'Salt Lake Sector III', zone: 'East', lat: 22.5886, lng: 88.4071, highlight: 'Well-known Salt Lake puja with spacious grounds.' },
+    { id: 'bj-block', name: 'BJ Block Salt Lake', area: 'Salt Lake Sector II', zone: 'East', lat: 22.5834, lng: 88.4181, highlight: 'Popular Salt Lake theme pandal.' },
     { id: 'maddox-square', name: 'Maddox Square', area: 'Ballygunge', zone: 'South', lat: 22.5262, lng: 88.3631, highlight: 'A traditional puja famous as an evening adda spot on the open lawns.' },
     { id: 'ekdalia-evergreen', name: 'Ekdalia Evergreen', area: 'Ballygunge', zone: 'South', lat: 22.5181, lng: 88.3701, highlight: 'Large South Kolkata pandal, often a replica of a famous monument.' },
     { id: 'singhi-park', name: 'Singhi Park', area: 'Ballygunge', zone: 'South', lat: 22.5174, lng: 88.3661, highlight: 'Known for its traditional idol; walking distance from Ekdalia.' },
@@ -49,9 +49,50 @@ export const PUJA_PANDALS: PujaPandal[] = [
     { id: 'naktala-udayan-sangha', name: 'Naktala Udayan Sangha', area: 'Naktala', zone: 'South', lat: 22.4719, lng: 88.3771, highlight: 'Far-south pandal known for thoughtful, award-winning themes.' },
     { id: 'behala-notun-dal', name: 'Behala Notun Dal', area: 'Behala', zone: 'South', lat: 22.4981, lng: 88.3129, highlight: 'Popular Behala theme pandal.' },
     { id: 'barisha-club', name: 'Barisha Club', area: 'Behala', zone: 'South', lat: 22.4801, lng: 88.3101, highlight: 'Behala stop often paired with Notun Dal.' },
+    { id: 'kashi-bose-lane', name: 'Kashi Bose Lane Sarbojanin', area: 'Shyambazar', zone: 'North', lat: 22.5925, lng: 88.3700, highlight: 'Well-known North Kolkata theme pandal close to Hatibagan.' },
+    { id: 'kumartuli-sarbojanin', name: 'Kumartuli Sarbojanin', area: 'Kumartuli', zone: 'North', lat: 22.6015, lng: 88.3605, highlight: 'Neighbourhood puja in the idol makers\' lanes, next to Kumartuli Park.' },
+    { id: 'ahiritola-jubak-brinda', name: 'Ahiritola Jubak Brinda', area: 'Ahiritola', zone: 'North', lat: 22.5992, lng: 88.3588, highlight: 'A second Ahiritola stop, a short walk from Ahiritola Sarbojanin.' },
+    { id: 'pathuriaghata-panchar-pally', name: 'Pathuriaghata Panchar Pally', area: 'Pathuriaghata', zone: 'North', lat: 22.5890, lng: 88.3570, highlight: 'Old North Kolkata neighbourhood puja near the river.' },
+    { id: 'sikdar-bagan', name: 'Sikdar Bagan Sadharan Durgotsav', area: 'Hatibagan', zone: 'North', lat: 22.6000, lng: 88.3735, highlight: 'Long-running community puja in the Hatibagan cluster.' },
+    { id: 'tala-barowari', name: 'Tala Barowari', area: 'Tala', zone: 'North', lat: 22.6052, lng: 88.3812, highlight: 'One of the older community pujas, next door to Tala Prattoy.' },
+    { id: 'belgachia-sarbojanin', name: 'Belgachia Sarbojanin', area: 'Belgachia', zone: 'North', lat: 22.6070, lng: 88.3890, highlight: 'Popular stop between Shyambazar and Lake Town.' },
+    { id: 'chaltabagan', name: 'Chaltabagan Lohapatty', area: 'Maniktala', zone: 'North', lat: 22.5860, lng: 88.3650, highlight: 'Known for a traditional, richly decorated idol.' },
+    { id: 'dum-dum-park-bharat-chakra', name: 'Dum Dum Park Bharat Chakra', area: 'Dum Dum Park', zone: 'North', lat: 22.6122, lng: 88.4132, highlight: 'Part of the Dum Dum Park cluster, where several big pandals sit close together.' },
+    { id: 'dum-dum-park-tarun-sangha', name: 'Dum Dum Park Tarun Sangha', area: 'Dum Dum Park', zone: 'North', lat: 22.6131, lng: 88.4108, highlight: 'Theme pandal in the Dum Dum Park cluster.' },
+    { id: 'dum-dum-park-yubak-brinda', name: 'Dum Dum Park Yubak Brinda', area: 'Dum Dum Park', zone: 'North', lat: 22.6108, lng: 88.4145, highlight: 'Theme pandal in the Dum Dum Park cluster.' },
+    { id: 'dum-dum-park-sarbojanin', name: 'Dum Dum Park Sarbojanin', area: 'Dum Dum Park', zone: 'North', lat: 22.6142, lng: 88.4121, highlight: 'Theme pandal in the Dum Dum Park cluster.' },
+    { id: 'rammohan-sammilani', name: 'Rammohan Sammilani', area: 'Amherst Street', zone: 'Central', lat: 22.5800, lng: 88.3680, highlight: 'Central Kolkata theme puja near Amherst Street.' },
+    { id: 'bakul-bagan', name: 'Bakul Bagan Sarbojanin', area: 'Bhowanipore', zone: 'Central', lat: 22.5282, lng: 88.3478, highlight: 'Bhowanipore puja known for art-led themes.' },
+    { id: '75-pally', name: '75 Pally', area: 'Bhowanipore', zone: 'Central', lat: 22.5318, lng: 88.3442, highlight: 'Neighbourhood theme pandal in Bhowanipore.' },
+    { id: 'hazra-park', name: 'Hazra Park Durgotsav', area: 'Hazra', zone: 'Central', lat: 22.5240, lng: 88.3490, highlight: 'Large park-side puja on the way to South Kolkata.' },
+    { id: 'alipore-sarbojanin', name: 'Alipore Sarbojanin', area: 'Alipore', zone: 'Central', lat: 22.5280, lng: 88.3330, highlight: 'Established puja in Alipore.' },
+    { id: 'ae-block', name: 'AE Block Salt Lake', area: 'Salt Lake Sector I', zone: 'East', lat: 22.5902, lng: 88.4118, highlight: 'Salt Lake block puja, close to FD and BJ Blocks.' },
+    { id: 'ck-cl-block', name: 'CK-CL Block Salt Lake', area: 'Salt Lake Sector II', zone: 'East', lat: 22.5872, lng: 88.4162, highlight: 'Salt Lake block puja near BJ Block.' },
+    { id: 'telengabagan', name: 'Telengabagan Sarbojanin', area: 'Ultadanga', zone: 'East', lat: 22.5900, lng: 88.4020, highlight: 'Theme pandal near Ultadanga, on the way to Salt Lake.' },
+    { id: 'kankurgachi-mitali', name: 'Kankurgachi Mitali', area: 'Kankurgachi', zone: 'East', lat: 22.5770, lng: 88.3910, highlight: 'Popular East Kolkata theme pandal.' },
+    { id: 'beleghata-33-pally', name: 'Beleghata 33 Pally', area: 'Beleghata', zone: 'East', lat: 22.5640, lng: 88.3940, highlight: 'Beleghata stop, close to Beleghata Sandhani.' },
+    { id: 'beleghata-sandhani', name: 'Beleghata Sandhani', area: 'Beleghata', zone: 'East', lat: 22.5660, lng: 88.3960, highlight: 'Beleghata theme pandal.' },
+    { id: 'ballygunge-cultural', name: 'Ballygunge Cultural Association', area: 'Ballygunge', zone: 'South', lat: 22.5200, lng: 88.3700, highlight: 'Large Ballygunge puja near Ekdalia and Singhi Park.' },
+    { id: 'samaj-sebi', name: 'Samaj Sebi Sangha', area: 'Lake View Road', zone: 'South', lat: 22.5140, lng: 88.3560, highlight: 'Known for a traditional idol and decor.' },
+    { id: 'shib-mandir', name: 'Shib Mandir Sarbojanin', area: 'Lake Market', zone: 'South', lat: 22.5170, lng: 88.3550, highlight: 'Lake Market puja close to Deshapriya Park.' },
+    { id: 'sanghashree', name: 'Sanghashree', area: 'Kalighat', zone: 'South', lat: 22.5180, lng: 88.3510, highlight: 'Kalighat area theme pandal.' },
+    { id: 'kalighat-milan-sangha', name: 'Kalighat Milan Sangha', area: 'Kalighat', zone: 'South', lat: 22.5200, lng: 88.3450, highlight: 'Kalighat puja near the temple area.' },
+    { id: '95-pally', name: '95 Pally', area: 'Jodhpur Park', zone: 'South', lat: 22.5050, lng: 88.3640, highlight: 'Jodhpur Park theme pandal.' },
+    { id: 'babubagan', name: 'Babubagan Sarbojanin', area: 'Dhakuria', zone: 'South', lat: 22.5070, lng: 88.3720, highlight: 'Dhakuria neighbourhood puja.' },
+    { id: 'selimpur-pally', name: 'Selimpur Pally', area: 'Dhakuria', zone: 'South', lat: 22.5040, lng: 88.3740, highlight: 'Dhakuria theme pandal, close to Babubagan.' },
+    { id: 'bosepukur-sitala-mandir', name: 'Bosepukur Sitala Mandir', area: 'Kasba', zone: 'South', lat: 22.5150, lng: 88.3920, highlight: 'Kasba puja known for crafted, material-based pandals.' },
+    { id: 'bosepukur-talbagan', name: 'Bosepukur Talbagan', area: 'Kasba', zone: 'South', lat: 22.5160, lng: 88.3942, highlight: 'Kasba theme pandal near Sitala Mandir.' },
+    { id: 'rajdanga-naba-uday', name: 'Rajdanga Naba Uday Sangha', area: 'Kasba', zone: 'South', lat: 22.5110, lng: 88.3880, highlight: 'Kasba theme pandal.' },
+    { id: 'santoshpur-lake-pally', name: 'Santoshpur Lake Pally', area: 'Santoshpur', zone: 'South', lat: 22.4920, lng: 88.3890, highlight: 'Santoshpur theme pandal near the lake.' },
+    { id: 'santoshpur-trikon-park', name: 'Santoshpur Trikon Park', area: 'Santoshpur', zone: 'South', lat: 22.4870, lng: 88.3850, highlight: 'Santoshpur theme pandal.' },
+    { id: 'haridevpur-ajeya-sanghati', name: 'Haridevpur Ajeya Sanghati', area: 'Haridevpur', zone: 'South', lat: 22.4810, lng: 88.3310, highlight: 'South-west Kolkata theme pandal.' },
+    { id: 'behala-club', name: 'Behala Club', area: 'Behala', zone: 'South', lat: 22.4960, lng: 88.3140, highlight: 'Behala puja near Notun Dal.' },
+    { id: 'behala-friends', name: 'Behala Friends', area: 'Behala', zone: 'South', lat: 22.4890, lng: 88.3180, highlight: 'Behala theme pandal.' },
+    { id: 'barisha-sarbojanin', name: 'Barisha Sarbojanin', area: 'Behala', zone: 'South', lat: 22.4780, lng: 88.3120, highlight: 'Behala stop close to Barisha Club.' },
+    { id: 'sb-park', name: 'SB Park Sarbojanin', area: 'Thakurpukur', zone: 'South', lat: 22.4600, lng: 88.3070, highlight: 'Far-south Behala theme pandal.' },
 ];
 
-export const PANDAL_ZONES: PandalZone[] = ['North', 'Central', 'Salt Lake', 'South'];
+export const PANDAL_ZONES: PandalZone[] = ['North', 'Central', 'East', 'South'];
 
 export const getPandal = (id: string) => PUJA_PANDALS.find((item) => item.id === id) || null;
 

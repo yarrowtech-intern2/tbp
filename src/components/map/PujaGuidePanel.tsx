@@ -70,6 +70,8 @@ interface PujaGuidePanelProps {
     route: PlannedRoute | null;
     onRouteChange: (route: PlannedRoute | null) => void;
     userLocation: { lat: number; lng: number } | null;
+    showPlanOnly: boolean;
+    onShowPlanOnlyChange: (value: boolean) => void;
     onClose: () => void;
 }
 
@@ -82,6 +84,8 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
     route,
     onRouteChange,
     userLocation,
+    showPlanOnly,
+    onShowPlanOnlyChange,
     onClose,
 }) => {
     const [tab, setTab] = useState<PujaTab>('pandals');
@@ -103,9 +107,12 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
     const [requestSaving, setRequestSaving] = useState(false);
     const [myRequests, setMyRequests] = useState<PujaGuideRequest[]>([]);
 
+    const planOnly = showPlanOnly && plan.length > 0;
     const visiblePandals = useMemo(
-        () => (zone === 'All' ? PUJA_PANDALS : PUJA_PANDALS.filter((item) => item.zone === zone)),
-        [zone],
+        () => PUJA_PANDALS.filter((item) => (
+            (zone === 'All' || item.zone === zone) && (!planOnly || plan.includes(item.id))
+        )),
+        [plan, planOnly, zone],
     );
     const planPandals = useMemo(() => plan.map(getPandal).filter((item): item is PujaPandal => Boolean(item)), [plan]);
     const selectedGuide = guides.find((item) => item.user_id === selectedGuideId) || null;
@@ -224,6 +231,21 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
                     <X size={18} />
                 </button>
             </div>
+
+            <label className={`map2-puja-switch${plan.length ? '' : ' is-disabled'}`}>
+                <input
+                    type="checkbox"
+                    role="switch"
+                    checked={showPlanOnly && plan.length > 0}
+                    disabled={!plan.length}
+                    onChange={(event) => onShowPlanOnlyChange(event.target.checked)}
+                />
+                <span className="map2-puja-switch-track" aria-hidden="true"><span /></span>
+                <span>
+                    Show only my pandals on the map
+                    <small>{plan.length ? `${plan.length} in your plan` : 'Add pandals to your plan first'}</small>
+                </span>
+            </label>
 
             <div className="map2-mode-row map2-puja-tabs" role="tablist" aria-label="Puja guide sections">
                 {([

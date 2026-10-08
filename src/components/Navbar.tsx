@@ -153,6 +153,7 @@ export const Navbar: React.FC = () => {
     const guestDesktopNavItems: DesktopLiquidNavItem[] = [
         { key: 'home', label: 'Home', to: homePath, iconSrc: DESKTOP_NAV_ICON_SRC.home, active: location.pathname === homePath },
         { key: 'blogs', label: 'Blogs', to: '/blogs', iconSrc: DESKTOP_NAV_ICON_SRC.blogs, active: location.pathname.startsWith('/blogs') },
+        { key: 'map', label: 'Map', to: '/map', iconSrc: '/icons/mobile-nav-icons/pin.svg', active: location.pathname === '/map' },
         { key: 'about', label: 'About Us', to: '/about', iconSrc: '/icons/mobile-nav-icons/about.webp', active: location.pathname === '/about' },
         { key: 'faq', label: 'FAQ', to: '/faq', iconSrc: DESKTOP_NAV_ICON_SRC.messages, active: location.pathname === '/faq' },
     ];
@@ -440,7 +441,7 @@ export const Navbar: React.FC = () => {
                             aria-label="Open map"
                             title="Map"
                         >
-                            <img src="/icons/mobile-nav-icons/map.webp" alt="" className="nbr-map-icon" aria-hidden="true" />
+                            <img src="/icons/mobile-nav-icons/pin.svg" alt="" className="nbr-map-icon" aria-hidden="true" />
                         </Link>
                         <Link to="/profile" className={`nbr-user-chip${location.pathname === '/profile' ? ' nbr-user-chip--active' : ''}`}>
                             <div className="nbr-user-text">

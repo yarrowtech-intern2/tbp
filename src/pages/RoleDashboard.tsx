@@ -4820,6 +4820,17 @@ export const RoleDashboard: React.FC = () => {
                                         <span>Write Blog</span>
                                     </Link>
                                 )}
+                                {isDesktopDashboard && (
+                                    <Link
+                                        to="/map"
+                                        className="rdb-admin-write-blog-btn"
+                                        title="Open map"
+                                        aria-label="Open map"
+                                    >
+                                        <img src="/icons/mobile-nav-icons/pin.svg" alt="" aria-hidden="true" />
+                                        <span>Map</span>
+                                    </Link>
+                                )}
                                 {!isDesktopDashboard && (
                                     <button
                                         type="button"
@@ -4932,6 +4943,19 @@ export const RoleDashboard: React.FC = () => {
                                         </button>
                                     );
                                 })}
+                                <button
+                                    type="button"
+                                    className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--section"
+                                    onClick={() => {
+                                        setAdminMobileMenuOpen(false);
+                                        navigate('/map');
+                                    }}
+                                >
+                                    <span>{effectiveRole === 'admin' ? 'Travel Map' : 'Map'}</span>
+                                    <span className="rdb-admin-mobile-menu-meta">
+                                        <img src="/icons/arrow.webp" alt="" className="rdb-admin-mobile-menu-arrow" aria-hidden="true" />
+                                    </span>
+                                </button>
                                 <button
                                     type="button"
                                     className="rdb-admin-mobile-menu-item rdb-admin-mobile-menu-item--section"

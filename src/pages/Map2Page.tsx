@@ -377,6 +377,7 @@ export const Map2Page: React.FC = () => {
   const [pandalPlan, setPandalPlan] = useState<string[]>([]);
   const [selectedPandalId, setSelectedPandalId] = useState<string | null>(null);
   const [pujaRoute, setPujaRoute] = useState<PlannedRoute | null>(null);
+  const [showPlanOnly, setShowPlanOnly] = useState(false);
   const selectedPandal = selectedPandalId ? getPandal(selectedPandalId) : null;
   const userId = user?.id || null;
 
@@ -720,18 +721,24 @@ export const Map2Page: React.FC = () => {
           />
         ) : null}
 
-        {pujaOpen ? PUJA_PANDALS.map((pandal) => (
-          <Marker
-            key={pandal.id}
-            icon={buildPinIcon('durga_puja', {
-              active: selectedPandalId === pandal.id,
-              route: pandalPlan.includes(pandal.id),
-            })}
-            position={[pandal.lat, pandal.lng]}
-            eventHandlers={{ click: () => setSelectedPandalId(pandal.id) }}
-            title={pandal.name}
-          />
-        )) : null}
+        {pujaOpen ? PUJA_PANDALS
+          .filter((pandal) => !(showPlanOnly && pandalPlan.length) || pandalPlan.includes(pandal.id))
+          .map((pandal) => {
+            const planIndex = pandalPlan.indexOf(pandal.id);
+            return (
+              <Marker
+                key={pandal.id}
+                icon={buildPinIcon('durga_puja', {
+                  active: selectedPandalId === pandal.id,
+                  planNumber: planIndex >= 0 ? planIndex + 1 : undefined,
+                })}
+                position={[pandal.lat, pandal.lng]}
+                zIndexOffset={planIndex >= 0 ? 500 : 0}
+                eventHandlers={{ click: () => setSelectedPandalId(pandal.id) }}
+                title={planIndex >= 0 ? `${planIndex + 1}. ${pandal.name}` : pandal.name}
+              />
+            );
+          }) : null}
 
         {userLocation ? (
           <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]} />
@@ -870,6 +877,8 @@ export const Map2Page: React.FC = () => {
           route={pujaRoute}
           onRouteChange={setPujaRoute}
           userLocation={userLocation}
+          showPlanOnly={showPlanOnly}
+          onShowPlanOnlyChange={setShowPlanOnly}
           onClose={togglePuja}
         />
       ) : null}

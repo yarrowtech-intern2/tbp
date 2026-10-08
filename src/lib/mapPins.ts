@@ -70,30 +70,38 @@ const getGlyphMarkup = (category: PinCategory): string => {
     return markup;
 };
 
-// Thumbtack drawn upright in a 48-unit box, then tilted 40deg so the needle points bottom-left.
-// The needle tip (24,45) lands at (10.5,40.1) after the tilt; that is the marker anchor.
-const TACK_TILT = 40;
-const TIP = { x: 10.5, y: 40.1 };
+// Marker shape is the Reicon "Pin" (outline weight, 24-unit box): BODY is its outer contour, filled with the
+// category colour; RING is its outline, drawn in ink. The pin's centre circle holds the category glyph.
+// The tip of the pin sits at (12, 22.75); that is the marker anchor.
+const PIN_BODY_PATH = 'M3.25 10.1433C3.25 5.24427 7.15501 1.25 12 1.25C16.845 1.25 20.75 5.24427 20.75 10.1433C20.75 12.5084 20.076 15.0479 18.8844 17.2419C17.6944 19.4331 15.9556 21.3372 13.7805 22.3539C12.6506 22.882 11.3494 22.882 10.2195 22.3539C8.04437 21.3372 6.30562 19.4331 5.11556 17.2419C3.92403 15.0479 3.25 12.5084 3.25 10.1433Z';
+const PIN_RING_PATH = 'M3.25 10.1433C3.25 5.24427 7.15501 1.25 12 1.25C16.845 1.25 20.75 5.24427 20.75 10.1433C20.75 12.5084 20.076 15.0479 18.8844 17.2419C17.6944 19.4331 15.9556 21.3372 13.7805 22.3539C12.6506 22.882 11.3494 22.882 10.2195 22.3539C8.04437 21.3372 6.30562 19.4331 5.11556 17.2419C3.92403 15.0479 3.25 12.5084 3.25 10.1433ZM12 2.75C8.00843 2.75 4.75 6.04748 4.75 10.1433C4.75 12.2404 5.35263 14.5354 6.4337 16.526C7.51624 18.5192 9.04602 20.1496 10.8546 20.995C11.5821 21.335 12.4179 21.335 13.1454 20.995C14.954 20.1496 16.4838 18.5192 17.5663 16.526C18.6474 14.5354 19.25 12.2404 19.25 10.1433C19.25 6.04748 15.9916 2.75 12 2.75Z';
+const TIP = { x: 12, y: 22.75 };
 
 const iconCache = new Map<string, DivIcon>();
 
-export const buildPinIcon = (category: PinCategory, options: { active?: boolean; draft?: boolean; route?: boolean } = {}): DivIcon => {
-    const cacheKey = `${category}:${options.active ? 1 : 0}:${options.draft ? 1 : 0}:${options.route ? 1 : 0}`;
+export const buildPinIcon = (category: PinCategory, options: { active?: boolean; draft?: boolean; route?: boolean; planNumber?: number } = {}): DivIcon => {
+    const cacheKey = `${category}:${options.active ? 1 : 0}:${options.draft ? 1 : 0}:${options.route ? 1 : 0}:${options.planNumber || 0}`;
     const cached = iconCache.get(cacheKey);
     if (cached) return cached;
 
-    const size = options.active || options.draft ? 56 : 44;
-    const scale = size / 48;
+    const size = options.active || options.draft ? 54 : options.planNumber ? 48 : 42;
+    const scale = size / 24;
     const { color } = getPinCategory(category);
+    // Planned stops invert the colours (ink body, category-colour ring) and show their visiting order.
+    const planned = Boolean(options.planNumber);
+    const bodyFill = planned ? PIN_INK : color;
+    const ringFill = planned ? color : PIN_INK;
+    const centre = planned
+        ? `<circle cx="12" cy="10" r="4.8" fill="${color}" />
+    <text x="12" y="10" text-anchor="middle" dominant-baseline="central" font-family="Inter, system-ui, sans-serif" font-size="${options.planNumber! > 9 ? 5 : 6.2}" font-weight="800" fill="${PIN_INK}">${options.planNumber}</text>`
+        : `<circle cx="12" cy="10" r="4.6" fill="#ffffff" stroke="${PIN_INK}" stroke-width="1.5" />
+    <g transform="translate(9 7) scale(0.5)">${getGlyphMarkup(category)}</g>`;
     const html = `
-<span class="map2-tack${options.active ? ' is-active' : ''}${options.draft ? ' is-draft' : ''}${options.route ? ' is-route' : ''}">
-  <svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true">
-    <g transform="rotate(${TACK_TILT} 24 24)" stroke="${PIN_INK}" stroke-width="2.4" stroke-linejoin="round">
-      <line x1="24" y1="29" x2="24" y2="45" stroke-width="2.8" stroke-linecap="round" />
-      <path d="M17.5 10 H30.5 L29 21 L35.4 27 Q36.4 29 34.4 29 H13.6 Q11.6 29 12.6 27 L19 21 Z" fill="${color}" />
-      <rect x="14" y="3" width="20" height="7.5" rx="3.75" fill="${color}" />
-      <g transform="translate(24 16.5) rotate(${-TACK_TILT}) translate(-6 -6)" stroke="none">${getGlyphMarkup(category)}</g>
-    </g>
+<span class="map2-tack${options.active ? ' is-active' : ''}${options.draft ? ' is-draft' : ''}${options.route ? ' is-route' : ''}${planned ? ' is-planned' : ''}">
+  <svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">
+    <path d="${PIN_BODY_PATH}" fill="${bodyFill}" />
+    <path d="${PIN_RING_PATH}" fill="${ringFill}" fill-rule="evenodd" clip-rule="evenodd" />
+    ${centre}
   </svg>
 </span>`;
 
