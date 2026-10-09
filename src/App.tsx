@@ -223,7 +223,7 @@ const ProviderRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return <>{children}</>;
 };
 
-const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const TouristOnlyRoute: React.FC<{ children: React.ReactNode; allowGuests?: boolean }> = ({ children, allowGuests = false }) => {
   const { user, profile, loading, profileLoading, isProvider, isAdmin, roleLabel } = useAuth();
   const role = resolveUserRole(user, profile?.role);
   const providerAccount = isProvider || isProviderAccount(role) || isProviderLabel(roleLabel);
@@ -235,7 +235,7 @@ const TouristOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children })
   }
 
   if (!user) {
-    return <Navigate to={buildLoginPath()} replace />;
+    return allowGuests ? <>{children}</> : <Navigate to={buildLoginPath()} replace />;
   }
 
   if (providerAccount || isAdminAccount || marketingAccount) {
@@ -283,8 +283,8 @@ function App() {
               <Route path="/blogs/:slug" element={<BlogDetail />} />
               <Route path="/dashboard" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
               <Route path="/dashboard/:role" element={<ProtectedRoute><RoleDashboard /></ProtectedRoute>} />
-              <Route path="/explore" element={<TouristOnlyRoute><TouristExplorePage /></TouristOnlyRoute>} />
-              <Route path="/activities" element={<TouristOnlyRoute><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
+              <Route path="/explore" element={<TouristOnlyRoute allowGuests><TouristExplorePage /></TouristOnlyRoute>} />
+              <Route path="/activities" element={<TouristOnlyRoute allowGuests><Navigate to={DASHBOARD_ACTIVITIES_PATH} replace /></TouristOnlyRoute>} />
               <Route path="/tours" element={<TouristOnlyRoute><Navigate to={DASHBOARD_TOURS_PATH} replace /></TouristOnlyRoute>} />
               <Route path="/guides" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />
               <Route path="/events" element={<TouristOnlyRoute><Navigate to={DASHBOARD_EVENTS_PATH} replace /></TouristOnlyRoute>} />

@@ -59,14 +59,13 @@ export const categoryFromLabel = (label: string): PinCategory => {
     return 'other';
 };
 
-const glyphCache = new Map<PinCategory, string>();
+const glyphCache = new Map<string, string>();
 
-const getGlyphMarkup = (category: PinCategory): string => {
-    const cached = glyphCache.get(category);
+const getGlyphMarkup = (glyphKey: string, Icon: LucideIcon): string => {
+    const cached = glyphCache.get(glyphKey);
     if (cached) return cached;
-    const { Icon } = getPinCategory(category);
     const markup = renderToStaticMarkup(createElement(Icon, { size: 12, color: PIN_INK, strokeWidth: 2.6, 'aria-hidden': true }));
-    glyphCache.set(category, markup);
+    glyphCache.set(glyphKey, markup);
     return markup;
 };
 
@@ -79,14 +78,16 @@ const TIP = { x: 12, y: 22.75 };
 
 const iconCache = new Map<string, DivIcon>();
 
-export const buildPinIcon = (category: PinCategory, options: { active?: boolean; draft?: boolean; route?: boolean; planNumber?: number } = {}): DivIcon => {
-    const cacheKey = `${category}:${options.active ? 1 : 0}:${options.draft ? 1 : 0}:${options.route ? 1 : 0}:${options.planNumber || 0}`;
+export type TackOptions = { active?: boolean; draft?: boolean; route?: boolean; planNumber?: number };
+
+/** The tack-shaped map pin: a head colour plus a glyph. `key` identifies the colour/glyph pair for caching. */
+export const buildTackIcon = (key: string, color: string, Icon: LucideIcon, options: TackOptions = {}): DivIcon => {
+    const cacheKey = `${key}:${options.active ? 1 : 0}:${options.draft ? 1 : 0}:${options.route ? 1 : 0}:${options.planNumber || 0}`;
     const cached = iconCache.get(cacheKey);
     if (cached) return cached;
 
     const size = options.active || options.draft ? 54 : options.planNumber ? 48 : 42;
     const scale = size / 24;
-    const { color } = getPinCategory(category);
     // Planned stops invert the colours (ink body, category-colour ring) and show their visiting order.
     const planned = Boolean(options.planNumber);
     const bodyFill = planned ? PIN_INK : color;
@@ -95,7 +96,7 @@ export const buildPinIcon = (category: PinCategory, options: { active?: boolean;
         ? `<circle cx="12" cy="10" r="4.8" fill="${color}" />
     <text x="12" y="10" text-anchor="middle" dominant-baseline="central" font-family="Inter, system-ui, sans-serif" font-size="${options.planNumber! > 9 ? 5 : 6.2}" font-weight="800" fill="${PIN_INK}">${options.planNumber}</text>`
         : `<circle cx="12" cy="10" r="4.6" fill="#ffffff" stroke="${PIN_INK}" stroke-width="1.5" />
-    <g transform="translate(9 7) scale(0.5)">${getGlyphMarkup(category)}</g>`;
+    <g transform="translate(9 7) scale(0.5)">${getGlyphMarkup(key, Icon)}</g>`;
     const html = `
 <span class="map2-tack${options.active ? ' is-active' : ''}${options.draft ? ' is-draft' : ''}${options.route ? ' is-route' : ''}${planned ? ' is-planned' : ''}">
   <svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">
@@ -113,6 +114,11 @@ export const buildPinIcon = (category: PinCategory, options: { active?: boolean;
     });
     iconCache.set(cacheKey, icon);
     return icon;
+};
+
+export const buildPinIcon = (category: PinCategory, options: TackOptions = {}): DivIcon => {
+    const { color, Icon } = getPinCategory(category);
+    return buildTackIcon(`pin:${category}`, color, Icon, options);
 };
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);

@@ -880,3 +880,103 @@
   color: #7CFC9B;
   font-weight: 900;
 }
+
+/* Activity category filters + card highlights */
+.txp-category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -10px 0 24px;
+}
+
+.txp-cat-chip {
+  --txp-cat: #475569;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1.5px solid color-mix(in srgb, var(--txp-cat) 45%, transparent);
+  border-radius: 1000px;
+  background: color-mix(in srgb, var(--txp-cat) 10%, transparent);
+  color: var(--txp-cat);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.txp-cat-chip:hover {
+  transform: translateY(-1px);
+}
+
+.txp-cat-chip.is-active {
+  background: var(--txp-cat);
+  border-color: var(--txp-cat);
+  color: #ffffff;
+}
+
+.txp-cat-chip-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-size: 0.68rem;
+  line-height: 18px;
+  text-align: center;
+}
+
+.txp-cat-chip--restaurant { --txp-cat: #e11d48; }
+.txp-cat-chip--crafting { --txp-cat: #d97706; }
+.txp-cat-chip--pottery { --txp-cat: #b45309; }
+.txp-cat-chip--museums { --txp-cat: #4f46e5; }
+.txp-cat-chip--other { --txp-cat: #0d9488; }
+
+.txp-card--cat-restaurant .txp-card-type-chip {
+  background: rgba(255, 228, 230, 0.95);
+  border-color: rgba(225, 29, 72, 0.45);
+  color: #be123c;
+}
+
+.txp-card--cat-crafting .txp-card-type-chip {
+  background: rgba(254, 243, 199, 0.95);
+  border-color: rgba(217, 119, 6, 0.45);
+  color: #b45309;
+}
+
+.txp-card--cat-pottery .txp-card-type-chip {
+  background: rgba(255, 237, 213, 0.95);
+  border-color: rgba(180, 83, 9, 0.45);
+  color: #9a3412;
+}
+
+.txp-card--cat-museums .txp-card-type-chip {
+  background: rgba(224, 231, 255, 0.95);
+  border-color: rgba(79, 70, 229, 0.45);
+  color: #4338ca;
+}
+
+.txp-card--cat-other .txp-card-type-chip {
+  background: rgba(204, 251, 241, 0.95);
+  border-color: rgba(13, 148, 136, 0.45);
+  color: #0f766e;
+}
+
+.txp-card--cat-restaurant .txp-card-media { box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.5); }
+.txp-card--cat-crafting .txp-card-media { box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.5); }
+.txp-card--cat-pottery .txp-card-media { box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.5); }
+.txp-card--cat-museums .txp-card-media { box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.5); }
+.txp-card--cat-other .txp-card-media { box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.5); }
+
+:root[data-theme='dark'] .txp-cat-chip:not(.is-active) {
+  color: color-mix(in srgb, var(--txp-cat) 55%, #ffffff);
+}
+
+@media (max-width: 640px) {
+  .txp-cat-chip {
+    min-height: 32px;
+    padding: 0 11px;
+    font-size: 0.72rem;
+  }
+}

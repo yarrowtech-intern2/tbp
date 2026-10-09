@@ -61,7 +61,6 @@
 .map2-tack {
   display: block;
   line-height: 0;
-  filter: drop-shadow(0 6px 8px rgba(20, 20, 20, 0.28));
   transform-origin: 50% 95%;
   transition: transform 0.18s ease;
 }
@@ -1213,10 +1212,8 @@
   place-items: center;
   line-height: 1;
   font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
-  filter:
-    drop-shadow(0 0 1px #ffffff)
-    drop-shadow(0 0 2px #ffffff)
-    drop-shadow(0 2px 3px rgba(20, 20, 20, 0.4));
+  /* One text-shadow is far cheaper than stacked drop-shadow filters, which force a re-raster per marker on every pan/zoom frame. */
+  text-shadow: 0 0 2px #ffffff, 0 0 2px #ffffff, 0 2px 3px rgba(20, 20, 20, 0.4);
   transition: transform 0.15s ease;
   cursor: pointer;
 }
@@ -1831,5 +1828,340 @@
 
   .map2-panel-head h1 {
     font-size: 1.16rem;
+  }
+}
+
+/* Provider business pins: layer switch + colour legend ------------------- */
+.map2-landmarks-places {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(20, 20, 20, 0.1);
+}
+
+.map2-landmarks-places small {
+  margin-left: 6px;
+  opacity: 0.6;
+}
+
+.map2-landmarks-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.map2-landmarks-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map2-landmarks-legend i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--cat-color);
+  box-shadow: 0 0 0 1.5px #171717;
+}
+
+.map2-detail-actions--two {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.map2-detail-actions a.map2-audio-btn {
+  text-decoration: none;
+}
+
+/* Puja guide: flat grey panel (same grey and type as the menu), phone bottom sheet ------------------ */
+.map2-page .map2-puja-panel.map2-route-panel {
+  --pj-bg: #d2d2d2;
+  --pj-card: #e3e3e3;
+  --pj-card-strong: #ececec;
+  --pj-text: #333333;
+  --pj-muted: rgba(51, 51, 51, 0.62);
+  --pj-ink: #333333;
+  --pj-on-ink: #f5f5f5;
+  --pj-accent: #ff741d;
+  gap: 0;
+  padding: 0 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  background: var(--pj-bg);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: var(--pj-text);
+  font-family: 'Onest', 'Outfit', sans-serif;
+}
+
+:root[data-theme='dark'] .map2-puja-panel {
+  --pj-bg: #151515;
+  --pj-card: #232323;
+  --pj-card-strong: #2c2c2c;
+  --pj-text: #f5f5f5;
+  --pj-muted: rgba(245, 245, 245, 0.62);
+  --pj-ink: #f5f5f5;
+  --pj-on-ink: #151515;
+}
+
+.map2-page .map2-puja-panel .map2-panel-head {
+  padding: 4px 0 12px;
+}
+
+.map2-page .map2-puja-panel .map2-panel-head span {
+  color: var(--pj-muted);
+}
+
+.map2-page .map2-puja-panel .map2-panel-head h1 {
+  color: var(--pj-text);
+  font-family: 'Onest', 'Outfit', sans-serif;
+  font-size: clamp(1.35rem, 6vw, 1.7rem);
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.map2-page .map2-puja-panel .map2-icon-btn {
+  background: var(--pj-card);
+  color: var(--pj-text);
+}
+
+.map2-page .map2-puja-body {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  padding-bottom: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map2-page .map2-sheet-handle {
+  display: none;
+}
+
+/* Surfaces */
+.map2-page .map2-puja-panel .map2-puja-switch,
+.map2-page .map2-puja-panel .map2-puja-list > li,
+.map2-page .map2-puja-panel .map2-puja-plan li,
+.map2-page .map2-puja-panel .map2-puja-request,
+.map2-page .map2-puja-panel .map2-puja-chips button,
+.map2-page .map2-puja-panel .map2-puja-plan-btn,
+.map2-page .map2-puja-panel .map2-puja-secondary,
+.map2-page .map2-puja-panel .map2-puja-link,
+.map2-page .map2-puja-panel .map2-mode-row {
+  border: 0;
+  background: var(--pj-card);
+  color: var(--pj-text);
+  box-shadow: none;
+}
+
+.map2-page .map2-puja-panel .map2-puja-list > li.is-selected {
+  background: var(--pj-card-strong);
+  box-shadow: inset 0 0 0 2px var(--pj-accent);
+}
+
+.map2-page .map2-puja-panel .map2-puja-row,
+.map2-page .map2-puja-panel .map2-puja-plan-name,
+.map2-page .map2-puja-panel .map2-puja-plan-actions button,
+.map2-page .map2-puja-panel .map2-puja-plan-actions a {
+  color: var(--pj-text);
+}
+
+.map2-page .map2-puja-panel .map2-puja-row strong,
+.map2-page .map2-puja-panel .map2-puja-plan-name strong {
+  font-weight: 600;
+}
+
+.map2-page .map2-puja-panel .map2-puja-row small,
+.map2-page .map2-puja-panel .map2-puja-plan-name small,
+.map2-page .map2-puja-panel .map2-puja-request small,
+.map2-page .map2-puja-panel .map2-puja-switch small,
+.map2-page .map2-puja-panel .map2-puja-detail p,
+.map2-page .map2-puja-panel .map2-puja-facts,
+.map2-page .map2-puja-panel .map2-pin-coords,
+.map2-page .map2-puja-panel .map2-status {
+  color: var(--pj-muted);
+}
+
+/* Tabs and chips: the active one is the dark pill, like the menu */
+.map2-page .map2-puja-panel .map2-mode-row {
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.map2-page .map2-puja-panel .map2-mode-row button {
+  background: transparent;
+  color: var(--pj-text);
+  font-weight: 600;
+}
+
+.map2-page .map2-puja-panel .map2-mode-row button.is-active,
+.map2-page .map2-puja-panel .map2-puja-chips button.is-active {
+  background: var(--pj-ink);
+  color: var(--pj-on-ink);
+}
+
+.map2-page .map2-puja-panel .map2-puja-chips {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px 2px;
+  scrollbar-width: none;
+}
+
+.map2-page .map2-puja-panel .map2-puja-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.map2-page .map2-puja-panel .map2-puja-chips button {
+  flex: none;
+  font-weight: 600;
+}
+
+/* Orange is the accent, as on the nav pill */
+.map2-page .map2-puja-panel .map2-puja-badge,
+.map2-page .map2-puja-panel .map2-puja-plan b {
+  background: var(--pj-accent);
+  color: #ffffff;
+}
+
+.map2-page .map2-puja-panel .map2-puja-price,
+.map2-page .map2-puja-panel .map2-puja-status {
+  background: var(--pj-card-strong);
+  color: var(--pj-text);
+}
+
+.map2-page .map2-puja-panel .map2-puja-avatar {
+  background: var(--pj-card-strong);
+  color: var(--pj-text);
+}
+
+.map2-page .map2-puja-panel .map2-puja-plan-btn.is-in {
+  background: var(--pj-card-strong);
+  box-shadow: inset 0 0 0 2px var(--pj-accent);
+  color: var(--pj-text);
+}
+
+.map2-page .map2-puja-panel .map2-route-primary {
+  background: var(--pj-accent);
+  color: #ffffff;
+}
+
+.map2-page .map2-puja-panel .map2-route-primary:disabled {
+  opacity: 0.5;
+}
+
+.map2-page .map2-puja-panel .map2-puja-switch-track {
+  background: rgba(51, 51, 51, 0.28);
+}
+
+:root[data-theme='dark'] .map2-puja-panel .map2-puja-switch-track {
+  background: rgba(245, 245, 245, 0.28);
+}
+
+.map2-page .map2-puja-panel .map2-puja-switch input:checked + .map2-puja-switch-track {
+  background: var(--pj-accent);
+}
+
+.map2-page .map2-puja-panel .map2-puja-switch input:focus-visible + .map2-puja-switch-track {
+  outline-color: var(--pj-accent);
+}
+
+.map2-page .map2-puja-panel .map2-pin-fields input,
+.map2-page .map2-puja-panel .map2-pin-fields textarea {
+  border: 0;
+  background: var(--pj-card-strong);
+  color: var(--pj-text);
+}
+
+.map2-page .map2-puja-panel .map2-pin-fields legend,
+.map2-page .map2-puja-panel .map2-pin-fields label > span {
+  color: var(--pj-muted);
+}
+
+.map2-page .map2-puja-panel .map2-route-metrics > div {
+  background: var(--pj-card);
+  color: var(--pj-text);
+}
+
+/* Phones: a bottom sheet that never hides the whole map */
+@media (max-width: 767px) {
+  .map2-page .map2-puja-panel.map2-route-panel {
+    top: auto;
+    right: 10px;
+    bottom: calc(env(safe-area-inset-bottom) + 10px);
+    left: 10px;
+    width: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .map2-page .map2-puja-panel.is-peek { height: 132px; }
+  .map2-page .map2-puja-panel.is-half { height: 44dvh; }
+  .map2-page .map2-puja-panel.is-full { height: 82dvh; }
+
+  .map2-page .map2-sheet-handle {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 26px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--pj-muted);
+    cursor: grab;
+    touch-action: none;
+    position: relative;
+  }
+
+  .map2-page .map2-sheet-handle > span {
+    width: 40px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--pj-muted);
+    opacity: 0.55;
+  }
+
+  .map2-page .map2-sheet-chevron {
+    position: absolute;
+    right: 4px;
+    transition: transform 0.18s ease;
+  }
+
+  .map2-page .map2-puja-panel.is-peek .map2-sheet-chevron {
+    transform: none;
+  }
+
+  .map2-page .map2-puja-panel:not(.is-peek) .map2-sheet-chevron {
+    transform: rotate(180deg);
+  }
+
+  /* In the peek state only the header shows; the body returns when the sheet opens. */
+  .map2-page .map2-puja-panel.is-peek .map2-puja-body {
+    display: none;
+  }
+
+  /* Keep the zoom buttons and attribution above the sheet instead of underneath it. */
+  .map2-page:has(.map2-puja-panel.is-peek) .leaflet-bottom { bottom: 142px; }
+  .map2-page:has(.map2-puja-panel.is-half) .leaflet-bottom { bottom: calc(44dvh + 10px); }
+  .map2-page:has(.map2-puja-panel.is-full) .leaflet-bottom { display: none; }
+}
+
+/* Desktop: side card, list scrolls inside it */
+@media (min-width: 768px) {
+  .map2-page .map2-puja-panel.map2-route-panel {
+    padding-top: 14px;
   }
 }

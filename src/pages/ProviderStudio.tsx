@@ -1,10 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ArrowRight,
     Backpack,
     Ban,
     Calendar,
     Camera,
+    Check,
     CheckCircle2,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Clock,
     Compass,
     Edit3,
@@ -62,16 +67,29 @@ import {
     type ListingFeeBreakdownItem,
     type ListingFeeBreakdownStatus,
 } from '../lib/pricing';
+import {
+    ACTIVITY_CATEGORIES,
+    buildActivityCategoryValue,
+    getActivityCategory,
+    parseActivityCategoryValue,
+} from '../lib/activityCategories';
+import {
+    fetchListingPlace,
+    fetchMyPlaces,
+    getPlaceCategory,
+    placeCategoryForListing,
+    removeListingPlace,
+    saveListingPlace,
+    type ProviderPlace,
+} from '../lib/providerPlaces';
 import { buildMarketPriceInsight } from '../lib/marketPricing';
 import { generateOllamaPricingNote } from '../lib/ollamaPricing';
 import { getPublicAppContent } from '../lib/appContent';
-import { getProfileAvatarUrl } from '../lib/avatar';
 import { uploadCloudinaryImage, uploadCloudinaryVideo } from '../lib/cloudinaryUpload';
 import {
     LISTING_LABELS,
     ROLE_SIGNUP_CONFIG,
     canRolePublish,
-    getRoleLabel,
     resolveEffectiveAccountRole,
     type ListingType,
     type UserRole,
@@ -358,14 +376,12 @@ const STUDIO_LOAD_ICON_SRC = '/icons/load.gif';
 
 const formatRs = (value: number) => `Rs ${Math.round(value).toLocaleString()}`;
 
+const LazyPlacePicker = lazy(async () => ({ default: (await import('../components/map/PlacePicker')).PlacePicker }));
+const LazyProviderMapPanel = lazy(async () => ({ default: (await import('../components/provider/ProviderMapPanel')).ProviderMapPanel }));
+
 const StudioLoadIcon: React.FC<{ className?: string }> = ({ className }) => (
     <img className={className || 'ps-load-icon'} src={STUDIO_LOAD_ICON_SRC} alt="" aria-hidden="true" />
 );
-
-const getFlowStateLabel = (done: boolean, active: boolean) => {
-    if (done) return 'Done';
-    return active ? 'Now' : 'Next';
-};
 
 const getPrimaryActionCopy = (type: ListingType) => {
     switch (type) {
@@ -393,7 +409,7 @@ const getSubmitCopy = (type: ListingType, role?: string | null) => (
     role === 'local_guide' && type === 'guide' ? 'Submit Live AR/VR Tour' : getPrimaryActionCopy(type)
 );
 
-const getStudioTypeGuidance = (type: ListingType, role?: string | null) => {
+const getStudioTypeGuidance = (type: ListingType, role?: string | null, subCategory?: string | null) => {
     if (role === 'local_guide' && type === 'guide') {
         return {
             titleLabel: 'Live tour title',
@@ -425,18 +441,22 @@ const getStudioTypeGuidance = (type: ListingType, role?: string | null) => {
         };
     }
     if (type === 'activity') {
+        const selectedCategory = parseActivityCategoryValue(subCategory).key;
+        const categoryCopy = selectedCategory ? getActivityCategory(selectedCategory) : null;
         return {
             titleLabel: 'Activity title',
             locationLabel: 'Activity location',
-            categoryLabel: 'Activity type',
+            categoryLabel: 'Activity category',
             dateLabel: 'Session date',
             feeLabel: 'Vendor activity fee (Rs)',
             priceNote: 'activity session',
             placeholderTitle: 'e.g. Riverside Kayaking Session in Rishikesh',
-            placeholderCategory: 'e.g. Adventure, cooking class, wellness, workshop',
-            placeholderDescription: 'Describe what guests will do, session length, equipment, safety notes, skill level, group size, and meeting point.',
-            guidanceTitle: 'Activity checklist',
-            guidanceItems: ['Session duration and group size', 'Equipment, safety, and skill level', 'Meeting point and guest requirements'],
+            placeholderCategory: 'e.g. Adventure, wellness, workshop',
+            placeholderDescription: categoryCopy?.placeholderDescription
+                || 'Describe what guests will do, session length, equipment, safety notes, skill level, group size, and meeting point.',
+            guidanceTitle: categoryCopy ? `${categoryCopy.label} checklist` : 'Activity checklist',
+            guidanceItems: categoryCopy?.guidanceItems
+                || ['Session duration and group size', 'Equipment, safety, and skill level', 'Meeting point and guest requirements'],
         };
     }
     return {
@@ -498,11 +518,10 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [marketLoading, setMarketLoading] = useState(false);
     const [ollamaNote, setOllamaNote] = useState<string | null>(null);
     const [ollamaStatus, setOllamaStatus] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
-    // Below the two-column breakpoint the price check becomes a floating button + bottom sheet.
+    // Below the two-column breakpoint the studio shows one step at a time with a sticky Back/Next bar.
     const [isCompactLayout, setIsCompactLayout] = useState(
         () => typeof window !== 'undefined' && window.matchMedia(COMPACT_LAYOUT_QUERY).matches,
     );
-    const [marketSheetOpen, setMarketSheetOpen] = useState(false);
     const [fabOffset, setFabOffset] = useState<{ right: number; bottom: number } | null>(null);
 
     useEffect(() => {
@@ -555,19 +574,6 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         };
     }, [isCompactLayout]);
 
-    useEffect(() => {
-        if (!marketSheetOpen || !isCompactLayout) return undefined;
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setMarketSheetOpen(false);
-        };
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        window.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.body.style.overflow = previousOverflow;
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isCompactLayout, marketSheetOpen]);
     const [imgError, setImgError] = useState(false);
     const [galleryInput, setGalleryInput] = useState('');
     const [proofPhotoInput, setProofPhotoInput] = useState('');
@@ -578,6 +584,15 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [acceptAgreement, setAcceptAgreement] = useState(false);
     const [consentError, setConsentError] = useState<string | null>(null);
+    const [categoryError, setCategoryError] = useState<string | null>(null);
+    const [currentStep, setCurrentStep] = useState('details');
+    const [listingPin, setListingPin] = useState<{ lat: number; lng: number } | null>(null);
+    const [listingPinAddress, setListingPinAddress] = useState('');
+    const [listingPinHadSaved, setListingPinHadSaved] = useState(false);
+    const [pinPickerOpen, setPinPickerOpen] = useState(false);
+    const [mapModalOpen, setMapModalOpen] = useState(false);
+    const [myPlaces, setMyPlaces] = useState<ProviderPlace[]>([]);
+    const [stepSyncToken, setStepSyncToken] = useState(0);
     const [submissionModal, setSubmissionModal] = useState<SubmissionModalState | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const proofPhotoInputRef = useRef<HTMLInputElement>(null);
@@ -596,7 +611,8 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     );
     const localGuideStudio = studioRole === 'local_guide';
     const canAccessStudio = isProvider && allowedTypes.length > 0 && (VIRTUAL_TOURS_ENABLED || !localGuideStudio);
-    const studioTypeGuidance = getStudioTypeGuidance(form.type, studioRole);
+    const studioTypeGuidance = getStudioTypeGuidance(form.type, studioRole, form.sub_category);
+    const activityCategorySelection = parseActivityCategoryValue(form.sub_category);
 
     const loadListings = useCallback(async () => {
         if (!currentUserId) return;
@@ -636,6 +652,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setGalleryError(null);
         setFeeBreakdownError(null);
         setConsentError(null);
+        setStepSyncToken((token) => token + 1);
         setForm(draft.form);
         setVirtualDetails(draft.virtualDetails || DEFAULT_VIRTUAL_TOUR_DETAILS);
         setGalleryInput(draft.galleryInput);
@@ -656,8 +673,32 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         });
     }, [acceptAgreement, acceptTerms, currentUserId, editingListingId, form, galleryInput, proofPhotoInput, virtualDetails]);
 
+    useEffect(() => {
+        if (!currentUserId || !isProvider || mapModalOpen) return;
+        let cancelled = false;
+        fetchMyPlaces(currentUserId)
+            .then((rows) => { if (!cancelled) setMyPlaces(rows.filter((row) => !row.listing_id)); })
+            .catch(() => { /* The pin shortcut is optional. */ });
+        return () => { cancelled = true; };
+    }, [currentUserId, isProvider, mapModalOpen]);
+
+    const clearListingPin = () => {
+        setListingPin(null);
+        setListingPinAddress('');
+        setListingPinHadSaved(false);
+        setPinPickerOpen(false);
+    };
+
+    const removeListingPinSelection = () => {
+        setListingPin(null);
+        setListingPinAddress('');
+        setPinPickerOpen(false);
+    };
+
     const resetForm = () => {
+        clearListingPin();
         setEditingListingId(null);
+        setStepSyncToken((token) => token + 1);
         setImgError(false);
         setGalleryInput('');
         setProofPhotoInput('');
@@ -682,6 +723,17 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             ? listing.cover_image_url.trim()
             : (galleryImages.find((item) => item !== primaryImage) || galleryImages[1] || '');
         setEditingListingId(listing.id);
+        clearListingPin();
+        void fetchListingPlace(String(listing.id))
+            .then((place) => {
+                if (!place) return;
+                setListingPin({ lat: place.lat, lng: place.lng });
+                setListingPinAddress(place.address);
+                setListingPinHadSaved(true);
+                setPinPickerOpen(true);
+            })
+            .catch(() => { /* A missing pin never blocks editing the listing. */ });
+        setStepSyncToken((token) => token + 1);
         setImgError(false);
         setGalleryInput('');
         setProofPhotoInput('');
@@ -808,7 +860,8 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         [pricingPreview.total_price, discountDraft, platformFeeRate]
     );
     const hasDiscountPreview = discountPreview.discount_amount > 0;
-    const detailsStepDone = Boolean(form.title.trim() && form.location.trim());
+    const detailsStepDone = Boolean(form.title.trim() && form.location.trim())
+        && (form.type !== 'activity' || Boolean(parseActivityCategoryValue(form.sub_category).key));
     const photosStepDone = galleryImages.length >= MIN_LISTING_IMAGES && Boolean(form.image_url && form.cover_image_url);
     const priceStepDone = pricingPreview.provider_subtotal > 0;
     const reviewStepDone = Boolean(form.description.trim()) && (editingListingId !== null || (acceptTerms && acceptAgreement));
@@ -817,6 +870,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             id: 'details',
             number: '1',
             title: 'Name and place',
+            label: 'Details',
             cue: 'What is it? Where?',
             icon: <Type size={18} />,
             done: detailsStepDone,
@@ -825,6 +879,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             id: 'photos',
             number: '2',
             title: 'Photos',
+            label: 'Photos',
             cue: `${galleryImages.length}/${MIN_LISTING_IMAGES} needed`,
             icon: <Image size={18} />,
             done: photosStepDone,
@@ -833,6 +888,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             id: 'price',
             number: '3',
             title: 'Price',
+            label: 'Price',
             cue: pricingPreview.provider_subtotal > 0 ? formatRs(pricingPreview.provider_subtotal) : 'Add fee',
             icon: <ReceiptText size={18} />,
             done: priceStepDone,
@@ -841,16 +897,87 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
             id: 'review',
             number: '4',
             title: 'Check and send',
+            label: 'Send',
             cue: editingListingId ? 'Ready to update' : 'Agree and submit',
             icon: <CheckCircle2 size={18} />,
             done: reviewStepDone,
         },
     ];
     const activeFlowStepId = flowSteps.find((step) => !step.done)?.id ?? flowSteps[flowSteps.length - 1].id;
-    const completedFlowSteps = flowSteps.filter((step) => step.done).length;
-    const flowProgress = Math.round((completedFlowSteps / flowSteps.length) * 100);
-    const flowTone = flowProgress <= 40 ? 'low' : flowProgress <= 70 ? 'mid' : 'high';
-    const listingKindLabel = getListingSingularCopy(form.type, studioRole);
+    const stepIndex = flowSteps.findIndex((step) => step.id === currentStep);
+    const currentStepDone = stepIndex >= 0 ? flowSteps[stepIndex].done : false;
+    const previousStepId = stepIndex > 0 ? flowSteps[stepIndex - 1].id : null;
+    const nextStepId = stepIndex >= 0 && stepIndex < flowSteps.length - 1 ? flowSteps[stepIndex + 1].id : null;
+
+    // Jump to the first unfinished step when a form is loaded (edit, draft restore, reset), not while typing.
+    useEffect(() => {
+        setCurrentStep(activeFlowStepId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stepSyncToken]);
+
+    // A failed submit sets an error inside whichever step owns the field; open that step so it is visible.
+    useEffect(() => {
+        if (categoryError || virtualDetailsError) setCurrentStep('details');
+        else if (galleryError) setCurrentStep('photos');
+        else if (feeBreakdownError) setCurrentStep('price');
+        else if (groupSizeError || consentError) setCurrentStep('review');
+    }, [categoryError, virtualDetailsError, galleryError, feeBreakdownError, groupSizeError, consentError]);
+
+    useEffect(() => {
+        if (isCompactLayout && !currentStep) setCurrentStep(activeFlowStepId);
+    }, [activeFlowStepId, currentStep, isCompactLayout]);
+
+    const goToStep = (stepId: string) => {
+        setCurrentStep(stepId);
+        window.requestAnimationFrame(() => {
+            document.getElementById(isCompactLayout ? 'ps-stepper' : `ps-stage-${stepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    };
+
+    const getStepStateClass = (stepId: string, done: boolean) => (
+        `${done ? ' is-done' : ''}${currentStep === stepId ? ' is-active' : ''}`
+    );
+
+    const renderStageBanner = (stepId: string, number: string, title: string, done: boolean) => {
+        const open = currentStep === stepId;
+        return (
+            <button
+                type="button"
+                id={`ps-stage-${stepId}`}
+                className={`ps-stage-banner${getStepStateClass(stepId, done)}`}
+                aria-expanded={open}
+                aria-controls={`ps-step-${stepId}`}
+                onClick={() => (open ? setCurrentStep('') : goToStep(stepId))}
+            >
+                <span className="ps-stage-badge">{done ? <Check size={18} strokeWidth={3} /> : number}</span>
+                <strong>{title}</strong>
+                <ChevronDown className="ps-stage-chevron" size={18} aria-hidden="true" />
+            </button>
+        );
+    };
+
+    // Native validation    };
+
+    // Native validation cannot focus fields inside collapsed steps, so open the step and re-report.
+    const handleFormInvalid = (event: React.FormEvent<HTMLFormElement>) => {
+        const field = event.target as HTMLElement;
+        const stepId = field.closest<HTMLElement>('[data-flow-step]')?.dataset.flowStep;
+        if (!stepId || stepId === currentStep) return;
+        event.preventDefault();
+        setCurrentStep(stepId);
+        window.requestAnimationFrame(() => (field as HTMLInputElement).reportValidity?.());
+    };
+
+    // Enter inside a text field should move to the next step, not submit a half-filled form.
+    const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+        const target = event.target as HTMLElement;
+        if (event.key !== 'Enter' || target.tagName !== 'INPUT' || (target as HTMLInputElement).type === 'checkbox') return;
+        const step = flowSteps.find((item) => item.id === currentStep);
+        if (!step || step.id === 'review') return;
+        event.preventDefault();
+        const nextStep = flowSteps[flowSteps.indexOf(step) + 1];
+        if (step.done && nextStep) goToStep(nextStep.id);
+    };
     const marketInsight = useMemo(
         () => buildMarketPriceInsight({
             listingType: form.type,
@@ -1120,6 +1247,11 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!canAccessStudio || uploadingImage || uploadingProofPhoto || uploadingProofVideo) return;
+        if (form.type === 'activity' && !parseActivityCategoryValue(form.sub_category).key) {
+            setCategoryError('Choose an activity category before submitting.');
+            return;
+        }
+        setCategoryError(null);
         const wasEditing = Boolean(editingListingId);
         const submittedType = form.type;
         const submittedTitle = form.title.trim() || `Untitled ${getListingSingularCopy(form.type, studioRole)}`;
@@ -1217,7 +1349,7 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
         setGroupSizeError(null);
         setSaving(true);
         try {
-            await createOrUpdateListing({
+            const savedListing = await createOrUpdateListing({
                 ...form,
                 id: editingListingId || form.id,
                 provider_user_id: user.id,
@@ -1243,6 +1375,27 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     ? buildVirtualTourDescription(form.description, submittedVirtualDetails)
                     : form.description,
             });
+            const savedListingId = savedListing?.id || form.id;
+            if (user && savedListingId && !localGuideStudio) {
+                try {
+                    if (listingPin) {
+                        await saveListingPlace(user.id, String(savedListingId), submittedType, {
+                            name: submittedTitle,
+                            category: placeCategoryForListing(submittedType, form.sub_category),
+                            custom_label: '',
+                            description: '',
+                            address: listingPinAddress,
+                            lat: listingPin.lat,
+                            lng: listingPin.lng,
+                        });
+                    } else if (listingPinHadSaved) {
+                        await removeListingPlace(String(savedListingId));
+                    }
+                } catch (pinError) {
+                    console.error('Listing saved, but the map pin failed:', pinError);
+                    alert(`Your listing was saved, but its map pin could not be saved: ${pinError instanceof Error ? pinError.message : 'unknown error'}`);
+                }
+            }
             await loadListings();
             resetForm();
             setSubmissionModal({
@@ -1515,85 +1668,28 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
     };
 
     // Desktop: sticky in the right column so it stays in view while scrolling the form.
-    // Mobile: floating button that opens the same panel as a bottom sheet.
+    // Mobile: the same panel sits inside the price step instead.
     const renderMarketDock = () => {
-        if (!isCompactLayout) {
-            return <div className="ps-market-dock">{renderMarketPricePanel()}</div>;
-        }
-
-        const tone = marketInsight?.statusTone || 'neutral';
-        return createPortal(
-            <div
-                className={`ps-market-float ps-market-float--${tone}${marketSheetOpen ? ' is-open' : ''}`}
-                style={fabOffset ? ({ '--pm-fab-right': `${fabOffset.right}px`, '--pm-fab-bottom': `${fabOffset.bottom}px` } as React.CSSProperties) : undefined}
-            >
-                <button
-                    type="button"
-                    className="ps-market-fab"
-                    aria-expanded={marketSheetOpen}
-                    aria-controls="ps-market-sheet"
-                    onClick={() => setMarketSheetOpen((open) => !open)}
-                >
-                    <StudioLoadIcon className="ps-market-fab-icon" />
-                    <span className="ps-market-fab-text">
-                        <span>Price check</span>
-                        {marketInsight && <strong>{marketInsight.statusLabel}</strong>}
-                    </span>
-                </button>
-                <div className="ps-market-backdrop" onClick={() => setMarketSheetOpen(false)} aria-hidden="true" />
-                <div id="ps-market-sheet" className="ps-market-sheet" role="dialog" aria-label="Market price check">
-                    <div className="ps-market-sheet-bar">
-                        <span className="ps-market-sheet-grab" aria-hidden="true" />
-                        <button
-                            type="button"
-                            className="ps-market-sheet-close"
-                            aria-label="Close price check"
-                            onClick={() => setMarketSheetOpen(false)}
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
-                    {renderMarketPricePanel()}
-                </div>
-            </div>,
-            document.body,
-        );
+        if (isCompactLayout) return null;
+        return <div className="ps-market-dock">{renderMarketPricePanel()}</div>;
     };
-
-    const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user.id, profile?.full_name, user.email);
 
     return (
         <main className={`ps-page animate-fade${embedded ? ' ps-page--embedded' : ''}`}>
             <div className={embedded ? 'ps-embedded-shell' : 'container'} style={embedded ? undefined : { maxWidth: '1160px' }}>
 
-                {/* Header */}
-                <div className="ps-header">
-                    <h1 className="ps-title">{localGuideStudio ? 'Create Live AR/VR Tour' : 'Your Posting Studio'}</h1>
-                    <p className="ps-subtitle">
-                        {localGuideStudio
-                            ? 'List paid live virtual sessions from real locations, then accept bookings and go live from the guide console.'
-                            : 'Submit tours, activities, and events for admin review, then track each post until it goes live.'}
-                    </p>
-                </div>
+                {!embedded && (
+                    <div className="ps-header">
+                        <h1 className="ps-title">{localGuideStudio ? 'Create Live AR/VR Tour' : 'Your Posting Studio'}</h1>
+                    </div>
+                )}
 
                 {/* Account Status Bar */}
-                <div className="ps-status-bar">
-                    <img className="ps-status-bar-avatar" src={avatarSrc} alt={profile?.full_name || user.email || 'Provider'} />
-                    <div>
-                        <p className="ps-status-bar-name">{profile?.full_name || user.email}</p>
-                        <p className="ps-status-bar-role">{getRoleLabel(studioRole || profile?.role)} account</p>
+                {profile?.verification_status !== 'approved' && (
+                    <div className="ps-verify-note">
+                        <span className={getStatusPillClass(profile?.verification_status)}>{verificationLabel}</span>
                     </div>
-                    <div className="ps-status-bar-divider" />
-                    <span className={getStatusPillClass(profile?.verification_status)}>
-                        {verificationLabel}
-                    </span>
-                    {profile?.company_name && (
-                        <>
-                            <div className="ps-status-bar-divider" />
-                            <span className="ps-status-bar-company">{profile.company_name}</span>
-                        </>
-                    )}
-                </div>
+                )}
 
                 {/* Lock Banner */}
                 {!canAccessStudio && (
@@ -1606,88 +1702,20 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     </div>
                 )}
 
-                <section className="ps-flow-board" aria-label="Posting flow">
-                    <div className="ps-flow-intro">
-                        <div className="ps-flow-intro-copy">
-                            <span className="ps-flow-kicker">
-                                <StudioLoadIcon />
-                                Simple path
-                            </span>
-                            <h2>{editingListingId ? `Update ${listingKindLabel}` : `Create ${listingKindLabel}`}</h2>
-                            <p>Follow the big numbers. Green is done. Orange is the next part.</p>
-                        </div>
-                        <div
-                            className={`ps-flow-meter ps-flow-meter--${flowTone}`}
-                            role="progressbar"
-                            aria-label="Posting completion"
-                            aria-valuemin={0}
-                            aria-valuemax={100}
-                            aria-valuenow={flowProgress}
+                <nav className="ps-stepper" id="ps-stepper" aria-label="Posting steps">
+                    {flowSteps.map((step) => (
+                        <button
+                            key={step.id}
+                            type="button"
+                            className={`ps-stepper-item${getStepStateClass(step.id, step.done)}`}
+                            aria-current={step.id === currentStep ? 'step' : undefined}
+                            onClick={() => goToStep(step.id)}
                         >
-                            <svg className="ps-flow-meter-ring" viewBox="0 0 64 64" aria-hidden="true">
-                                <circle className="ps-flow-meter-track" cx="32" cy="32" r="25" pathLength="100" />
-                                <circle
-                                    className="ps-flow-meter-progress"
-                                    cx="32"
-                                    cy="32"
-                                    r="25"
-                                    pathLength="100"
-                                    strokeDasharray={`${flowProgress} 100`}
-                                />
-                            </svg>
-                            <span className="ps-flow-meter-inner">
-                                <strong>{flowProgress}%</strong>
-                                <small>Done</small>
-                            </span>
-                        </div>
-                    </div>
-                    <div className="ps-flow-steps">
-                        {flowSteps.map((step) => {
-                            const active = step.id === activeFlowStepId;
-                            return (
-                                <div
-                                    key={step.id}
-                                    className={`ps-flow-step${step.done ? ' is-done' : ''}${active ? ' is-active' : ''}`}
-                                >
-                                    <span className="ps-flow-step-number">{step.number}</span>
-                                    <span className="ps-flow-step-icon">{step.icon}</span>
-                                    <span className="ps-flow-step-copy">
-                                        <strong>{step.title}</strong>
-                                        <small>{step.cue}</small>
-                                    </span>
-                                    <em>{getFlowStateLabel(step.done, active)}</em>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* Quick-start capability chips */}
-                {allowedTypes.length > 0 && !localGuideStudio && (
-                    <div className="ps-capability-strip">
-                        {allowedTypes.map((type) => (
-                            <button
-                                key={type}
-                                type="button"
-                                className="ps-capability-chip"
-                                disabled={!canAccessStudio}
-                                onClick={() => {
-                                    setEditingListingId(null);
-                                    setImgError(false);
-                                    setGalleryInput('');
-                                    setGalleryError(null);
-                                    setAcceptTerms(false);
-                                    setAcceptAgreement(false);
-                                    setConsentError(null);
-                                    setForm(getDefaultListingForm(type, studioRole));
-                                }}
-                            >
-                                {TYPE_META[type].icon}
-                                New {getListingCopy(type, studioRole)}
-                            </button>
-                        ))}
-                    </div>
-                )}
+                            <span className="ps-stepper-dot">{step.done ? <Check size={14} strokeWidth={3} /> : step.number}</span>
+                            <span className="ps-stepper-label">{step.label}</span>
+                        </button>
+                    ))}
+                </nav>
 
                 {/* Main Grid */}
                 <div className="ps-grid">
@@ -1695,25 +1723,21 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                     {/* ── Form Card ── */}
                     <article className="ps-card">
                         <div className="ps-card-head">
-                            <div>
-                                <span className="ps-card-label">
-                                    <FileText size={11} />
-                                    {editingListingId ? 'Editing' : localGuideStudio ? 'Create Live Tour' : 'Create Listing'}
-                                </span>
-                                <h2 className="ps-card-title">
-                                    {editingListingId ? 'Update listing for review' : getSubmitCopy(form.type, studioRole)}
-                                </h2>
-                                <p className="ps-card-desc">
-                                    {localGuideStudio
-                                        ? 'Live AR/VR tour listings are sent to admin moderation before tourists can book slots.'
-                                        : 'New and edited listings are sent to admin moderation before they go live.'}
-                                </p>
+                            <h2 className="ps-card-title">
+                                {editingListingId ? 'Edit listing' : getSubmitCopy(form.type, studioRole)}
+                            </h2>
+                            <div className="ps-card-head-actions">
+                                {!localGuideStudio && allowedTypes.length > 0 && (
+                                    <button type="button" className="ps-cancel-btn" onClick={() => setMapModalOpen(true)}>
+                                        <MapPin size={14} /> My pins
+                                    </button>
+                                )}
+                                {editingListingId && (
+                                    <button type="button" className="ps-cancel-btn" onClick={resetForm}>
+                                        Cancel edit
+                                    </button>
+                                )}
                             </div>
-                            {editingListingId && (
-                                <button type="button" className="ps-cancel-btn" onClick={resetForm}>
-                                    Cancel edit
-                                </button>
-                            )}
                         </div>
 
                         {/* Type Picker */}
@@ -1740,852 +1764,932 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} className="ps-form">
-                            <div className={`ps-stage-banner${detailsStepDone ? ' is-complete' : ''}${activeFlowStepId === 'details' ? ' is-active' : ''}`}>
-                                <span className="ps-stage-badge">1</span>
-                                <div>
-                                    <strong>Name and place</strong>
-                                    <p>Tourists first see the title and location.</p>
-                                </div>
-                                <em>{getFlowStateLabel(detailsStepDone, activeFlowStepId === 'details')}</em>
-                            </div>
-
-                            <label className="ps-field">
-                                <span className="ps-field-label"><Type size={13} /> {studioTypeGuidance.titleLabel}</span>
-                                <input
-                                    className="ps-input"
-                                    value={form.title}
-                                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                                    placeholder={studioTypeGuidance.placeholderTitle}
-                                    disabled={!canAccessStudio}
-                                    required
-                                />
-                            </label>
-
-                            <div className="ps-two-up">
+                        <form id="ps-listing-form" onSubmit={handleSubmit} onInvalidCapture={handleFormInvalid} onKeyDown={handleFormKeyDown} className="ps-form">
+                            {renderStageBanner('details', '1', 'Name and place', detailsStepDone)}
+                            <div className="ps-step-body" id="ps-step-details" data-flow-step="details" hidden={currentStep !== 'details'}>
                                 <label className="ps-field">
-                                    <span className="ps-field-label"><MapPin size={13} /> {studioTypeGuidance.locationLabel}</span>
+                                    <span className="ps-field-label"><Type size={13} /> {studioTypeGuidance.titleLabel}</span>
                                     <input
                                         className="ps-input"
-                                        value={form.location}
-                                        onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                                        placeholder="City, Country"
+                                        value={form.title}
+                                        onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                                        placeholder={studioTypeGuidance.placeholderTitle}
                                         disabled={!canAccessStudio}
                                         required
                                     />
                                 </label>
-                                <label className="ps-field">
-                                    <span className="ps-field-label"><Tag size={13} /> {studioTypeGuidance.categoryLabel}</span>
-                                    <input
-                                        className="ps-input"
-                                        value={form.sub_category || ''}
-                                        onChange={(e) => setForm((f) => ({ ...f, sub_category: e.target.value }))}
-                                        placeholder={studioTypeGuidance.placeholderCategory}
-                                        disabled={!canAccessStudio}
-                                    />
-                                </label>
-                            </div>
 
-                            {!localGuideStudio && (
-                                <section className={`ps-type-guidance ps-type-guidance--${form.type}`} aria-label={`${getListingSingularCopy(form.type, studioRole)} checklist`}>
-                                    <div>
-                                        <span className="ps-field-label">{TYPE_META[form.type]?.icon}{studioTypeGuidance.guidanceTitle}</span>
-                                    </div>
-                                    <div className="ps-type-guidance-list">
-                                        {studioTypeGuidance.guidanceItems.map((item) => (
-                                            <span key={item}>{item}</span>
-                                        ))}
-                                    </div>
-                                </section>
-                            )}
-
-                            {localGuideStudio && (
-                                <section className="ps-live-details" aria-label="Live virtual tour details">
-                                    <div className="ps-live-details-head">
-                                        <span className="ps-field-label"><RadioTower size={13} /> Live tour details</span>
-                                        <span>{virtualDetails.duration_minutes} min</span>
-                                    </div>
-
-                                    <div className="ps-two-up">
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><MapPin size={13} /> Live spot</span>
-                                            <input
-                                                className="ps-input"
-                                                value={virtualDetails.spot_location}
-                                                onChange={(event) => updateVirtualDetails({ spot_location: event.target.value })}
-                                                placeholder="Exact area where the live tour happens"
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Clock size={13} /> Duration minutes</span>
-                                            <input
-                                                className="ps-input"
-                                                type="number"
-                                                min="15"
-                                                step="5"
-                                                value={virtualDetails.duration_minutes}
-                                                onChange={(event) => updateVirtualDetails({ duration_minutes: Number(event.target.value) })}
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                    </div>
-
-                                    <div className="ps-two-up">
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Calendar size={13} /> Timing windows</span>
-                                            <textarea
-                                                className="ps-textarea ps-textarea--compact"
-                                                value={joinLines(virtualDetails.available_windows)}
-                                                onChange={(event) => updateVirtualDetails({ available_windows: splitLines(event.target.value) })}
-                                                placeholder="Mon-Fri 8 AM-10 AM&#10;Saturday golden hour"
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Compass size={13} /> Places shown</span>
-                                            <textarea
-                                                className="ps-textarea ps-textarea--compact"
-                                                value={joinLines(virtualDetails.places_shown)}
-                                                onChange={(event) => updateVirtualDetails({ places_shown: splitLines(event.target.value) })}
-                                                placeholder="Main gate&#10;Viewpoint&#10;Local market lane"
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                    </div>
-
-                                    <div className="ps-two-up">
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Type size={13} /> Included</span>
-                                            <textarea
-                                                className="ps-textarea ps-textarea--compact"
-                                                value={joinLines(virtualDetails.included_items)}
-                                                onChange={(event) => updateVirtualDetails({ included_items: splitLines(event.target.value) })}
-                                                placeholder="Live narration&#10;Q&A&#10;Photo stops"
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Type size={13} /> Not included</span>
-                                            <textarea
-                                                className="ps-textarea ps-textarea--compact"
-                                                value={joinLines(virtualDetails.excluded_items)}
-                                                onChange={(event) => updateVirtualDetails({ excluded_items: splitLines(event.target.value) })}
-                                                placeholder="Physical entry ticket&#10;Recorded copy"
-                                                disabled={!canAccessStudio}
-                                            />
-                                        </label>
-                                    </div>
-
-                                    <div className="ps-two-up">
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Type size={13} /> Languages</span>
-                                            <input
-                                                className="ps-input"
-                                                value={virtualDetails.languages.join(', ')}
-                                                onChange={(event) => updateVirtualDetails({ languages: splitLines(event.target.value) })}
-                                                placeholder="English, Hindi, Bengali"
-                                                disabled={!canAccessStudio}
-                                            />
-                                        </label>
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Camera size={13} /> Camera type</span>
-                                            <select
-                                                className="ps-select"
-                                                value={virtualDetails.camera_type}
-                                                onChange={(event) => updateVirtualDetails({ camera_type: event.target.value as VirtualTourCameraType })}
-                                                disabled={!canAccessStudio}
-                                            >
-                                                {(Object.entries(CAMERA_TYPE_LABELS) as Array<[VirtualTourCameraType, string]>).map(([value, label]) => (
-                                                    <option key={value} value={value}>{label}</option>
-                                                ))}
-                                            </select>
-                                        </label>
-                                    </div>
-
-                                    <div className="ps-two-up">
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Camera size={13} /> Camera setup</span>
-                                            <textarea
-                                                className="ps-textarea ps-textarea--compact"
-                                                value={virtualDetails.camera_notes}
-                                                onChange={(event) => updateVirtualDetails({ camera_notes: event.target.value })}
-                                                placeholder="Phone/360 camera, stabilizer, audio mic, backup device"
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Wifi size={13} /> Network backup</span>
-                                            <textarea
-                                                className="ps-textarea ps-textarea--compact"
-                                                value={virtualDetails.network_plan}
-                                                onChange={(event) => updateVirtualDetails({ network_plan: event.target.value })}
-                                                placeholder="Primary 5G SIM, backup hotspot, route signal notes"
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                    </div>
-
-                                    <div className="ps-two-up">
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Users size={13} /> Max guests</span>
-                                            <input
-                                                className="ps-input"
-                                                type="number"
-                                                min="1"
-                                                max="25"
-                                                value={virtualDetails.max_guests}
-                                                onChange={(event) => updateVirtualDetails({ max_guests: Number(event.target.value) })}
-                                                disabled={!canAccessStudio}
-                                            />
-                                        </label>
-                                        <label className="ps-field">
-                                            <span className="ps-field-label"><Type size={13} /> Tourist requirements</span>
-                                            <input
-                                                className="ps-input"
-                                                value={virtualDetails.tourist_requirements}
-                                                onChange={(event) => updateVirtualDetails({ tourist_requirements: event.target.value })}
-                                                placeholder="Stable internet, headphones, browser camera optional"
-                                                disabled={!canAccessStudio}
-                                            />
-                                        </label>
-                                    </div>
-
-                                    <div className="ps-proof-block">
-                                        <div className="ps-live-details-head">
-                                            <span className="ps-field-label"><ShieldAlert size={13} /> Admin proof</span>
-                                            <span>{virtualDetails.verification_photo_urls.length} photos</span>
-                                        </div>
-                                        <div className="ps-image-upload-row">
-                                            <button
-                                                type="button"
-                                                className="ps-upload-btn"
-                                                onClick={() => proofPhotoInputRef.current?.click()}
-                                                disabled={!canAccessStudio || uploadingProofPhoto}
-                                            >
-                                                {uploadingProofPhoto ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
-                                                Proof photos
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="ps-upload-btn"
-                                                onClick={() => proofVideoInputRef.current?.click()}
-                                                disabled={!canAccessStudio || uploadingProofVideo}
-                                            >
-                                                {uploadingProofVideo ? <Loader2 className="animate-spin" size={14} /> : <Video size={14} />}
-                                                Proof video
-                                            </button>
-                                            <span className="ps-upload-hint">Upload camera/location photos and one short live video for admin approval.</span>
-                                        </div>
+                                <div className="ps-two-up">
+                                    <label className="ps-field">
+                                        <span className="ps-field-label"><MapPin size={13} /> {studioTypeGuidance.locationLabel}</span>
                                         <input
-                                            ref={proofPhotoInputRef}
-                                            type="file"
-                                            accept="image/*"
-                                            multiple
-                                            className="ps-file-input"
-                                            onChange={(event) => {
-                                                const files = Array.from(event.target.files || []);
-                                                if (files.length > 0) void handleProofPhotoUpload(files);
-                                                event.target.value = '';
-                                            }}
-                                            disabled={!canAccessStudio || uploadingProofPhoto}
+                                            className="ps-input"
+                                            value={form.location}
+                                            onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                                            placeholder="City, Country"
+                                            disabled={!canAccessStudio}
+                                            required
                                         />
-                                        <input
-                                            ref={proofVideoInputRef}
-                                            type="file"
-                                            accept="video/*"
-                                            className="ps-file-input"
-                                            onChange={(event) => {
-                                                const file = event.target.files?.[0];
-                                                if (file) void handleProofVideoUpload(file);
-                                                event.target.value = '';
-                                            }}
-                                            disabled={!canAccessStudio || uploadingProofVideo}
-                                        />
-                                        <div className="ps-gallery-add-row">
-                                            <input
-                                                className="ps-input"
-                                                value={proofPhotoInput}
-                                                onChange={(event) => setProofPhotoInput(event.target.value)}
-                                                placeholder="Paste proof photo URL"
-                                                disabled={!canAccessStudio}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="ps-upload-btn"
-                                                onClick={() => addProofPhotoUrl(proofPhotoInput)}
-                                                disabled={!canAccessStudio || !proofPhotoInput.trim()}
-                                            >
-                                                Add proof URL
-                                            </button>
-                                        </div>
-                                        {virtualDetails.verification_photo_urls.length > 0 && (
-                                            <div className="ps-proof-grid">
-                                                {virtualDetails.verification_photo_urls.map((url) => (
-                                                    <div key={url} className="ps-proof-card">
-                                                        <img src={url} alt="Virtual tour proof" />
-                                                        <button type="button" onClick={() => removeProofPhotoUrl(url)} disabled={!canAccessStudio}>
-                                                            Remove
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                    </label>
+                                    {form.type !== 'activity' && (
                                         <label className="ps-field">
-                                            <span className="ps-field-label"><Video size={13} /> Proof video URL</span>
+                                            <span className="ps-field-label"><Tag size={13} /> {studioTypeGuidance.categoryLabel}</span>
                                             <input
                                                 className="ps-input"
-                                                value={virtualDetails.verification_video_url}
-                                                onChange={(event) => updateVirtualDetails({ verification_video_url: event.target.value })}
-                                                placeholder="Upload or paste a short live proof video URL"
-                                                disabled={!canAccessStudio}
-                                                required
-                                            />
-                                        </label>
-                                        <label className="ps-field">
-                                            <span className="ps-field-label">Proof notes</span>
-                                            <input
-                                                className="ps-input"
-                                                value={virtualDetails.proof_notes}
-                                                onChange={(event) => updateVirtualDetails({ proof_notes: event.target.value })}
-                                                placeholder="Anything admin should check before approving"
+                                                value={form.sub_category || ''}
+                                                onChange={(e) => setForm((f) => ({ ...f, sub_category: e.target.value }))}
+                                                placeholder={studioTypeGuidance.placeholderCategory}
                                                 disabled={!canAccessStudio}
                                             />
                                         </label>
-                                        {virtualDetailsError && <p className="ps-gallery-error">{virtualDetailsError}</p>}
-                                    </div>
-                                </section>
-                            )}
-
-                            <div className={`ps-stage-banner${photosStepDone ? ' is-complete' : ''}${activeFlowStepId === 'photos' ? ' is-active' : ''}`}>
-                                <span className="ps-stage-badge">2</span>
-                                <div>
-                                    <strong>Photos</strong>
-                                    <p>{galleryImages.length}/{MIN_LISTING_IMAGES} required photos added.</p>
-                                </div>
-                                <em>{getFlowStateLabel(photosStepDone, activeFlowStepId === 'photos')}</em>
-                            </div>
-
-                            <div className="ps-field">
-                                <span className="ps-field-label"><Image size={13} /> Listing Images ({galleryImages.length}/{MAX_LISTING_IMAGES})</span>
-                                <div className="ps-image-upload-row">
-                                    <button
-                                        type="button"
-                                        className="ps-upload-btn"
-                                        disabled={!canAccessStudio || uploadingImage || galleryImages.length >= MAX_LISTING_IMAGES}
-                                        onClick={() => imageInputRef.current?.click()}
-                                    >
-                                        {uploadingImage ? (
-                                            <>
-                                                <Loader2 className="animate-spin" size={14} />
-                                                Uploading...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload size={14} />
-                                                Upload from device
-                                            </>
-                                        )}
-                                    </button>
-                                    <span className="ps-upload-hint">Add {MIN_LISTING_IMAGES} to {MAX_LISTING_IMAGES} images. Set one as primary and one as cover.</span>
-                                </div>
-                                <input
-                                    ref={imageInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    className="ps-file-input"
-                                    onChange={(e) => {
-                                        const files = Array.from(e.target.files || []);
-                                        if (files.length > 0) void handleListingImageUpload(files);
-                                        e.target.value = '';
-                                    }}
-                                    disabled={!canAccessStudio || uploadingImage || galleryImages.length >= MAX_LISTING_IMAGES}
-                                />
-                                <div className="ps-gallery-add-row">
-                                    <input
-                                        className="ps-input"
-                                        value={galleryInput}
-                                        onChange={(e) => {
-                                            setImgError(false);
-                                            setGalleryInput(e.target.value);
-                                        }}
-                                        placeholder="Paste image URL and click Add"
-                                        disabled={!canAccessStudio || galleryImages.length >= MAX_LISTING_IMAGES}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="ps-upload-btn"
-                                        disabled={!canAccessStudio || !galleryInput.trim() || galleryImages.length >= MAX_LISTING_IMAGES}
-                                        onClick={() => addGalleryImage(galleryInput)}
-                                    >
-                                        Add URL
-                                    </button>
-                                </div>
-                                {galleryError && <p className="ps-gallery-error">{galleryError}</p>}
-                                <div className="ps-image-preview">
-                                    {form.cover_image_url && !imgError ? (
-                                        <img
-                                            src={form.cover_image_url}
-                                            alt="Cover preview"
-                                            onError={() => setImgError(true)}
-                                        />
-                                    ) : (
-                                        <div className="ps-image-placeholder">
-                                            <Image size={26} />
-                                            <span>{imgError ? 'Could not load image' : 'Cover preview will appear here'}</span>
-                                        </div>
                                     )}
                                 </div>
-                                <div className="ps-gallery-grid">
-                                    {galleryImages.map((url) => (
-                                        <div key={url} className="ps-gallery-card">
-                                            <img src={url} alt="Listing gallery" />
-                                            <div className="ps-gallery-meta">
-                                                <span className={`ps-gallery-tag${form.image_url === url ? ' is-active' : ''}`}>
-                                                    <Star size={11} /> Primary
-                                                </span>
-                                                <span className={`ps-gallery-tag${form.cover_image_url === url ? ' is-active' : ''}`}>
-                                                    Cover
-                                                </span>
-                                            </div>
-                                            <div className="ps-gallery-actions">
-                                                <button type="button" onClick={() => setPrimaryImage(url)} disabled={!canAccessStudio}>
-                                                    Set Primary
-                                                </button>
-                                                <button type="button" onClick={() => setCoverImage(url)} disabled={!canAccessStudio}>
-                                                    Set Cover
-                                                </button>
-                                                <button type="button" onClick={() => removeGalleryImage(url)} disabled={!canAccessStudio}>
-                                                    <Trash2 size={11} /> Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
 
-                            <div className={`ps-stage-banner${priceStepDone ? ' is-complete' : ''}${activeFlowStepId === 'price' ? ' is-active' : ''}`}>
-                                <span className="ps-stage-badge">3</span>
-                                <div>
-                                    <strong>Price</strong>
-                                    <p>Enter fees. Tourist price updates by itself.</p>
-                                </div>
-                                <em>{getFlowStateLabel(priceStepDone, activeFlowStepId === 'price')}</em>
-                            </div>
-
-                            <div className="ps-pricing-layout">
-                                <div className="ps-fee-section">
-                                    <div className="ps-fee-section-head">
-                                        <div>
-                                            <span className="ps-field-label"><ReceiptText size={13} /> Fee breakdown</span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="ps-upload-btn"
-                                            onClick={addCustomFeeItem}
-                                            disabled={!canAccessStudio}
-                                        >
-                                            <Plus size={14} />
-                                            Add custom
-                                        </button>
-                                    </div>
-                                    <div className="ps-fee-grid">
-                                        {feeItems.map((item) => (
-                                            <div key={item.id} className="ps-fee-row">
-                                                <input
-                                                    className="ps-input ps-fee-name"
-                                                    value={item.label}
-                                                    onChange={(event) => updateFeeItem(item.id, { label: event.target.value })}
-                                                    readOnly={!item.is_custom}
-                                                    placeholder="Custom fee"
+                                {form.type === 'activity' && (
+                                    <div className="ps-field" role="group" aria-label={studioTypeGuidance.categoryLabel}>
+                                        <span className="ps-field-label"><Tag size={13} /> {studioTypeGuidance.categoryLabel}</span>
+                                        <div className="ps-category-picker">
+                                            {ACTIVITY_CATEGORIES.map((category) => (
+                                                <button
+                                                    key={category.key}
+                                                    type="button"
+                                                    className={`ps-category-option ps-category-option--${category.key}${activityCategorySelection.key === category.key ? ' is-active' : ''}`}
+                                                    aria-pressed={activityCategorySelection.key === category.key}
                                                     disabled={!canAccessStudio}
+                                                    onClick={() => {
+                                                        setCategoryError(null);
+                                                        setForm((f) => ({
+                                                        ...f,
+                                                        sub_category: buildActivityCategoryValue(
+                                                            category.key,
+                                                            category.key === 'other' ? activityCategorySelection.customLabel : '',
+                                                        ),
+                                                        }));
+                                                    }}
+                                                >
+                                                    <strong>{category.label}</strong>
+                                                    <small>{category.pickerHint}</small>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {activityCategorySelection.key === 'other' && (
+                                            <input
+                                                className="ps-input"
+                                                value={activityCategorySelection.customLabel}
+                                                onChange={(e) => setForm((f) => ({
+                                                    ...f,
+                                                    sub_category: buildActivityCategoryValue('other', e.target.value),
+                                                }))}
+                                                placeholder={studioTypeGuidance.placeholderCategory}
+                                                maxLength={40}
+                                                disabled={!canAccessStudio}
+                                                aria-label="Custom activity category"
+                                            />
+                                        )}
+                                        {categoryError && <p className="ps-gallery-error">{categoryError}</p>}
+                                    </div>
+                                )}
+
+                                {!localGuideStudio && (
+                                    <section className="ps-pin-block" aria-label="Map pin">
+                                        <div className="ps-pin-head">
+                                            <span className="ps-field-label"><MapPin size={13} /> Map pin <em>optional</em></span>
+                                        </div>
+                                        {pinPickerOpen ? (
+                                            <>
+                                                {myPlaces.length > 0 && (
+                                                    <select
+                                                        className="ps-select"
+                                                        value=""
+                                                        disabled={!canAccessStudio}
+                                                        aria-label="Copy a location from my pins"
+                                                        onChange={(event) => {
+                                                            const place = myPlaces.find((item) => item.id === event.target.value);
+                                                            if (!place) return;
+                                                            setListingPin({ lat: place.lat, lng: place.lng });
+                                                            setListingPinAddress(place.address);
+                                                        }}
+                                                    >
+                                                        <option value="">Copy a location from my pins...</option>
+                                                        {myPlaces.map((place) => (
+                                                            <option key={place.id} value={place.id}>{place.name}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                                <Suspense fallback={<div className="ps-pin-loading"><Loader2 size={20} className="animate-spin" /></div>}>
+                                                    <LazyPlacePicker
+                                                        value={listingPin}
+                                                        category={placeCategoryForListing(form.type, form.sub_category)}
+                                                        disabled={!canAccessStudio}
+                                                        onChange={(position, address) => {
+                                                            setListingPin(position);
+                                                            if (address) setListingPinAddress(address.slice(0, 200));
+                                                        }}
+                                                    />
+                                                </Suspense>
+                                                <div className="ps-pin-actions">
+                                                    <span
+                                                        className="ps-pin-category"
+                                                        style={{ ['--pin-color' as string]: getPlaceCategory(placeCategoryForListing(form.type, form.sub_category)).color }}
+                                                    >
+                                                        <i aria-hidden="true" />
+                                                        {getPlaceCategory(placeCategoryForListing(form.type, form.sub_category)).label} pin
+                                                    </span>
+                                                    <button type="button" className="ps-pin-remove" onClick={removeListingPinSelection}>
+                                                        <Trash2 size={13} /> Remove pin
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <button type="button" className="ps-pin-open" disabled={!canAccessStudio} onClick={() => setPinPickerOpen(true)}>
+                                                <MapPin size={15} /> Add map pin
+                                            </button>
+                                        )}
+                                    </section>
+                                )}
+
+
+                                {localGuideStudio && (
+                                    <section className="ps-live-details" aria-label="Live virtual tour details">
+                                        <div className="ps-live-details-head">
+                                            <span className="ps-field-label"><RadioTower size={13} /> Live tour details</span>
+                                            <span>{virtualDetails.duration_minutes} min</span>
+                                        </div>
+
+                                        <div className="ps-two-up">
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><MapPin size={13} /> Live spot</span>
+                                                <input
+                                                    className="ps-input"
+                                                    value={virtualDetails.spot_location}
+                                                    onChange={(event) => updateVirtualDetails({ spot_location: event.target.value })}
+                                                    placeholder="Exact area where the live tour happens"
+                                                    disabled={!canAccessStudio}
+                                                    required
                                                 />
+                                            </label>
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Clock size={13} /> Duration minutes</span>
                                                 <input
                                                     className="ps-input"
                                                     type="number"
-                                                    min="0"
-                                                    step="1"
-                                                    value={item.amount > 0 ? item.amount : ''}
-                                                    onChange={(event) => updateFeeItem(item.id, { amount: normalizeDraftAmount(event.target.value) })}
-                                                    placeholder="Rs"
+                                                    min="15"
+                                                    step="5"
+                                                    value={virtualDetails.duration_minutes}
+                                                    onChange={(event) => updateVirtualDetails({ duration_minutes: Number(event.target.value) })}
+                                                    disabled={!canAccessStudio}
+                                                    required
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <div className="ps-two-up">
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Calendar size={13} /> Timing windows</span>
+                                                <textarea
+                                                    className="ps-textarea ps-textarea--compact"
+                                                    value={joinLines(virtualDetails.available_windows)}
+                                                    onChange={(event) => updateVirtualDetails({ available_windows: splitLines(event.target.value) })}
+                                                    placeholder="Mon-Fri 8 AM-10 AM&#10;Saturday golden hour"
+                                                    disabled={!canAccessStudio}
+                                                    required
+                                                />
+                                            </label>
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Compass size={13} /> Places shown</span>
+                                                <textarea
+                                                    className="ps-textarea ps-textarea--compact"
+                                                    value={joinLines(virtualDetails.places_shown)}
+                                                    onChange={(event) => updateVirtualDetails({ places_shown: splitLines(event.target.value) })}
+                                                    placeholder="Main gate&#10;Viewpoint&#10;Local market lane"
+                                                    disabled={!canAccessStudio}
+                                                    required
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <div className="ps-two-up">
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Type size={13} /> Included</span>
+                                                <textarea
+                                                    className="ps-textarea ps-textarea--compact"
+                                                    value={joinLines(virtualDetails.included_items)}
+                                                    onChange={(event) => updateVirtualDetails({ included_items: splitLines(event.target.value) })}
+                                                    placeholder="Live narration&#10;Q&A&#10;Photo stops"
+                                                    disabled={!canAccessStudio}
+                                                    required
+                                                />
+                                            </label>
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Type size={13} /> Not included</span>
+                                                <textarea
+                                                    className="ps-textarea ps-textarea--compact"
+                                                    value={joinLines(virtualDetails.excluded_items)}
+                                                    onChange={(event) => updateVirtualDetails({ excluded_items: splitLines(event.target.value) })}
+                                                    placeholder="Physical entry ticket&#10;Recorded copy"
                                                     disabled={!canAccessStudio}
                                                 />
+                                            </label>
+                                        </div>
+
+                                        <div className="ps-two-up">
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Type size={13} /> Languages</span>
+                                                <input
+                                                    className="ps-input"
+                                                    value={virtualDetails.languages.join(', ')}
+                                                    onChange={(event) => updateVirtualDetails({ languages: splitLines(event.target.value) })}
+                                                    placeholder="English, Hindi, Bengali"
+                                                    disabled={!canAccessStudio}
+                                                />
+                                            </label>
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Camera size={13} /> Camera type</span>
                                                 <select
                                                     className="ps-select"
-                                                    value={item.basis}
-                                                    onChange={(event) => updateFeeItem(item.id, { basis: event.target.value as ListingFeeBreakdownBasis })}
+                                                    value={virtualDetails.camera_type}
+                                                    onChange={(event) => updateVirtualDetails({ camera_type: event.target.value as VirtualTourCameraType })}
                                                     disabled={!canAccessStudio}
                                                 >
-                                                    {FEE_BASIS_OPTIONS.map((option) => (
-                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    {(Object.entries(CAMERA_TYPE_LABELS) as Array<[VirtualTourCameraType, string]>).map(([value, label]) => (
+                                                        <option key={value} value={value}>{label}</option>
                                                     ))}
                                                 </select>
-                                                <select
-                                                    className="ps-select"
-                                                    value={item.status}
-                                                    onChange={(event) => updateFeeItem(item.id, { status: event.target.value as ListingFeeBreakdownStatus })}
+                                            </label>
+                                        </div>
+
+                                        <div className="ps-two-up">
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Camera size={13} /> Camera setup</span>
+                                                <textarea
+                                                    className="ps-textarea ps-textarea--compact"
+                                                    value={virtualDetails.camera_notes}
+                                                    onChange={(event) => updateVirtualDetails({ camera_notes: event.target.value })}
+                                                    placeholder="Phone/360 camera, stabilizer, audio mic, backup device"
                                                     disabled={!canAccessStudio}
+                                                    required
+                                                />
+                                            </label>
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Wifi size={13} /> Network backup</span>
+                                                <textarea
+                                                    className="ps-textarea ps-textarea--compact"
+                                                    value={virtualDetails.network_plan}
+                                                    onChange={(event) => updateVirtualDetails({ network_plan: event.target.value })}
+                                                    placeholder="Primary 5G SIM, backup hotspot, route signal notes"
+                                                    disabled={!canAccessStudio}
+                                                    required
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <div className="ps-two-up">
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Users size={13} /> Max guests</span>
+                                                <input
+                                                    className="ps-input"
+                                                    type="number"
+                                                    min="1"
+                                                    max="25"
+                                                    value={virtualDetails.max_guests}
+                                                    onChange={(event) => updateVirtualDetails({ max_guests: Number(event.target.value) })}
+                                                    disabled={!canAccessStudio}
+                                                />
+                                            </label>
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Type size={13} /> Tourist requirements</span>
+                                                <input
+                                                    className="ps-input"
+                                                    value={virtualDetails.tourist_requirements}
+                                                    onChange={(event) => updateVirtualDetails({ tourist_requirements: event.target.value })}
+                                                    placeholder="Stable internet, headphones, browser camera optional"
+                                                    disabled={!canAccessStudio}
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <div className="ps-proof-block">
+                                            <div className="ps-live-details-head">
+                                                <span className="ps-field-label"><ShieldAlert size={13} /> Admin proof</span>
+                                                <span>{virtualDetails.verification_photo_urls.length} photos</span>
+                                            </div>
+                                            <div className="ps-image-upload-row">
+                                                <button
+                                                    type="button"
+                                                    className="ps-upload-btn"
+                                                    onClick={() => proofPhotoInputRef.current?.click()}
+                                                    disabled={!canAccessStudio || uploadingProofPhoto}
                                                 >
-                                                    {FEE_STATUS_OPTIONS.map((option) => (
+                                                    {uploadingProofPhoto ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
+                                                    Proof photos
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="ps-upload-btn"
+                                                    onClick={() => proofVideoInputRef.current?.click()}
+                                                    disabled={!canAccessStudio || uploadingProofVideo}
+                                                >
+                                                    {uploadingProofVideo ? <Loader2 className="animate-spin" size={14} /> : <Video size={14} />}
+                                                    Proof video
+                                                </button>
+                                                <span className="ps-upload-hint">Upload camera/location photos and one short live video for admin approval.</span>
+                                            </div>
+                                            <input
+                                                ref={proofPhotoInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                multiple
+                                                className="ps-file-input"
+                                                onChange={(event) => {
+                                                    const files = Array.from(event.target.files || []);
+                                                    if (files.length > 0) void handleProofPhotoUpload(files);
+                                                    event.target.value = '';
+                                                }}
+                                                disabled={!canAccessStudio || uploadingProofPhoto}
+                                            />
+                                            <input
+                                                ref={proofVideoInputRef}
+                                                type="file"
+                                                accept="video/*"
+                                                className="ps-file-input"
+                                                onChange={(event) => {
+                                                    const file = event.target.files?.[0];
+                                                    if (file) void handleProofVideoUpload(file);
+                                                    event.target.value = '';
+                                                }}
+                                                disabled={!canAccessStudio || uploadingProofVideo}
+                                            />
+                                            <div className="ps-gallery-add-row">
+                                                <input
+                                                    className="ps-input"
+                                                    value={proofPhotoInput}
+                                                    onChange={(event) => setProofPhotoInput(event.target.value)}
+                                                    placeholder="Paste proof photo URL"
+                                                    disabled={!canAccessStudio}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="ps-upload-btn"
+                                                    onClick={() => addProofPhotoUrl(proofPhotoInput)}
+                                                    disabled={!canAccessStudio || !proofPhotoInput.trim()}
+                                                >
+                                                    Add proof URL
+                                                </button>
+                                            </div>
+                                            {virtualDetails.verification_photo_urls.length > 0 && (
+                                                <div className="ps-proof-grid">
+                                                    {virtualDetails.verification_photo_urls.map((url) => (
+                                                        <div key={url} className="ps-proof-card">
+                                                            <img src={url} alt="Virtual tour proof" />
+                                                            <button type="button" onClick={() => removeProofPhotoUrl(url)} disabled={!canAccessStudio}>
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <label className="ps-field">
+                                                <span className="ps-field-label"><Video size={13} /> Proof video URL</span>
+                                                <input
+                                                    className="ps-input"
+                                                    value={virtualDetails.verification_video_url}
+                                                    onChange={(event) => updateVirtualDetails({ verification_video_url: event.target.value })}
+                                                    placeholder="Upload or paste a short live proof video URL"
+                                                    disabled={!canAccessStudio}
+                                                    required
+                                                />
+                                            </label>
+                                            <label className="ps-field">
+                                                <span className="ps-field-label">Proof notes</span>
+                                                <input
+                                                    className="ps-input"
+                                                    value={virtualDetails.proof_notes}
+                                                    onChange={(event) => updateVirtualDetails({ proof_notes: event.target.value })}
+                                                    placeholder="Anything admin should check before approving"
+                                                    disabled={!canAccessStudio}
+                                                />
+                                            </label>
+                                            {virtualDetailsError && <p className="ps-gallery-error">{virtualDetailsError}</p>}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {!isCompactLayout && (
+                                    <div className="ps-step-next-row">
+                                        <button type="button" className="ps-step-next" disabled={!detailsStepDone} onClick={() => goToStep('photos')}>
+                                            Next: Photos <ArrowRight size={16} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {renderStageBanner('photos', '2', 'Photos', photosStepDone)}
+                            <div className="ps-step-body" id="ps-step-photos" data-flow-step="photos" hidden={currentStep !== 'photos'}>
+                                <div className="ps-field">
+                                    <span className="ps-field-label"><Image size={13} /> Listing Images ({galleryImages.length}/{MAX_LISTING_IMAGES})</span>
+                                    <div className="ps-image-upload-row">
+                                        <button
+                                            type="button"
+                                            className="ps-upload-btn"
+                                            disabled={!canAccessStudio || uploadingImage || galleryImages.length >= MAX_LISTING_IMAGES}
+                                            onClick={() => imageInputRef.current?.click()}
+                                        >
+                                            {uploadingImage ? (
+                                                <>
+                                                    <Loader2 className="animate-spin" size={14} />
+                                                    Uploading...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload size={14} />
+                                                    Upload from device
+                                                </>
+                                            )}
+                                        </button>
+                                        <span className="ps-upload-hint">Add {MIN_LISTING_IMAGES} to {MAX_LISTING_IMAGES} images. Set one as primary and one as cover.</span>
+                                    </div>
+                                    <input
+                                        ref={imageInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="ps-file-input"
+                                        onChange={(e) => {
+                                            const files = Array.from(e.target.files || []);
+                                            if (files.length > 0) void handleListingImageUpload(files);
+                                            e.target.value = '';
+                                        }}
+                                        disabled={!canAccessStudio || uploadingImage || galleryImages.length >= MAX_LISTING_IMAGES}
+                                    />
+                                    <div className="ps-gallery-add-row">
+                                        <input
+                                            className="ps-input"
+                                            value={galleryInput}
+                                            onChange={(e) => {
+                                                setImgError(false);
+                                                setGalleryInput(e.target.value);
+                                            }}
+                                            placeholder="Paste image URL and click Add"
+                                            disabled={!canAccessStudio || galleryImages.length >= MAX_LISTING_IMAGES}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="ps-upload-btn"
+                                            disabled={!canAccessStudio || !galleryInput.trim() || galleryImages.length >= MAX_LISTING_IMAGES}
+                                            onClick={() => addGalleryImage(galleryInput)}
+                                        >
+                                            Add URL
+                                        </button>
+                                    </div>
+                                    {galleryError && <p className="ps-gallery-error">{galleryError}</p>}
+                                    <div className="ps-image-preview">
+                                        {form.cover_image_url && !imgError ? (
+                                            <img
+                                                src={form.cover_image_url}
+                                                alt="Cover preview"
+                                                onError={() => setImgError(true)}
+                                            />
+                                        ) : (
+                                            <div className="ps-image-placeholder">
+                                                <Image size={26} />
+                                                <span>{imgError ? 'Could not load image' : 'Cover preview will appear here'}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="ps-gallery-grid">
+                                        {galleryImages.map((url) => (
+                                            <div key={url} className="ps-gallery-card">
+                                                <img src={url} alt="Listing gallery" />
+                                                <div className="ps-gallery-meta">
+                                                    <span className={`ps-gallery-tag${form.image_url === url ? ' is-active' : ''}`}>
+                                                        <Star size={11} /> Primary
+                                                    </span>
+                                                    <span className={`ps-gallery-tag${form.cover_image_url === url ? ' is-active' : ''}`}>
+                                                        Cover
+                                                    </span>
+                                                </div>
+                                                <div className="ps-gallery-actions">
+                                                    <button type="button" onClick={() => setPrimaryImage(url)} disabled={!canAccessStudio}>
+                                                        Set Primary
+                                                    </button>
+                                                    <button type="button" onClick={() => setCoverImage(url)} disabled={!canAccessStudio}>
+                                                        Set Cover
+                                                    </button>
+                                                    <button type="button" onClick={() => removeGalleryImage(url)} disabled={!canAccessStudio}>
+                                                        <Trash2 size={11} /> Remove
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {!isCompactLayout && (
+                                    <div className="ps-step-next-row">
+                                        <button type="button" className="ps-step-next" disabled={!photosStepDone} onClick={() => goToStep('price')}>
+                                            Next: Price <ArrowRight size={16} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {renderStageBanner('price', '3', 'Price', priceStepDone)}
+                            <div className="ps-step-body" id="ps-step-price" data-flow-step="price" hidden={currentStep !== 'price'}>
+                                <div className="ps-pricing-layout">
+                                    <div className="ps-fee-section">
+                                        <div className="ps-fee-section-head">
+                                            <div>
+                                                <span className="ps-field-label"><ReceiptText size={13} /> Fee breakdown</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="ps-upload-btn"
+                                                onClick={addCustomFeeItem}
+                                                disabled={!canAccessStudio}
+                                            >
+                                                <Plus size={14} />
+                                                Add custom
+                                            </button>
+                                        </div>
+                                        <div className="ps-fee-grid">
+                                            {feeItems.map((item) => (
+                                                <div key={item.id} className="ps-fee-row">
+                                                    <input
+                                                        className="ps-input ps-fee-name"
+                                                        value={item.label}
+                                                        onChange={(event) => updateFeeItem(item.id, { label: event.target.value })}
+                                                        readOnly={!item.is_custom}
+                                                        placeholder="Custom fee"
+                                                        disabled={!canAccessStudio}
+                                                    />
+                                                    <input
+                                                        className="ps-input"
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        value={item.amount > 0 ? item.amount : ''}
+                                                        onChange={(event) => updateFeeItem(item.id, { amount: normalizeDraftAmount(event.target.value) })}
+                                                        placeholder="Rs"
+                                                        disabled={!canAccessStudio}
+                                                    />
+                                                    <select
+                                                        className="ps-select"
+                                                        value={item.basis}
+                                                        onChange={(event) => updateFeeItem(item.id, { basis: event.target.value as ListingFeeBreakdownBasis })}
+                                                        disabled={!canAccessStudio}
+                                                    >
+                                                        {FEE_BASIS_OPTIONS.map((option) => (
+                                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    <select
+                                                        className="ps-select"
+                                                        value={item.status}
+                                                        onChange={(event) => updateFeeItem(item.id, { status: event.target.value as ListingFeeBreakdownStatus })}
+                                                        disabled={!canAccessStudio}
+                                                    >
+                                                        {FEE_STATUS_OPTIONS.map((option) => (
+                                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    <input
+                                                        className="ps-input ps-fee-note"
+                                                        value={item.note || ''}
+                                                        onChange={(event) => updateFeeItem(item.id, { note: event.target.value })}
+                                                        placeholder="Note"
+                                                        disabled={!canAccessStudio}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="ps-fee-remove-btn"
+                                                        onClick={() => removeCustomFeeItem(item.id)}
+                                                        disabled={!canAccessStudio || !item.is_custom}
+                                                        aria-label="Remove custom fee item"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {feeBreakdownError && <p className="ps-gallery-error">{feeBreakdownError}</p>}
+
+                                        <div className="ps-discount-box">
+                                            <div className="ps-discount-head">
+                                                <span className="ps-field-label"><Tag size={13} /> Discount (optional)</span>
+                                                {hasDiscountPreview && (
+                                                    <button
+                                                        type="button"
+                                                        className="ps-discount-clear"
+                                                        onClick={clearDiscount}
+                                                        disabled={!canAccessStudio}
+                                                    >
+                                                        <X size={12} /> Remove discount
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="ps-discount-controls">
+                                                <select
+                                                    className="ps-select ps-discount-mode"
+                                                    value={discountDraft?.mode || 'percent'}
+                                                    onChange={(event) => updateDiscount({
+                                                        mode: event.target.value as ListingFeeDiscountMode,
+                                                        value: discountDraft?.value,
+                                                    })}
+                                                    disabled={!canAccessStudio}
+                                                    aria-label="Discount type"
+                                                >
+                                                    {DISCOUNT_MODE_OPTIONS.map((option) => (
                                                         <option key={option.value} value={option.value}>{option.label}</option>
                                                     ))}
                                                 </select>
                                                 <input
-                                                    className="ps-input ps-fee-note"
-                                                    value={item.note || ''}
-                                                    onChange={(event) => updateFeeItem(item.id, { note: event.target.value })}
-                                                    placeholder="Note"
+                                                    className="ps-input ps-discount-value"
+                                                    type="number"
+                                                    min="1"
+                                                    max={discountDraft?.mode === 'flat' ? undefined : MAX_LISTING_DISCOUNT_PERCENT}
+                                                    step="1"
+                                                    value={discountDraft?.value || ''}
+                                                    onChange={(event) => updateDiscount({ value: normalizeDiscountDraftValue(event.target.value) })}
+                                                    placeholder={discountDraft?.mode === 'flat' ? 'Rs' : '%'}
+                                                    disabled={!canAccessStudio}
+                                                    aria-label="Discount value"
+                                                />
+                                                <input
+                                                    className="ps-input ps-discount-label"
+                                                    value={discountDraft?.label || ''}
+                                                    onChange={(event) => updateDiscount({ label: event.target.value })}
+                                                    placeholder="Optional label, e.g. Monsoon offer"
+                                                    maxLength={40}
                                                     disabled={!canAccessStudio}
                                                 />
-                                                <button
-                                                    type="button"
-                                                    className="ps-fee-remove-btn"
-                                                    onClick={() => removeCustomFeeItem(item.id)}
-                                                    disabled={!canAccessStudio || !item.is_custom}
-                                                    aria-label="Remove custom fee item"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
                                             </div>
-                                        ))}
-                                    </div>
-
-                                    {feeBreakdownError && <p className="ps-gallery-error">{feeBreakdownError}</p>}
-
-                                    <div className="ps-discount-box">
-                                        <div className="ps-discount-head">
-                                            <span className="ps-field-label"><Tag size={13} /> Discount (optional)</span>
-                                            {hasDiscountPreview && (
-                                                <button
-                                                    type="button"
-                                                    className="ps-discount-clear"
-                                                    onClick={clearDiscount}
-                                                    disabled={!canAccessStudio}
-                                                >
-                                                    <X size={12} /> Remove discount
-                                                </button>
+                                            {hasDiscountPreview ? (
+                                                <div className="ps-discount-preview">
+                                                    <span className="ps-discount-badge-preview">
+                                                        {discountPreview.discount_percent}% OFF
+                                                    </span>
+                                                    <div className="ps-discount-math">
+                                                        <div>
+                                                            <span>Tourist price before</span>
+                                                            <strong>Rs {discountPreview.tourist_total_before_discount.toLocaleString()}</strong>
+                                                        </div>
+                                                        <div>
+                                                            <span>Discount</span>
+                                                            <strong>-Rs {discountPreview.discount_amount.toLocaleString()}</strong>
+                                                        </div>
+                                                        <div className="ps-discount-final">
+                                                            <span>Final tourist price</span>
+                                                            <strong>Rs {discountPreview.tourist_total.toLocaleString()}</strong>
+                                                        </div>
+                                                        <div>
+                                                            <span>You receive</span>
+                                                            <strong>Rs {discountPreview.provider_payout_amount.toLocaleString()}</strong>
+                                                        </div>
+                                                    </div>
+                                                    {discountDraft?.mode === 'flat' && pricingPreview.total_price > 0 && (
+                                                        <p className="ps-discount-note">
+                                                            Equals {discountPreview.discount_percent}% off the tourist price.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="ps-discount-note">
+                                                    Slashed prices and a sale badge show on public cards automatically.
+                                                </p>
                                             )}
                                         </div>
-                                        <div className="ps-discount-controls">
-                                            <select
-                                                className="ps-select ps-discount-mode"
-                                                value={discountDraft?.mode || 'percent'}
-                                                onChange={(event) => updateDiscount({
-                                                    mode: event.target.value as ListingFeeDiscountMode,
-                                                    value: discountDraft?.value,
-                                                })}
-                                                disabled={!canAccessStudio}
-                                                aria-label="Discount type"
-                                            >
-                                                {DISCOUNT_MODE_OPTIONS.map((option) => (
-                                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                className="ps-input ps-discount-value"
-                                                type="number"
-                                                min="1"
-                                                max={discountDraft?.mode === 'flat' ? undefined : MAX_LISTING_DISCOUNT_PERCENT}
-                                                step="1"
-                                                value={discountDraft?.value || ''}
-                                                onChange={(event) => updateDiscount({ value: normalizeDiscountDraftValue(event.target.value) })}
-                                                placeholder={discountDraft?.mode === 'flat' ? 'Rs' : '%'}
-                                                disabled={!canAccessStudio}
-                                                aria-label="Discount value"
-                                            />
-                                            <input
-                                                className="ps-input ps-discount-label"
-                                                value={discountDraft?.label || ''}
-                                                onChange={(event) => updateDiscount({ label: event.target.value })}
-                                                placeholder="Optional label, e.g. Monsoon offer"
-                                                maxLength={40}
-                                                disabled={!canAccessStudio}
-                                            />
-                                        </div>
-                                        {hasDiscountPreview ? (
-                                            <div className="ps-discount-preview">
-                                                <span className="ps-discount-badge-preview">
-                                                    {discountPreview.discount_percent}% OFF
-                                                </span>
-                                                <div className="ps-discount-math">
-                                                    <div>
-                                                        <span>Tourist price before</span>
-                                                        <strong>Rs {discountPreview.tourist_total_before_discount.toLocaleString()}</strong>
-                                                    </div>
-                                                    <div>
-                                                        <span>Discount</span>
-                                                        <strong>-Rs {discountPreview.discount_amount.toLocaleString()}</strong>
-                                                    </div>
-                                                    <div className="ps-discount-final">
-                                                        <span>Final tourist price</span>
-                                                        <strong>Rs {discountPreview.tourist_total.toLocaleString()}</strong>
-                                                    </div>
-                                                    <div>
-                                                        <span>You receive</span>
-                                                        <strong>Rs {discountPreview.provider_payout_amount.toLocaleString()}</strong>
-                                                    </div>
+
+                                        <div className="ps-fee-preview">
+                                            <div>
+                                                <span>{studioTypeGuidance.feeLabel.replace(' (Rs)', '')}</span>
+                                                <strong>Rs {(hasDiscountPreview ? discountPreview.provider_payout_amount : pricingPreview.provider_subtotal).toLocaleString()}</strong>
+                                            </div>
+                                            <div>
+                                                <span>Platform fee ({Math.round(platformFeeRate * 100)}%)</span>
+                                                <strong>Rs {(hasDiscountPreview ? discountPreview.platform_fee_amount : pricingPreview.platform_fee_amount).toLocaleString()}</strong>
+                                            </div>
+                                            <div>
+                                                <span>Tourist total shown</span>
+                                                <strong>Rs {(hasDiscountPreview ? discountPreview.tourist_total : pricingPreview.total_price).toLocaleString()}</strong>
+                                            </div>
+                                            {pricingPreview.optional_total > 0 && (
+                                                <div>
+                                                    <span>Optional items</span>
+                                                    <strong>Rs {pricingPreview.optional_total.toLocaleString()}</strong>
                                                 </div>
-                                                {discountDraft?.mode === 'flat' && pricingPreview.total_price > 0 && (
-                                                    <p className="ps-discount-note">
-                                                        Equals {discountPreview.discount_percent}% off the tourist price.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <p className="ps-discount-note">
-                                                Slashed prices and a sale badge show on public cards automatically.
-                                            </p>
-                                        )}
+                                            )}
+                                            {pricingPreview.pay_at_location_total > 0 && (
+                                                <div>
+                                                    <span>Pay at location</span>
+                                                    <strong>Rs {pricingPreview.pay_at_location_total.toLocaleString()}</strong>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="ps-fee-preview">
-                                        <div>
-                                            <span>{studioTypeGuidance.feeLabel.replace(' (Rs)', '')}</span>
-                                            <strong>Rs {(hasDiscountPreview ? discountPreview.provider_payout_amount : pricingPreview.provider_subtotal).toLocaleString()}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Platform fee ({Math.round(platformFeeRate * 100)}%)</span>
-                                            <strong>Rs {(hasDiscountPreview ? discountPreview.platform_fee_amount : pricingPreview.platform_fee_amount).toLocaleString()}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Tourist total shown</span>
+                                </div>
+
+                                <div className="ps-two-up">
+                                    <label className="ps-field">
+                                        <span className="ps-field-label"><span className="ps-rupee-icon" aria-hidden="true" /> {studioTypeGuidance.feeLabel}</span>
+                                        <input
+                                            className="ps-input"
+                                            type="number"
+                                            min="1"
+                                            value={pricingPreview.provider_subtotal > 0 ? pricingPreview.provider_subtotal : ''}
+                                            placeholder="0"
+                                            readOnly
+                                        />
+                                        <p className="ps-price-note">
+                                            {localGuideStudio ? 'Tourists see ' : form.type === 'tour' ? 'Package cards show ' : 'Activity cards show '}
                                             <strong>Rs {(hasDiscountPreview ? discountPreview.tourist_total : pricingPreview.total_price).toLocaleString()}</strong>
+                                            {hasDiscountPreview ? ' after discount, including platform fee.' : ' including platform fee.'}
+                                            You receive <strong>Rs {(hasDiscountPreview ? discountPreview.provider_payout_amount : pricingPreview.provider_subtotal).toLocaleString()}</strong> for one {studioTypeGuidance.priceNote}.
+                                        </p>
+                                    </label>
+                                    <label className="ps-field">
+                                        <span className="ps-field-label"><Clock size={13} /> {studioTypeGuidance.dateLabel}</span>
+                                        <input
+                                            className="ps-input"
+                                            type="date"
+                                            value={form.starts_at || ''}
+                                            onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))}
+                                            disabled={!canAccessStudio}
+                                        />
+                                    </label>
+                                </div>
+
+                                {!isCompactLayout && (
+                                    <div className="ps-step-next-row">
+                                        <button type="button" className="ps-step-next" disabled={!priceStepDone} onClick={() => goToStep('review')}>
+                                            Next: Check and send <ArrowRight size={16} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {isCompactLayout && (
+                                    <details className="ps-market-inline">
+                                        <summary>
+                                            Compare with similar trips
+                                            {marketInsight && <strong>{marketInsight.statusLabel}</strong>}
+                                        </summary>
+                                        {renderMarketPricePanel()}
+                                    </details>
+                                )}
+                            </div>
+
+                            {renderStageBanner('review', '4', 'Check and send', reviewStepDone)}
+                            <div className="ps-step-body" id="ps-step-review" data-flow-step="review" hidden={currentStep !== 'review'}>
+                                <label className="ps-field">
+                                    <span className="ps-field-label">Description</span>
+                                    <textarea
+                                        className="ps-textarea"
+                                        value={form.description}
+                                        onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                                        placeholder={studioTypeGuidance.placeholderDescription}
+                                        disabled={!canAccessStudio}
+                                        required
+                                    />
+                                </label>
+
+                                <section className="ps-guidelines" aria-label="Group size and guest guidelines">
+                                    <div className="ps-guidelines-head">
+                                        <strong>Group size and guest guidelines</strong>
+                                        <p>Shown to travelers on your listing before they book. All optional, but they reduce cancellations and questions.</p>
+                                    </div>
+
+                                    <div className="ps-guidelines-size">
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Users size={13} /> Minimum heads</span>
+                                            <input
+                                                className="ps-input"
+                                                type="number"
+                                                min={1}
+                                                max={MAX_LISTING_GROUP_SIZE}
+                                                inputMode="numeric"
+                                                placeholder="e.g. 2"
+                                                value={form.min_guests ?? ''}
+                                                onChange={(e) => {
+                                                    setGroupSizeError(null);
+                                                    setForm((f) => ({ ...f, min_guests: e.target.value === '' ? null : Number(e.target.value) }));
+                                                }}
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </label>
+                                        <label className="ps-field">
+                                            <span className="ps-field-label"><Users size={13} /> Maximum heads</span>
+                                            <input
+                                                className="ps-input"
+                                                type="number"
+                                                min={1}
+                                                max={MAX_LISTING_GROUP_SIZE}
+                                                inputMode="numeric"
+                                                placeholder="e.g. 12"
+                                                value={form.max_guests ?? ''}
+                                                onChange={(e) => {
+                                                    setGroupSizeError(null);
+                                                    setForm((f) => ({ ...f, max_guests: e.target.value === '' ? null : Number(e.target.value) }));
+                                                }}
+                                                disabled={!canAccessStudio}
+                                            />
+                                        </label>
+                                    </div>
+                                    {groupSizeError && <p className="ps-gallery-error" role="alert">{groupSizeError}</p>}
+
+                                    <div className="ps-guidelines-grid">
+                                        <GuidelineListEditor
+                                            label="Do's"
+                                            hint="What guests should do."
+                                            icon={<CheckCircle2 size={14} />}
+                                            tone="do"
+                                            placeholder="e.g. Reach the meeting point 15 minutes early"
+                                            items={form.guidelines?.dos || []}
+                                            disabled={!canAccessStudio}
+                                            onChange={(items) => setGuidelineItems('dos', items)}
+                                        />
+                                        <GuidelineListEditor
+                                            label="Don'ts"
+                                            hint="What guests must avoid."
+                                            icon={<Ban size={14} />}
+                                            tone="dont"
+                                            placeholder="e.g. Do not litter or feed wildlife"
+                                            items={form.guidelines?.donts || []}
+                                            disabled={!canAccessStudio}
+                                            onChange={(items) => setGuidelineItems('donts', items)}
+                                        />
+                                        <GuidelineListEditor
+                                            label="Rules"
+                                            hint="Policies guests agree to by booking."
+                                            icon={<FileText size={14} />}
+                                            tone="rule"
+                                            placeholder="e.g. Minimum age 12 years"
+                                            items={form.guidelines?.rules || []}
+                                            disabled={!canAccessStudio}
+                                            onChange={(items) => setGuidelineItems('rules', items)}
+                                        />
+                                        <GuidelineListEditor
+                                            label="What to carry"
+                                            hint="Items guests should bring."
+                                            icon={<Backpack size={14} />}
+                                            tone="carry"
+                                            placeholder="e.g. Valid photo ID, water bottle"
+                                            items={form.guidelines?.what_to_carry || []}
+                                            disabled={!canAccessStudio}
+                                            onChange={(items) => setGuidelineItems('what_to_carry', items)}
+                                        />
+                                    </div>
+                                </section>
+
+                                {!editingListingId && (
+                                    <div className="ps-consent-block">
+                                        <div className="ps-consent-checks">
+                                            <label className="ps-consent-check-row">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={acceptTerms}
+                                                    onChange={(event) => {
+                                                        setAcceptTerms(event.target.checked);
+                                                        setConsentError(null);
+                                                    }}
+                                                />
+                                                <span>I accept <Link to="/provider/terms#terms">terms and conditions</Link></span>
+                                            </label>
+                                            <label className="ps-consent-check-row">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={acceptAgreement}
+                                                    onChange={(event) => {
+                                                        setAcceptAgreement(event.target.checked);
+                                                        setConsentError(null);
+                                                    }}
+                                                />
+                                                <span>I accept <Link to="/provider/terms#agreement">the user agreement</Link></span>
+                                            </label>
                                         </div>
-                                        {pricingPreview.optional_total > 0 && (
-                                            <div>
-                                                <span>Optional items</span>
-                                                <strong>Rs {pricingPreview.optional_total.toLocaleString()}</strong>
-                                            </div>
-                                        )}
-                                        {pricingPreview.pay_at_location_total > 0 && (
-                                            <div>
-                                                <span>Pay at location</span>
-                                                <strong>Rs {pricingPreview.pay_at_location_total.toLocaleString()}</strong>
-                                            </div>
-                                        )}
+
+                                        <div className="ps-consent-actions">
+                                            <Link to="/provider/terms" className="ps-consent-link-btn">
+                                                View agreement
+                                            </Link>
+                                        </div>
+
+                                        {consentError && <p className="ps-gallery-error">{consentError}</p>}
                                     </div>
-                                </div>
+                                )}
 
+                                {!isCompactLayout && (
+                                    <button type="submit" className="ps-submit" disabled={!canAccessStudio || saving}>
+                                        {saving ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                                        {editingListingId ? 'Update & Re-submit' : getSubmitCopy(form.type, studioRole)}
+                                    </button>
+                                )}
                             </div>
-
-                            <div className="ps-two-up">
-                                <label className="ps-field">
-                                    <span className="ps-field-label"><span className="ps-rupee-icon" aria-hidden="true" /> {studioTypeGuidance.feeLabel}</span>
-                                    <input
-                                        className="ps-input"
-                                        type="number"
-                                        min="1"
-                                        value={pricingPreview.provider_subtotal > 0 ? pricingPreview.provider_subtotal : ''}
-                                        placeholder="0"
-                                        readOnly
-                                    />
-                                    <p className="ps-price-note">
-                                        {localGuideStudio ? 'Tourists see ' : form.type === 'tour' ? 'Package cards show ' : 'Activity cards show '}
-                                        <strong>Rs {(hasDiscountPreview ? discountPreview.tourist_total : pricingPreview.total_price).toLocaleString()}</strong>
-                                        {hasDiscountPreview ? ' after discount, including platform fee.' : ' including platform fee.'}
-                                        You receive <strong>Rs {(hasDiscountPreview ? discountPreview.provider_payout_amount : pricingPreview.provider_subtotal).toLocaleString()}</strong> for one {studioTypeGuidance.priceNote}.
-                                    </p>
-                                </label>
-                                <label className="ps-field">
-                                    <span className="ps-field-label"><Clock size={13} /> {studioTypeGuidance.dateLabel}</span>
-                                    <input
-                                        className="ps-input"
-                                        type="date"
-                                        value={form.starts_at || ''}
-                                        onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))}
-                                        disabled={!canAccessStudio}
-                                    />
-                                </label>
-                            </div>
-
-                            <div className={`ps-stage-banner${reviewStepDone ? ' is-complete' : ''}${activeFlowStepId === 'review' ? ' is-active' : ''}`}>
-                                <span className="ps-stage-badge">4</span>
-                                <div>
-                                    <strong>Check and send</strong>
-                                    <p>Tell the story, accept terms, then send to admin.</p>
-                                </div>
-                                <em>{getFlowStateLabel(reviewStepDone, activeFlowStepId === 'review')}</em>
-                            </div>
-
-                            <label className="ps-field">
-                                <span className="ps-field-label">Description</span>
-                                <textarea
-                                    className="ps-textarea"
-                                    value={form.description}
-                                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                                    placeholder={studioTypeGuidance.placeholderDescription}
-                                    disabled={!canAccessStudio}
-                                    required
-                                />
-                            </label>
-
-                            <section className="ps-guidelines" aria-label="Group size and guest guidelines">
-                                <div className="ps-guidelines-head">
-                                    <strong>Group size and guest guidelines</strong>
-                                    <p>Shown to travelers on your listing before they book. All optional, but they reduce cancellations and questions.</p>
-                                </div>
-
-                                <div className="ps-guidelines-size">
-                                    <label className="ps-field">
-                                        <span className="ps-field-label"><Users size={13} /> Minimum heads</span>
-                                        <input
-                                            className="ps-input"
-                                            type="number"
-                                            min={1}
-                                            max={MAX_LISTING_GROUP_SIZE}
-                                            inputMode="numeric"
-                                            placeholder="e.g. 2"
-                                            value={form.min_guests ?? ''}
-                                            onChange={(e) => {
-                                                setGroupSizeError(null);
-                                                setForm((f) => ({ ...f, min_guests: e.target.value === '' ? null : Number(e.target.value) }));
-                                            }}
-                                            disabled={!canAccessStudio}
-                                        />
-                                    </label>
-                                    <label className="ps-field">
-                                        <span className="ps-field-label"><Users size={13} /> Maximum heads</span>
-                                        <input
-                                            className="ps-input"
-                                            type="number"
-                                            min={1}
-                                            max={MAX_LISTING_GROUP_SIZE}
-                                            inputMode="numeric"
-                                            placeholder="e.g. 12"
-                                            value={form.max_guests ?? ''}
-                                            onChange={(e) => {
-                                                setGroupSizeError(null);
-                                                setForm((f) => ({ ...f, max_guests: e.target.value === '' ? null : Number(e.target.value) }));
-                                            }}
-                                            disabled={!canAccessStudio}
-                                        />
-                                    </label>
-                                </div>
-                                {groupSizeError && <p className="ps-gallery-error" role="alert">{groupSizeError}</p>}
-
-                                <div className="ps-guidelines-grid">
-                                    <GuidelineListEditor
-                                        label="Do's"
-                                        hint="What guests should do."
-                                        icon={<CheckCircle2 size={14} />}
-                                        tone="do"
-                                        placeholder="e.g. Reach the meeting point 15 minutes early"
-                                        items={form.guidelines?.dos || []}
-                                        disabled={!canAccessStudio}
-                                        onChange={(items) => setGuidelineItems('dos', items)}
-                                    />
-                                    <GuidelineListEditor
-                                        label="Don'ts"
-                                        hint="What guests must avoid."
-                                        icon={<Ban size={14} />}
-                                        tone="dont"
-                                        placeholder="e.g. Do not litter or feed wildlife"
-                                        items={form.guidelines?.donts || []}
-                                        disabled={!canAccessStudio}
-                                        onChange={(items) => setGuidelineItems('donts', items)}
-                                    />
-                                    <GuidelineListEditor
-                                        label="Rules"
-                                        hint="Policies guests agree to by booking."
-                                        icon={<FileText size={14} />}
-                                        tone="rule"
-                                        placeholder="e.g. Minimum age 12 years"
-                                        items={form.guidelines?.rules || []}
-                                        disabled={!canAccessStudio}
-                                        onChange={(items) => setGuidelineItems('rules', items)}
-                                    />
-                                    <GuidelineListEditor
-                                        label="What to carry"
-                                        hint="Items guests should bring."
-                                        icon={<Backpack size={14} />}
-                                        tone="carry"
-                                        placeholder="e.g. Valid photo ID, water bottle"
-                                        items={form.guidelines?.what_to_carry || []}
-                                        disabled={!canAccessStudio}
-                                        onChange={(items) => setGuidelineItems('what_to_carry', items)}
-                                    />
-                                </div>
-                            </section>
-
-                            {!editingListingId && (
-                                <div className="ps-consent-block">
-                                    <div className="ps-consent-checks">
-                                        <label className="ps-consent-check-row">
-                                            <input
-                                                type="checkbox"
-                                                checked={acceptTerms}
-                                                onChange={(event) => {
-                                                    setAcceptTerms(event.target.checked);
-                                                    setConsentError(null);
-                                                }}
-                                            />
-                                            <span>I accept <Link to="/provider/terms#terms">terms and conditions</Link></span>
-                                        </label>
-                                        <label className="ps-consent-check-row">
-                                            <input
-                                                type="checkbox"
-                                                checked={acceptAgreement}
-                                                onChange={(event) => {
-                                                    setAcceptAgreement(event.target.checked);
-                                                    setConsentError(null);
-                                                }}
-                                            />
-                                            <span>I accept <Link to="/provider/terms#agreement">the user agreement</Link></span>
-                                        </label>
-                                    </div>
-
-                                    <div className="ps-consent-actions">
-                                        <Link to="/provider/terms" className="ps-consent-link-btn">
-                                            View agreement
-                                        </Link>
-                                    </div>
-
-                                    {consentError && <p className="ps-gallery-error">{consentError}</p>}
-                                </div>
-                            )}
-
-                            <button type="submit" className="ps-submit" disabled={!canAccessStudio || saving}>
-                                {saving ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
-                                {editingListingId ? 'Update & Re-submit' : getSubmitCopy(form.type, studioRole)}
-                            </button>
                         </form>
                     </article>
 
                     <div className="ps-side-stack">
                         {renderMarketDock()}
-
-                        <article className="ps-card ps-next-card" aria-label="What happens after submit">
-                            <span className="ps-card-label">
-                                <CheckCircle2 size={11} />
-                                After submit
-                            </span>
-                            <h2 className="ps-card-title">Review path</h2>
-                            <div className="ps-next-flow">
-                                <div>
-                                    <span><Upload size={16} /></span>
-                                    <strong>You send it</strong>
-                                    <small>Listing goes to admin.</small>
-                                </div>
-                                <div>
-                                    <span><ShieldAlert size={16} /></span>
-                                    <strong>Admin checks</strong>
-                                    <small>Approved, live, or needs edits.</small>
-                                </div>
-                                <div>
-                                    <span><StudioLoadIcon /></span>
-                                    <strong>Tourists see it</strong>
-                                    <small>Bookings can start.</small>
-                                </div>
-                            </div>
-                        </article>
 
                     {/* ── Inventory Card ── */}
                     <article className="ps-card ps-inventory-card">
@@ -2682,6 +2786,56 @@ export const ProviderStudio: React.FC<ProviderStudioProps> = ({ embedded = false
 
                     </div>
                 </div>
+
+                {isCompactLayout && canAccessStudio && createPortal(
+                    <div className="ps-stepbar" style={{ bottom: fabOffset?.bottom ?? 80, left: fabOffset?.right ?? 12, right: fabOffset?.right ?? 12 }}>
+                        <button
+                            type="button"
+                            className="ps-stepbar-arrow ps-stepbar-arrow--back"
+                            disabled={!previousStepId}
+                            aria-label="Previous step"
+                            onClick={() => previousStepId && goToStep(previousStepId)}
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+                        {nextStepId ? (
+                            <button
+                                type="button"
+                                className="ps-stepbar-arrow ps-stepbar-arrow--next"
+                                disabled={!currentStepDone}
+                                aria-label="Next step"
+                                onClick={() => goToStep(nextStepId)}
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                        ) : (
+                            <button type="submit" form="ps-listing-form" className="ps-stepbar-submit" disabled={saving}>
+                                {saving ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                                {editingListingId ? 'Update' : 'Submit'}
+                            </button>
+                        )}
+                    </div>,
+                    document.body,
+                )}
+
+                {mapModalOpen && user && (
+                    <div className="ps-modal-backdrop" onClick={() => setMapModalOpen(false)}>
+                        <section
+                            className="ps-modal ps-modal--map"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="My map pins"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <button type="button" className="ps-modal-close" onClick={() => setMapModalOpen(false)} aria-label="Close map pins">
+                                <X size={18} />
+                            </button>
+                            <Suspense fallback={<div className="ps-pin-loading"><Loader2 size={22} className="animate-spin" /></div>}>
+                                <LazyProviderMapPanel userId={user.id} />
+                            </Suspense>
+                        </section>
+                    </div>
+                )}
 
                 {submissionModal && (
                     <div className="ps-modal-backdrop" onClick={() => setSubmissionModal(null)}>

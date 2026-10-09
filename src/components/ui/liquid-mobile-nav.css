@@ -18,7 +18,7 @@
 .lmn {
   position: fixed;
   left: 50%;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   z-index: 200;
   display: grid;
@@ -36,9 +36,9 @@
 /* ── shared tokens ── */
 
 .lmn {
-  --lmn-size: 60px;
-  --lmn-item-size: 42px;
-  --lmn-gap: 10px;
+  --lmn-size: 48px;
+  --lmn-item-size: 36px;
+  --lmn-gap: 8px;
   --lmn-fill: #FF741D;
   --lmn-ink: #111111;
   --lmn-shadow: none;
@@ -81,11 +81,11 @@
 
 .lmn-badge {
   position: absolute;
-  top: 9px;
-  right: 9px;
-  width: 10px;
-  min-width: 10px;
-  height: 10px;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
   border-radius: 999px;
   background: var(--lmn-ink);
   color: transparent;
@@ -238,7 +238,7 @@
   top: 50%;
   right: calc((var(--lmn-gap) + 10px) * -1);
   width: calc(var(--lmn-gap) + 17px);
-  height: 38px;
+  height: calc(var(--lmn-size) * 0.63);
   border-radius: 999px;
   background: var(--lmn-fill);
   transform: translateY(-50%) scaleX(0);
@@ -370,9 +370,9 @@
 
 @media (max-width: 380px) {
   .lmn {
-    --lmn-size: 56px;
-    --lmn-item-size: 39px;
-    --lmn-gap: 9px;
+    --lmn-size: 44px;
+    --lmn-item-size: 33px;
+    --lmn-gap: 7px;
   }
 
   .lmn-rest-pill {

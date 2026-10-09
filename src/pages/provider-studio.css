@@ -317,7 +317,11 @@
     background: var(--surface-main);
     border: 1px solid var(--border-light);
     border-radius: 14px;
+    color: inherit;
+    cursor: pointer;
     display: grid;
+    font: inherit;
+    text-align: left;
     gap: 7px;
     min-height: 96px;
     padding: 10px;
@@ -396,13 +400,24 @@
 }
 
 .ps-flow-step.is-done {
-    border-color: color-mix(in srgb, #22c55e 46%, var(--border-light));
+    border-color: color-mix(in srgb, var(--accent) 46%, var(--border-light));
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface-main));
 }
 
 .ps-flow-step.is-done .ps-flow-step-number,
-.ps-flow-step.is-done em {
-    background: #22c55e;
+.ps-flow-step.is-done em,
+.ps-flow-step.is-active .ps-flow-step-number {
+    background: var(--accent);
     color: #ffffff;
+}
+
+.ps-flow-step.is-active {
+    border-color: var(--accent);
+}
+
+.ps-flow-step:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 :root[data-theme='dark'] .ps-flow-board {
@@ -564,10 +579,25 @@
     background: color-mix(in srgb, var(--surface-main) 70%, var(--bg-main));
     border: 1.5px solid var(--border-light);
     border-radius: 14px;
+    color: inherit;
+    cursor: pointer;
     display: grid;
+    font: inherit;
     gap: 10px;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     padding: 11px;
+    text-align: left;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+    width: 100%;
+}
+
+.ps-stage-banner:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border-light));
+}
+
+.ps-stage-banner:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .ps-stage-badge {
@@ -583,6 +613,11 @@
     width: 40px;
 }
 
+.ps-stage-copy {
+    display: grid;
+    min-width: 0;
+}
+
 .ps-stage-banner strong {
     color: var(--text-main);
     display: block;
@@ -590,7 +625,7 @@
     line-height: 1.2;
 }
 
-.ps-stage-banner p {
+.ps-stage-banner small {
     color: var(--text-muted);
     font-size: 0.76rem;
     line-height: 1.4;
@@ -611,24 +646,82 @@
     text-transform: uppercase;
 }
 
-.ps-stage-banner.is-active {
-    border-color: color-mix(in srgb, var(--accent) 56%, var(--border-light));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+.ps-stage-chevron {
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
 }
 
+.ps-stage-banner[aria-expanded='true'] .ps-stage-chevron {
+    transform: rotate(180deg);
+}
+
+/* Done and current steps are orange; upcoming steps stay grey. */
+.ps-stage-banner.is-done {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border-light));
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface-main));
+}
+
+.ps-stage-banner.is-active {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface-main));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.ps-stage-banner.is-done .ps-stage-badge,
+.ps-stage-banner.is-done em,
+.ps-stage-banner.is-active .ps-stage-badge,
 .ps-stage-banner.is-active em {
     background: var(--accent);
     color: #ffffff;
 }
 
-.ps-stage-banner.is-complete {
-    border-color: color-mix(in srgb, #22c55e 45%, var(--border-light));
+.ps-stage-banner.is-done .ps-stage-chevron,
+.ps-stage-banner.is-active .ps-stage-chevron {
+    color: var(--accent);
 }
 
-.ps-stage-banner.is-complete .ps-stage-badge,
-.ps-stage-banner.is-complete em {
-    background: #22c55e;
+.ps-step-body {
+    display: grid;
+    gap: 14px;
+}
+
+.ps-step-body[hidden] {
+    display: none;
+}
+
+.ps-step-next-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ps-step-next-row small {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+
+.ps-step-next {
+    align-items: center;
+    background: var(--accent);
+    border: 0;
+    border-radius: 12px;
     color: #ffffff;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 800;
+    gap: 8px;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+}
+
+.ps-step-next:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
 }
 
 .ps-field {
@@ -2191,13 +2284,28 @@ html.dark .ps-type-guidance--activity {
 
 @media (max-width: 520px) {
     .ps-stage-banner {
-        align-items: start;
-        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
     .ps-stage-banner em {
         grid-column: 2;
+        grid-row: 2;
         justify-self: start;
+    }
+
+    .ps-stage-chevron {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .ps-step-next-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ps-step-next {
+        width: 100%;
     }
 
     .ps-image-upload-row {
@@ -2492,7 +2600,7 @@ html.dark .ps-type-guidance--activity {
     font-size: 0.78rem;
 }
 
-.ps-page--embedded .ps-stage-banner p {
+.ps-page--embedded .ps-stage-banner small {
     font-size: 0.66rem;
 }
 
@@ -3022,5 +3130,480 @@ html.dark .ps-type-guidance--activity {
     .ps-guidelines-size,
     .ps-guidelines-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* Activity category picker */
+.ps-category-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.ps-category-option {
+    --ps-cat: #64748b;
+    display: grid;
+    gap: 2px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border-light);
+    border-radius: 12px;
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+
+.ps-category-option strong {
+    font-size: 0.9rem;
+}
+
+.ps-category-option small {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+
+.ps-category-option--restaurant { --ps-cat: #e11d48; }
+.ps-category-option--crafting { --ps-cat: #d97706; }
+.ps-category-option--pottery { --ps-cat: #b45309; }
+.ps-category-option--museums { --ps-cat: #4f46e5; }
+.ps-category-option--other { --ps-cat: #0d9488; }
+
+.ps-category-option:hover:not(:disabled) {
+    border-color: var(--ps-cat);
+}
+
+.ps-category-option.is-active {
+    border-color: var(--ps-cat);
+    background: color-mix(in srgb, var(--ps-cat) 12%, var(--bg-main));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ps-cat) 18%, transparent);
+}
+
+.ps-category-option:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ps-category-picker + .ps-input {
+    margin-top: 10px;
+}
+
+/* Listing map pin + map pins modal */
+.ps-pin-block {
+    background: color-mix(in srgb, var(--surface-main) 58%, var(--bg-main));
+    border: 1.5px solid var(--border-light);
+    border-radius: 14px;
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+}
+
+.ps-pin-head {
+    display: grid;
+    gap: 4px;
+}
+
+.ps-pin-head em {
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-style: normal;
+    font-weight: 700;
+    margin-left: 4px;
+    text-transform: uppercase;
+}
+
+.ps-pin-head small {
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    line-height: 1.4;
+}
+
+.ps-pin-open {
+    align-items: center;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, var(--border-light));
+    border-radius: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 800;
+    gap: 8px;
+    justify-content: center;
+    min-height: 44px;
+}
+
+.ps-pin-open:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.ps-pin-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.ps-pin-category {
+    align-items: center;
+    display: inline-flex;
+    font-size: 0.78rem;
+    font-weight: 700;
+    gap: 7px;
+}
+
+.ps-pin-category i {
+    background: var(--pin-color);
+    border-radius: 50%;
+    display: inline-block;
+    height: 12px;
+    width: 12px;
+}
+
+.ps-pin-remove {
+    align-items: center;
+    background: transparent;
+    border: 1.5px solid var(--border-light);
+    border-radius: 10px;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    gap: 6px;
+    min-height: 38px;
+    padding: 0 12px;
+}
+
+.ps-pin-loading {
+    align-items: center;
+    display: flex;
+    height: 120px;
+    justify-content: center;
+}
+
+.ps-modal--map {
+    max-height: 90dvh;
+    overflow-y: auto;
+    position: relative;
+    width: min(100%, 760px);
+}
+
+.ps-modal-close {
+    align-items: center;
+    background: var(--surface-main);
+    border: 1.5px solid var(--border-light);
+    border-radius: 50%;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    height: 38px;
+    justify-content: center;
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 38px;
+    z-index: 2;
+}
+
+.ps-modal--map .pmp-head {
+    padding-right: 44px;
+}
+
+/* ── Slim studio: stepper, trimmed banners, phone step bar ─────────────────── */
+.ps-verify-note {
+    margin-bottom: 10px;
+}
+
+.ps-stepper {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 14px;
+}
+
+.ps-stepper-item {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: grid;
+    font: inherit;
+    gap: 5px;
+    justify-items: center;
+    min-height: 56px;
+    padding: 0 2px;
+    position: relative;
+}
+
+/* The line to the next step: orange once this step is done. */
+.ps-stepper-item:not(:last-child)::after {
+    background: var(--border-light);
+    content: '';
+    height: 3px;
+    left: calc(50% + 18px);
+    position: absolute;
+    right: calc(-50% + 18px);
+    top: 14px;
+}
+
+.ps-stepper-item.is-done:not(:last-child)::after {
+    background: var(--accent);
+}
+
+.ps-stepper-dot {
+    align-items: center;
+    background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+    border-radius: 50%;
+    color: var(--text-main);
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 900;
+    height: 30px;
+    justify-content: center;
+    width: 30px;
+    z-index: 1;
+}
+
+.ps-stepper-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.ps-stepper-item.is-done .ps-stepper-dot,
+.ps-stepper-item.is-active .ps-stepper-dot {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.ps-stepper-item.is-active {
+    color: var(--text-main);
+}
+
+.ps-stepper-item.is-active .ps-stepper-dot {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.ps-stepper-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Banners: number, title, chevron. */
+.ps-stage-banner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 8px 12px 8px 8px;
+}
+
+.ps-stage-badge {
+    border-radius: 10px;
+    font-size: 0.95rem;
+    height: 32px;
+    width: 32px;
+}
+
+.ps-card-head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.ps-card-head-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ps-card-head-actions .ps-cancel-btn {
+    align-items: center;
+    display: inline-flex;
+    gap: 6px;
+}
+
+/* Price check inside the price step on phones */
+.ps-market-inline {
+    background: color-mix(in srgb, var(--surface-main) 58%, var(--bg-main));
+    border: 1.5px solid var(--border-light);
+    border-radius: 14px;
+    padding: 0 12px;
+}
+
+.ps-market-inline > summary {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    font-size: 0.86rem;
+    font-weight: 800;
+    gap: 8px;
+    justify-content: space-between;
+    list-style: none;
+    min-height: 48px;
+}
+
+.ps-market-inline > summary::-webkit-details-marker {
+    display: none;
+}
+
+.ps-market-inline > summary strong {
+    color: var(--accent);
+    font-size: 0.74rem;
+}
+
+.ps-market-inline[open] {
+    padding-bottom: 12px;
+}
+
+/* Nothing in the studio may push the page wider than the screen. */
+.ps-form,
+.ps-step-body {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 639px) {
+    .ps-two-up {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.ps-form > *,
+.ps-step-body > *,
+.ps-field,
+.ps-card,
+.ps-card > * {
+    min-width: 0;
+}
+
+.rdb-panel,
+.rdb-panel > * {
+    min-width: 0;
+}
+
+.ps-page {
+    max-width: 100%;
+}
+
+/* Phones and tablets: one step at a time with a sticky Back / Next bar */
+@media (max-width: 979px) {
+    .ps-stage-banner {
+        display: none;
+    }
+
+    .ps-page--embedded {
+        padding-bottom: 120px;
+    }
+
+    .ps-card,
+    .ps-page--embedded .ps-card {
+        padding: 14px;
+    }
+
+    .ps-type-picker {
+        margin-bottom: 12px;
+    }
+}
+
+.ps-stepbar {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    position: fixed;
+    z-index: 1500;
+}
+
+.ps-stepbar > * {
+    pointer-events: auto;
+}
+
+.ps-stepbar-arrow,
+.ps-stepbar-submit {
+    align-items: center;
+    border: 0;
+    box-shadow: 0 4px 12px color-mix(in srgb, #000 22%, transparent);
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    justify-content: center;
+}
+
+.ps-stepbar-arrow {
+    border-radius: 50%;
+    height: 38px;
+    width: 38px;
+}
+
+.ps-stepbar-arrow--back {
+    background: var(--surface-main);
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+}
+
+.ps-stepbar-arrow--next,
+.ps-stepbar-submit {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.ps-stepbar-submit {
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    gap: 6px;
+    height: 38px;
+    padding: 0 16px;
+}
+
+/* Disabled keeps solid colours so the arrows never look see-through. */
+.ps-stepbar-arrow:disabled,
+.ps-stepbar-submit:disabled {
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.ps-stepbar-arrow--back:disabled {
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+.ps-stepbar-arrow--next:disabled,
+.ps-stepbar-submit:disabled {
+    background: color-mix(in srgb, var(--text-muted) 22%, var(--surface-main));
+    color: var(--text-muted);
+}
+
+/* Phones: tighter pickers so each step fits on fewer screens */
+@media (max-width: 639px) {
+    .ps-page .ps-type-picker {
+        gap: 6px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-bottom: 12px;
+    }
+
+    .ps-page .ps-type-card {
+        font-size: 0.74rem;
+        gap: 4px;
+        padding: 9px 4px;
+    }
+
+    .ps-category-picker {
+        gap: 8px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ps-category-option {
+        padding: 10px 12px;
+    }
+
+    .ps-category-option small {
+        display: none;
     }
 }

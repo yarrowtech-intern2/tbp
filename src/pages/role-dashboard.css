@@ -1879,60 +1879,6 @@
     font-weight: 500;
 }
 
-.rdb-map-coming-soon-panel {
-    position: relative;
-    min-height: min(62vh, 620px);
-    overflow: hidden;
-}
-
-.rdb-map-coming-soon-content {
-    display: grid;
-    gap: 16px;
-    min-height: inherit;
-    filter: blur(10px);
-    opacity: 0.72;
-    pointer-events: none;
-    user-select: none;
-}
-
-.rdb-map-coming-soon-panel::after {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    background: rgba(18, 18, 18, 0.32);
-    content: '';
-    pointer-events: none;
-}
-
-.rdb-map-coming-soon-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: 8px;
-    padding: 24px;
-    color: #ffffff;
-    text-align: center;
-}
-
-.rdb-map-coming-soon-overlay h2 {
-    margin: 0;
-    color: #ffffff;
-    font-size: clamp(1.55rem, 4vw, 2.25rem);
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: 0;
-}
-
-.rdb-map-coming-soon-overlay p {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.92);
-    font-size: clamp(0.76rem, 2vw, 0.95rem);
-    font-weight: 700;
-    line-height: 1.2;
-}
 
 .rdb-modal-backdrop {
     position: fixed;
@@ -2643,23 +2589,28 @@
 .rdb-hamburger {
     position: relative;
     display: block;
-    width: 22px;
-    height: 16px;
+    width: 17px;
+    height: 12px;
 }
 
 .rdb-hamburger > span {
     position: absolute;
     left: 0;
     width: 100%;
-    height: 2.5px;
+    height: 2px;
     border-radius: 999px;
     background: currentColor;
     transition: transform 0.34s cubic-bezier(0.68, -0.4, 0.27, 1.4), opacity 0.2s ease, width 0.28s ease, top 0.28s ease;
 }
 
 .rdb-hamburger > span:nth-child(1) { top: 0; }
-.rdb-hamburger > span:nth-child(2) { top: 6.75px; width: 70%; }
-.rdb-hamburger > span:nth-child(3) { top: 13.5px; }
+.rdb-hamburger > span:nth-child(2) { top: 5px; width: 70%; }
+.rdb-hamburger > span:nth-child(3) { top: 10px; }
+
+.rdb-admin-ctrl-btn.rdb-admin-menu-btn {
+    width: 38px;
+    height: 38px;
+}
 
 .rdb-admin-menu-btn {
     transition: transform 0.16s ease, opacity 0.16s ease, background 0.28s ease, color 0.28s ease;
@@ -2674,7 +2625,7 @@
 }
 
 .rdb-admin-menu-btn.is-open .rdb-hamburger > span:nth-child(1) {
-    top: 6.75px;
+    top: 5px;
     transform: rotate(45deg);
 }
 
@@ -2684,7 +2635,7 @@
 }
 
 .rdb-admin-menu-btn.is-open .rdb-hamburger > span:nth-child(3) {
-    top: 6.75px;
+    top: 5px;
     transform: rotate(-45deg);
 }
 

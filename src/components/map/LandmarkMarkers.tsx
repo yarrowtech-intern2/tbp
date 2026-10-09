@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Marker, useMap, useMapEvents } from 'react-leaflet';
+import { useMap, useMapEvents } from 'react-leaflet';
 import { buildEmojiMarkerIcon } from '../../lib/mapPins';
 import { getLandmarkCategory, type Landmark } from '../../lib/kolkataLandmarks';
+import { MapMarker } from './MapMarker';
 
 /** From this zoom level every place is drawn; below it only one pin per screen cell, so Central Kolkata stays readable. */
 const FULL_DETAIL_ZOOM = 15;
@@ -13,6 +14,7 @@ interface LandmarkMarkersProps {
     /** Positions that are already drawn by something else (the curated places) and keep their space. */
     reserved: Array<{ lat: number; lng: number }>;
     selectedId: string | null;
+    /** Must be a stable callback so the markers do not re-render on every parent render. */
     onSelect: (landmark: Landmark) => void;
 }
 
@@ -43,15 +45,16 @@ export const LandmarkMarkers: React.FC<LandmarkMarkersProps> = ({ landmarks, res
     return (
         <>
             {visible.map((landmark) => {
-                const category = getLandmarkCategory(landmark.category);
                 const selected = landmark.id === selectedId;
                 return (
-                    <Marker
+                    <MapMarker
                         key={landmark.id}
-                        icon={buildEmojiMarkerIcon(category.emoji, { active: selected })}
-                        position={[landmark.lat, landmark.lng]}
+                        item={landmark}
+                        lat={landmark.lat}
+                        lng={landmark.lng}
+                        icon={buildEmojiMarkerIcon(getLandmarkCategory(landmark.category).emoji, { active: selected })}
                         zIndexOffset={selected ? 800 : 0}
-                        eventHandlers={{ click: () => onSelect(landmark) }}
+                        onSelect={onSelect}
                         title={landmark.name}
                     />
                 );

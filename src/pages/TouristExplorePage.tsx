@@ -1,6 +1,6 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, Bookmark, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Compass, Home, LayoutDashboard, Loader2, Map, Search, UserCircle2, X, Zap } from 'lucide-react';
+import { Amphora, ArrowUpRight, Bookmark, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Compass, Home, Landmark, LayoutDashboard, Loader2, Map, Scissors, Search, UserCircle2, UtensilsCrossed, X, Zap } from 'lucide-react';
 import { LiquidMobileNav, type LiquidNavItem } from '../components/ui/liquid-mobile-nav';
 import { MOBILE_NAV_ICON_SRC } from '../components/ui/mobile-nav-icon-map';
 import { trackEvent } from '../lib/analytics';
@@ -19,6 +19,12 @@ import {
   type PostRecord,
   type UnifiedBooking,
 } from '../lib/destinations';
+import {
+  ACTIVITY_CATEGORIES,
+  getActivityCategoryDisplayLabel,
+  resolveActivityCategoryKey,
+  type ActivityCategoryKey,
+} from '../lib/activityCategories';
 import { calculatePricingFromProviderUnit, resolveListingDisplayPricing } from '../lib/pricing';
 import { DiscountBadge, getListingDiscountPercentForCard } from '../components/DiscountBadge';
 import { isProviderRole, normalizeRoleValue, type ListingType } from '../lib/platform';
@@ -41,6 +47,14 @@ const FILTERS: Array<{ id: ExploreFilter; label: string }> = [
   { id: 'activities', label: 'Activities' },
   { id: 'guides', label: 'Guides' },
 ];
+
+const ACTIVITY_CATEGORY_ICONS: Record<ActivityCategoryKey, React.ReactNode> = {
+  restaurant: <UtensilsCrossed size={13} />,
+  crafting: <Scissors size={13} />,
+  pottery: <Amphora size={13} />,
+  museums: <Landmark size={13} />,
+  other: <Zap size={13} />,
+};
 
 const CARD_SIZE_PATTERN = ['tall', 'medium', 'short', 'medium', 'short', 'tall'] as const;
 const FALLBACK_IMAGE = '/images/home4/forrest.jpg';
@@ -132,12 +146,13 @@ const getExplorePresentation = (post: ExploreCardRecord) => {
       ],
     };
   }
+  const categoryKey = resolveActivityCategoryKey(post.sub_category);
   return {
-    className: 'txp-card--activity-session',
-    label: 'Activity',
+    className: `txp-card--activity-session txp-card--cat-${categoryKey}`,
+    label: getActivityCategoryDisplayLabel(post.sub_category),
     pricePrefix: 'Activity from',
     cta: 'Book activity',
-    icon: <Zap size={13} />,
+    icon: ACTIVITY_CATEGORY_ICONS[categoryKey],
     meta: [
       { icon: <Zap size={13} />, label: 'Session' },
       { icon: <CalendarDays size={13} />, label: 'Short format' },
@@ -394,6 +409,7 @@ export const TouristExplorePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<ActivityCategoryKey[]>([]);
   const [posts, setPosts] = useState<ExploreCardRecord[]>([]);
   const [touristBookings, setTouristBookings] = useState<UnifiedBooking[]>([]);
   const [reviewSummaryByPostId, setReviewSummaryByPostId] = useState<Record<string, ListingReviewSummary>>({});
@@ -423,14 +439,12 @@ export const TouristExplorePage: React.FC = () => {
 
   const deferredSearchQuery = useDeferredValue(searchQuery.trim().toLowerCase());
 
-  const fullName = profile?.full_name?.trim() || user?.email?.split('@')[0] || 'Traveler';
-  const displayRole = roleLabel?.trim() || 'Tourist';
+  const fullName = user ? (profile?.full_name?.trim() || user.email?.split('@')[0] || 'Traveler') : 'Welcome, traveler';
+  const displayRole = user ? (roleLabel?.trim() || 'Tourist') : 'Browse freely. Sign in to book and save.';
   const avatarSrc = getProfileAvatarUrl(profile?.profile_image_url, user?.id, profile?.full_name, user?.email, 'tourist');
   const activeMobileNav: TouristMobileNavKey = 'explore';
 
   useEffect(() => {
-    if (!user) return;
-
     const load = async () => {
       setLoading(true);
       try {
@@ -438,7 +452,7 @@ export const TouristExplorePage: React.FC = () => {
           getPublicListingsByType('tour'),
           getPublicListingsByType('activity'),
           getPublicListingsByType('guide'),
-          getBookings(user.id),
+          user ? getBookings(user.id) : Promise.resolve([] as UnifiedBooking[]),
         ]);
 
         const mapped: ExploreCardRecord[] = [...tours, ...activities, ...guides]
@@ -498,19 +512,47 @@ export const TouristExplorePage: React.FC = () => {
     return unsubscribe;
   }, [user]);
 
-  if (!user) return null;
   if (providerAccount || providerByLabel || adminAccount) {
     return <Navigate to={(providerAccount || providerByLabel) ? '/dashboard/provider' : '/dashboard/admin'} replace />;
   }
 
+  const matchesSearch = (post: ExploreCardRecord) => {
+    if (!deferredSearchQuery) return true;
+    const categoryText = post.exploreType === 'activities'
+      ? `${getActivityCategoryDisplayLabel(post.sub_category)} ${resolveActivityCategoryKey(post.sub_category)}`
+      : '';
+    const haystack = `${getPostTitle(post)} ${getPostLocation(post)} ${typeof post.description === 'string' ? post.description : ''} ${categoryText}`.toLowerCase();
+    return haystack.includes(deferredSearchQuery);
+  };
+
+  const activityCategoryCounts = posts.reduce<Record<ActivityCategoryKey, number>>(
+    (counts, post) => {
+      if (post.exploreType === 'activities' && matchesSearch(post)) {
+        counts[resolveActivityCategoryKey(post.sub_category)] += 1;
+      }
+      return counts;
+    },
+    { restaurant: 0, crafting: 0, pottery: 0, museums: 0, other: 0 },
+  );
+
   const filteredPosts = posts.filter((post) => {
     if (VIRTUAL_TOURS_ENABLED && activeFilter === 'live') return isVirtualTourRecord(post);
     if (activeFilter !== 'all' && post.exploreType !== activeFilter) return false;
-    if (!deferredSearchQuery) return true;
-
-    const haystack = `${getPostTitle(post)} ${getPostLocation(post)} ${typeof post.description === 'string' ? post.description : ''}`.toLowerCase();
-    return haystack.includes(deferredSearchQuery);
+    if (
+      activeFilter === 'activities'
+      && selectedCategories.length > 0
+      && !selectedCategories.includes(resolveActivityCategoryKey(post.sub_category))
+    ) {
+      return false;
+    }
+    return matchesSearch(post);
   });
+
+  const toggleCategory = (key: ActivityCategoryKey) => {
+    setSelectedCategories((current) => (
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
+    ));
+  };
 
   const bookedLookup = touristBookings.reduce(
     (lookup, booking) => {
@@ -567,7 +609,7 @@ export const TouristExplorePage: React.FC = () => {
               type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search destinations, tours, guides"
+              placeholder="Search destinations, tours, pottery, museums"
               aria-label="Search explore listings"
             />
           </div>
@@ -609,6 +651,35 @@ export const TouristExplorePage: React.FC = () => {
           ))}
         </section>
 
+        {activeFilter === 'activities' && (
+          <section className="txp-category-filters" aria-label="Activity categories">
+            <button
+              type="button"
+              className={`txp-cat-chip${selectedCategories.length === 0 ? ' is-active' : ''}`}
+              aria-pressed={selectedCategories.length === 0}
+              onClick={() => setSelectedCategories([])}
+            >
+              All categories
+            </button>
+            {ACTIVITY_CATEGORIES.map((category) => {
+              const active = selectedCategories.includes(category.key);
+              return (
+                <button
+                  key={category.key}
+                  type="button"
+                  className={`txp-cat-chip txp-cat-chip--${category.key}${active ? ' is-active' : ''}`}
+                  aria-pressed={active}
+                  onClick={() => toggleCategory(category.key)}
+                >
+                  {ACTIVITY_CATEGORY_ICONS[category.key]}
+                  {category.label}
+                  <span className="txp-cat-chip-count">{activityCategoryCounts[category.key]}</span>
+                </button>
+              );
+            })}
+          </section>
+        )}
+
         {loading ? (
           <div className="txp-state">Loading explore feed...</div>
         ) : filteredPosts.length === 0 ? (
@@ -636,7 +707,7 @@ export const TouristExplorePage: React.FC = () => {
         )}
       </div>
 
-      <LiquidMobileNav
+      {user && <LiquidMobileNav
         ariaLabel="Tourist mobile navigation"
         items={TOURIST_MOBILE_NAV_ITEMS.map((item): LiquidNavItem => ({
           id: item.key,
@@ -646,7 +717,7 @@ export const TouristExplorePage: React.FC = () => {
           icon: item.icon,
           onClick: () => handleMobileNav(item.key),
         }))}
-      />
+      />}
     </main>
   );
 };

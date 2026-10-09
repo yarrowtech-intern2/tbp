@@ -106,7 +106,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
             aria-current="page"
             data-tutorial-id={activeItem.dataTutorialId}
           >
-            <NavIcon item={activeItem} size={28} />
+            <NavIcon item={activeItem} size={22} />
             <NavBadge badge={activeItem.badge} />
           </button>
         )}
@@ -120,7 +120,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
               aria-label={getNavAriaLabel(item)}
               data-tutorial-id={item.dataTutorialId}
             >
-              <NavIcon item={item} size={26} />
+              <NavIcon item={item} size={20} />
               <NavBadge badge={item.badge} />
             </button>
           ))}
@@ -148,7 +148,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
               aria-current="page"
               data-tutorial-id={activeItem.dataTutorialId}
             >
-              <NavIcon item={activeItem} size={28} />
+              <NavIcon item={activeItem} size={22} />
               <NavBadge badge={activeItem.badge} />
             </button>
           )}
@@ -162,7 +162,7 @@ export function LiquidMobileNav({ items, ariaLabel, className }: LiquidMobileNav
                 aria-label={getNavAriaLabel(item)}
                 data-tutorial-id={item.dataTutorialId}
               >
-                <NavIcon item={item} size={26} />
+                <NavIcon item={item} size={20} />
                 <NavBadge badge={item.badge} />
               </button>
             ))}

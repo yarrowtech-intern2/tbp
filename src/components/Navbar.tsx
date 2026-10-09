@@ -44,6 +44,7 @@ export const Navbar: React.FC = () => {
     const [logoutBusy, setLogoutBusy] = useState(false);
     const [desktopMorphing, setDesktopMorphing] = useState(false);
     const [desktopMorphCycle, setDesktopMorphCycle] = useState(0);
+    const [mobileHeaderScrimVisible, setMobileHeaderScrimVisible] = useState(false);
     const mobileNavRef = useRef<HTMLDivElement | null>(null);
     const previousDesktopActiveId = useRef<string | null | undefined>(undefined);
     const rawDesktopGooId = useId().replace(/[^a-zA-Z0-9]/g, '');
@@ -251,6 +252,20 @@ export const Navbar: React.FC = () => {
     }, [desktopMorphCycle, desktopMorphing]);
 
     useEffect(() => {
+        const updateMobileHeaderScrim = () => {
+            setMobileHeaderScrimVisible(window.scrollY > 18);
+        };
+
+        updateMobileHeaderScrim();
+        window.addEventListener('scroll', updateMobileHeaderScrim, { passive: true });
+        window.addEventListener('resize', updateMobileHeaderScrim);
+
+        return () => {
+            window.removeEventListener('scroll', updateMobileHeaderScrim);
+            window.removeEventListener('resize', updateMobileHeaderScrim);
+        };
+    }, [location.pathname]);
+    useEffect(() => {
         const onMapMenuToggle = () => setShowMenu((current) => !current);
         window.addEventListener('tbp:toggle-mobile-menu', onMapMenuToggle);
         return () => window.removeEventListener('tbp:toggle-mobile-menu', onMapMenuToggle);
@@ -296,7 +311,7 @@ export const Navbar: React.FC = () => {
     return (
         <>
             {/* ── Desktop nav bar ─────────────────────────────── */}
-            <div className={`nbr-bar nbr-desktop${location.pathname === '/map' ? ' nbr-desktop--map2' : ''}`}>
+            <div className={`nbr-bar nbr-desktop${mobileHeaderScrimVisible ? ' nbr-desktop--scrim' : ''}${location.pathname === '/map' ? ' nbr-desktop--map2' : ''}`}>
                 <Link to={homePath} aria-label="Home" className="nbr-desktop-logo">
                     <img src={logoSrc} alt="The Better Pass" className="nbr-logo" />
                 </Link>
@@ -455,7 +470,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* ── Mobile nav bar ──────────────────────────────── */}
-            <div className={`nbr-bar nbr-mobile${location.pathname === '/map' ? ' nbr-mobile--map2' : ''}`} ref={mobileNavRef}>
+            <div className={`nbr-bar nbr-mobile${mobileHeaderScrimVisible || showMenu ? ' nbr-mobile--scrim' : ''}${location.pathname === '/map' ? ' nbr-mobile--map2' : ''}`} ref={mobileNavRef}>
                 <div className="nbr-pill nbr-mobile-pill">
                     <Link to={homePath} aria-label="Home" className="nbr-logo-wrap">
                         <img src={logoSrc} alt="The Better Pass" className="nbr-logo nbr-logo--sm" />
@@ -591,14 +606,46 @@ export const Navbar: React.FC = () => {
                     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
                     align-items: center;
                     box-sizing: border-box;
-                    left: 50%;
+                    /* Centred with auto margins, not a transform: a transform would make the fixed scrim below
+                       position itself against this box (a hard-edged rectangle) instead of the viewport. */
+                    left: 0;
+                    margin: 0 auto;
                     padding: 0 32px;
-                    right: auto;
+                    right: 0;
                     top: 24px;
-                    transform: translateX(-50%);
                     width: min(100%, 1440px);
                 }
 
+                .nbr-desktop::before {
+                    content: '';
+                    position: fixed;
+                    left: 0;
+                    right: 0;
+                    top: 0;
+                    height: 112px;
+                    pointer-events: none;
+                    opacity: 0;
+                    z-index: -1;
+                    background: linear-gradient(180deg, rgba(244, 244, 244, 0.98) 0%, rgba(244, 244, 244, 0.86) 34%, rgba(244, 244, 244, 0.46) 68%, rgba(244, 244, 244, 0) 100%);
+                    transition: opacity 0.24s ease;
+                }
+
+                .nbr-desktop.nbr-desktop--scrim::before {
+                    opacity: 1;
+                }
+
+                :root[data-theme='dark'] .nbr-desktop::before {
+                    background: linear-gradient(180deg, rgba(8, 8, 8, 0.98) 0%, rgba(8, 8, 8, 0.86) 34%, rgba(8, 8, 8, 0.46) 68%, rgba(8, 8, 8, 0) 100%);
+                }
+
+                .nbr-desktop-logo,
+                .nbr-liquid-nav,
+                .nbr-guest-actions,
+                .nbr-pill,
+                .nbr-right-actions {
+                    position: relative;
+                    z-index: 1;
+                }
                 .nbr-pill--legacy {
                     display: none !important;
                 }
@@ -1075,6 +1122,33 @@ export const Navbar: React.FC = () => {
 
                 .nbr-mobile  { display: none !important; }
 
+                .nbr-mobile::before {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    right: 0;
+                    top: calc(-16px - env(safe-area-inset-top, 0px));
+                    height: calc(96px + env(safe-area-inset-top, 0px));
+                    pointer-events: none;
+                    opacity: 0;
+                    z-index: 0;
+                    background: linear-gradient(180deg, rgba(244, 244, 244, 0.98) 0%, rgba(244, 244, 244, 0.88) 34%, rgba(244, 244, 244, 0.52) 68%, rgba(244, 244, 244, 0) 100%);
+                    transition: opacity 0.24s ease;
+                }
+
+                .nbr-mobile.nbr-mobile--scrim::before {
+                    opacity: 1;
+                }
+
+                :root[data-theme='dark'] .nbr-mobile::before {
+                    background: linear-gradient(180deg, rgba(8, 8, 8, 0.98) 0%, rgba(8, 8, 8, 0.88) 34%, rgba(8, 8, 8, 0.52) 68%, rgba(8, 8, 8, 0) 100%);
+                }
+
+                .nbr-mobile-pill,
+                .nbr-dropdown {
+                    position: relative;
+                    z-index: 1;
+                }
                 .nbr-mobile-pill {
                     flex: 1;
                     max-width: 100%;

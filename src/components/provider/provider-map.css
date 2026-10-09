@@ -1,0 +1,228 @@
+.pmp {
+    display: grid;
+    gap: 16px;
+}
+
+.pmp-card {
+    background: var(--surface-main, #ffffff);
+    border: 1px solid var(--border-light, rgba(17, 17, 17, 0.08));
+    border-radius: 20px;
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+}
+
+.pmp-head {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.pmp-head h3 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.pmp-head p {
+    color: var(--text-muted, rgba(17, 17, 17, 0.6));
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin: 4px 0 0;
+    max-width: 38rem;
+}
+
+.pmp-form {
+    display: grid;
+    gap: 14px;
+}
+
+.pmp-form label,
+.pmp-field {
+    display: grid;
+    gap: 6px;
+}
+
+.pmp-form label > span,
+.pmp-field > span {
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.pmp-form input,
+.pmp-form textarea {
+    background: var(--bg-main, #f7f7f8);
+    border: 1.5px solid var(--border-light, rgba(17, 17, 17, 0.14));
+    border-radius: 12px;
+    box-sizing: border-box;
+    color: var(--text-main, inherit);
+    font: inherit;
+    font-size: 0.92rem;
+    padding: 11px 13px;
+    width: 100%;
+}
+
+.pmp-form input:focus,
+.pmp-form textarea:focus {
+    border-color: var(--accent, #ff7a1a);
+    outline: none;
+}
+
+.pmp-cats {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.pmp-cats button {
+    align-items: center;
+    background: var(--bg-main, #f7f7f8);
+    border: 1.5px solid var(--border-light, rgba(17, 17, 17, 0.14));
+    border-radius: 12px;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    gap: 8px;
+    min-height: 44px;
+    padding: 6px 10px;
+    text-align: left;
+}
+
+.pmp-cats button i,
+.pmp-dot {
+    align-items: center;
+    background: var(--pin-color);
+    border-radius: 50%;
+    color: #171717;
+    display: inline-flex;
+    flex: none;
+    height: 26px;
+    justify-content: center;
+    width: 26px;
+}
+
+.pmp-cats button.is-active {
+    background: color-mix(in srgb, var(--pin-color) 14%, var(--bg-main, #ffffff));
+    border-color: var(--pin-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pin-color) 20%, transparent);
+}
+
+.pmp-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pmp-primary,
+.pmp-ghost {
+    align-items: center;
+    border-radius: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 800;
+    gap: 8px;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+    text-decoration: none;
+}
+
+.pmp-primary {
+    background: var(--accent, #ff7a1a);
+    border: 0;
+    color: #ffffff;
+}
+
+.pmp-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.pmp-ghost {
+    background: transparent;
+    border: 1.5px solid var(--border-light, rgba(17, 17, 17, 0.14));
+    color: inherit;
+}
+
+.pmp-status {
+    color: var(--text-muted, rgba(17, 17, 17, 0.6));
+    font-size: 0.84rem;
+    margin: 0;
+}
+
+.pmp-map-loading {
+    align-items: center;
+    display: flex;
+    height: 200px;
+    justify-content: center;
+}
+
+.pmp-list {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pmp-list li {
+    align-items: center;
+    background: var(--bg-main, #f7f7f8);
+    border: 1px solid var(--border-light, rgba(17, 17, 17, 0.08));
+    border-left: 4px solid var(--pin-color);
+    border-radius: 12px;
+    display: flex;
+    gap: 12px;
+    padding: 10px 12px;
+}
+
+.pmp-list-main {
+    display: grid;
+    flex: 1;
+    gap: 2px;
+    min-width: 0;
+}
+
+.pmp-list-main strong {
+    overflow-wrap: anywhere;
+}
+
+.pmp-list-main span,
+.pmp-list-main small {
+    color: var(--text-muted, rgba(17, 17, 17, 0.6));
+    font-size: 0.78rem;
+}
+
+.pmp-list-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.pmp-list-actions button {
+    align-items: center;
+    background: transparent;
+    border: 1.5px solid var(--border-light, rgba(17, 17, 17, 0.14));
+    border-radius: 10px;
+    color: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    height: 40px;
+    justify-content: center;
+    width: 40px;
+}
+
+@media (max-width: 520px) {
+    .pmp-card {
+        padding: 14px;
+    }
+
+    .pmp-actions > * {
+        flex: 1;
+    }
+}

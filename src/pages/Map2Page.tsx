@@ -26,6 +26,15 @@ import { getPandal, loadPandalPlan, PUJA_PANDALS, savePandalPlan } from '../lib/
 import { ExplorePanel } from '../components/map/ExplorePanel';
 import { LandmarkLayerControl } from '../components/map/LandmarkLayerControl';
 import { LandmarkMarkers } from '../components/map/LandmarkMarkers';
+import { MapMarker } from '../components/map/MapMarker';
+import { useStableCallback } from '../components/map/useStableCallback';
+import {
+  buildPlacePinIcon,
+  fetchPublicPlaces,
+  getPlaceCategory,
+  getPlaceDisplayLabel,
+  type ProviderPlace,
+} from '../lib/providerPlaces';
 import { LandmarkSheet } from '../components/map/LandmarkSheet';
 import { MapDownloadButton } from '../components/map/MapDownloadButton';
 import {
@@ -355,12 +364,24 @@ const Map2Bridge: React.FC<{
   return null;
 };
 
+/** Shared empty route: a fresh `[]` each render would re-run the viewport effect and re-fly the map. */
+const NO_ROUTE_POINTS: Array<[number, number]> = [];
+
 const userLocationIcon = divIcon({
   className: '',
   iconSize: point(22, 22),
   iconAnchor: point(11, 11),
   html: '<span class="map2-user-dot"></span>',
 });
+
+/** Height of a bottom sheet that covers the map (phones), or 0 when panels sit beside it. */
+const getBottomSheetInset = (): number => {
+  const sheet = document.querySelector<HTMLElement>('.map2-puja-panel, .map2-route-panel, .map2-detail-sheet');
+  if (!sheet) return 0;
+  const rect = sheet.getBoundingClientRect();
+  const isDocked = rect.width > window.innerWidth * 0.8 && rect.top > window.innerHeight * 0.25;
+  return isDocked ? Math.max(0, window.innerHeight - rect.top) : 0;
+};
 
 const Map2Viewport: React.FC<{
   routePoints: Array<[number, number]>;
@@ -376,8 +397,14 @@ const Map2Viewport: React.FC<{
     }
 
     if (selectedPoint) {
-      map.flyTo([selectedPoint.lat, selectedPoint.lng], Math.max(map.getZoom(), 14), { duration: 0.45 });
-      return;
+      // Wait a beat so a sheet that resizes on selection has settled, then aim at the middle of the visible map.
+      const timer = window.setTimeout(() => {
+        const zoom = Math.max(map.getZoom(), 14);
+        const inset = getBottomSheetInset();
+        const target = map.unproject(map.project([selectedPoint.lat, selectedPoint.lng], zoom).add([0, inset / 2]), zoom);
+        map.flyTo(target, zoom, { duration: 0.45 });
+      }, 80);
+      return () => window.clearTimeout(timer);
     }
 
     if (userLocation) {
@@ -411,6 +438,9 @@ export const Map2Page: React.FC = () => {
   const mapRef = useRef<LeafletMap | null>(null);
   const [pins, setPins] = useState<MapPinRecord[]>([]);
   const [selectedPin, setSelectedPin] = useState<MapPinRecord | null>(null);
+  const [places, setPlaces] = useState<ProviderPlace[]>([]);
+  const [placesOn, setPlacesOn] = useState(true);
+  const [selectedPlace, setSelectedPlace] = useState<ProviderPlace | null>(null);
   const [pinFormOpen, setPinFormOpen] = useState(false);
   const [draftPin, setDraftPin] = useState<{ lat: number; lng: number } | null>(null);
   const [pinCategory, setPinCategory] = useState<PinCategory>('temple');
@@ -528,6 +558,14 @@ export const Map2Page: React.FC = () => {
     fetchMapPins()
       .then((rows) => { if (!cancelled) setPins(rows); })
       .catch(() => { /* Pins are optional; the curated map still works without them. */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicPlaces()
+      .then((rows) => { if (!cancelled) setPlaces(rows); })
+      .catch(() => { /* Provider pins are optional; the rest of the map still works without them. */ });
     return () => { cancelled = true; };
   }, []);
 
@@ -656,6 +694,7 @@ export const Map2Page: React.FC = () => {
   };
 
   const handleLandmarkClick = (landmark: Landmark) => {
+    setSelectedPlace(null);
     setSelectedLandmark(landmark);
     setLandmarkRoute(null);
     setLandmarkStatus('');
@@ -705,6 +744,7 @@ export const Map2Page: React.FC = () => {
 
   const handlePointClick = (pointItem: Map2Attraction) => {
     clearLandmark();
+    setSelectedPlace(null);
     setSelectedPoint(pointItem);
     setSelectedPin(null);
     setPinFormOpen(false);
@@ -713,11 +753,31 @@ export const Map2Page: React.FC = () => {
 
   const handlePinClick = (pin: MapPinRecord) => {
     clearLandmark();
+    setSelectedPlace(null);
     setSelectedPin(pin);
     setSelectedPoint(null);
     setPinFormOpen(false);
     setRouteOpen(false);
   };
+
+  const handlePlaceClick = (place: ProviderPlace) => {
+    clearLandmark();
+    setSelectedPlace(place);
+    setSelectedPoint(null);
+    setSelectedPin(null);
+    setPinFormOpen(false);
+    setRouteOpen(false);
+  };
+
+  const onPlaceSelect = useStableCallback(handlePlaceClick);
+  const onPointSelect = useStableCallback(handlePointClick);
+  const onPinSelect = useStableCallback(handlePinClick);
+  const onLandmarkSelect = useStableCallback(handleLandmarkClick);
+  const onExplorePlaceSelect = useStableCallback((place: ExplorePlace) => {
+    setSelectedExplorePlace(place);
+    setExploreRoute(null);
+  });
+  const onPandalSelect = useStableCallback((pandal: (typeof PUJA_PANDALS)[number]) => setSelectedPandalId(pandal.id));
 
   const closePinForm = () => {
     setPinFormOpen(false);
@@ -963,11 +1023,12 @@ export const Map2Page: React.FC = () => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           crossOrigin="anonymous"
+          updateWhenZooming={false}
         />
         <ZoomControl position="bottomright" />
         <Map2Viewport
-          routePoints={(exploreOpen ? exploreRoute : pujaOpen ? pujaRoute : landmarkRoute || plannedRoute)?.route_points || []}
-          selectedPoint={exploreOpen ? selectedExplorePlace : pujaOpen ? selectedPandal : selectedPoint || selectedPin || selectedLandmark}
+          routePoints={(exploreOpen ? exploreRoute : pujaOpen ? pujaRoute : landmarkRoute || plannedRoute)?.route_points || NO_ROUTE_POINTS}
+          selectedPoint={exploreOpen ? selectedExplorePlace : pujaOpen ? selectedPandal : selectedPoint || selectedPin || selectedPlace || selectedLandmark}
           userLocation={userLocation}
         />
         <Map2Bridge
@@ -984,14 +1045,16 @@ export const Map2Page: React.FC = () => {
         ) : null}
 
         {exploreOpen && exploreCategory ? explorePlaces.map((place) => (
-          <Marker
+          <MapMarker
             key={place.id}
+            item={place}
+            lat={place.lat}
+            lng={place.lng}
             icon={buildEmojiMarkerIcon(exploreCategory.category.emoji, {
               active: selectedExplorePlace?.id === place.id,
             })}
-            position={[place.lat, place.lng]}
             zIndexOffset={selectedExplorePlace?.id === place.id ? 800 : 400}
-            eventHandlers={{ click: () => { setSelectedExplorePlace(place); setExploreRoute(null); } }}
+            onSelect={onExplorePlaceSelect}
             title={place.name}
           />
         )) : null}
@@ -1022,15 +1085,17 @@ export const Map2Page: React.FC = () => {
           .map((pandal) => {
             const planIndex = pandalPlan.indexOf(pandal.id);
             return (
-              <Marker
+              <MapMarker
                 key={pandal.id}
+                item={pandal}
+                lat={pandal.lat}
+                lng={pandal.lng}
                 icon={buildPinIcon('durga_puja', {
                   active: selectedPandalId === pandal.id,
                   planNumber: planIndex >= 0 ? planIndex + 1 : undefined,
                 })}
-                position={[pandal.lat, pandal.lng]}
                 zIndexOffset={planIndex >= 0 ? 500 : 0}
-                eventHandlers={{ click: () => setSelectedPandalId(pandal.id) }}
+                onSelect={onPandalSelect}
                 title={planIndex >= 0 ? `${planIndex + 1}. ${pandal.name}` : pandal.name}
               />
             );
@@ -1044,8 +1109,11 @@ export const Map2Page: React.FC = () => {
           const meta = ATTRACTION_META[pointItem.id];
           const category = meta ? getLandmarkCategory(meta.category) : null;
           return (
-            <Marker
+            <MapMarker
               key={pointItem.id}
+              item={pointItem}
+              lat={pointItem.lat}
+              lng={pointItem.lng}
               icon={category
                 ? buildEmojiMarkerIcon(category.emoji, {
                   active: selectedPoint?.id === pointItem.id,
@@ -1055,9 +1123,8 @@ export const Map2Page: React.FC = () => {
                   active: selectedPoint?.id === pointItem.id,
                   route: routePointIds.has(pointItem.id),
                 })}
-              position={[pointItem.lat, pointItem.lng]}
               zIndexOffset={200}
-              eventHandlers={{ click: () => handlePointClick(pointItem) }}
+              onSelect={onPointSelect}
               title={pointItem.name}
             />
           );
@@ -1068,16 +1135,31 @@ export const Map2Page: React.FC = () => {
             landmarks={visibleLandmarks}
             reserved={reservedSpots}
             selectedId={selectedLandmark?.id || null}
-            onSelect={handleLandmarkClick}
+            onSelect={onLandmarkSelect}
           />
         ) : null}
 
+        {!pujaOpen && !exploreOpen && placesOn ? places.map((place) => (
+          <MapMarker
+            key={place.id}
+            item={place}
+            lat={place.lat}
+            lng={place.lng}
+            icon={buildPlacePinIcon(place.category, { active: selectedPlace?.id === place.id })}
+            zIndexOffset={selectedPlace?.id === place.id ? 900 : 300}
+            onSelect={onPlaceSelect}
+            title={place.name}
+          />
+        )) : null}
+
         {!pujaOpen && pins.map((pin) => (
-          <Marker
+          <MapMarker
             key={pin.id}
+            item={pin}
+            lat={pin.lat}
+            lng={pin.lng}
             icon={buildPinIcon(pin.category, { active: selectedPin?.id === pin.id })}
-            position={[pin.lat, pin.lng]}
-            eventHandlers={{ click: () => handlePinClick(pin) }}
+            onSelect={onPinSelect}
             title={pin.title}
           />
         ))}
@@ -1503,7 +1585,49 @@ export const Map2Page: React.FC = () => {
         );
       })() : null}
 
-      {selectedLandmark && !selectedPoint && !selectedPin && !routeOpen && !pinFormOpen && !pujaOpen && !exploreOpen ? (
+      {selectedPlace && !selectedPoint && !selectedPin && !routeOpen && !pinFormOpen && !pujaOpen && !exploreOpen ? (() => {
+        const category = getPlaceCategory(selectedPlace.category);
+        const CategoryIcon = category.Icon;
+        const listingPath = selectedPlace.listing_id
+          ? `/listings/${selectedPlace.listing_type === 'guide' ? 'event' : selectedPlace.listing_type || 'activity'}/${selectedPlace.listing_id}`
+          : null;
+        return (
+          <aside className="map2-detail-sheet" aria-label={`${selectedPlace.name} details`}>
+            <div className="map2-panel-head">
+              <div>
+                <span className="map2-pin-category">
+                  <i style={{ ['--pin-color' as string]: category.color }} aria-hidden="true"><CategoryIcon size={12} /></i>
+                  {getPlaceDisplayLabel(selectedPlace)}
+                </span>
+                <h1>{selectedPlace.name}</h1>
+              </div>
+              <button type="button" className="map2-icon-btn" onClick={() => setSelectedPlace(null)} aria-label="Close place details">
+                <X size={18} />
+              </button>
+            </div>
+            {selectedPlace.description ? <p>{selectedPlace.description}</p> : null}
+            {selectedPlace.address ? <small className="map2-best-time">{selectedPlace.address}</small> : null}
+            <div className="map2-detail-actions map2-detail-actions--two">
+              {listingPath ? (
+                <Link to={listingPath} className="map2-audio-btn">
+                  <span>View and book</span>
+                </Link>
+              ) : null}
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.lat},${selectedPlace.lng}`}
+                target="_blank"
+                rel="noreferrer"
+                className="map2-audio-btn"
+              >
+                <Navigation size={17} />
+                <span>Directions</span>
+              </a>
+            </div>
+          </aside>
+        );
+      })() : null}
+
+      {selectedLandmark && !selectedPoint && !selectedPin && !selectedPlace && !routeOpen && !pinFormOpen && !pujaOpen && !exploreOpen ? (
         <LandmarkSheet
           landmark={selectedLandmark}
           route={landmarkRoute}
@@ -1535,7 +1659,10 @@ export const Map2Page: React.FC = () => {
           zoneCounts={layerZoneCounts}
           categoryCounts={layerCategoryCounts}
           total={layerTotal}
-          covered={Boolean(selectedPoint || selectedPin || selectedLandmark || routeOpen || pinFormOpen)}
+          covered={Boolean(selectedPoint || selectedPin || selectedPlace || selectedLandmark || routeOpen || pinFormOpen)}
+          placesEnabled={placesOn}
+          onPlacesEnabledChange={setPlacesOn}
+          placesCount={places.length}
           actions={<MapDownloadButton getMap={() => mapRef.current} />}
         />
       )}

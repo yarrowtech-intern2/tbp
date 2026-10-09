@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown, RotateCcw } from 'lucide-react';
+import { PLACE_CATEGORIES } from '../../lib/providerPlaces';
 import {
     LANDMARK_CATEGORIES,
     LANDMARK_ZONES,
@@ -24,6 +25,10 @@ interface LandmarkLayerControlProps {
     covered: boolean;
     /** Extra buttons shown next to the toggle (the map download). */
     actions?: React.ReactNode;
+    /** Provider business pins (restaurants, hotels, workshops). */
+    placesEnabled: boolean;
+    onPlacesEnabledChange: (enabled: boolean) => void;
+    placesCount: number;
 }
 
 export const LandmarkLayerControl: React.FC<LandmarkLayerControlProps> = ({
@@ -41,6 +46,9 @@ export const LandmarkLayerControl: React.FC<LandmarkLayerControlProps> = ({
     total,
     covered,
     actions,
+    placesEnabled,
+    onPlacesEnabledChange,
+    placesCount,
 }) => (
     <section className={`map2-landmarks${covered ? ' is-covered' : ''}`} aria-label="Famous places filter">
         {open ? (
@@ -96,6 +104,29 @@ export const LandmarkLayerControl: React.FC<LandmarkLayerControlProps> = ({
                             </button>
                         );
                     })}
+                </div>
+
+                <div className="map2-landmarks-places">
+                    <label className="map2-puja-switch map2-landmarks-switch">
+                        <input
+                            type="checkbox"
+                            role="switch"
+                            checked={placesEnabled}
+                            onChange={(event) => onPlacesEnabledChange(event.target.checked)}
+                        />
+                        <span className="map2-puja-switch-track" aria-hidden="true"><span /></span>
+                        <span>Local businesses <small>{placesCount}</small></span>
+                    </label>
+                    {placesEnabled ? (
+                        <ul className="map2-landmarks-legend" aria-label="Pin colours">
+                            {PLACE_CATEGORIES.map((category) => (
+                                <li key={category.key} style={{ ['--cat-color' as string]: category.color }}>
+                                    <i aria-hidden="true" />
+                                    {category.label}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : null}
                 </div>
 
                 <p className="map2-landmarks-hint">Zoom in to see more places. Locations come from OpenStreetMap.</p>

@@ -143,7 +143,8 @@ type SidebarKey =
     | 'audits'
     | 'newsletter'
     | 'analytics'
-    | 'puja';
+    | 'puja'
+    | 'places';
 
 type AdminProfileRow = {
     id: string;
@@ -240,6 +241,10 @@ const ADMIN_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = [
     'revenue',
     'messages',
 ];
+
+/** Bottom-nav items on phones; every other section is reachable from the hamburger menu. */
+const PROVIDER_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = ['overview', 'bookings', 'studio', 'listings', 'messages'];
+const MARKETING_MOBILE_PRIMARY_NAV_KEYS: SidebarKey[] = ['overview', 'analytics', 'inquiries', 'crm', 'messages'];
 
 const ADMIN_SIDEBAR_NAV_KEYS: SidebarKey[] = [
     'overview',
@@ -566,6 +571,7 @@ const parseProviderSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'messages') return 'messages';
     if (normalized === 'analytics' || normalized === 'performance' || normalized === 'insights') return 'analytics';
     if (normalized === 'puja' || normalized === 'puja-guide' || normalized === 'durga-puja') return 'puja';
+    if (normalized === 'places' || normalized === 'my-map' || normalized === 'map-pins' || normalized === 'pins') return 'places';
     return null;
 };
 
@@ -667,6 +673,16 @@ const ADMIN_REFRESH_INTERVAL_STORAGE_KEY = 'tbp.dashboard.admin.refresh-interval
 const LazyAdminAccountMap = lazy(async () => {
     const module = await import('../components/admin/AdminAccountMap');
     return { default: module.AdminAccountMap };
+});
+
+const LazyProviderMapPanel = lazy(async () => {
+    const module = await import('../components/provider/ProviderMapPanel');
+    return { default: module.ProviderMapPanel };
+});
+
+const LazyAdminProviderPlaces = lazy(async () => {
+    const module = await import('../components/admin/AdminProviderPlacesPanel');
+    return { default: module.AdminProviderPlacesPanel };
 });
 
 const LazyProviderPujaGuide = lazy(async () => {
@@ -1361,6 +1377,7 @@ export const RoleDashboard: React.FC = () => {
                 ...(VIRTUAL_TOURS_ENABLED ? [{ key: 'virtualTours' as SidebarKey, label: 'Live Tours', icon: RadioTower, iconSrc: MOBILE_NAV_ICON_SRC.virtualTours }] : []),
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'studio', label: 'Studio', icon: SquarePen },
+                { key: 'places', label: 'My Map', icon: MapPin },
                 { key: 'puja', label: 'Puja Guide', icon: Sparkles },
                 { key: 'listings', label: 'Listings', icon: Package },
                 { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
@@ -1424,12 +1441,15 @@ export const RoleDashboard: React.FC = () => {
             return compactItems
                 .map((item) => ({ id: item.key, label: item.label, icon: item.icon, iconSrc: item.iconSrc, section: item.key, countKey: item.key }));
         }
-        if (effectiveRole === 'provider') {
-            return navItems
-                .map((item) => ({ id: item.key, label: item.label, icon: item.icon, iconSrc: item.iconSrc, section: item.key, countKey: item.key }));
-        }
-        if (effectiveRole === 'marketing') {
-            return navItems
+        if (effectiveRole === 'provider' || effectiveRole === 'marketing') {
+            const primaryKeys = effectiveRole === 'provider' ? PROVIDER_MOBILE_PRIMARY_NAV_KEYS : MARKETING_MOBILE_PRIMARY_NAV_KEYS;
+            const coreItems = navItems.filter((item) => primaryKeys.includes(item.key));
+            // Local guides have a shorter menu; with a section outside the core open, that section takes the first slot.
+            const activeItem = navItems.find((item) => item.key === activeSection);
+            const compactItems = activeItem && !coreItems.some((item) => item.key === activeItem.key)
+                ? [activeItem, ...coreItems].slice(0, 5)
+                : coreItems.slice(0, 5);
+            return compactItems
                 .map((item) => ({ id: item.key, label: item.label, icon: item.icon, iconSrc: item.iconSrc, section: item.key, countKey: item.key }));
         }
         return [
@@ -2885,6 +2905,16 @@ export const RoleDashboard: React.FC = () => {
     };
 
     const renderProviderSection = () => {
+        if (activeSection === 'places' && user) {
+            return (
+                <section className="rdb-panel rdb-panel-wide">
+                    <Suspense fallback={<div className="rdb-loading"><Loader2 size={32} className="animate-spin" /><p>Loading your map pins…</p></div>}>
+                        <LazyProviderMapPanel userId={user.id} />
+                    </Suspense>
+                </section>
+            );
+        }
+
         if (activeSection === 'puja' && user) {
             return (
                 <section className="rdb-panel rdb-panel-wide">
@@ -3389,16 +3419,6 @@ export const RoleDashboard: React.FC = () => {
         if (activeSection === 'studio') {
             return (
                 <section className="rdb-content-grid rdb-studio-section">
-                    <article className="rdb-panel rdb-panel-wide rdb-studio-actions-panel">
-                        <h2>Quick actions</h2>
-                        <div className="rdb-action-list rdb-studio-action-list">
-                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('studio')}>Open Studio</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('studio')}>Create Listing</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('advertisements')}>Open ads panel</button>
-                            <button type="button" className="rdb-inline-link" onClick={() => goToSection('listings')}>View listing statuses</button>
-                        </div>
-                    </article>
-
                     <article className="rdb-panel rdb-panel-wide rdb-panel-wide--studio">
                         <div className="rdb-panel-head">
                             <h2>Provider Studio</h2>
@@ -4226,8 +4246,8 @@ export const RoleDashboard: React.FC = () => {
 
         if (activeSection === 'map') {
             return (
-                <section className="rdb-panel rdb-panel-wide rdb-map-coming-soon-panel">
-                    <div className="rdb-map-coming-soon-content" aria-hidden="true">
+                <>
+                    <section className="rdb-panel rdb-panel-wide">
                         <div className="rdb-panel-head">
                             <h2>Account Geography</h2>
                             <small>{isDesktopDashboard ? `${adminAccountLocations.length} accounts` : 'Desktop only'}</small>
@@ -4242,27 +4262,25 @@ export const RoleDashboard: React.FC = () => {
                             ) : null}
                         </div>
 
-                    {!isDesktopDashboard ? (
-                        <p className="rdb-empty">The admin map is available on desktop only.</p>
-                    ) : mapFetching && !mapLoaded ? (
-                        <div className="rdb-loading">
-                            <Loader2 size={32} className="animate-spin" />
-                            <p>Loading map…</p>
-                        </div>
-                    ) : adminAccountLocations.length === 0 ? (
-                        <p className="rdb-empty">No accounts with usable profile location data are available yet.</p>
-                    ) : (
-                        <Suspense fallback={<div className="rdb-loading"><Loader2 size={32} className="animate-spin" /><p>Loading map…</p></div>}>
-                            <LazyAdminAccountMap accounts={adminAccountLocations} />
-                        </Suspense>
-                    )}
-                    </div>
-
-                    <div className="rdb-map-coming-soon-overlay" role="status" aria-live="polite">
-                        <h2>Coming Soon</h2>
-                        <p>In version 2</p>
-                    </div>
-                </section>
+                        {!isDesktopDashboard ? (
+                            <p className="rdb-empty">The admin map is available on desktop only.</p>
+                        ) : mapFetching && !mapLoaded ? (
+                            <div className="rdb-loading">
+                                <Loader2 size={32} className="animate-spin" />
+                                <p>Loading map…</p>
+                            </div>
+                        ) : adminAccountLocations.length === 0 ? (
+                            <p className="rdb-empty">No accounts with usable profile location data are available yet.</p>
+                        ) : (
+                            <Suspense fallback={<div className="rdb-loading"><Loader2 size={32} className="animate-spin" /><p>Loading map…</p></div>}>
+                                <LazyAdminAccountMap accounts={adminAccountLocations} />
+                            </Suspense>
+                        )}
+                    </section>
+                    <Suspense fallback={<div className="rdb-loading"><Loader2 size={32} className="animate-spin" /><p>Loading provider pins…</p></div>}>
+                        <LazyAdminProviderPlaces />
+                    </Suspense>
+                </>
             );
         }
 

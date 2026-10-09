@@ -39,6 +39,7 @@ import { isProviderRole, normalizeRoleValue } from '../lib/platform';
 import { onBookingSync } from '../lib/bookingSync';
 import { DEFAULT_HERO_MESSAGES, getDynamicHeroMessage, getPublicAppContent, type HeroMessagesContent } from '../lib/appContent';
 import { getListingImages } from '../lib/listingImages';
+import { getActivityCategoryDisplayLabel, resolveActivityCategoryKey } from '../lib/activityCategories';
 import { VIRTUAL_TOURS_ENABLED, isVirtualTourRecord } from '../lib/virtualTours';
 import { useStaggeredImageRotation } from '../hooks/useStaggeredImageRotation';
 import './dashboard-home.css';
@@ -69,6 +70,7 @@ const Reveal: React.FC<RevealProps> = ({ children, className = '', delay = 0 }) 
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
+
 
   return (
     <div
@@ -226,7 +228,10 @@ const filterPostsByQuery = (posts: PostRecord[], query: string): PostRecord[] =>
     const title = getPostTitle(post).toLowerCase();
     const subtitle = getPostSubtitle(post).toLowerCase();
     const location = getPostLocation(post).toLowerCase();
-    return title.includes(query) || subtitle.includes(query) || location.includes(query);
+    const category = post.type === 'activity'
+      ? `${getActivityCategoryDisplayLabel(post.sub_category)} ${resolveActivityCategoryKey(post.sub_category)}`.toLowerCase()
+      : '';
+    return title.includes(query) || subtitle.includes(query) || location.includes(query) || category.includes(query);
   });
 };
 
@@ -881,7 +886,9 @@ export const DashboardHome: React.FC = () => {
   const { user, profile, isProvider, isAdmin, roleLabel } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [tourPosts, setTourPosts] = useState<PostRecord[]>([]);
   const [activityPosts, setActivityPosts] = useState<PostRecord[]>([]);
@@ -1155,9 +1162,18 @@ export const DashboardHome: React.FC = () => {
             : null;
     if (!target) return;
 
-    navigate(user ? target : buildLoginPath(target));
+    navigate(user || key === 'explore' ? target : buildLoginPath(target));
   };
 
+  const openSearch = () => {
+    setSearchExpanded(true);
+    window.setTimeout(() => searchInputRef.current?.focus(), 80);
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!searchExpanded) openSearch();
+  };
   return (
     <main className="dh-page">
       <div className="container dh-shell">
@@ -1176,6 +1192,35 @@ export const DashboardHome: React.FC = () => {
                     Recommendations first, then curated ads, then live tours, activities, and guides you can browse in rails.
                   </p> */}
                 </div>
+                <form
+                  className={`dh-search${searchExpanded || searchQuery ? ' is-expanded' : ''}`}
+                  role="search"
+                  onSubmit={handleSearchSubmit}
+                >
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    value={searchQuery}
+                    onFocus={() => setSearchExpanded(true)}
+                    onBlur={() => {
+                      if (!searchQuery.trim()) setSearchExpanded(false);
+                    }}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search tours, pottery, museums, places"
+                    aria-label="Search listings"
+                  />
+                  <button
+                    type="submit"
+                    className="dh-search-icon"
+                    aria-label={searchExpanded || searchQuery ? 'Search listings' : 'Open search'}
+                    aria-expanded={searchExpanded || Boolean(searchQuery)}
+                    onClick={() => {
+                      if (!searchExpanded) openSearch();
+                    }}
+                  >
+                    <Search size={18} />
+                  </button>
+                </form>
               </div>
             </div>
           </section>
