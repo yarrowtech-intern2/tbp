@@ -5,6 +5,7 @@ import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents, ZoomCo
 import 'leaflet/dist/leaflet.css';
 import {
   Compass,
+  Footprints,
   LayoutGrid,
   LocateFixed,
   MapPinned,
@@ -27,6 +28,8 @@ import { LandmarkLayerControl } from '../components/map/LandmarkLayerControl';
 import { LandmarkMarkers } from '../components/map/LandmarkMarkers';
 import { MapMarker } from '../components/map/MapMarker';
 import { useStableCallback } from '../components/map/useStableCallback';
+import { useWalkTrail } from '../components/map/useWalkTrail';
+import { WalkTrailCard } from '../components/map/WalkTrailCard';
 import {
   buildPlacePinIcon,
   fetchPublicPlaces,
@@ -457,6 +460,9 @@ export const Map2Page: React.FC = () => {
   const [showPlanOnly, setShowPlanOnly] = useState(false);
   const [showRestaurants, setShowRestaurants] = useState(true);
   const [pujaHintOn, setPujaHintOn] = useState(false);
+  const trail = useWalkTrail();
+  const [trailCardOpen, setTrailCardOpen] = useState(false);
+  const trailFlownRef = useRef(false);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [exploreOpen, setExploreOpen] = useState(false);
   const [exploreGroupKey, setExploreGroupKey] = useState(EXPLORE_GROUPS[0].key);
@@ -690,6 +696,29 @@ export const Map2Page: React.FC = () => {
       window.clearTimeout(hideTimer);
     };
   }, []);
+
+  // Bring the map to the walker once, on the first GPS fix after tracking starts (not on every fix, so panning still works).
+  const trailLat = trail.position?.lat;
+  const trailLng = trail.position?.lng;
+  useEffect(() => {
+    if (!trail.tracking) {
+      trailFlownRef.current = false;
+      return;
+    }
+    if (trailFlownRef.current || trailLat === undefined || trailLng === undefined) return;
+    trailFlownRef.current = true;
+    mapRef.current?.flyTo([trailLat, trailLng], Math.max(mapRef.current.getZoom(), 16), { duration: 0.6 });
+  }, [trail.tracking, trailLat, trailLng]);
+
+  const toggleTrail = () => {
+    if (trailCardOpen) {
+      // Closing the card never stops a walk that is being recorded.
+      setTrailCardOpen(false);
+      return;
+    }
+    setTrailCardOpen(true);
+    if (!trail.tracking) trail.start();
+  };
 
   const togglePuja = () => {
     closeExplore();
@@ -1031,6 +1060,8 @@ export const Map2Page: React.FC = () => {
     }
   };
 
+  const locationDot = trail.position ?? userLocation;
+
   return (
     <main className="map2-page" aria-label="Tourist attraction map">
       <MapContainer
@@ -1151,8 +1182,23 @@ export const Map2Page: React.FC = () => {
           />
         )) : null}
 
-        {userLocation ? (
-          <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]} />
+        {trail.segments.map((segment, index) => (segment.length > 1 ? (
+          <React.Fragment key={`trail-${index}-${segment[0].t}`}>
+            <Polyline
+              pathOptions={{ color: '#ffffff', weight: 9, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }}
+              positions={segment.map((point): [number, number] => [point.lat, point.lng])}
+              interactive={false}
+            />
+            <Polyline
+              pathOptions={{ color: '#0ea5e9', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round', className: 'map2-trail-line' }}
+              positions={segment.map((point): [number, number] => [point.lat, point.lng])}
+              interactive={false}
+            />
+          </React.Fragment>
+        ) : null))}
+
+        {locationDot ? (
+          <Marker icon={userLocationIcon} position={[locationDot.lat, locationDot.lng]} zIndexOffset={1000} />
         ) : null}
 
         {!pujaOpen && visibleAttractions.map((pointItem) => {
@@ -1298,6 +1344,16 @@ export const Map2Page: React.FC = () => {
           </button>
           <button
             type="button"
+            className={`map2-tool map2-trail-toggle${trailCardOpen ? ' is-active' : ''}${trail.tracking ? ' is-live' : ''}`}
+            onClick={toggleTrail}
+            aria-pressed={trail.tracking}
+            aria-label={trail.tracking ? 'Walk trail is recording' : 'Track my walk'}
+            title={trail.tracking ? 'Walk trail is recording' : 'Track my walk'}
+          >
+            <Footprints size={19} />
+          </button>
+          <button
+            type="button"
             className="map2-tool"
             onClick={() => void handleLocate()}
             disabled={locating}
@@ -1336,6 +1392,21 @@ export const Map2Page: React.FC = () => {
           </span>
         ) : null}
       </div>
+
+      {trailCardOpen ? (
+        <WalkTrailCard
+          tracking={trail.tracking}
+          distance={trail.distance}
+          duration={trail.duration}
+          pointCount={trail.pointCount}
+          accuracy={trail.position ? trail.position.accuracy : null}
+          keepAwake={trail.keepAwake}
+          error={trail.error}
+          onStart={trail.start}
+          onStop={trail.stop}
+          onClear={trail.clear}
+        />
+      ) : null}
 
       {exploreOpen ? (
         <ExplorePanel

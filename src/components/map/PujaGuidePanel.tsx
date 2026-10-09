@@ -42,6 +42,7 @@ import {
     type PujaGuideRequest,
     type PujaPandal,
 } from '../../lib/pujaGuide';
+import { googleMapsDirectionsUrl } from '../../lib/walkTrail';
 
 type PujaTab = 'pandals' | 'plan' | 'guides';
 
@@ -352,6 +353,15 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
                             <strong>{selectedRestaurant.name}</strong>
                             <small>{selectedRestaurant.cuisine}</small>
                             <small>{selectedRestaurant.area} · near {selectedRestaurant.near}</small>
+                            <a
+                                className="map2-puja-directions is-compact"
+                                href={googleMapsDirectionsUrl(selectedRestaurant, travelMode)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Navigation size={14} aria-hidden="true" />
+                                <span>Directions in Google Maps</span>
+                            </a>
                         </span>
                         <button type="button" onClick={() => onSelectRestaurant(null)} aria-label="Close restaurant details"><X size={15} /></button>
                     </div>
@@ -408,6 +418,15 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
                                         {selected && (
                                             <div className="map2-puja-detail">
                                                 <p>{pandal.highlight}</p>
+                                                <a
+                                                    className="map2-puja-directions"
+                                                    href={googleMapsDirectionsUrl(pandal, travelMode)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <Navigation size={16} aria-hidden="true" />
+                                                    <span>Directions in Google Maps</span>
+                                                </a>
                                                 <button
                                                     type="button"
                                                     className={`map2-puja-plan-btn${inPlan ? ' is-in' : ''}`}

@@ -2462,3 +2462,190 @@
 
   .map2-page:has(.map2-puja-reopen) .leaflet-bottom { bottom: 64px; }
 }
+
+/* Walk trail: toolbar toggle, live line and stats card */
+.map2-trail-toggle.is-live {
+  position: relative;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.map2-trail-toggle.is-live::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #ff741d;
+  border-radius: 50%;
+  background: #0ea5e9;
+  animation: map2-trail-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes map2-trail-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.leaflet-overlay-pane path.map2-trail-line {
+  filter: drop-shadow(0 0 3px rgba(14, 165, 233, 0.7));
+}
+
+.map2-trail-card {
+  position: absolute;
+  z-index: 950;
+  top: calc(env(safe-area-inset-top) + 84px);
+  left: 12px;
+  display: grid;
+  gap: 10px;
+  width: min(280px, calc(100vw - 24px));
+  padding: 12px 14px 14px;
+  border-radius: 20px;
+  background: #171717;
+  color: #f5f5f5;
+  box-shadow: 0 14px 30px rgba(20, 20, 20, 0.34);
+  font-family: 'Onest', 'Outfit', sans-serif;
+}
+
+.map2-trail-card.is-live {
+  box-shadow: 0 14px 30px rgba(20, 20, 20, 0.34), 0 0 0 2px rgba(14, 165, 233, 0.55);
+}
+
+.map2-trail-card header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map2-trail-card header div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.map2-trail-card header small {
+  color: rgba(245, 245, 245, 0.64);
+  font-size: 0.76rem;
+}
+
+.map2-trail-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  color: #0b1b24;
+}
+
+.map2-trail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.map2-trail-stats > div {
+  display: grid;
+  gap: 2px;
+  padding: 8px 8px 9px;
+  border-radius: 12px;
+  background: #262626;
+}
+
+.map2-trail-stats dt {
+  color: rgba(245, 245, 245, 0.6);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.map2-trail-stats dd {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.map2-trail-note {
+  margin: 0;
+  color: rgba(245, 245, 245, 0.64);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.map2-trail-note.is-error {
+  color: #fca5a5;
+}
+
+.map2-trail-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.map2-trail-actions button {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #2f2f2f;
+  color: #f5f5f5;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.map2-trail-actions button.is-primary {
+  background: #0ea5e9;
+  color: #08202c;
+}
+
+.map2-trail-actions button.is-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+/* Google Maps directions link on pandal and restaurant cards */
+.map2-page .map2-puja-panel .map2-puja-directions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--pj-ink);
+  color: var(--pj-on-ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.map2-page .map2-puja-panel .map2-puja-directions.is-compact {
+  justify-self: start;
+  min-height: 32px;
+  margin-top: 6px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+}
+
+@media (min-width: 768px) {
+  .map2-trail-card {
+    top: 96px;
+    left: 30px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* One more toolbar button: give the open search box a little less room. */
+  .map2-search.is-open {
+    width: min(190px, calc(100vw - 218px));
+  }
+}
