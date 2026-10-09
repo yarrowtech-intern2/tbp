@@ -78,27 +78,34 @@ const TIP = { x: 12, y: 22.75 };
 
 const iconCache = new Map<string, DivIcon>();
 
-export type TackOptions = { active?: boolean; draft?: boolean; route?: boolean; planNumber?: number };
+export type TackOptions = { active?: boolean; draft?: boolean; route?: boolean; planNumber?: number; small?: boolean };
+
+/** Planned stops (and their route) are drawn in a soft, glowing yellow so they stand out from the other pins. */
+export const PLAN_COLOR = '#fde047';
+
+export const RESTAURANT_COLOR = '#22c55e';
 
 /** The tack-shaped map pin: a head colour plus a glyph. `key` identifies the colour/glyph pair for caching. */
 export const buildTackIcon = (key: string, color: string, Icon: LucideIcon, options: TackOptions = {}): DivIcon => {
-    const cacheKey = `${key}:${options.active ? 1 : 0}:${options.draft ? 1 : 0}:${options.route ? 1 : 0}:${options.planNumber || 0}`;
+    const cacheKey = `${key}:${options.active ? 1 : 0}:${options.draft ? 1 : 0}:${options.route ? 1 : 0}:${options.planNumber || 0}:${options.small ? 1 : 0}`;
     const cached = iconCache.get(cacheKey);
     if (cached) return cached;
 
-    const size = options.active || options.draft ? 54 : options.planNumber ? 48 : 42;
+    const size = options.small
+        ? (options.active ? 34 : 26)
+        : options.active || options.draft ? 54 : options.planNumber ? 48 : 42;
     const scale = size / 24;
     // Planned stops invert the colours (ink body, category-colour ring) and show their visiting order.
     const planned = Boolean(options.planNumber);
     const bodyFill = planned ? PIN_INK : color;
-    const ringFill = planned ? color : PIN_INK;
+    const ringFill = planned ? PLAN_COLOR : PIN_INK;
     const centre = planned
-        ? `<circle cx="12" cy="10" r="4.8" fill="${color}" />
+        ? `<circle cx="12" cy="10" r="4.8" fill="${PLAN_COLOR}" />
     <text x="12" y="10" text-anchor="middle" dominant-baseline="central" font-family="Inter, system-ui, sans-serif" font-size="${options.planNumber! > 9 ? 5 : 6.2}" font-weight="800" fill="${PIN_INK}">${options.planNumber}</text>`
         : `<circle cx="12" cy="10" r="4.6" fill="#ffffff" stroke="${PIN_INK}" stroke-width="1.5" />
     <g transform="translate(9 7) scale(0.5)">${getGlyphMarkup(key, Icon)}</g>`;
     const html = `
-<span class="map2-tack${options.active ? ' is-active' : ''}${options.draft ? ' is-draft' : ''}${options.route ? ' is-route' : ''}${planned ? ' is-planned' : ''}">
+<span class="map2-tack${options.active ? ' is-active' : ''}${options.draft ? ' is-draft' : ''}${options.route ? ' is-route' : ''}${planned ? ' is-planned' : ''}${options.small ? ' is-small' : ''}">
   <svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">
     <path d="${PIN_BODY_PATH}" fill="${bodyFill}" />
     <path d="${PIN_RING_PATH}" fill="${ringFill}" fill-rule="evenodd" clip-rule="evenodd" />
@@ -120,6 +127,11 @@ export const buildPinIcon = (category: PinCategory, options: TackOptions = {}): 
     const { color, Icon } = getPinCategory(category);
     return buildTackIcon(`pin:${category}`, color, Icon, options);
 };
+
+/** Small green pin for restaurants shown beside the pandals. */
+export const buildRestaurantIcon = (options: { active?: boolean } = {}): DivIcon => (
+    buildTackIcon('restaurant', RESTAURANT_COLOR, UtensilsCrossed, { small: true, active: options.active })
+);
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 

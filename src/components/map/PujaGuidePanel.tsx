@@ -6,12 +6,14 @@ import {
     CalendarDays,
     Check,
     ChevronUp,
+    ChevronsRight,
     Languages,
     MapPin,
     MessageSquare,
     Navigation,
     Plus,
     Trash2,
+    UtensilsCrossed,
     Users,
     X,
 } from 'lucide-react';
@@ -29,8 +31,10 @@ import {
     fetchPujaRequests,
     formatRupees,
     getPandal,
+    getRestaurant,
     PANDAL_ZONES,
     PUJA_PANDALS,
+    PUJA_RESTAURANTS,
     PUJA_REQUEST_LABELS,
     updatePujaRequestStatus,
     type PandalZone,
@@ -81,6 +85,10 @@ interface PujaGuidePanelProps {
     userLocation: { lat: number; lng: number } | null;
     showPlanOnly: boolean;
     onShowPlanOnlyChange: (value: boolean) => void;
+    showRestaurants: boolean;
+    onShowRestaurantsChange: (value: boolean) => void;
+    selectedRestaurantId: string | null;
+    onSelectRestaurant: (id: string | null) => void;
     onClose: () => void;
 }
 
@@ -95,10 +103,16 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
     userLocation,
     showPlanOnly,
     onShowPlanOnlyChange,
+    showRestaurants,
+    onShowRestaurantsChange,
+    selectedRestaurantId,
+    onSelectRestaurant,
     onClose,
 }) => {
     const [tab, setTab] = useState<PujaTab>('pandals');
     const [sheet, setSheet] = useState<SheetState>('half');
+    // Collapsing tucks the whole guide into a small pill so it stops covering the map.
+    const [collapsed, setCollapsed] = useState(false);
     const dragStartY = useRef<number | null>(null);
     const [zone, setZone] = useState<PandalZone | 'All'>('All');
     const [travelMode, setTravelMode] = useState<TravelMode>('walking');
@@ -127,10 +141,12 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
     );
     const planPandals = useMemo(() => plan.map(getPandal).filter((item): item is PujaPandal => Boolean(item)), [plan]);
     const selectedGuide = guides.find((item) => item.user_id === selectedGuideId) || null;
+    const selectedRestaurant = selectedRestaurantId ? getRestaurant(selectedRestaurantId) : null;
 
     // Selecting a pandal on the map jumps back to the pandal list so its card is visible.
     useEffect(() => {
         if (!selectedPandalId) return;
+        setCollapsed(false);
         setTab('pandals');
         // Opening a pandal keeps the map in view: the sheet drops to its middle size and scrolls the row into view.
         setSheet('half');
@@ -139,6 +155,11 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
         }, 60);
         return () => window.clearTimeout(timer);
     }, [selectedPandalId]);
+
+    // Tapping a restaurant pin brings its card up, even if the guide was collapsed.
+    useEffect(() => {
+        if (selectedRestaurantId) setCollapsed(false);
+    }, [selectedRestaurantId]);
 
     useEffect(() => {
         if (tab !== 'guides' || guides.length || guidesLoading) return;
@@ -238,6 +259,20 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
         }
     };
 
+    if (collapsed) {
+        return (
+            <button
+                type="button"
+                className="map2-puja-reopen"
+                onClick={() => setCollapsed(false)}
+                aria-label="Show the Puja guide"
+            >
+                <span>Puja guide{plan.length ? ` · ${plan.length} in plan` : ''}</span>
+                <ChevronUp size={16} className="map2-puja-reopen-chevron" aria-hidden="true" />
+            </button>
+        );
+    }
+
     return (
         <aside className={`map2-route-panel map2-puja-panel is-${sheet}`} aria-label="Durga Puja guide">
             <button
@@ -267,9 +302,14 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
                     <span>Durga Puja guide</span>
                     <h1>Pandal hopping in Kolkata</h1>
                 </div>
-                <button type="button" className="map2-icon-btn" onClick={onClose} aria-label="Close Puja guide">
-                    <X size={18} />
-                </button>
+                <div className="map2-puja-head-actions">
+                    <button type="button" className="map2-icon-btn" onClick={() => setCollapsed(true)} aria-label="Collapse the Puja guide" title="Collapse">
+                        <ChevronsRight size={18} />
+                    </button>
+                    <button type="button" className="map2-icon-btn" onClick={onClose} aria-label="Close Puja guide">
+                        <X size={18} />
+                    </button>
+                </div>
             </div>
 
             <div className="map2-puja-body">
@@ -287,6 +327,35 @@ export const PujaGuidePanel: React.FC<PujaGuidePanelProps> = ({
                         <small>{plan.length ? `${plan.length} in your plan` : 'Add pandals to your plan first'}</small>
                     </span>
                 </label>
+
+                <label className="map2-puja-switch is-green">
+                    <input
+                        type="checkbox"
+                        role="switch"
+                        checked={showRestaurants}
+                        onChange={(event) => {
+                            onShowRestaurantsChange(event.target.checked);
+                            if (!event.target.checked) onSelectRestaurant(null);
+                        }}
+                    />
+                    <span className="map2-puja-switch-track" aria-hidden="true"><span /></span>
+                    <span>
+                        Show top restaurants on the map
+                        <small>{PUJA_RESTAURANTS.length} places near the busiest pandal clusters</small>
+                    </span>
+                </label>
+
+                {showRestaurants && selectedRestaurant ? (
+                    <div className="map2-puja-restaurant" role="status">
+                        <span className="map2-puja-restaurant-dot" aria-hidden="true"><UtensilsCrossed size={14} /></span>
+                        <span>
+                            <strong>{selectedRestaurant.name}</strong>
+                            <small>{selectedRestaurant.cuisine}</small>
+                            <small>{selectedRestaurant.area} · near {selectedRestaurant.near}</small>
+                        </span>
+                        <button type="button" onClick={() => onSelectRestaurant(null)} aria-label="Close restaurant details"><X size={15} /></button>
+                    </div>
+                ) : null}
 
                 <div className="map2-mode-row map2-puja-tabs" role="tablist" aria-label="Puja guide sections">
                     {([

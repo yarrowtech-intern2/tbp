@@ -92,7 +92,43 @@ export const PUJA_PANDALS: PujaPandal[] = [
     { id: 'sb-park', name: 'SB Park Sarbojanin', area: 'Thakurpukur', zone: 'South', lat: 22.4600, lng: 88.3070, highlight: 'Far-south Behala theme pandal.' },
 ];
 
+export interface PujaRestaurant {
+    id: string;
+    name: string;
+    area: string;
+    zone: PandalZone;
+    lat: number;
+    lng: number;
+    cuisine: string;
+    /** The pandal hotspot this place is a good meal stop for. */
+    near: string;
+}
+
+/**
+ * Well-known places to eat next to the busiest pandal clusters. Like the pandals, coordinates are approximate
+ * (neighbourhood level); menus, branches and festival hours should be checked before the Puja season.
+ */
+export const PUJA_RESTAURANTS: PujaRestaurant[] = [
+    { id: 'nakur-nandy', name: 'Girish Chandra Dey & Nakur Chandra Nandy', area: 'Bagbazar', zone: 'North', lat: 22.6025, lng: 88.3660, cuisine: 'Traditional Bengali sweets', near: 'Bagbazar and Kumartuli pandals' },
+    { id: 'mitra-cafe', name: 'Mitra Cafe', area: 'Shobhabazar', zone: 'North', lat: 22.5952, lng: 88.3655, cuisine: 'Old-style Kolkata cabin snacks', near: 'Shobhabazar Rajbari and Hatibagan pandals' },
+    { id: 'aminia-hatibagan', name: 'Aminia, Hatibagan', area: 'Hatibagan', zone: 'North', lat: 22.5975, lng: 88.3725, cuisine: 'Awadhi and Mughlai, biryani and rezala', near: 'Hatibagan and Nalin Sarkar Street pandals' },
+    { id: 'royal-indian-hotel', name: 'Royal Indian Hotel', area: 'Zakaria Street', zone: 'Central', lat: 22.5812, lng: 88.3610, cuisine: 'Mughlai, Kolkata biryani', near: 'Mohammad Ali Park' },
+    { id: 'indian-coffee-house', name: 'Indian Coffee House', area: 'College Street', zone: 'Central', lat: 22.5753, lng: 88.3638, cuisine: 'Coffee and snacks, the classic College Street adda', near: 'College Square' },
+    { id: 'paramount-sherbet', name: 'Paramount Sherbet', area: 'College Street', zone: 'Central', lat: 22.5748, lng: 88.3641, cuisine: 'Sherbets and cold drinks', near: 'College Square' },
+    { id: 'nizams', name: 'Nizam\'s', area: 'New Market', zone: 'Central', lat: 22.5608, lng: 88.3523, cuisine: 'Kathi rolls and kebabs', near: 'Santosh Mitra Square' },
+    { id: 'kewpies-kitchen', name: 'Kewpie\'s Kitchen', area: 'Elgin Road', zone: 'Central', lat: 22.5370, lng: 88.3490, cuisine: 'Homestyle Bengali', near: 'Bakul Bagan, 75 Pally and Hazra Park' },
+    { id: 'six-ballygunge-place', name: '6 Ballygunge Place', area: 'Ballygunge', zone: 'South', lat: 22.5240, lng: 88.3640, cuisine: 'Bengali fine dining', near: 'Maddox Square, Ekdalia and Singhi Park' },
+    { id: 'saptapadi', name: 'Saptapadi', area: 'Gariahat', zone: 'South', lat: 22.5192, lng: 88.3655, cuisine: 'Bengali, fish and prawn dishes', near: 'Hindustan Park and Ballygunge pandals' },
+    { id: 'aminia-gariahat', name: 'Aminia, Gariahat', area: 'Gariahat', zone: 'South', lat: 22.5183, lng: 88.3668, cuisine: 'Awadhi and Mughlai, biryani and rezala', near: 'Hindustan Park and Ballygunge pandals' },
+    { id: 'oudh-1590', name: 'Oudh 1590', area: 'Deshapriya Park', zone: 'South', lat: 22.5165, lng: 88.3535, cuisine: 'Lucknowi', near: 'Deshapriya Park and Tridhara' },
+    { id: 'aminia-behala', name: 'Aminia, Behala', area: 'Behala', zone: 'South', lat: 22.4978, lng: 88.3165, cuisine: 'Awadhi and Mughlai, biryani and rezala', near: 'Behala Notun Dal and Behala Club' },
+    { id: 'fly-kouzina', name: 'Fly Kouzina', area: 'Salt Lake Sector I', zone: 'East', lat: 22.5925, lng: 88.4125, cuisine: 'Pure-veg family dining', near: 'AE, FD and BJ Block pandals' },
+    { id: 'pinkk-sugars', name: 'Pinkk Sugars', area: 'Salt Lake Sector I', zone: 'East', lat: 22.5915, lng: 88.4095, cuisine: 'Cafe and bakery', near: 'AE, FD and BJ Block pandals' },
+];
+
 export const PANDAL_ZONES: PandalZone[] = ['North', 'Central', 'East', 'South'];
+
+export const getRestaurant = (id: string) => PUJA_RESTAURANTS.find((item) => item.id === id) || null;
 
 export const getPandal = (id: string) => PUJA_PANDALS.find((item) => item.id === id) || null;
 

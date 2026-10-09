@@ -15,14 +15,13 @@ import {
   Play,
   Route,
   Search,
-  Sparkles,
   Star,
   Trash2,
   X,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { PujaGuidePanel } from '../components/map/PujaGuidePanel';
-import { getPandal, loadPandalPlan, PUJA_PANDALS, savePandalPlan } from '../lib/pujaGuide';
+import { getPandal, getRestaurant, loadPandalPlan, PUJA_PANDALS, PUJA_RESTAURANTS, savePandalPlan } from '../lib/pujaGuide';
 import { ExplorePanel } from '../components/map/ExplorePanel';
 import { LandmarkLayerControl } from '../components/map/LandmarkLayerControl';
 import { LandmarkMarkers } from '../components/map/LandmarkMarkers';
@@ -50,12 +49,14 @@ import { clampBounds, EXPLORE_GROUPS, fetchExplorePlaces, findExploreCategory, t
 import {
   buildEmojiMarkerIcon,
   buildPinIcon,
+  buildRestaurantIcon,
   categoryFromLabel,
   createMapPin,
   deleteMapPin,
   fetchMapPins,
   getPinCategory,
   PIN_CATEGORIES,
+  PLAN_COLOR,
   type MapPinRecord,
   type PinCategory,
 } from '../lib/mapPins';
@@ -454,6 +455,9 @@ export const Map2Page: React.FC = () => {
   const [selectedPandalId, setSelectedPandalId] = useState<string | null>(null);
   const [pujaRoute, setPujaRoute] = useState<PlannedRoute | null>(null);
   const [showPlanOnly, setShowPlanOnly] = useState(false);
+  const [showRestaurants, setShowRestaurants] = useState(true);
+  const [pujaHintOn, setPujaHintOn] = useState(false);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [exploreOpen, setExploreOpen] = useState(false);
   const [exploreGroupKey, setExploreGroupKey] = useState(EXPLORE_GROUPS[0].key);
   const [exploreCategoryKey, setExploreCategoryKey] = useState<string | null>(null);
@@ -475,6 +479,7 @@ export const Map2Page: React.FC = () => {
   const [landmarkStatus, setLandmarkStatus] = useState('');
   const exploreCategory = findExploreCategory(exploreCategoryKey);
   const selectedPandal = selectedPandalId ? getPandal(selectedPandalId) : null;
+  const selectedRestaurant = selectedRestaurantId ? getRestaurant(selectedRestaurantId) : null;
   const userId = user?.id || null;
 
   const startPoint = useMemo(
@@ -676,11 +681,22 @@ export const Map2Page: React.FC = () => {
     void handleStartPin({ lat: place.lat, lng: place.lng, title: place.name });
   };
 
+  // Nudge people toward the Puja guide: the hint appears a second after the map opens, then fades away.
+  useEffect(() => {
+    const showTimer = window.setTimeout(() => setPujaHintOn(true), 1000);
+    const hideTimer = window.setTimeout(() => setPujaHintOn(false), 6500);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
+
   const togglePuja = () => {
     closeExplore();
     clearLandmark();
     setPujaOpen((current) => !current);
     setSelectedPandalId(null);
+    setSelectedRestaurantId(null);
     setSelectedPoint(null);
     setSelectedPin(null);
     setRouteOpen(false);
@@ -777,7 +793,14 @@ export const Map2Page: React.FC = () => {
     setSelectedExplorePlace(place);
     setExploreRoute(null);
   });
-  const onPandalSelect = useStableCallback((pandal: (typeof PUJA_PANDALS)[number]) => setSelectedPandalId(pandal.id));
+  const onPandalSelect = useStableCallback((pandal: (typeof PUJA_PANDALS)[number]) => {
+    setSelectedPandalId(pandal.id);
+    setSelectedRestaurantId(null);
+  });
+  const onRestaurantSelect = useStableCallback((restaurant: (typeof PUJA_RESTAURANTS)[number]) => {
+    setSelectedRestaurantId(restaurant.id);
+    setSelectedPandalId(null);
+  });
 
   const closePinForm = () => {
     setPinFormOpen(false);
@@ -1028,7 +1051,7 @@ export const Map2Page: React.FC = () => {
         <ZoomControl position="bottomright" />
         <Map2Viewport
           routePoints={(exploreOpen ? exploreRoute : pujaOpen ? pujaRoute : landmarkRoute || plannedRoute)?.route_points || NO_ROUTE_POINTS}
-          selectedPoint={exploreOpen ? selectedExplorePlace : pujaOpen ? selectedPandal : selectedPoint || selectedPin || selectedPlace || selectedLandmark}
+          selectedPoint={exploreOpen ? selectedExplorePlace : pujaOpen ? selectedPandal || selectedRestaurant : selectedPoint || selectedPin || selectedPlace || selectedLandmark}
           userLocation={userLocation}
         />
         <Map2Bridge
@@ -1074,10 +1097,24 @@ export const Map2Page: React.FC = () => {
         ) : null}
 
         {pujaOpen && pujaRoute?.route_points.length ? (
-          <Polyline
-            pathOptions={{ color: '#e11d48', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
-            positions={pujaRoute.route_points}
-          />
+          <>
+            {/* Soft yellow bloom, a thin gold edge for contrast on light tiles, then the yellow route itself. */}
+            <Polyline
+              pathOptions={{ color: PLAN_COLOR, weight: 18, opacity: 0.4, lineCap: 'round', lineJoin: 'round', className: 'map2-puja-route-glow' }}
+              positions={pujaRoute.route_points}
+              interactive={false}
+            />
+            <Polyline
+              pathOptions={{ color: '#ca8a04', weight: 9, opacity: 0.85, lineCap: 'round', lineJoin: 'round' }}
+              positions={pujaRoute.route_points}
+              interactive={false}
+            />
+            <Polyline
+              pathOptions={{ color: PLAN_COLOR, weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' }}
+              positions={pujaRoute.route_points}
+              interactive={false}
+            />
+          </>
         ) : null}
 
         {pujaOpen ? PUJA_PANDALS
@@ -1100,6 +1137,19 @@ export const Map2Page: React.FC = () => {
               />
             );
           }) : null}
+
+        {pujaOpen && showRestaurants ? PUJA_RESTAURANTS.map((restaurant) => (
+          <MapMarker
+            key={restaurant.id}
+            item={restaurant}
+            lat={restaurant.lat}
+            lng={restaurant.lng}
+            icon={buildRestaurantIcon({ active: selectedRestaurantId === restaurant.id })}
+            zIndexOffset={selectedRestaurantId === restaurant.id ? 450 : -100}
+            onSelect={onRestaurantSelect}
+            title={`${restaurant.name} · ${restaurant.cuisine}`}
+          />
+        )) : null}
 
         {userLocation ? (
           <Marker icon={userLocationIcon} position={[userLocation.lat, userLocation.lng]} />
@@ -1271,10 +1321,20 @@ export const Map2Page: React.FC = () => {
           className={`map2-puja-toggle${pujaOpen ? ' is-active' : ''}`}
           onClick={togglePuja}
           aria-pressed={pujaOpen}
+          aria-label={pujaOpen ? 'Exit Puja guide' : 'Open Durga Puja guide'}
+          title={pujaOpen ? 'Exit Puja guide' : 'Durga Puja guide'}
         >
-          <Sparkles size={16} />
-          <span>{pujaOpen ? 'Exit Puja guide' : 'Puja guide'}</span>
+          <img src="/icons/puja.png" alt="" draggable={false} />
         </button>
+        {!pujaOpen ? (
+          <span className={`map2-puja-hint${pujaHintOn ? ' is-visible' : ''}`} aria-hidden="true">
+            <span className="map2-puja-hint-text">Puja guide</span>
+            <svg className="map2-puja-hint-arrow" viewBox="0 0 56 36" width="56" height="36" fill="none">
+              <path d="M2 22 C 12 4, 30 4, 50 18" pathLength="1" />
+              <path d="M45.9 10 L50 18 L41.1 16.9" pathLength="1" className="map2-puja-hint-head" />
+            </svg>
+          </span>
+        ) : null}
       </div>
 
       {exploreOpen ? (
@@ -1319,6 +1379,10 @@ export const Map2Page: React.FC = () => {
           userLocation={userLocation}
           showPlanOnly={showPlanOnly}
           onShowPlanOnlyChange={setShowPlanOnly}
+          showRestaurants={showRestaurants}
+          onShowRestaurantsChange={setShowRestaurants}
+          selectedRestaurantId={selectedRestaurantId}
+          onSelectRestaurant={setSelectedRestaurantId}
           onClose={togglePuja}
         />
       ) : null}

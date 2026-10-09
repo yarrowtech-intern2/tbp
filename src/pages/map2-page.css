@@ -76,10 +76,32 @@
     drop-shadow(0 6px 8px rgba(20, 20, 20, 0.28));
 }
 
+/* Planned pandals glow a soft, slightly bloomy yellow. */
 .map2-tack.is-planned {
   filter:
+    drop-shadow(0 0 1.5px #fef08a)
+    drop-shadow(0 0 7px rgba(253, 224, 71, 0.95))
+    drop-shadow(0 0 16px rgba(250, 204, 21, 0.6))
+    drop-shadow(0 5px 6px rgba(20, 20, 20, 0.28));
+}
+
+/* Restaurants are small and green so they read as secondary to the pandals. */
+.map2-tack.is-small {
+  filter:
+    drop-shadow(0 0 1px #ffffff)
+    drop-shadow(0 3px 4px rgba(20, 20, 20, 0.3));
+}
+
+.map2-tack.is-small.is-active {
+  filter:
     drop-shadow(0 0 2px #ffffff)
-    drop-shadow(0 6px 10px rgba(225, 29, 72, 0.45));
+    drop-shadow(0 0 8px rgba(34, 197, 94, 0.7))
+    drop-shadow(0 5px 6px rgba(20, 20, 20, 0.3));
+}
+
+.leaflet-overlay-pane path.map2-puja-route-glow {
+  filter: blur(5px);
+  pointer-events: none;
 }
 
 .map2-tack.is-active,
@@ -775,28 +797,192 @@
 /* Durga Puja guide ------------------------------------------------------- */
 .map2-puja-toggle {
   position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 40px;
-  padding: 0 16px;
+  top: calc(100% + 12px);
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  padding: 0;
   border: 2px solid #ffffff;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #e11d48, #f97316);
-  color: #ffffff;
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 800;
-  white-space: nowrap;
+  border-radius: 50%;
+  background: #fff7e0;
   cursor: pointer;
-  box-shadow: 0 12px 26px rgba(190, 18, 60, 0.3);
+  box-shadow: 0 8px 20px rgba(190, 18, 60, 0.35), 0 0 0 3px rgba(239, 68, 68, 0.25);
+  animation: map2-puja-beat 2.4s ease-in-out infinite;
 }
 
+.map2-puja-toggle img {
+  display: block;
+  width: 42px;
+  height: 42px;
+  pointer-events: none;
+  user-select: none;
+  animation: map2-puja-spin 18s linear infinite;
+}
+
+/* Two staggered rings radiate out from the button */
+.map2-puja-toggle::before,
+.map2-puja-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border: 2px solid #ef4444;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: map2-puja-ripple 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+.map2-puja-toggle::after {
+  border-color: #eab308;
+  animation-delay: 1.2s;
+}
+
+.map2-puja-toggle:hover {
+  animation-play-state: paused;
+}
+
+.map2-puja-toggle:focus-visible {
+  outline: 3px solid #111111;
+  outline-offset: 3px;
+}
+
+/* While the guide is open the button calms down into a dark "exit" badge */
 .map2-puja-toggle.is-active {
   background: #111111;
-  box-shadow: 0 12px 26px rgba(20, 20, 20, 0.28);
+  box-shadow: 0 8px 20px rgba(20, 20, 20, 0.35);
+  animation: none;
+}
+
+.map2-puja-toggle.is-active img {
+  animation: none;
+}
+
+.map2-puja-toggle.is-active::before,
+.map2-puja-toggle.is-active::after {
+  display: none;
+}
+
+@keyframes map2-puja-ripple {
+  0% { transform: scale(1); opacity: 0.75; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+@keyframes map2-puja-beat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes map2-puja-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map2-puja-toggle,
+  .map2-puja-toggle img {
+    animation: none;
+  }
+
+  .map2-puja-toggle::before {
+    opacity: 0.45;
+    transform: scale(1.35);
+    animation: none;
+  }
+
+  .map2-puja-toggle::after {
+    display: none;
+  }
+}
+
+/* "Puja guide" hint: a label and a curved arrow that point at the button */
+.map2-puja-hint {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 64px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  height: 54px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.map2-puja-toggle:hover + .map2-puja-hint,
+.map2-puja-toggle:focus-visible + .map2-puja-hint,
+.map2-puja-hint.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.map2-puja-hint-text {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #111111;
+  color: #fef9c3;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(20, 20, 20, 0.28);
+}
+
+.map2-puja-hint-arrow {
+  flex: none;
+  margin: 12px 0 0 2px;
+  overflow: visible;
+  stroke: #111111;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 1.5px #ffffff) drop-shadow(0 0 1.5px #ffffff);
+}
+
+.map2-puja-hint-arrow path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.map2-puja-toggle:hover + .map2-puja-hint .map2-puja-hint-arrow path,
+.map2-puja-toggle:focus-visible + .map2-puja-hint .map2-puja-hint-arrow path,
+.map2-puja-hint.is-visible .map2-puja-hint-arrow path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.6s ease 0.2s;
+}
+
+.map2-puja-hint-arrow .map2-puja-hint-head {
+  transition-duration: 0.25s !important;
+  transition-delay: 0.7s !important;
+}
+
+@media (max-width: 480px) {
+  .map2-puja-hint {
+    right: 62px;
+  }
+
+  .map2-puja-hint-text {
+    margin-top: 10px;
+    padding: 5px 10px;
+    font-size: 0.76rem;
+  }
+
+  .map2-puja-hint-arrow {
+    width: 42px;
+    height: 27px;
+    margin-top: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map2-puja-hint,
+  .map2-puja-hint-arrow path {
+    transition: none !important;
+    transform: none;
+  }
 }
 
 .map2-puja-tabs {
@@ -2164,4 +2350,115 @@
   .map2-page .map2-puja-panel.map2-route-panel {
     padding-top: 14px;
   }
+}
+
+/* Restaurants: green switch, detail card */
+.map2-page .map2-puja-panel .map2-puja-switch.is-green input:checked + .map2-puja-switch-track {
+  background: #22c55e;
+}
+
+.map2-page .map2-puja-panel .map2-puja-switch.is-green input:focus-visible + .map2-puja-switch-track {
+  outline-color: #22c55e;
+}
+
+.map2-page .map2-puja-panel .map2-puja-restaurant {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--pj-card-strong);
+  box-shadow: inset 0 0 0 2px #22c55e;
+  color: var(--pj-text);
+}
+
+.map2-page .map2-puja-panel .map2-puja-restaurant > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.map2-page .map2-puja-panel .map2-puja-restaurant small {
+  color: var(--pj-muted);
+  font-size: 0.78rem;
+}
+
+.map2-page .map2-puja-panel .map2-puja-restaurant-dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #171717;
+}
+
+.map2-page .map2-puja-panel .map2-puja-restaurant > button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--pj-text);
+  cursor: pointer;
+}
+
+/* Plan numbers use the same yellow as the pins and route */
+.map2-page .map2-puja-panel .map2-puja-badge,
+.map2-page .map2-puja-panel .map2-puja-plan b {
+  background: #fde047;
+  color: #333333;
+}
+
+/* Collapsing the guide */
+.map2-page .map2-puja-panel .map2-puja-head-actions {
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.map2-puja-reopen {
+  position: absolute;
+  z-index: 900;
+  right: 30px;
+  top: 146px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #171717;
+  color: #fef9c3;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(20, 20, 20, 0.3), 0 0 14px rgba(253, 224, 71, 0.35);
+}
+
+.map2-puja-reopen-chevron {
+  transform: rotate(-90deg);
+}
+
+@media (max-width: 767px) {
+  .map2-puja-reopen {
+    top: auto;
+    right: 10px;
+    bottom: calc(env(safe-area-inset-bottom) + 10px);
+  }
+
+  .map2-puja-reopen-chevron {
+    transform: none;
+  }
+
+  .map2-page:has(.map2-puja-reopen) .leaflet-bottom { bottom: 64px; }
 }
