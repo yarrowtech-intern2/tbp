@@ -113,6 +113,7 @@ import {
     type RouteHistoryRecord,
 } from '../lib/routePlanner';
 import { VIRTUAL_TOURS_ENABLED, isVirtualTourRecord } from '../lib/virtualTours';
+import { PUJA_ENABLED } from '../lib/pujaFeature';
 import './role-dashboard.css';
 
 type DashboardRole = 'tourist' | 'provider' | 'admin' | 'marketing';
@@ -570,7 +571,7 @@ const parseProviderSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'manage_posts' || normalized === 'manage-posts' || normalized === 'posts') return 'studio';
     if (normalized === 'messages') return 'messages';
     if (normalized === 'analytics' || normalized === 'performance' || normalized === 'insights') return 'analytics';
-    if (normalized === 'puja' || normalized === 'puja-guide' || normalized === 'durga-puja') return 'puja';
+    if (PUJA_ENABLED && (normalized === 'puja' || normalized === 'puja-guide' || normalized === 'durga-puja')) return 'puja';
     if (normalized === 'places' || normalized === 'my-map' || normalized === 'map-pins' || normalized === 'pins') return 'places';
     return null;
 };
@@ -594,7 +595,7 @@ const parseAdminSection = (value: string | null): SidebarKey | null => {
     if (normalized === 'audits' || normalized === 'audit') return 'audits';
     if (normalized === 'newsletter') return 'newsletter';
     if (normalized === 'analytics' || normalized === 'traffic' || normalized === 'insights') return 'analytics';
-    if (normalized === 'puja' || normalized === 'puja-guides' || normalized === 'durga-puja') return 'puja';
+    if (PUJA_ENABLED && (normalized === 'puja' || normalized === 'puja-guides' || normalized === 'durga-puja')) return 'puja';
     return null;
 };
 
@@ -1364,7 +1365,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'users', label: 'Users', icon: Users },
                 { key: 'newsletter', label: 'Newsletter', icon: Rss },
                 { key: 'map', label: 'Map', icon: MapPin },
-                { key: 'puja', label: 'Puja Guides', icon: Sparkles },
+                ...(PUJA_ENABLED ? [{ key: 'puja' as SidebarKey, label: 'Puja Guides', icon: Sparkles }] : []),
                 { key: 'audits', label: 'Settings', icon: Settings2 },
                 { key: 'rejected', label: 'Rejected', icon: Shield },
             ];
@@ -1378,7 +1379,7 @@ export const RoleDashboard: React.FC = () => {
                 { key: 'revenue', label: 'Revenue', icon: CalendarDays, iconSrc: MOBILE_NAV_ICON_SRC.revenue },
                 { key: 'studio', label: 'Studio', icon: SquarePen },
                 { key: 'places', label: 'My Map', icon: MapPin },
-                { key: 'puja', label: 'Puja Guide', icon: Sparkles },
+                ...(PUJA_ENABLED ? [{ key: 'puja' as SidebarKey, label: 'Puja Guide', icon: Sparkles }] : []),
                 { key: 'listings', label: 'Listings', icon: Package },
                 { key: 'advertisements', label: 'Advertisements', icon: Megaphone },
                 { key: 'messages', label: 'Messages', icon: MessageSquare },

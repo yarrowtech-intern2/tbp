@@ -25,6 +25,7 @@ import { buildLoginPath } from '../lib/authRedirect';
 import { AdSlot } from '../components/ads/AdSlot';
 import { AD_SLOTS } from '../components/ads/adSlots';
 import { PujaGuidePanel } from '../components/map/PujaGuidePanel';
+import { PUJA_ENABLED } from '../lib/pujaFeature';
 import { PujaTrailPlayback } from '../components/map/PujaTrailPlayback';
 import {
   getHospital,
@@ -780,6 +781,7 @@ export const Map2Page: React.FC = () => {
 
   // Nudge people toward the Puja guide: the hint appears a second after the map opens, then fades away.
   useEffect(() => {
+    if (!PUJA_ENABLED) return undefined;
     const showTimer = window.setTimeout(() => setPujaHintOn(true), 1000);
     const hideTimer = window.setTimeout(() => setPujaHintOn(false), 6500);
     return () => {
@@ -791,7 +793,9 @@ export const Map2Page: React.FC = () => {
   // Arriving with ?puja=1 (home page button, or back from login) opens the guide, then drops the flag from the URL.
   useEffect(() => {
     if (authLoading || !new URLSearchParams(location.search).get('puja')) return;
-    if (user) {
+    if (!PUJA_ENABLED) {
+      navigate('/map', { replace: true });
+    } else if (user) {
       navigate('/map', { replace: true });
       setPujaOpen(true);
       setPujaHintOn(false);
@@ -824,6 +828,7 @@ export const Map2Page: React.FC = () => {
   };
 
   const togglePuja = () => {
+    if (!PUJA_ENABLED) return;
     // The Puja guide needs an account; the rest of the map stays open to everyone.
     if (!pujaOpen && !user) {
       navigate(buildLoginPath('/map?puja=1'));
@@ -1501,17 +1506,19 @@ export const Map2Page: React.FC = () => {
             <Menu size={19} />
           </button>
         </div>
-        <button
-          type="button"
-          className={`map2-puja-toggle${pujaOpen ? ' is-active' : ''}`}
-          onClick={togglePuja}
-          aria-pressed={pujaOpen}
-          aria-label={pujaOpen ? 'Exit Puja guide' : 'Open Durga Puja guide'}
-          title={pujaOpen ? 'Exit Puja guide' : 'Durga Puja guide'}
-        >
-          <img src="/icons/puja.png" alt="" draggable={false} />
-        </button>
-        {!pujaOpen ? (
+        {PUJA_ENABLED ? (
+          <button
+            type="button"
+            className={`map2-puja-toggle${pujaOpen ? ' is-active' : ''}`}
+            onClick={togglePuja}
+            aria-pressed={pujaOpen}
+            aria-label={pujaOpen ? 'Exit Puja guide' : 'Open Durga Puja guide'}
+            title={pujaOpen ? 'Exit Puja guide' : 'Durga Puja guide'}
+          >
+            <img src="/icons/puja.png" alt="" draggable={false} />
+          </button>
+        ) : null}
+        {PUJA_ENABLED && !pujaOpen ? (
           <span className={`map2-puja-hint${pujaHintOn ? ' is-visible' : ''}`} aria-hidden="true">
             <span className="map2-puja-hint-text">Puja guide</span>
             <svg className="map2-puja-hint-arrow" viewBox="0 0 56 36" width="56" height="36" fill="none">

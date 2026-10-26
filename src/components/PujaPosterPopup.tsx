@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { buildLoginPath } from '../lib/authRedirect';
+import { PUJA_ENABLED } from '../lib/pujaFeature';
 import { isVisitorInKolkata, setPujaPosterOpen } from '../lib/pujaPosterGate';
 import { PUJA_GUIDE_MAP_PATH } from './map/PujaGuideLauncher';
 import './puja-poster-popup.css';
@@ -96,7 +97,7 @@ export const PujaPosterPopup: React.FC = () => {
     const [closing, setClosing] = useState(false);
 
     const onHome = location.pathname === '/';
-    const eligible = useMemo(() => onHome && !loading, [loading, onHome]);
+    const eligible = useMemo(() => PUJA_ENABLED && onHome && !loading, [loading, onHome]);
 
     // Check the visitor's city once per session, then show the poster shortly after.
     useEffect(() => {

@@ -12,6 +12,7 @@ import { AppSEO } from './components/SEO';
 import { AppSplashScreen } from './components/AppSplashScreen';
 import { GuestOfferPopup } from './components/GuestOfferPopup';
 import { PujaPosterPopup } from './components/PujaPosterPopup';
+import { DiwaliPosterPopup } from './components/DiwaliPosterPopup';
 import { AppTutorialProvider } from './context/AppTutorialContext';
 import { OFFICIAL_SOCIAL_LINKS } from './lib/appContent';
 import { buildLoginPath } from './lib/authRedirect';
@@ -310,6 +311,7 @@ function App() {
           </Suspense>
 
           <PujaPosterPopup />
+          <DiwaliPosterPopup />
           <GuestOfferPopup />
           <AppFooter homePath={homePath} footerLogoSrc={footerLogoSrc} user={user} />
           {SHOW_SUPPORT_CHATBOT ? <SupportChatbot /> : null}

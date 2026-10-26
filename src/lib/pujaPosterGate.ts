@@ -1,13 +1,26 @@
 import { useSyncExternalStore } from 'react';
 
-/** True while the Kolkata Puja poster is on screen, so other popups (the guest offer) wait until it's closed. */
+/** True while a festival poster (Kolkata Puja or Diwali) is on screen, so other popups (the guest offer) wait until it's closed. */
+let pujaOpen = false;
+let diwaliOpen = false;
 let posterOpen = false;
 const listeners = new Set<() => void>();
 
-export const setPujaPosterOpen = (open: boolean) => {
-    if (posterOpen === open) return;
-    posterOpen = open;
+const sync = () => {
+    const next = pujaOpen || diwaliOpen;
+    if (posterOpen === next) return;
+    posterOpen = next;
     listeners.forEach((listener) => listener());
+};
+
+export const setPujaPosterOpen = (open: boolean) => {
+    pujaOpen = open;
+    sync();
+};
+
+export const setDiwaliPosterOpen = (open: boolean) => {
+    diwaliOpen = open;
+    sync();
 };
 
 const subscribe = (listener: () => void) => {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { buildLoginPath } from '../../lib/authRedirect';
+import { PUJA_ENABLED } from '../../lib/pujaFeature';
 import './puja-guide-launcher.css';
 
 /** /map query flag that opens the Durga Puja guide on arrival. */
@@ -29,6 +30,8 @@ export const PujaGuideLauncher: React.FC<{ variant?: 'desktop' | 'hero' }> = ({ 
     const open = () => {
         navigate(user ? PUJA_GUIDE_MAP_PATH : buildLoginPath(PUJA_GUIDE_MAP_PATH));
     };
+
+    if (!PUJA_ENABLED) return null;
 
     return (
         <div className={`puja-launcher puja-launcher--${variant}`}>
