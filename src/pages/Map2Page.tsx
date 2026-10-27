@@ -12,6 +12,7 @@ import {
   MapPinPlus,
   Menu,
   Navigation,
+  Palette,
   Pause,
   Play,
   Route,
@@ -39,6 +40,15 @@ import {
   PUJA_TRANSIT,
   savePandalPlan,
 } from '../lib/pujaGuide';
+import { BiennaleGuidePanel } from '../components/map/BiennaleGuidePanel';
+import { BIENNALE_ENABLED } from '../lib/biennaleFeature';
+import { BiennaleTrailPlayback } from '../components/map/BiennaleTrailPlayback';
+import {
+  BIENNALE_SITES,
+  getBiennaleSite,
+  loadBiennalePlan,
+  saveBiennalePlan,
+} from '../lib/biennaleGuide';
 import { ExplorePanel } from '../components/map/ExplorePanel';
 import { LandmarkLayerControl, LandmarkToggleButton } from '../components/map/LandmarkLayerControl';
 import { LandmarkMarkers } from '../components/map/LandmarkMarkers';
@@ -68,6 +78,7 @@ import {
 } from '../lib/kolkataLandmarks';
 import { clampBounds, EXPLORE_GROUPS, fetchExplorePlaces, findExploreCategory, type ExplorePlace } from '../lib/placeExplorer';
 import {
+  buildBiennaleIcon,
   buildDurgaPandalIcon,
   buildEmojiMarkerIcon,
   buildPinIcon,
@@ -401,6 +412,9 @@ const ROUTE_ORANGE_STYLE = { color: '#ff741d', weight: 6, opacity: 0.92, lineCap
 const PUJA_ROUTE_GLOW_STYLE = { color: PLAN_COLOR, weight: 18, opacity: 0.4, lineCap: 'round', lineJoin: 'round' } as const;
 const PUJA_ROUTE_EDGE_STYLE = { color: '#ca8a04', weight: 9, opacity: 0.85, lineCap: 'round', lineJoin: 'round' } as const;
 const PUJA_ROUTE_STYLE = { color: PLAN_COLOR, weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' } as const;
+const BIENNALE_ROUTE_GLOW_STYLE = { color: '#a855f7', weight: 18, opacity: 0.35, lineCap: 'round', lineJoin: 'round' } as const;
+const BIENNALE_ROUTE_EDGE_STYLE = { color: '#4c1d95', weight: 9, opacity: 0.85, lineCap: 'round', lineJoin: 'round' } as const;
+const BIENNALE_ROUTE_STYLE = { color: '#a855f7', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' } as const;
 const TRAIL_CASING_STYLE = { color: '#ffffff', weight: 9, opacity: 0.85, lineCap: 'round', lineJoin: 'round' } as const;
 const TRAIL_LINE_STYLE = { color: '#16a34a', weight: 5, opacity: 1, lineCap: 'round', lineJoin: 'round' } as const;
 
@@ -451,7 +465,7 @@ const userLocationIcon = divIcon({
 
 /** Height of a bottom sheet that covers the map (phones), or 0 when panels sit beside it. */
 const getBottomSheetInset = (): number => {
-  const sheet = document.querySelector<HTMLElement>('.map2-puja-panel, .map2-route-panel, .map2-detail-sheet');
+  const sheet = document.querySelector<HTMLElement>('.map2-puja-panel, .map2-biennale-panel, .map2-route-panel, .map2-detail-sheet');
   if (!sheet) return 0;
   const rect = sheet.getBoundingClientRect();
   const isDocked = rect.width > window.innerWidth * 0.8 && rect.top > window.innerHeight * 0.25;
@@ -562,6 +576,43 @@ export const Map2Page: React.FC = () => {
   const [showTransit, setShowTransit] = useState(false);
   const [showHospitals, setShowHospitals] = useState(false);
   const [pujaHintOn, setPujaHintOn] = useState(false);
+  const [biennaleOpen, setBiennaleOpen] = useState(false);
+  const [biennalePlan, setBiennalePlan] = useState<string[]>(() => loadBiennalePlan());
+  const [biennaleShowPlanOnly, setBiennaleShowPlanOnly] = useState(false);
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  // A Biennale trail that is open: its stops (in order) replace the venue pins, and its route can be played.
+  const [biennaleTrailIds, setBiennaleTrailIds] = useState<string[] | null>(null);
+  const [biennaleTrailPlaying, setBiennaleTrailPlaying] = useState(false);
+  const finishBiennaleTrailPlayback = useStableCallback(() => setBiennaleTrailPlaying(false));
+  // Closing the Biennale guide (the cross) ends any open trail: its route and numbered stops go away.
+  useEffect(() => {
+    if (biennaleOpen) return;
+    setBiennaleTrailIds((current) => {
+      if (current) setBiennaleRoute(null);
+      return null;
+    });
+    setBiennaleTrailPlaying(false);
+  }, [biennaleOpen]);
+  const [biennaleRoute, setBiennaleRoute] = useState<PlannedRoute | null>(null);
+  const [biennaleHintOn, setBiennaleHintOn] = useState(false);
+  // Fits the open trail's whole route in view, captures it as a PDF plus image, then puts the map back where it was.
+  const exportOpenBiennaleTrailMap = async (title: string): Promise<TrailMapExport> => {
+    const map = mapRef.current;
+    if (!map || !biennaleRoute?.route_points.length) throw new Error('Open the trail first so its route is on the map.');
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    map.fitBounds(latLngBounds(biennaleRoute.route_points), { padding: [48, 48], animate: false });
+    try {
+      await waitForBasemap(map);
+      return await exportTrailMap(map, title);
+    } finally {
+      map.setView(center, zoom, { animate: false });
+    }
+  };
+  const handleBiennalePlanChange = (ids: string[]) => {
+    setBiennalePlan(ids);
+    saveBiennalePlan(ids);
+  };
   const trail = useWalkTrail();
   const [trailCardOpen, setTrailCardOpen] = useState(false);
   const trailFlownRef = useRef(false);
@@ -592,6 +643,7 @@ export const Map2Page: React.FC = () => {
   const selectedRestaurant = selectedRestaurantId ? getRestaurant(selectedRestaurantId) : null;
   const selectedTransit = selectedTransitId ? getTransit(selectedTransitId) : null;
   const selectedHospital = selectedHospitalId ? getHospital(selectedHospitalId) : null;
+  const selectedBiennaleSite = selectedSiteId ? getBiennaleSite(selectedSiteId) : null;
   const userId = user?.id || null;
 
   const startPoint = useMemo(
@@ -804,6 +856,25 @@ export const Map2Page: React.FC = () => {
     }
   }, [authLoading, location.search, navigate, user]);
 
+  // Nudge people toward the Biennale guide: the hint appears a second after the map opens, then fades away.
+  useEffect(() => {
+    if (!BIENNALE_ENABLED) return undefined;
+    const showTimer = window.setTimeout(() => setBiennaleHintOn(true), 1000);
+    const hideTimer = window.setTimeout(() => setBiennaleHintOn(false), 6500);
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
+
+  // Arriving with ?biennale=1 (home page button, or a shared link) opens the guide, then drops the flag from the URL.
+  useEffect(() => {
+    if (!BIENNALE_ENABLED || !new URLSearchParams(location.search).get('biennale')) return;
+    navigate('/map', { replace: true });
+    setBiennaleOpen(true);
+    setBiennaleHintOn(false);
+  }, [location.search, navigate]);
+
   // Bring the map to the walker once, on the first GPS fix after tracking starts (not on every fix, so panning still works).
   const trailLat = trail.position?.lat;
   const trailLng = trail.position?.lng;
@@ -836,11 +907,25 @@ export const Map2Page: React.FC = () => {
     }
     closeExplore();
     clearLandmark();
+    setBiennaleOpen(false);
     setPujaOpen((current) => !current);
     setSelectedPandalId(null);
     setSelectedRestaurantId(null);
     setSelectedTransitId(null);
     setSelectedHospitalId(null);
+    setSelectedPoint(null);
+    setSelectedPin(null);
+    setRouteOpen(false);
+    closePinForm();
+  };
+
+  const toggleBiennale = () => {
+    if (!BIENNALE_ENABLED) return;
+    closeExplore();
+    clearLandmark();
+    setPujaOpen(false);
+    setBiennaleOpen((current) => !current);
+    setSelectedSiteId(null);
     setSelectedPoint(null);
     setSelectedPin(null);
     setRouteOpen(false);
@@ -960,6 +1045,9 @@ export const Map2Page: React.FC = () => {
     setSelectedPandalId(null);
     setSelectedRestaurantId(null);
     setSelectedTransitId(null);
+  });
+  const onSiteSelect = useStableCallback((site: (typeof BIENNALE_SITES)[number]) => {
+    setSelectedSiteId(site.id);
   });
 
   const closePinForm = () => {
@@ -1208,8 +1296,8 @@ export const Map2Page: React.FC = () => {
         <BasemapLayer />
         <ZoomControl position="bottomright" />
         <Map2Viewport
-          routePoints={(exploreOpen ? exploreRoute : pujaOpen ? pujaRoute : landmarkRoute || plannedRoute)?.route_points || NO_ROUTE_POINTS}
-          selectedPoint={exploreOpen ? selectedExplorePlace : pujaOpen ? selectedPandal || selectedRestaurant || selectedTransit || selectedHospital : selectedPoint || selectedPin || selectedPlace || selectedLandmark}
+          routePoints={(exploreOpen ? exploreRoute : pujaOpen ? pujaRoute : biennaleOpen ? biennaleRoute : landmarkRoute || plannedRoute)?.route_points || NO_ROUTE_POINTS}
+          selectedPoint={exploreOpen ? selectedExplorePlace : pujaOpen ? selectedPandal || selectedRestaurant || selectedTransit || selectedHospital : biennaleOpen ? selectedBiennaleSite : selectedPoint || selectedPin || selectedPlace || selectedLandmark}
           userLocation={userLocation}
         />
         <Map2Bridge
@@ -1240,14 +1328,14 @@ export const Map2Page: React.FC = () => {
           />
         )) : null}
 
-        {!exploreOpen && !pujaOpen && landmarkRoute?.route_points.length ? (
+        {!exploreOpen && !pujaOpen && !biennaleOpen && landmarkRoute?.route_points.length ? (
           <Polyline
             pathOptions={ROUTE_BLUE_STYLE}
             positions={landmarkRoute.route_points}
           />
         ) : null}
 
-        {!exploreOpen && !pujaOpen && plannedRoute?.route_points.length ? (
+        {!exploreOpen && !pujaOpen && !biennaleOpen && plannedRoute?.route_points.length ? (
           <Polyline
             pathOptions={ROUTE_ORANGE_STYLE}
             positions={plannedRoute.route_points}
@@ -1341,13 +1429,61 @@ export const Map2Page: React.FC = () => {
           />
         )) : null}
 
+        {biennaleOpen && biennaleRoute?.route_points.length ? (
+          <>
+            {/* Wide soft violet halo, a deep purple edge for contrast on light tiles, then the violet route itself. */}
+            <Polyline
+              pathOptions={BIENNALE_ROUTE_GLOW_STYLE}
+              positions={biennaleRoute.route_points}
+              interactive={false}
+            />
+            <Polyline
+              pathOptions={BIENNALE_ROUTE_EDGE_STYLE}
+              positions={biennaleRoute.route_points}
+              interactive={false}
+            />
+            <Polyline
+              pathOptions={BIENNALE_ROUTE_STYLE}
+              positions={biennaleRoute.route_points}
+              interactive={false}
+            />
+          </>
+        ) : null}
+
+        {biennaleOpen && biennaleTrailIds && biennaleRoute?.route_points.length ? (
+          <BiennaleTrailPlayback points={biennaleRoute.route_points} playing={biennaleTrailPlaying} onFinish={finishBiennaleTrailPlayback} />
+        ) : null}
+
+        {biennaleOpen ? BIENNALE_SITES
+          .filter((site) => (biennaleTrailIds ? biennaleTrailIds.includes(site.id) : !(biennaleShowPlanOnly && biennalePlan.length) || biennalePlan.includes(site.id)))
+          .map((site) => {
+            const planIndex = biennaleTrailIds ? biennaleTrailIds.indexOf(site.id) : biennalePlan.indexOf(site.id);
+            return (
+              <MapMarker
+                key={site.id}
+                item={site}
+                lat={site.lat}
+                lng={site.lng}
+                icon={buildBiennaleIcon({
+                  active: selectedSiteId === site.id,
+                  planNumber: planIndex >= 0 ? planIndex + 1 : undefined,
+                  label: site.name,
+                  showLabel: Boolean(biennaleTrailIds),
+                })}
+                zIndexOffset={planIndex >= 0 ? 500 : 0}
+                onSelect={onSiteSelect}
+                title={planIndex >= 0 ? `${planIndex + 1}. ${site.name}` : site.name}
+              />
+            );
+          }) : null}
+
         <WalkTrailLines segments={trail.segments} />
 
         {locationDot ? (
           <Marker icon={userLocationIcon} position={[locationDot.lat, locationDot.lng]} zIndexOffset={1000} />
         ) : null}
 
-        {!pujaOpen && visibleAttractions.map((pointItem) => {
+        {!pujaOpen && !biennaleOpen && visibleAttractions.map((pointItem) => {
           const meta = ATTRACTION_META[pointItem.id];
           const category = meta ? getLandmarkCategory(meta.category) : null;
           return (
@@ -1372,7 +1508,7 @@ export const Map2Page: React.FC = () => {
           );
         })}
 
-        {!pujaOpen && !exploreOpen && landmarksOn ? (
+        {!pujaOpen && !biennaleOpen && !exploreOpen && landmarksOn ? (
           <LandmarkMarkers
             landmarks={visibleLandmarks}
             reserved={reservedSpots}
@@ -1381,7 +1517,7 @@ export const Map2Page: React.FC = () => {
           />
         ) : null}
 
-        {!pujaOpen && !exploreOpen && placesOn ? places.map((place) => (
+        {!pujaOpen && !biennaleOpen && !exploreOpen && placesOn ? places.map((place) => (
           <MapMarker
             key={place.id}
             item={place}
@@ -1394,7 +1530,7 @@ export const Map2Page: React.FC = () => {
           />
         )) : null}
 
-        {!pujaOpen && pins.map((pin) => (
+        {!pujaOpen && !biennaleOpen && pins.map((pin) => (
           <MapMarker
             key={pin.id}
             item={pin}
@@ -1453,6 +1589,7 @@ export const Map2Page: React.FC = () => {
             onClick={() => {
               closeExplore();
               setPujaOpen(false);
+              setBiennaleOpen(false);
               if (pinFormOpen) closePinForm();
               else void handleStartPin();
             }}
@@ -1469,6 +1606,7 @@ export const Map2Page: React.FC = () => {
               setSelectedPoint(null);
               setSelectedPin(null);
               setPujaOpen(false);
+              setBiennaleOpen(false);
               closeExplore();
               clearLandmark();
               closePinForm();
@@ -1488,7 +1626,7 @@ export const Map2Page: React.FC = () => {
           >
             <Footprints size={19} />
           </button>
-          {pujaOpen || exploreOpen ? null : (
+          {pujaOpen || biennaleOpen || exploreOpen ? null : (
             <LandmarkToggleButton
               open={landmarkPanelOpen}
               enabled={landmarksOn}
@@ -1521,6 +1659,27 @@ export const Map2Page: React.FC = () => {
         {PUJA_ENABLED && !pujaOpen ? (
           <span className={`map2-puja-hint${pujaHintOn ? ' is-visible' : ''}`} aria-hidden="true">
             <span className="map2-puja-hint-text">Puja guide</span>
+            <svg className="map2-puja-hint-arrow" viewBox="0 0 56 36" width="56" height="36" fill="none">
+              <path d="M2 22 C 12 4, 30 4, 50 18" pathLength="1" />
+              <path d="M45.9 10 L50 18 L41.1 16.9" pathLength="1" className="map2-puja-hint-head" />
+            </svg>
+          </span>
+        ) : null}
+        {BIENNALE_ENABLED ? (
+          <button
+            type="button"
+            className={`map2-biennale-toggle${biennaleOpen ? ' is-active' : ''}`}
+            onClick={toggleBiennale}
+            aria-pressed={biennaleOpen}
+            aria-label={biennaleOpen ? 'Exit Biennale guide' : 'Open Biennale guide'}
+            title={biennaleOpen ? 'Exit Biennale guide' : 'Biennale guide'}
+          >
+            <Palette size={22} aria-hidden="true" />
+          </button>
+        ) : null}
+        {BIENNALE_ENABLED && !biennaleOpen ? (
+          <span className={`map2-biennale-hint${biennaleHintOn ? ' is-visible' : ''}`} aria-hidden="true">
+            <span className="map2-biennale-hint-text">Biennale guide</span>
             <svg className="map2-puja-hint-arrow" viewBox="0 0 56 36" width="56" height="36" fill="none">
               <path d="M2 22 C 12 4, 30 4, 50 18" pathLength="1" />
               <path d="M45.9 10 L50 18 L41.1 16.9" pathLength="1" className="map2-puja-hint-head" />
@@ -1604,6 +1763,27 @@ export const Map2Page: React.FC = () => {
           selectedHospitalId={selectedHospitalId}
           onSelectHospital={setSelectedHospitalId}
           onClose={togglePuja}
+        />
+      ) : null}
+
+      {biennaleOpen ? (
+        <BiennaleGuidePanel
+          userId={userId}
+          plan={biennalePlan}
+          onPlanChange={handleBiennalePlanChange}
+          selectedSiteId={selectedSiteId}
+          onSelectSite={setSelectedSiteId}
+          route={biennaleRoute}
+          onRouteChange={setBiennaleRoute}
+          trailIds={biennaleTrailIds}
+          onTrailChange={(ids) => { setBiennaleTrailIds(ids); setBiennaleTrailPlaying(false); }}
+          trailPlaying={biennaleTrailPlaying}
+          onTrailPlayingChange={setBiennaleTrailPlaying}
+          onExportTrailMap={exportOpenBiennaleTrailMap}
+          userLocation={userLocation}
+          showPlanOnly={biennaleShowPlanOnly}
+          onShowPlanOnlyChange={setBiennaleShowPlanOnly}
+          onClose={toggleBiennale}
         />
       ) : null}
 
@@ -1870,7 +2050,7 @@ export const Map2Page: React.FC = () => {
         );
       })() : null}
 
-      {selectedPlace && !selectedPoint && !selectedPin && !routeOpen && !pinFormOpen && !pujaOpen && !exploreOpen ? (() => {
+      {selectedPlace && !selectedPoint && !selectedPin && !routeOpen && !pinFormOpen && !pujaOpen && !biennaleOpen && !exploreOpen ? (() => {
         const category = getPlaceCategory(selectedPlace.category);
         const CategoryIcon = category.Icon;
         const listingPath = selectedPlace.listing_id
@@ -1913,7 +2093,7 @@ export const Map2Page: React.FC = () => {
         );
       })() : null}
 
-      {selectedLandmark && !selectedPoint && !selectedPin && !selectedPlace && !routeOpen && !pinFormOpen && !pujaOpen && !exploreOpen ? (
+      {selectedLandmark && !selectedPoint && !selectedPin && !selectedPlace && !routeOpen && !pinFormOpen && !pujaOpen && !biennaleOpen && !exploreOpen ? (
         <LandmarkSheet
           landmark={selectedLandmark}
           route={landmarkRoute}
@@ -1927,7 +2107,7 @@ export const Map2Page: React.FC = () => {
 
       <button
         type="button"
-        className={`map2-locate-fab${pujaOpen || selectedPoint || selectedPin || selectedPlace || selectedLandmark || routeOpen || pinFormOpen ? ' is-covered' : ''}`}
+        className={`map2-locate-fab${pujaOpen || biennaleOpen || selectedPoint || selectedPin || selectedPlace || selectedLandmark || routeOpen || pinFormOpen ? ' is-covered' : ''}`}
         onClick={() => void handleLocate()}
         disabled={locating}
         aria-label="Find my location"
@@ -1936,7 +2116,7 @@ export const Map2Page: React.FC = () => {
         <LocateFixed size={21} />
       </button>
 
-      {pujaOpen || exploreOpen ? null : (
+      {pujaOpen || biennaleOpen || exploreOpen ? null : (
         <LandmarkLayerControl
           open={landmarkPanelOpen}
           enabled={landmarksOn}
@@ -1968,9 +2148,22 @@ export const Map2Page: React.FC = () => {
         </div>
       ) : null}
 
+      {biennaleOpen && biennaleTrailIds && biennaleRoute?.route_points.length ? (
+        <div className="map2-trail-controls" role="group" aria-label="Trail playback">
+          <button
+            type="button"
+            className="map2-trail-play"
+            onClick={() => setBiennaleTrailPlaying((current) => !current)}
+          >
+            {biennaleTrailPlaying ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+            <span>{biennaleTrailPlaying ? 'Stop' : 'Play route'}</span>
+          </button>
+        </div>
+      ) : null}
+
       <MapDownloadButton
         getMap={() => mapRef.current}
-        covered={Boolean(pujaOpen || selectedPoint || selectedPin || selectedPlace || selectedLandmark || routeOpen || pinFormOpen)}
+        covered={Boolean(pujaOpen || biennaleOpen || selectedPoint || selectedPin || selectedPlace || selectedLandmark || routeOpen || pinFormOpen)}
       />
 
       {selectedPoint && !routeOpen && !pinFormOpen ? (

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { __iconNode as flameNode } from 'lucide-react/dist/esm/icons/flame.js';
 import { __iconNode as tentNode } from 'lucide-react/dist/esm/icons/tent.js';
+import { __iconNode as paletteNode } from 'lucide-react/dist/esm/icons/palette.js';
 import { __iconNode as landmarkNode } from 'lucide-react/dist/esm/icons/landmark.js';
 import { __iconNode as castleNode } from 'lucide-react/dist/esm/icons/castle.js';
 import { __iconNode as schoolNode } from 'lucide-react/dist/esm/icons/school.js';
@@ -79,7 +80,7 @@ type IconNode = ReadonlyArray<readonly [string, Record<string, string | number>]
 const GLYPH_NODES: Record<string, IconNode> = {
     Flame: flameNode, Tent: tentNode, Landmark: landmarkNode, Castle: castleNode, School: schoolNode,
     Library: libraryNode, Church: churchNode, Moon: moonNode, Trees: treesNode, ShoppingBag: shoppingBagNode,
-    Mountain: mountainNode, MapPin: mapPinNode, UtensilsCrossed: utensilsCrossedNode,
+    Mountain: mountainNode, MapPin: mapPinNode, UtensilsCrossed: utensilsCrossedNode, Palette: paletteNode,
 };
 
 const glyphCache = new Map<string, string>();
@@ -216,6 +217,45 @@ export const buildDurgaPandalIcon = (options: TackOptions = {}): DivIcon => {
     const html = `
 <span class="map2-durga-pin${options.active ? ' is-active' : ''}${options.planNumber ? ' is-planned' : ''}" style="width:${size}px;height:${size}px">
   <img src="/icons/puja.png" alt="" width="${size}" height="${size}" />
+  ${badge}${labelText ? `<span class="map2-durga-label">${escapeHtml(labelText)}</span>` : ''}
+</span>`;
+
+    const icon = divIcon({
+        className: '',
+        html,
+        iconSize: point(size, size),
+        iconAnchor: point(size / 2, size - 4),
+    });
+    iconCache.set(cacheKey, icon);
+    return icon;
+};
+
+export const BIENNALE_COLOR = '#7c3aed';
+
+const BIENNALE_GLYPH_MARKUP = (() => {
+    const children = (paletteNode as IconNode).map(([tag, attrs]) => (
+        `<${tag} ${Object.entries(attrs).filter(([name]) => name !== 'key').map(([name, value]) => `${name}="${value}"`).join(' ')} />`
+    )).join('');
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${children}</svg>`;
+})();
+
+/** Circular violet badge used for Biennale venue stops, built from an inline SVG glyph rather than a raster image. */
+export const buildBiennaleIcon = (options: TackOptions = {}): DivIcon => {
+    const labelText = options.showLabel ? options.label || '' : '';
+    const cacheKey = `biennale:${options.active ? 1 : 0}:${options.planNumber || 0}:${labelText}`;
+    const cached = iconCache.get(cacheKey);
+    if (cached) return cached;
+
+    const size = options.active ? 40 : options.planNumber ? 36 : 30;
+    const badge = options.planNumber
+        ? `<span class="map2-biennale-badge">${options.planNumber}</span>`
+        : '';
+    const html = `
+<span class="map2-biennale-pin${options.active ? ' is-active' : ''}${options.planNumber ? ' is-planned' : ''}" style="width:${size}px;height:${size}px">
+  <svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" style="display:block">
+    <circle cx="12" cy="12" r="11" fill="${BIENNALE_COLOR}" />
+    <g transform="translate(5 5) scale(0.58)">${BIENNALE_GLYPH_MARKUP}</g>
+  </svg>
   ${badge}${labelText ? `<span class="map2-durga-label">${escapeHtml(labelText)}</span>` : ''}
 </span>`;
 

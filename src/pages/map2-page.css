@@ -139,6 +139,44 @@
   box-shadow: 0 0 0 2px #ffffff;
 }
 
+.map2-biennale-pin {
+  position: relative;
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2.5px #ffffff, 0 6px 10px rgba(20, 20, 20, 0.3);
+  transition: transform 0.18s ease;
+}
+
+.map2-biennale-pin:hover {
+  transform: scale(1.08);
+}
+
+.map2-biennale-pin.is-active {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px #a855f7, 0 10px 14px rgba(20, 20, 20, 0.34);
+}
+
+.map2-biennale-pin.is-planned {
+  box-shadow: 0 0 0 3px #a855f7, 0 6px 10px rgba(20, 20, 20, 0.3);
+}
+
+.map2-biennale-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #a855f7;
+  color: #ffffff;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
 .map2-user-dot {
   display: block;
   width: 22px;
@@ -988,6 +1026,142 @@
 @media (prefers-reduced-motion: reduce) {
   .map2-puja-hint,
   .map2-puja-hint-arrow path {
+    transition: none !important;
+    transform: none;
+  }
+}
+
+/* Biennale guide ---------------------------------------------------------- */
+.map2-biennale-toggle {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 1px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #f3e8ff;
+  color: #6d28d9;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(109, 40, 217, 0.35), 0 0 0 3px rgba(168, 85, 247, 0.25);
+  animation: map2-puja-beat 2.4s ease-in-out infinite;
+}
+
+.map2-biennale-toggle::before,
+.map2-biennale-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border: 2px solid #a855f7;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: map2-puja-ripple 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+
+.map2-biennale-toggle::after {
+  border-color: #6d28d9;
+  animation-delay: 1.2s;
+}
+
+.map2-biennale-toggle:hover {
+  animation-play-state: paused;
+}
+
+.map2-biennale-toggle:focus-visible {
+  outline: 3px solid #111111;
+  outline-offset: 3px;
+}
+
+.map2-biennale-toggle.is-active {
+  background: #111111;
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(20, 20, 20, 0.35);
+  animation: none;
+}
+
+.map2-biennale-toggle.is-active::before,
+.map2-biennale-toggle.is-active::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map2-biennale-toggle {
+    animation: none;
+  }
+
+  .map2-biennale-toggle::before {
+    opacity: 0.45;
+    transform: scale(1.35);
+    animation: none;
+  }
+
+  .map2-biennale-toggle::after {
+    display: none;
+  }
+}
+
+/* "Biennale guide" hint: reuses the Puja hint's curved-arrow geometry with a violet label */
+.map2-biennale-hint {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 56px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  height: 46px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.map2-biennale-toggle:hover + .map2-biennale-hint,
+.map2-biennale-toggle:focus-visible + .map2-biennale-hint,
+.map2-biennale-hint.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.map2-biennale-hint-text {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #111111;
+  color: #e9d5ff;
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(20, 20, 20, 0.28);
+}
+
+.map2-biennale-toggle:hover + .map2-biennale-hint .map2-puja-hint-arrow path,
+.map2-biennale-toggle:focus-visible + .map2-biennale-hint .map2-puja-hint-arrow path,
+.map2-biennale-hint.is-visible .map2-puja-hint-arrow path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.6s ease 0.2s;
+}
+
+@media (max-width: 480px) {
+  .map2-biennale-hint {
+    right: 54px;
+  }
+
+  .map2-biennale-hint-text {
+    margin-top: 10px;
+    padding: 5px 10px;
+    font-size: 0.76rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map2-biennale-hint,
+  .map2-biennale-hint .map2-puja-hint-arrow path {
     transition: none !important;
     transform: none;
   }

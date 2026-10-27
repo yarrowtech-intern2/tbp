@@ -77,6 +77,14 @@
     object-fit: contain;
 }
 
+.trail-runner.is-biennale {
+    width: 30px;
+    height: 30px;
+    border-color: #c084fc;
+    background: #7c3aed;
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.35), 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
 @keyframes trailRunnerBob {
     from { transform: translateY(0) scale(1); }
     to { transform: translateY(-3px) scale(1.06); }
